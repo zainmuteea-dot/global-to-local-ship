@@ -1,4 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
+import {
+  Calculator,
+  Home,
+  Link2,
+  PackageSearch,
+  Search,
+  ShoppingCart,
+  type LucideIcon,
+} from "lucide-react";
 
 const WHATSAPP = "https://wa.me/967700000000";
 
@@ -48,36 +57,36 @@ function TruckIcon({ className }: { className?: string }) {
   );
 }
 
-const steps = [
+const steps: { n: string; title: string; desc: string; icon: LucideIcon }[] = [
   {
     n: "١",
     title: "أرسل الرابط",
     desc: "ترسل لنا رابط المنتج اللي يعجبك من أي متجر عالمي.",
-    icon: "🔗",
+    icon: Link2,
   },
   {
     n: "٢",
     title: "اعرف السعر",
     desc: "نحسب لك التكلفة شاملة الشراء والشحن والرسوم — بدون مفاجآت.",
-    icon: "💰",
+    icon: Calculator,
   },
   {
     n: "٣",
     title: "نشتري لك",
     desc: "ندفع ونشتري المنتج نيابةً عنك بأمان تام.",
-    icon: "🛒",
+    icon: ShoppingCart,
   },
   {
     n: "٤",
     title: "تابع الشحنة",
     desc: "نرسل لك التتبع خطوة بخطوة حتى توصل.",
-    icon: "📦",
+    icon: PackageSearch,
   },
   {
     n: "٥",
     title: "الاستلام",
     desc: "يوصلك طلبك لباب البيت، جاهز للفتح.",
-    icon: "🏠",
+    icon: Home,
   },
 ];
 
