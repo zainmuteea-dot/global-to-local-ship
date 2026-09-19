@@ -1,15 +1,24 @@
+// ============= Full file contents =============
 import { createFileRoute } from "@tanstack/react-router";
 import {
-  Calculator,
-  Home,
+  Bell,
+  CircleDollarSign,
+  ClipboardList,
+  Facebook,
+  FileText,
+  Hand,
+  Instagram,
   Link2,
-  PackageSearch,
+  Package,
   Search,
   ShoppingCart,
+  UserRound,
+  Youtube,
   type LucideIcon,
 } from "lucide-react";
 
 const WHATSAPP = "https://wa.me/967700000000";
+const BRAND = "السوق الشامل";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -49,54 +58,51 @@ function PlaneIcon({ className }: { className?: string }) {
   );
 }
 
-function TruckIcon({ className }: { className?: string }) {
+/** شاحنة تحمل اسم العلامة */
+function BrandTruck() {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <path d="M3 4h11v9H3V4Zm12 3h4l3 3v3h-7V7ZM6 17a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm11 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z" />
-    </svg>
+    <div className="flex items-end">
+      <div className="rounded-md bg-card px-2 py-1 ring-1 ring-border shadow-sm">
+        <p className="whitespace-nowrap font-display text-[10px] font-extrabold leading-none text-cocoadeep sm:text-xs">
+          {BRAND}
+        </p>
+      </div>
+      <div className="-ms-0.5 size-0 border-y-[7px] border-s-[10px] border-y-transparent border-s-cocoa" />
+      <div className="relative -ms-1 flex gap-1 pb-[-2px]">
+        <span className="size-2 rounded-full bg-cocoadeep ring-2 ring-card" />
+        <span className="size-2 rounded-full bg-cocoadeep ring-2 ring-card" />
+      </div>
+    </div>
   );
 }
 
-const steps: { n: string; title: string; desc: string; icon: LucideIcon }[] = [
-  {
-    n: "١",
-    title: "أرسل الرابط",
-    desc: "ترسل لنا رابط المنتج اللي يعجبك من أي متجر عالمي.",
-    icon: Link2,
-  },
-  {
-    n: "٢",
-    title: "اعرف السعر",
-    desc: "نحسب لك التكلفة شاملة الشراء والشحن والرسوم — بدون مفاجآت.",
-    icon: Calculator,
-  },
-  {
-    n: "٣",
-    title: "نشتري لك",
-    desc: "ندفع ونشتري المنتج نيابةً عنك بأمان تام.",
-    icon: ShoppingCart,
-  },
-  {
-    n: "٤",
-    title: "تابع الشحنة",
-    desc: "نرسل لك التتبع خطوة بخطوة حتى توصل.",
-    icon: PackageSearch,
-  },
-  {
-    n: "٥",
-    title: "الاستلام",
-    desc: "يوصلك طلبك لباب البيت، جاهز للفتح.",
-    icon: Home,
-  },
+const heroCircles: { label: string; icon: LucideIcon }[] = [
+  { label: "التسجيل", icon: UserRound },
+  { label: "الطلب", icon: Hand },
+  { label: "الشحن", icon: FileText },
 ];
 
-const platforms = ["TEMU", "Trendyol", "SHEIN", "Amazon", "AliExpress"];
+const steps: { title: string; desc: string; icon: LucideIcon }[] = [
+  { title: "أرسل الرابط", desc: "انسخ رابط المنتج", icon: Link2 },
+  { title: "اعرف السعر", desc: "نوضح لك التكلفة", icon: CircleDollarSign },
+  { title: "نشتري لك", desc: "نشتري بدلاً عنك", icon: ShoppingCart },
+  { title: "تابع الشحنة", desc: "تتبع طلبك أولاً بأول", icon: Search },
+  { title: "الاستلام", desc: "يوصلك حتى باب بيتك", icon: Package },
+];
+
+const platforms: { name: string; className: string }[] = [
+  { name: "TEMU", className: "bg-temu text-white" },
+  { name: "Trendyol", className: "bg-trendyol text-white" },
+  { name: "SHEIN", className: "bg-shein text-white" },
+  { name: "Amazon", className: "bg-card text-amazon ring-1 ring-border" },
+  { name: "AliExpress", className: "bg-aliexpress text-white" },
+];
 
 const testimonials = [
   {
     name: "يوسف الحيفي",
     city: "صنعاء",
-    text: "اشتريت لعبتين للأولاد من شي إن، كنت متردد كثير لكن التعامل كان صادق والتوصيل وصل لباب البيت. ما توقعت أنه بهذه السهولة.",
+    text: "اشتريت لعبتين للأولاد من شي إن، التعامل كان صادق والتوصيل وصل لباب البيت. ما توقعت أنه بهذه السهولة.",
   },
   {
     name: "أمة الحكيمي",
@@ -114,7 +120,7 @@ function Stars() {
   return (
     <div className="flex justify-center gap-0.5 text-gold" aria-label="خمس نجوم">
       {Array.from({ length: 5 }).map((_, i) => (
-        <span key={i} className="text-lg leading-none">
+        <span key={i} className="text-sm leading-none">
           ★
         </span>
       ))}
@@ -122,178 +128,232 @@ function Stars() {
   );
 }
 
+/** مثلثات الزخرفة فوق الشعار */
+function Confetti() {
+  return (
+    <div className="mb-1 flex flex-wrap justify-center gap-1" aria-hidden>
+      {["size-1.5", "size-2", "size-1.5", "size-2.5", "size-1.5", "size-2"].map((s, i) => (
+        <span
+          key={i}
+          className={`${s} rotate-45 bg-goldsoft/70 ${i % 2 ? "rounded-[2px]" : "rounded-full"}`}
+        />
+      ))}
+    </div>
+  );
+}
+
 function Index() {
   return (
-    <div dir="rtl" lang="ar" className="min-h-screen bg-background font-body text-foreground overflow-x-hidden">
-      {/* زر واتساب عائم */}
-      <a
-        href={WHATSAPP}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="fixed bottom-5 start-5 z-50 flex items-center gap-2 rounded-full bg-wa px-4 py-3 text-sm font-bold text-primary-foreground shadow-[0_14px_26px_-8px_oklch(0.3_0.05_55/0.55)] transition-transform hover:-translate-y-0.5"
-      >
-        <WhatsAppIcon className="size-4" />
-        راسلنا على واتساب
-      </a>
+    <div
+      dir="rtl"
+      lang="ar"
+      className="min-h-screen overflow-x-hidden bg-background font-body text-foreground"
+    >
+      {/* الشريط العلوي */}
+      <div className="mx-auto flex max-w-4xl items-center justify-between px-4 pt-4">
+        <div className="flex items-center gap-2">
+          <span className="grid size-8 place-items-center rounded-full bg-card text-cocoa ring-1 ring-border">
+            <UserRound className="size-4" aria-hidden />
+          </span>
+          <span className="grid size-8 place-items-center rounded-full bg-card text-cocoa ring-1 ring-border">
+            <Bell className="size-4" aria-hidden />
+          </span>
+        </div>
+        <a
+          href={WHATSAPP}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 rounded-xl bg-cocoa px-4 py-2 text-sm font-bold text-cream shadow-[0_8px_0_0_oklch(0.28_0.05_55)] transition-transform hover:-translate-y-0.5"
+        >
+          <span className="text-base leading-none">+</span>
+          اطلب الآن
+        </a>
+      </div>
 
-      {/* ١. كرت خدمة العملاء */}
-      <header className="px-4 pt-6">
-        <div className="mx-auto max-w-3xl rounded-3xl bg-cocoa p-6 text-cream shadow-[0_22px_40px_-18px_oklch(0.3_0.05_55/0.7)] ring-1 ring-black/10 sm:p-7">
-          <div className="flex flex-col items-center gap-5 sm:flex-row">
-            <div className="flex items-center gap-3">
-              <div className="grid size-12 place-items-center rounded-2xl bg-gold font-display text-2xl font-extrabold text-cocoadeep shadow-[inset_0_-4px_0_oklch(0_0_0/0.15)]">
-                س
-              </div>
-              <div>
-                <p className="text-xs font-bold tracking-wide text-goldsoft">خدمة العملاء</p>
-                <p className="font-display text-xl font-bold leading-tight">السوق الشامل</p>
-              </div>
-            </div>
-            <div className="flex flex-wrap justify-center gap-2 sm:ms-auto">
-              {["أصلي", "سريع", "ثقة"].map((t) => (
-                <span
-                  key={t}
-                  className="flex items-center gap-1.5 rounded-full bg-cream/10 px-3 py-1.5 text-sm font-bold ring-1 ring-cream/15"
-                >
-                  <span className="size-2 rounded-full bg-gold" />
-                  {t}
-                </span>
+      {/* كرت «كيف تطلب؟» */}
+      <header className="px-4 pt-4">
+        <div className="relative mx-auto max-w-2xl overflow-hidden rounded-3xl bg-cocoa p-6 text-cream shadow-[0_24px_44px_-20px_oklch(0.3_0.05_55/0.7)] ring-1 ring-black/10 sm:p-8">
+          <div className="flex flex-col-reverse items-start justify-between gap-4 sm:flex-row">
+            {/* دوائر التسجيل/الطلب/الشحن */}
+            <div className="flex items-start gap-4">
+              {heroCircles.map(({ label, icon: Icon }) => (
+                <div key={label} className="flex flex-col items-center gap-1.5">
+                  <span className="grid size-11 place-items-center rounded-full ring-2 ring-cream/50 sm:size-12">
+                    <Icon className="size-5 text-goldsoft sm:size-6" aria-hidden />
+                  </span>
+                  <span className="text-xs font-bold text-goldsoft">{label}</span>
+                </div>
               ))}
             </div>
-            <a
-              href={WHATSAPP}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gold px-5 py-3 font-bold text-cocoadeep shadow-[0_8px_0_0_oklch(0.42_0.07_50)] transition-transform hover:-translate-y-0.5"
-            >
-              <WhatsAppIcon className="size-4" />
-              اضغط هنا
-            </a>
+            {/* الشعار */}
+            <div className="text-start">
+              <Confetti />
+              <p className="font-display text-2xl font-black tracking-tight text-goldsoft sm:text-3xl">
+                {BRAND}
+              </p>
+            </div>
           </div>
+
+          <div className="mt-6 flex flex-col-reverse items-center gap-6 sm:flex-row sm:items-end">
+            {/* كيف تطلب؟ */}
+            <div className="flex-1 text-center sm:text-start">
+              <p className="font-display text-4xl font-black leading-tight text-goldsoft sm:text-5xl">
+                كيف تطلب؟<span className="text-gold">؟</span>
+              </p>
+              <svg
+                viewBox="0 0 120 10"
+                className="mx-auto mt-1 h-2.5 w-32 text-gold sm:mx-0"
+                fill="none"
+                aria-hidden
+              >
+                <path
+                  d="M2 7c30-6 86-6 116-2"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </div>
+            {/* سبورة العرض + الشخص */}
+            <div className="relative shrink-0" aria-hidden>
+              <div className="grid size-24 place-items-center rounded-xl bg-cream/10 ring-2 ring-cream/40 sm:size-28">
+                <span className="grid size-9 place-items-center rounded-full bg-goldsoft text-cocoa">
+                  <svg viewBox="0 0 24 24" className="size-4 translate-x-px" fill="currentColor">
+                    <path d="M8 5.5v13l11-6.5-11-6.5Z" />
+                  </svg>
+                </span>
+              </div>
+              <span className="absolute -bottom-1 -start-3 grid size-9 place-items-center rounded-full bg-clay ring-2 ring-cocoa">
+                <UserRound className="size-4 text-cream" />
+              </span>
+              <span className="absolute -top-2 end-2 font-display text-xl font-black text-gold">
+                ↖
+              </span>
+            </div>
+          </div>
+
+          {/* اضغط هنا */}
+          <a
+            href={WHATSAPP}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-gold px-5 py-2.5 font-display text-lg font-extrabold text-cocoadeep shadow-[0_7px_0_0_oklch(0.42_0.07_50)] transition-transform hover:-translate-y-0.5"
+          >
+            <Hand className="size-5 -scale-x-100 text-clay" aria-hidden />
+            اضغط هنا
+          </a>
         </div>
       </header>
 
-      {/* ٢. العنوان الكبير + خط الطيارة والشاحنة */}
-      <section className="mx-auto max-w-4xl px-4 pb-10 pt-14 text-center">
-        <h1 className="font-display text-4xl font-extrabold leading-[1.2] text-cocoadeep text-balance sm:text-6xl">
-          تسوّق عالمياً،
-          <br />
-          واستلم محلياً
+      {/* العنوان */}
+      <section className="px-4 pb-4 pt-8 text-center">
+        <h1 className="font-display text-3xl font-extrabold leading-snug text-cocoadeep text-balance sm:text-4xl">
+          تسوّق عالمياً، واستلم محلياً
         </h1>
-        <p className="mx-auto mt-5 max-w-[46ch] text-lg text-muted-foreground text-pretty">
-          اطلب من العالم، ودع «السوق الشامل» يتولى الباقي حتى بابك — نشتري لك، ندفع عنك، ونوصل.
+        <p className="mt-2 text-sm text-muted-foreground sm:text-base">
+          اطلب من أي مكان في العالم ونوصله لباب بيتك
         </p>
+      </section>
 
-        <div className="relative mx-auto mt-14 max-w-2xl">
-          <div className="absolute inset-x-10 top-1/2 h-6 -translate-y-1/2 route-dots" />
-          <div className="relative flex items-center justify-between px-2">
-            <div className="anim-float flex items-center gap-2 rounded-2xl bg-card px-3 py-2 ring-1 ring-border">
-              <PlaneIcon className="size-7 text-cocoa" />
-              <span className="text-xs font-bold text-cocoa">من العالم</span>
-            </div>
-            <div
-              className="anim-float flex items-center gap-2 rounded-2xl bg-card px-3 py-2 ring-1 ring-border"
-              style={{ animationDelay: "1.2s" }}
-            >
-              <span className="text-xs font-bold text-cocoa">إلى بابك</span>
-              <TruckIcon className="size-7 text-clay" />
-            </div>
-          </div>
+      {/* مشهد الطيارة والجبال والشاحنة */}
+      <section className="relative mt-2 w-full" aria-hidden>
+        <PlaneIcon className="anim-float absolute -top-6 start-[4%] size-9 -scale-x-100 text-cocoa/80 sm:size-12" />
+        <svg
+          viewBox="0 0 1440 90"
+          preserveAspectRatio="none"
+          className="block h-16 w-full text-sand sm:h-24"
+          fill="currentColor"
+        >
+          <path d="M0 90V55l60-22 60 22 70-30 70 30 80-26 80 26 60-18 60 18 90-32 90 32 70-24 70 24 80-20 80 20 60-16 60 16 90-30 90 30 70-22 70 22 80-18 80 18 60-14 60 14 90-28 90 28 70-20 70 20 60-16 60 16V90Z" />
+        </svg>
+        <div className="route-dots relative h-4 w-full" />
+        <div className="anim-drive absolute bottom-3 left-[8%] sm:left-[46%]">
+          <BrandTruck />
         </div>
       </section>
 
-      {/* ٣. المنصات */}
-      <section className="mx-auto max-w-4xl px-4 py-6">
-        <p className="mb-5 text-center text-sm font-bold text-muted-foreground">
+      {/* المنصات */}
+      <section className="px-4 pt-6">
+        <p className="mb-4 text-center text-sm font-bold text-muted-foreground">
           نستورد لك من أشهر المتاجر العالمية
         </p>
-        <div className="overflow-hidden rounded-3xl bg-secondary py-5 ring-1 ring-border">
-          <div className="anim-marquee flex w-max items-center gap-10 px-5">
-            {[...platforms, ...platforms, ...platforms].map((p, i) => (
-              <span
-                key={i}
-                className="whitespace-nowrap font-display text-2xl font-extrabold text-cocoa/80"
-                style={{ fontFamily: p === "SHEIN" ? "inherit" : undefined }}
-              >
-                {p}
-              </span>
-            ))}
-          </div>
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          {platforms.map((p) => (
+            <span
+              key={p.name}
+              className={`rounded-lg px-3.5 py-2 font-display text-sm font-extrabold shadow-sm ${p.className}`}
+            >
+              {p.name}
+            </span>
+          ))}
         </div>
       </section>
 
-      {/* ٤. الخمس خطوات */}
-      <section className="mx-auto max-w-2xl px-4 py-14">
-        <h2 className="mb-2 text-center font-display text-3xl font-extrabold text-cocoadeep text-balance sm:text-4xl">
-          كيف نشتري لك؟
-        </h2>
-        <p className="mb-10 text-center text-muted-foreground">خمس خطوات تفصلك عن طلبك</p>
-
-        <ol className="relative space-y-3">
-          <span className="absolute bottom-4 start-[27px] top-4 w-0.5 rounded-full bg-gold/50" />
-          {steps.map((s) => {
+      {/* الخطوات */}
+      <section className="mx-auto max-w-2xl px-4 py-10">
+        <div className="grid gap-3 sm:grid-cols-2">
+          {steps.map((s, i) => {
             const Icon = s.icon;
+            const last = i === steps.length - 1;
             return (
-              <li key={s.n} className="card-lift relative flex items-center gap-4 rounded-2xl bg-card p-4 ring-1 ring-border">
-                <span className="relative z-10 grid size-14 shrink-0 place-items-center rounded-2xl bg-cocoa font-display text-xl font-extrabold text-goldsoft ring-1 ring-black/10">
-                  {s.n}
+              <div
+                key={s.title}
+                className={`card-lift flex items-center gap-3 rounded-2xl bg-card p-4 ring-1 ring-border ${
+                  last ? "sm:col-span-2 sm:mx-auto sm:w-1/2" : ""
+                }`}
+              >
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-secondary text-clay">
+                  <Icon className="size-5" aria-hidden />
                 </span>
-                <div className="flex-1">
-                  <p className="flex items-center gap-2 font-display text-lg font-bold text-cocoadeep">
-                    <Icon className="size-5 text-clay" aria-hidden />
-                    {s.title}
-                  </p>
-                  <p className="mt-0.5 text-sm text-muted-foreground">{s.desc}</p>
+                <div>
+                  <p className="font-display text-base font-extrabold text-cocoadeep">{s.title}</p>
+                  <p className="text-xs text-muted-foreground">{s.desc}</p>
                 </div>
-              </li>
+              </div>
             );
           })}
-        </ol>
-      </section>
-
-      {/* ٥. الزرّان + تجارب العملاء */}
-      <section className="mx-auto max-w-4xl px-4 pb-14">
-        <div className="rounded-3xl bg-cocoa p-8 text-center text-cream shadow-[0_22px_40px_-18px_oklch(0.3_0.05_55/0.7)] ring-1 ring-black/10 sm:p-10">
-          <h2 className="font-display text-2xl font-extrabold text-balance sm:text-3xl">
-            جاهز تبدأ رحلتك؟
-          </h2>
-          <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
-            <a
-              href={WHATSAPP}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gold px-6 py-3.5 font-bold text-cocoadeep shadow-[0_8px_0_0_oklch(0.42_0.07_50)] transition-transform hover:-translate-y-0.5"
-            >
-              <ShoppingCart className="size-4" aria-hidden />
-              اطلب الآن
-            </a>
-            <a
-              href={WHATSAPP}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-cream/10 px-6 py-3.5 font-bold text-cream ring-1 ring-cream/25 transition-transform hover:-translate-y-0.5"
-            >
-              <Search className="size-4" aria-hidden />
-              تتبع شحنتك
-            </a>
-          </div>
         </div>
 
-        <h3 className="mb-8 mt-14 text-center font-display text-2xl font-extrabold text-cocoadeep text-balance sm:text-3xl">
-          تجارب عملائنا
-        </h3>
-        <div className="grid gap-5 sm:grid-cols-3">
-          {testimonials.map((t) => (
+        {/* الزرّان */}
+        <div className="mt-8 flex items-center justify-center gap-3">
+          <a
+            href={WHATSAPP}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 rounded-2xl bg-card px-6 py-3.5 font-display font-extrabold text-cocoa ring-1 ring-border transition-transform hover:-translate-y-0.5"
+          >
+            <Search className="size-4" aria-hidden />
+            تتبع شحنتك
+          </a>
+          <a
+            href={WHATSAPP}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 rounded-2xl bg-cocoa px-8 py-4 font-display font-extrabold text-cream shadow-[0_9px_0_0_oklch(0.28_0.05_55)] transition-transform hover:-translate-y-0.5"
+          >
+            <ShoppingCart className="size-4" aria-hidden />
+            اطلب الآن
+          </a>
+        </div>
+      </section>
+
+      {/* آراء العملاء */}
+      <section className="pb-14">
+        <h2 className="mb-6 text-center font-display text-2xl font-extrabold text-cocoadeep">
+          آراء عملائنا
+        </h2>
+        <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto px-6 pb-2">
+          {[...testimonials, ...testimonials].map((t, i) => (
             <figure
-              key={t.name}
-              className="card-lift rounded-3xl bg-card p-6 ring-1 ring-border"
+              key={i}
+              className="w-64 shrink-0 snap-center rounded-2xl bg-card p-5 ring-1 ring-border"
             >
               <Stars />
-              <blockquote className="mt-4 text-sm leading-relaxed text-foreground/80 text-pretty">
+              <blockquote className="mt-3 text-sm leading-relaxed text-foreground/80">
                 {t.text}
               </blockquote>
-              <figcaption className="mt-4 text-center">
-                <p className="font-display font-bold text-cocoadeep">{t.name}</p>
+              <figcaption className="mt-3 text-center">
+                <p className="font-display text-sm font-bold text-cocoadeep">{t.name}</p>
                 <p className="text-xs text-muted-foreground">{t.city}</p>
               </figcaption>
             </figure>
@@ -301,8 +361,47 @@ function Index() {
         </div>
       </section>
 
-      <footer className="mx-auto max-w-4xl px-4 pb-10 text-center text-sm text-muted-foreground">
-        <p>السوق الشامل — وسيط شراء لليمن · أصلي · سريع · ثقة</p>
+      {/* الفوتر */}
+      <footer className="pb-10 text-center">
+        <div className="mb-4 flex items-center justify-center gap-3">
+          <a
+            href={WHATSAPP}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="واتساب"
+            className="grid size-9 place-items-center rounded-full bg-card text-cocoa ring-1 ring-border transition-transform hover:-translate-y-0.5"
+          >
+            <WhatsAppIcon className="size-4" />
+          </a>
+          <span
+            aria-label="يوتيوب"
+            className="grid size-9 place-items-center rounded-full bg-card text-cocoa ring-1 ring-border"
+          >
+            <Youtube className="size-4" aria-hidden />
+          </span>
+          <span
+            aria-label="فيسبوك"
+            className="grid size-9 place-items-center rounded-full bg-card text-cocoa ring-1 ring-border"
+          >
+            <Facebook className="size-4" aria-hidden />
+          </span>
+          <span
+            aria-label="إنستغرام"
+            className="grid size-9 place-items-center rounded-full bg-card text-cocoa ring-1 ring-border"
+          >
+            <Instagram className="size-4" aria-hidden />
+          </span>
+        </div>
+        <p className="font-display text-sm font-extrabold text-cocoadeep">
+          شريككم نحو التميز والنجاح
+        </p>
+        <p className="text-xs text-muted-foreground">بشكل احترافي</p>
+        <p className="mt-3 font-display text-xs font-bold tracking-wide text-cocoa">
+          {BRAND} © 2026
+        </p>
+        <p className="mt-1 text-[10px] text-muted-foreground">
+          جميع الحقوق محفوظة — {BRAND}
+        </p>
       </footer>
     </div>
   );
