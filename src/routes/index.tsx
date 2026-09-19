@@ -231,19 +231,23 @@ function Index() {
 
         <ol className="relative space-y-3">
           <span className="absolute bottom-4 start-[27px] top-4 w-0.5 rounded-full bg-gold/50" />
-          {steps.map((s) => (
-            <li key={s.n} className="card-lift relative flex items-center gap-4 rounded-2xl bg-card p-4 ring-1 ring-border">
-              <span className="relative z-10 grid size-14 shrink-0 place-items-center rounded-2xl bg-cocoa font-display text-xl font-extrabold text-goldsoft ring-1 ring-black/10">
-                {s.n}
-              </span>
-              <div className="flex-1">
-                <p className="font-display text-lg font-bold text-cocoadeep">
-                  {s.icon} {s.title}
-                </p>
-                <p className="mt-0.5 text-sm text-muted-foreground">{s.desc}</p>
-              </div>
-            </li>
-          ))}
+          {steps.map((s) => {
+            const Icon = s.icon;
+            return (
+              <li key={s.n} className="card-lift relative flex items-center gap-4 rounded-2xl bg-card p-4 ring-1 ring-border">
+                <span className="relative z-10 grid size-14 shrink-0 place-items-center rounded-2xl bg-cocoa font-display text-xl font-extrabold text-goldsoft ring-1 ring-black/10">
+                  {s.n}
+                </span>
+                <div className="flex-1">
+                  <p className="flex items-center gap-2 font-display text-lg font-bold text-cocoadeep">
+                    <Icon className="size-5 text-clay" aria-hidden />
+                    {s.title}
+                  </p>
+                  <p className="mt-0.5 text-sm text-muted-foreground">{s.desc}</p>
+                </div>
+              </li>
+            );
+          })}
         </ol>
       </section>
 
@@ -260,7 +264,8 @@ function Index() {
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gold px-6 py-3.5 font-bold text-cocoadeep shadow-[0_8px_0_0_oklch(0.42_0.07_50)] transition-transform hover:-translate-y-0.5"
             >
-              🛒 اطلب الآن
+              <ShoppingCart className="size-4" aria-hidden />
+              اطلب الآن
             </a>
             <a
               href={WHATSAPP}
@@ -268,7 +273,8 @@ function Index() {
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center gap-2 rounded-2xl bg-cream/10 px-6 py-3.5 font-bold text-cream ring-1 ring-cream/25 transition-transform hover:-translate-y-0.5"
             >
-              🔍 تتبع شحنتك
+              <Search className="size-4" aria-hidden />
+              تتبع شحنتك
             </a>
           </div>
         </div>
