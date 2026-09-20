@@ -143,6 +143,10 @@
   animation: marquee-rtl 24s linear infinite;
 }
 
+@utility anim-drive {
+  animation: drive 16s linear infinite;
+}
+
 @utility card-lift {
   transition:
     transform 0.3s cubic-bezier(0.32, 0.72, 0, 1),
