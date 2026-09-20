@@ -160,14 +160,10 @@ function Index() {
             <Bell className="size-4" aria-hidden />
           </span>
         </div>
-        <a
-             href="#new-order"
-          
-          className="inline-flex items-center gap-1.5 rounded-xl bg-cocoa px-4 py-2 text-sm font-bold text-cream shadow-[0_8px_0_0_oklch(0.28_0.05_55)] transition-transform hover:-translate-y-0.5"
-        >
-          <span className="text-base leading-none">+</span>
-          اطلب الآن
-        </a>
+                      <a href="#new-order" className="inline-flex items-center gap-2 rounded-full bg-brand px-6 py-3 font-bold text-white shadow-lg">
+                <span className="text-base leading-none">اطلب الآن</span>
+              </a>
+            </div>
       </div>
 
       {/* كرت «كيف تطلب؟» */}
