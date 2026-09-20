@@ -322,9 +322,9 @@ function Index() {
             تتبع شحنتك
           </a>
           <a
-            href={WHATSAPP}
-            target="_blank"
-            rel="noopener noreferrer"
+            href="#new-order"
+            
+            
             className="inline-flex items-center gap-2 rounded-2xl bg-cocoa px-8 py-4 font-display font-extrabold text-cream shadow-[0_9px_0_0_oklch(0.28_0.05_55)] transition-transform hover:-translate-y-0.5"
           >
             <ShoppingCart className="size-4" aria-hidden />
