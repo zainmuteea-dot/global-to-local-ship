@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
-import { supabase } from '@/integrations/supabase/client'
+import { supabase } from '@/lib/supabase'
 
 export const Route = createFileRoute('/admin')({ component: AdminPage })
 
@@ -9,22 +9,17 @@ type Order = { id: string; created_at: string; customer_name: string; phone: str
 function AdminPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
-  
   const fetchOrders = async () => {
     const { data } = await supabase.from("orders").select("*").order("created_at", {ascending: false})
     if(data) setOrders(data as any)
     setLoading(false)
   }
-  
   useEffect(()=>{fetchOrders()},[])
-  
   const updateStatus = async (id: string, status: string) => {
     await supabase.from("orders").update({status}).eq("id", id)
     fetchOrders()
   }
-  
   if(loading) return <div className="p-8 text-center">جاري التحميل...</div>
-  
   return (
     <div dir="rtl" className="min-h-screen bg-gray-50 p-4">
       <h1 className="text-2xl font-bold mb-6">لوحة الطلبات - {orders.length} طلب</h1>
@@ -41,7 +36,6 @@ function AdminPage() {
             </select>
           </div>
         ))}
-        {orders.length===0 && <p className="text-center mt-10">لا يوجد طلبات بعد.</p>}
       </div>
     </div>
   )
