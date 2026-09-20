@@ -1,5 +1,6 @@
 // ============= Full file contents =============
 import { createFileRoute } from "@tanstack/react-router";
+import { supabase } from "@/lib/supabase";
 import {
   Bell,
   CircleDollarSign,
@@ -17,7 +18,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-const WHATSAPP = "https://wa.me/967700000000";
+const WHATSAPP = "https://wa.me/967775527993";
 const BRAND = "السوق الشامل";
 
 export const Route = createFileRoute("/")({
