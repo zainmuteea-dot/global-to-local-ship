@@ -160,7 +160,7 @@ function Index() {
             <Bell className="size-4" aria-hidden />
           </span>
         </div>
-                      <a href="#new-order" className="inline-flex items-center gap-2 rounded-full bg-brand px-6 py-3 font-bold text-white shadow-lg">
+                      <a href="/new-order" className="inline-flex items-center gap-2 rounded-full bg-brand px-6 py-3 font-bold text-white shadow-lg">
                 <span className="text-base leading-none">اطلب الآن</span>
               </a>
             </div>
