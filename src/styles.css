@@ -38,6 +38,11 @@
   --color-gold: var(--gold);
   --color-goldsoft: var(--goldsoft);
   --color-wa: var(--wa);
+  --color-temu: #fb6d20;
+  --color-trendyol: #f27a1a;
+  --color-shein: #141414;
+  --color-amazon: #232f3e;
+  --color-aliexpress: #e43225;
   --font-display: "Cairo", "Tajawal", sans-serif;
   --font-body: "Tajawal", "Cairo", sans-serif;
 }
@@ -113,6 +118,15 @@
   }
 }
 
+@keyframes drive {
+  from {
+    transform: translateX(-20vw);
+  }
+  to {
+    transform: translateX(110vw);
+  }
+}
+
 @utility route-dots {
   background-image: radial-gradient(circle, var(--color-gold) 1.8px, transparent 2px);
   background-size: 24px 24px;
@@ -127,6 +141,10 @@
 
 @utility anim-marquee {
   animation: marquee-rtl 24s linear infinite;
+}
+
+@utility anim-drive {
+  animation: drive 16s linear infinite;
 }
 
 @utility card-lift {
