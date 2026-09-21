@@ -1,5 +1,5 @@
 const SUPABASE_URL = 'https://wviryamctttjppbodqaal.supabase.co';
-const SUPABASE_ANON_KEY = 'ضع_هنا_مفتاح_anon_الحقيقي';
+const SUPABASE_ANON_KEY = 'sb_publishable_wG1BF08W47Di6SUkDjI3ag_zDT1crpx';
 
 async function sb(path: string, options: RequestInit = {}) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
