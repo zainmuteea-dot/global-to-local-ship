@@ -1,0 +1,35 @@
+export default function AIRobot() {
+  return (
+    <div style={{
+      position: 'fixed',
+      bottom: 20,
+      left: 20,
+      zIndex: 1000,
+      textAlign: 'center'
+    }}>
+      <video 
+        src="/robot.mp4" 
+        autoPlay 
+        loop 
+        muted 
+        playsInline
+        style={{
+          width: 120,
+          height: 120,
+          borderRadius: 20,
+          boxShadow: '0 4px 15px rgba(0,0,0,0.2)'
+        }}
+      />
+      <div style={{
+        background: '#5C3A21',
+        color: '#fff',
+        fontSize: 12,
+        padding: '6px 10px',
+        borderRadius: 12,
+        marginTop: 5
+      }}>
+        تسوق عالمياً واستلم محلياً 🚚
+      </div>
+    </div>
+  )
+}
