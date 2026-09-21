@@ -1,20 +1,29 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
-export const Route = createFileRoute("/track/")({
-  component: TrackSearchPage,
-});
-
-function TrackSearchPage() {
+export default function TrackIndex() {
   const [code, setCode] = useState("");
-  const navigate = useNavigate();
+  
   return (
-    <div className="min-h-screen bg-[#fdfbf7] flex items-center justify-center p-4" dir="rtl">
-      <div className="bg-white p-8 rounded-2xl shadow max-w-md w-full text-center border">
-        <h1 className="text-2xl font-bold mb-4">تتبع شحنتك</h1>
-        <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="ALS-12345" className="border w-full p-3 rounded-xl" />
-        <button onClick={() => { if (code) navigate({ to: "/track/$trackingCode", params: { trackingCode: code } }) }} className="w-full mt-4 bg-black text-white py-3 rounded-xl">تتبع</button>
+    <div dir="rtl" style={{minHeight:'100vh',background:'#E8DDD1',padding:20,fontFamily:'Segoe UI'}}>
+      <div style={{maxWidth:500,margin:'40px auto',background:'#FFFBF2',borderRadius:24,padding:24,textAlign:'center'}}>
+        <div style={{fontSize:50}}>📦</div>
+        <h2 style={{color:'#3E2410',margin:'10px 0'}}>تتبع شحنتك</h2>
+        <p style={{color:'#8A6D4B',fontSize:14}}>أدخل رقم التتبع لعرض حالة الشحنة</p>
+        
+        <div style={{display:'flex',gap:8,marginTop:20}}>
+          <input 
+            value={code} 
+            onChange={e=>setCode(e.target.value)}
+            placeholder="مثال: SH-12345"
+            style={{flex:1,padding:14,borderRadius:16,border:'2px solid #B78D5E',background:'#fff',textAlign:'center',outline:'none'}} 
+          />
+        </div>
+        
+        <a href={`/track/${code || 'demo'}`} 
+          style={{display:'block',marginTop:12,background:'#5C3A21',color:'#fff',padding:14,borderRadius:16,textDecoration:'none',fontWeight:700}}>
+          تتبع الآن
+        </a>
       </div>
     </div>
-  );
+  )
 }
