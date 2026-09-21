@@ -121,11 +121,11 @@ function Index() {
     <div dir="rtl" lang="ar" className="min-h-screen overflow-x-hidden bg-background font-body text-foreground">
       <div className="mx-auto flex max-w-4xl items-center justify-between px-4 pt-4">
         <div className="flex items-center gap-2">
-          <Link to="/login" className="grid size-8 place-items-center rounded-full bg-card text-cocoa ring-1 ring-border">
-            <UserRound className="size-4" />
+          <Link to="/login" className="grid size-11 place-items-center rounded-full bg-card text-cocoa ring-1 ring-border shadow-sm">
+            <UserRound className="size-6" />
           </Link>
-          <Link to="/notifications" className="grid size-8 place-items-center rounded-full bg-card text-cocoa ring-1 ring-border">
-            <Bell className="size-4" />
+          <Link to="/notifications" className="grid size-11 place-items-center rounded-full bg-card text-cocoa ring-1 ring-border shadow-sm">
+            <Bell className="size-6" />
           </Link>
         </div>
         <a href="/new-order" className="inline-flex items-center gap-2 rounded-full bg-brand px-6 py-3 font-bold text-white shadow-lg">
@@ -237,4 +237,4 @@ function Index() {
       </footer>
     </div>
   );
-                  }
+   }
