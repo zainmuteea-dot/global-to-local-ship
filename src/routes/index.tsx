@@ -124,9 +124,9 @@ function Index() {
           <Link to="/login" className="grid size-8 place-items-center rounded-full bg-card text-cocoa ring-1 ring-border">
             <UserRound className="size-4" />
           </Link>
-          <span className="grid size-8 place-items-center rounded-full bg-card text-cocoa ring-1 ring-border">
+          <Link to="/notifications" className="grid size-8 place-items-center rounded-full bg-card text-cocoa ring-1 ring-border">
             <Bell className="size-4" />
-          </span>
+          </Link>
         </div>
         <a href="/new-order" className="inline-flex items-center gap-2 rounded-full bg-brand px-6 py-3 font-bold text-white shadow-lg">
           <span className="text-base leading-none">اطلب الآن</span>
@@ -137,4 +137,104 @@ function Index() {
         <div className="relative mx-auto max-w-2xl overflow-hidden rounded-3xl bg-cocoa p-6 text-cream ring-1 ring-black/10 sm:p-8">
           <div className="flex flex-col-reverse items-start justify-between gap-4 sm:flex-row">
             <div className="flex items-start gap-4">
-              {
+              {heroCircles.map(({ label, icon: Icon }) => (
+                <div key={label} className="flex flex-col items-center gap-1.5">
+                  <span className="grid size-11 place-items-center rounded-full ring-2 ring-cream/50 sm:size-12">
+                    <Icon className="size-5 text-goldsoft sm:size-6" />
+                  </span>
+                  <span className="text-xs font-bold text-goldsoft">{label}</span>
+                </div>
+              ))}
+            </div>
+            <div className="text-start">
+              <Confetti />
+              <p className="font-display text-2xl font-black tracking-tight text-goldsoft sm:text-3xl">{BRAND}</p>
+            </div>
+          </div>
+          <div className="mt-6 flex flex-col-reverse items-center gap-6 sm:flex-row sm:items-end">
+            <div className="flex-1 text-center sm:text-start">
+              <p className="font-display text-4xl font-black leading-tight text-goldsoft sm:text-5xl">كيف تطلب؟<span className="text-gold">؟</span></p>
+            </div>
+            <div className="relative shrink-0">
+              <div className="grid size-24 place-items-center rounded-xl bg-cream/10 ring-2 ring-cream/40 sm:size-28">
+                <span className="grid size-9 place-items-center rounded-full bg-goldsoft text-cocoa">
+                  <svg viewBox="0 0 24 24" className="size-4" fill="currentColor"><path d="M8 5.5v13l11-6.5-11-6.5Z" /></svg>
+                </span>
+              </div>
+            </div>
+          </div>
+          <a href={WHATSAPP} target="_blank" rel="noopener noreferrer" className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-gold px-5 py-2.5 font-display text-lg font-extrabold text-cocoadeep">
+            <Hand className="size-5 -scale-x-100" /> اضغط هنا
+          </a>
+        </div>
+      </header>
+
+      <section className="px-4 pb-4 pt-8 text-center">
+        <h1 className="font-display text-3xl font-extrabold leading-snug text-cocoadeep sm:text-4xl">تسوّق عالمياً، واستلم محلياً</h1>
+        <p className="mt-2 text-sm text-muted-foreground sm:text-base">اطلب من أي مكان في العالم ونوصله لباب بيتك</p>
+      </section>
+
+      <section className="relative mt-2 w-full">
+        <PlaneIcon className="absolute -top-6 start-[4%] size-9 -scale-x-100 text-cocoa/80 sm:size-12" />
+        <div className="h-4 w-full bg-sand" />
+        <div className="absolute bottom-3 left-[8%] sm:left-[46%]"><BrandTruck /></div>
+      </section>
+
+      <section className="px-4 pt-6">
+        <p className="mb-4 text-center text-sm font-bold text-muted-foreground">نستورد لك من أشهر المتاجر العالمية</p>
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          {platforms.map((p) => (
+            <span key={p.name} className={`rounded-lg px-3.5 py-2 font-display text-sm font-extrabold shadow-sm ${p.className}`}>{p.name}</span>
+          ))}
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-2xl px-4 py-10">
+        <div className="grid gap-3 sm:grid-cols-2">
+          {steps.map((s, i) => {
+            const Icon = s.icon;
+            const last = i === steps.length - 1;
+            return (
+              <div key={s.title} className={`flex items-center gap-3 rounded-2xl bg-card p-4 ring-1 ring-border ${last? "sm:col-span-2 sm:mx-auto sm:w-1/2" : ""}`}>
+                <span className="grid size-10 place-items-center rounded-xl bg-secondary text-clay"><Icon className="size-5" /></span>
+                <div>
+                  <p className="font-display text-base font-extrabold text-cocoadeep">{s.title}</p>
+                  <p className="text-xs text-muted-foreground">{s.desc}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="mt-8 flex items-center justify-center gap-3">
+          <a href={WHATSAPP} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-2xl bg-card px-6 py-3.5 font-display font-extrabold text-cocoa ring-1 ring-border">
+            <Search className="size-4" /> تتبع شحنتك
+          </a>
+          <a href="/new-order" className="inline-flex items-center gap-2 rounded-2xl bg-cocoa px-8 py-4 font-display font-extrabold text-cream">
+            <ShoppingCart className="size-4" /> اطلب الآن
+          </a>
+        </div>
+      </section>
+
+      <section className="pb-14">
+        <h2 className="mb-6 text-center font-display text-2xl font-extrabold text-cocoadeep">آراء عملائنا</h2>
+        <div className="flex gap-4 overflow-x-auto px-6 pb-2">
+          {testimonials.map((t, i) => (
+            <figure key={i} className="w-64 shrink-0 rounded-2xl bg-card p-5 ring-1 ring-border">
+              <Stars />
+              <blockquote className="mt-3 text-sm leading-relaxed text-foreground/80">{t.text}</blockquote>
+              <figcaption className="mt-3 text-center">
+                <p className="font-display text-sm font-bold text-cocoadeep">{t.name}</p>
+                <p className="text-xs text-muted-foreground">{t.city}</p>
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+      </section>
+
+      <footer className="pb-10 text-center">
+        <p className="font-display text-sm font-extrabold text-cocoadeep">شريككم نحو التميز والنجاح</p>
+        <p className="mt-3 font-display text-xs font-bold tracking-wide text-cocoa">{BRAND} © 2026</p>
+      </footer>
+    </div>
+  );
+                  }
