@@ -1,6 +1,31 @@
-import { createClient } from '@supabase/supabase-js'
+const SUPABASE_URL = 'https://wviryamctttjppbodqaal.supabase.co';
+const SUPABASE_ANON_KEY = 'ضع_هنا_مفتاح_anon_الحقيقي';
 
-export const supabase = createClient(
-  'https://wviryamcttjppbodqaal.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind2aXJ5YW1jdHRqcHBib2RxYWFsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4Njk0OTYsImV4cCI6MjEwNTQ0NTQ5Nn0.kLGCR8x8Rixr5GFegcgnyP-krzrP2cuiIfFdXBap_A0'
-)
+async function sb(path: string, options: RequestInit = {}) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    ...options,
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      'Content-Type': 'application/json',
+      Prefer: 'return=representation',
+      ...(options.headers || {}),
+    },
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) return { data: null, error: { message: JSON.stringify(data) } };
+  return { data, error: null };
+}
+
+export const supabase = {
+  from: (table: string) => ({
+    select: (_cols = '*') => ({
+      eq: (col: string, val: string) => sb(`${table}?select=*&${col}=eq.${val}`),
+      order: (col: string, opts: any = {}) => {
+        const dir = opts.ascending === false ? 'desc' : 'asc';
+        return sb(`${table}?select=*&order=${col}.${dir}`);
+      },
+    }),
+    insert: (rows: any) => sb(table, { method: 'POST', body: JSON.stringify(rows) }),
+  }),
+};
