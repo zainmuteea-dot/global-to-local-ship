@@ -11,11 +11,9 @@ function TrackSearchPage() {
   return (
     <div className="min-h-screen bg-[#fdfbf7] flex items-center justify-center p-4" dir="rtl">
       <div className="bg-white p-8 rounded-2xl shadow max-w-md w-full text-center border">
-        <h1 className="text-2xl font-black mb-4">تتبع شحنتك</h1>
-        <input value={code} onChange={(e)=> setCode(e.target.value.toUpperCase())} placeholder="ALS-12345" className="border w-full rounded-full px-5 py-3 text-center font-bold" />
-        <button onClick={()=> { if(code) navigate({to: "/track/$trackingCode", params: {trackingCode: code}}) }} className="w-full mt-4 bg-zinc-900 text-white py-3 rounded-full font-bold">
-          تتبع الآن
-        </button>
+        <h1 className="text-2xl font-bold mb-4">تتبع شحنتك</h1>
+        <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="ALS-12345" className="border w-full p-3 rounded-xl" />
+        <button onClick={() => { if (code) navigate({ to: "/track/$trackingCode", params: { trackingCode: code } }) }} className="w-full mt-4 bg-black text-white py-3 rounded-xl">تتبع</button>
       </div>
     </div>
   );
