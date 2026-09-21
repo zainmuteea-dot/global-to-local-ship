@@ -33,7 +33,7 @@ function TrackingDetailPage() {
   }, [trackingCode]);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center" dir="rtl">جاري البحث عن {trackingCode}...</div>;
-  if (notFound) return <div className="min-h-screen flex items-center justify-center bg-[#fdfbf7]" dir="rtl"><div className="bg-white p-8 rounded-2xl border text-center"><h2 className="font-black text-xl">لم يتم العثور على الشحنة</h2><p className="text-zinc-500 mt-2">{trackingCode}</p></div></div>;
+  if (notFound) return <div className="min-h-screen flex items-center justify-center bg-[#fdfbf7]" dir="rtl"><div className="bg-white p-8 rounded-2xl border text-center"><h2 className="font-black">لم يتم العثور على الشحنة</h2><p>{trackingCode}</p></div></div>;
 
   return (
     <div className="min-h-screen bg-[#fdfbf7] p-6" dir="rtl">
@@ -45,7 +45,7 @@ function TrackingDetailPage() {
         </div>
         <div className="bg-white mt-6 p-6 rounded-2xl border">
           <h3 className="font-bold mb-4">تفاصيل الشحنة</h3>
-          <div className="space-y-3 text-sm">
+          <div className="space-y-2 text-sm">
             <div className="flex justify-between"><span className="text-zinc-500">المتجر</span><span className="font-bold">{order?.store_name || "—"}</span></div>
             <div className="flex justify-between"><span className="text-zinc-500">العميل</span><span className="font-bold">{order?.customer_name || "—"}</span></div>
           </div>
