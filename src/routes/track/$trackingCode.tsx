@@ -17,9 +17,9 @@ type Order = {
 
 function TrackingDetailPage() {
   const { trackingCode } = Route.useParams();
-  const [order][setOrder] = useState<Order | null>(null);
-  const [loading][setLoading] = useState(true);
-  const [notFound][setNotFound] = useState(false);
+    const [order, setOrder] = useState<Order | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
     const fetchOrder = async () => {
