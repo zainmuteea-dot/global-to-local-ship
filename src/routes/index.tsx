@@ -1,4 +1,3 @@
-// ============= Full file contents =============
 import { createFileRoute } from "@tanstack/react-router";
 import { supabase } from "@/lib/supabase";
 import {
@@ -46,7 +45,7 @@ export const Route = createFileRoute("/")({
 function WhatsAppIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <path d="M12 2a10 10 0 0 0-8.6 15l-1.3 4.7 4.8-1.3A10 10 0 1 0 12 2Zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .1-1.6-.1-2.5-.7-4.3-2.7-5.4-4.4-.4-.6-.7-1.3-.5-2 .1-.4.6-.9.9-1.2.2-.2.5-.2.7 0l.7.9c.1.2.1.4 0 .6l-.4.5c.3.6 1.2 1.6 2.3 2.1l.5-.4c.2-.2.4-.2.6-.1l.9.6c.2.1.3.3.2.5Z" />
+      <path d="M12 2a10 10 0 0 0-8.6 15l-1.3 4.7 4.8-1.3A10 10 0 1 0 12 2Zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1.1-1.6-.1-2.5-.7-4.3-2.7-5.4-4.4-.4-.6-.7-1.3-.5-2.1-.4.6-.9.9-1.2.2-.2.5-.2.7 0l.7.9c.1.2.1.4 0.6l-.4.5c.3.6 1.2 1.6 2.3 2.1l.5-.4c.2-.2.4-.2.6-.1l.9.6c.2.1.3.3.2.5Z" />
     </svg>
   );
 }
@@ -59,7 +58,6 @@ function PlaneIcon({ className }: { className?: string }) {
   );
 }
 
-/** شاحنة تحمل اسم العلامة */
 function BrandTruck() {
   return (
     <div className="flex items-end">
@@ -129,14 +127,13 @@ function Stars() {
   );
 }
 
-/** مثلثات الزخرفة فوق الشعار */
 function Confetti() {
   return (
     <div className="mb-1 flex flex-wrap justify-center gap-1" aria-hidden>
       {["size-1.5", "size-2", "size-1.5", "size-2.5", "size-1.5", "size-2"].map((s, i) => (
         <span
           key={i}
-          className={`${s} rotate-45 bg-goldsoft/70 ${i % 2 ? "rounded-[2px]" : "rounded-full"}`}
+          className={`${s} rotate-45 bg-goldsoft/70 ${i % 2? "rounded-[2px]" : "rounded-full"}`}
         />
       ))}
     </div>
@@ -150,7 +147,6 @@ function Index() {
       lang="ar"
       className="min-h-screen overflow-x-hidden bg-background font-body text-foreground"
     >
-      {/* الشريط العلوي */}
       <div className="mx-auto flex max-w-4xl items-center justify-between px-4 pt-4">
         <div className="flex items-center gap-2">
           <span className="grid size-8 place-items-center rounded-full bg-card text-cocoa ring-1 ring-border">
@@ -160,17 +156,14 @@ function Index() {
             <Bell className="size-4" aria-hidden />
           </span>
         </div>
-                      <a href="/new-order" className="inline-flex items-center gap-2 rounded-full bg-brand px-6 py-3 font-bold text-white shadow-lg">
-                <span className="text-base leading-none">اطلب الآن</span>
-              </a>
-            </div>
+        <a href="/new-order" className="inline-flex items-center gap-2 rounded-full bg-brand px-6 py-3 font-bold text-white shadow-lg">
+          <span className="text-base leading-none">اطلب الآن</span>
+        </a>
       </div>
 
-      {/* كرت «كيف تطلب؟» */}
       <header className="px-4 pt-4">
         <div className="relative mx-auto max-w-2xl overflow-hidden rounded-3xl bg-cocoa p-6 text-cream shadow-[0_24px_44px_-20px_oklch(0.3_0.05_55/0.7)] ring-1 ring-black/10 sm:p-8">
           <div className="flex flex-col-reverse items-start justify-between gap-4 sm:flex-row">
-            {/* دوائر التسجيل/الطلب/الشحن */}
             <div className="flex items-start gap-4">
               {heroCircles.map(({ label, icon: Icon }) => (
                 <div key={label} className="flex flex-col items-center gap-1.5">
@@ -181,7 +174,6 @@ function Index() {
                 </div>
               ))}
             </div>
-            {/* الشعار */}
             <div className="text-start">
               <Confetti />
               <p className="font-display text-2xl font-black tracking-tight text-goldsoft sm:text-3xl">
@@ -191,7 +183,6 @@ function Index() {
           </div>
 
           <div className="mt-6 flex flex-col-reverse items-center gap-6 sm:flex-row sm:items-end">
-            {/* كيف تطلب؟ */}
             <div className="flex-1 text-center sm:text-start">
               <p className="font-display text-4xl font-black leading-tight text-goldsoft sm:text-5xl">
                 كيف تطلب؟<span className="text-gold">؟</span>
@@ -210,7 +201,6 @@ function Index() {
                 />
               </svg>
             </div>
-            {/* سبورة العرض + الشخص */}
             <div className="relative shrink-0" aria-hidden>
               <div className="grid size-24 place-items-center rounded-xl bg-cream/10 ring-2 ring-cream/40 sm:size-28">
                 <span className="grid size-9 place-items-center rounded-full bg-goldsoft text-cocoa">
@@ -228,7 +218,6 @@ function Index() {
             </div>
           </div>
 
-          {/* اضغط هنا */}
           <a
             href={WHATSAPP}
             target="_blank"
@@ -241,7 +230,6 @@ function Index() {
         </div>
       </header>
 
-      {/* العنوان */}
       <section className="px-4 pb-4 pt-8 text-center">
         <h1 className="font-display text-3xl font-extrabold leading-snug text-cocoadeep text-balance sm:text-4xl">
           تسوّق عالمياً، واستلم محلياً
@@ -251,7 +239,6 @@ function Index() {
         </p>
       </section>
 
-      {/* مشهد الطيارة والجبال والشاحنة */}
       <section className="relative mt-2 w-full" aria-hidden>
         <PlaneIcon className="anim-float absolute -top-6 start-[4%] size-9 -scale-x-100 text-cocoa/80 sm:size-12" />
         <svg
@@ -268,7 +255,6 @@ function Index() {
         </div>
       </section>
 
-      {/* المنصات */}
       <section className="px-4 pt-6">
         <p className="mb-4 text-center text-sm font-bold text-muted-foreground">
           نستورد لك من أشهر المتاجر العالمية
@@ -285,7 +271,6 @@ function Index() {
         </div>
       </section>
 
-      {/* الخطوات */}
       <section className="mx-auto max-w-2xl px-4 py-10">
         <div className="grid gap-3 sm:grid-cols-2">
           {steps.map((s, i) => {
@@ -295,7 +280,7 @@ function Index() {
               <div
                 key={s.title}
                 className={`card-lift flex items-center gap-3 rounded-2xl bg-card p-4 ring-1 ring-border ${
-                  last ? "sm:col-span-2 sm:mx-auto sm:w-1/2" : ""
+                  last? "sm:col-span-2 sm:mx-auto sm:w-1/2" : ""
                 }`}
               >
                 <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-secondary text-clay">
@@ -310,7 +295,6 @@ function Index() {
           })}
         </div>
 
-        {/* الزرّان */}
         <div className="mt-8 flex items-center justify-center gap-3">
           <a
             href={WHATSAPP}
@@ -323,23 +307,20 @@ function Index() {
           </a>
           <a
             href="/new-order"
-            
-            
             className="inline-flex items-center gap-2 rounded-2xl bg-cocoa px-8 py-4 font-display font-extrabold text-cream shadow-[0_9px_0_0_oklch(0.28_0.05_55)] transition-transform hover:-translate-y-0.5"
           >
             <ShoppingCart className="size-4" aria-hidden />
-            href="/new-order"
+            اطلب الآن
           </a>
         </div>
       </section>
 
-      {/* آراء العملاء */}
       <section className="pb-14">
         <h2 className="mb-6 text-center font-display text-2xl font-extrabold text-cocoadeep">
           آراء عملائنا
         </h2>
         <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto px-6 pb-2">
-          {[...testimonials, ...testimonials].map((t, i) => (
+          {[...testimonials,...testimonials].map((t, i) => (
             <figure
               key={i}
               className="w-64 shrink-0 snap-center rounded-2xl bg-card p-5 ring-1 ring-border"
@@ -357,7 +338,6 @@ function Index() {
         </div>
       </section>
 
-      {/* الفوتر */}
       <footer className="pb-10 text-center">
         <div className="mb-4 flex items-center justify-center gap-3">
           <a
@@ -369,22 +349,13 @@ function Index() {
           >
             <WhatsAppIcon className="size-4" />
           </a>
-          <span
-            aria-label="يوتيوب"
-            className="grid size-9 place-items-center rounded-full bg-card text-cocoa ring-1 ring-border"
-          >
+          <span className="grid size-9 place-items-center rounded-full bg-card text-cocoa ring-1 ring-border">
             <Youtube className="size-4" aria-hidden />
           </span>
-          <span
-            aria-label="فيسبوك"
-            className="grid size-9 place-items-center rounded-full bg-card text-cocoa ring-1 ring-border"
-          >
+          <span className="grid size-9 place-items-center rounded-full bg-card text-cocoa ring-1 ring-border">
             <Facebook className="size-4" aria-hidden />
           </span>
-          <span
-            aria-label="إنستغرام"
-            className="grid size-9 place-items-center rounded-full bg-card text-cocoa ring-1 ring-border"
-          >
+          <span className="grid size-9 place-items-center rounded-full bg-card text-cocoa ring-1 ring-border">
             <Instagram className="size-4" aria-hidden />
           </span>
         </div>
