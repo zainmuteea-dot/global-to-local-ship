@@ -119,6 +119,26 @@ function Confetti() {
 function Index() {
   return (
     <div dir="rtl" lang="ar" className="min-h-screen overflow-x-hidden bg-background font-body text-foreground">
+      <style>{`
+        @keyframes fly-across {
+          0% { transform: translateX(120vw); opacity: 0; }
+          10% { opacity: 1; }
+          90% { opacity: 1; }
+          100% { transform: translateX(-120vw); opacity: 0; }
+        }
+        @keyframes truck-move {
+          0%, 100% { transform: translateX(0); }
+          50% { transform: translateX(18px); }
+        }
+        @keyframes scroll-rtl {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(50%); }
+        }
+       .animate-fly { animation: fly-across 8s linear infinite; }
+       .animate-truck { animation: truck-move 2.8s ease-in-out infinite; }
+       .animate-marquee { animation: scroll-rtl 18s linear infinite; }
+      `}</style>
+
       <div className="mx-auto flex max-w-4xl items-center justify-between px-4 pt-4">
         <div className="flex items-center gap-2">
           <Link to="/login" className="grid size-11 place-items-center rounded-full bg-card text-cocoa ring-1 ring-border shadow-sm">
@@ -174,18 +194,20 @@ function Index() {
         <p className="mt-2 text-sm text-muted-foreground sm:text-base">اطلب من أي مكان في العالم ونوصله لباب بيتك</p>
       </section>
 
-      <section className="relative mt-2 w-full">
-        <PlaneIcon className="absolute -top-6 start-[4%] size-9 -scale-x-100 text-cocoa/80 sm:size-12" />
+      <section className="relative mt-2 w-full overflow-hidden">
+        <PlaneIcon className="absolute -top-6 start-[4%] size-9 -scale-x-100 text-cocoa/80 sm:size-12 animate-fly" />
         <div className="h-4 w-full bg-sand" />
-        <div className="absolute bottom-3 left-[8%] sm:left-[46%]"><BrandTruck /></div>
+        <div className="absolute bottom-3 left-[8%] sm:left-[46%] animate-truck"><BrandTruck /></div>
       </section>
 
       <section className="px-4 pt-6">
         <p className="mb-4 text-center text-sm font-bold text-muted-foreground">نستورد لك من أشهر المتاجر العالمية</p>
-        <div className="flex flex-wrap items-center justify-center gap-3">
-          {platforms.map((p) => (
-            <span key={p.name} className={`rounded-lg px-3.5 py-2 font-display text-sm font-extrabold shadow-sm ${p.className}`}>{p.name}</span>
-          ))}
+        <div className="overflow-hidden" dir="ltr">
+          <div className="flex w-max animate-marquee gap-3 px-3">
+            {[...platforms,...platforms].map((p, i) => (
+              <span key={i} className={`rounded-lg px-3.5 py-2 font-display text-sm font-extrabold shadow-sm whitespace-nowrap ${p.className}`}>{p.name}</span>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -237,4 +259,4 @@ function Index() {
       </footer>
     </div>
   );
-   }
+}
