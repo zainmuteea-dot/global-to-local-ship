@@ -134,9 +134,9 @@ function Index() {
           0% { transform: translateX(0); }
           100% { transform: translateX(50%); }
         }
-       .animate-fly { animation: fly-across 8s linear infinite; }
-       .animate-truck { animation: truck-move 2.8s ease-in-out infinite; }
-       .animate-marquee { animation: scroll-rtl 18s linear infinite; }
+      .animate-fly { animation: fly-across 8s linear infinite; }
+      .animate-truck { animation: truck-move 2.8s ease-in-out infinite; }
+      .animate-marquee { animation: scroll-rtl 18s linear infinite; }
       `}</style>
 
       <div className="mx-auto flex max-w-4xl items-center justify-between px-4 pt-4">
@@ -148,8 +148,8 @@ function Index() {
             <Bell className="size-6" />
           </Link>
         </div>
-        <a href="/new-order" className="inline-flex items-center gap-2 rounded-full bg-brand px-6 py-3 font-bold text-white shadow-lg">
-          <span className="text-base leading-none">اطلب الآن</span>
+        <a href="/new-order" className="grid size-11 place-items-center rounded-full bg-card text-cocoa ring-1 ring-border shadow-sm">
+          <span className="text-[10px] font-bold leading-none text-center">اطلب الآن</span>
         </a>
       </div>
 
@@ -240,23 +240,4 @@ function Index() {
       <section className="pb-14">
         <h2 className="mb-6 text-center font-display text-2xl font-extrabold text-cocoadeep">آراء عملائنا</h2>
         <div className="flex gap-4 overflow-x-auto px-6 pb-2">
-          {testimonials.map((t, i) => (
-            <figure key={i} className="w-64 shrink-0 rounded-2xl bg-card p-5 ring-1 ring-border">
-              <Stars />
-              <blockquote className="mt-3 text-sm leading-relaxed text-foreground/80">{t.text}</blockquote>
-              <figcaption className="mt-3 text-center">
-                <p className="font-display text-sm font-bold text-cocoadeep">{t.name}</p>
-                <p className="text-xs text-muted-foreground">{t.city}</p>
-              </figcaption>
-            </figure>
-          ))}
-        </div>
-      </section>
-
-      <footer className="pb-10 text-center">
-        <p className="font-display text-sm font-extrabold text-cocoadeep">شريككم نحو التميز والنجاح</p>
-        <p className="mt-3 font-display text-xs font-bold tracking-wide text-cocoa">{BRAND} © 2026</p>
-      </footer>
-    </div>
-  );
-}
+          {testimonials.map((t,
