@@ -185,10 +185,11 @@ function Index() {
         <p className="mt-2 text-sm text-muted-foreground sm:text-base">اطلب من أي مكان في العالم ونوصله لباب بيتك</p>
       </section>
 
-      <section className="relative mt-2 w-full overflow-hidden">
-        <PlaneIcon className="absolute -top-6 start-[4%] size-9 -scale-x-100 text-cocoa/80 sm:size-12 animate-fly" />
-        <div className="h-4 w-full bg-sand" />
-        <div className="absolute bottom-3 left-[8%] sm:left-[46%] animate-truck"><BrandTruck /></div>
+      <section className="relative mt-2 h-36 w-full overflow-hidden sm:h-44">
+        <PlaneIcon className="absolute top-3 start-[4%] size-10 -scale-x-100 text-cocoa/80 sm:top-4 sm:size-12 animate-fly" />
+        <div className="absolute inset-x-0 bottom-0 h-14 bg-sand sm:h-16" />
+        <div className="absolute inset-x-0 bottom-12 h-2 route-dots sm:bottom-14" />
+        <div className="absolute bottom-14 left-[8%] sm:bottom-16 sm:left-[46%] animate-truck"><BrandTruck /></div>
       </section>
 
       <section className="px-4 pt-6">
