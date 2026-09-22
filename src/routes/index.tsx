@@ -1,18 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { supabase } from "@/lib/supabase";
 import {
   Bell,
   CircleDollarSign,
-  Facebook,
   FileText,
   Hand,
-  Instagram,
   Link2,
   Package,
   Search,
   ShoppingCart,
   UserRound,
-  Youtube,
   type LucideIcon,
 } from "lucide-react";
 
@@ -25,11 +21,8 @@ export const Route = createFileRoute("/")({
       { title: "السوق الشامل — وسيط شراء يوصلك من العالم إلى اليمن" },
       {
         name: "description",
-        content:
-          "تسوق عالمياً واستلم محلياً: نشتري لك من TEMU وSHEIN وAmazon وTrendyol وAliExpress ونوصل لباب بيتك في اليمن.",
+        content: "تسوق عالمياً واستلم محلياً: نشتري لك من TEMU وSHEIN وAmazon وTrendyol وAliExpress ونوصل لباب بيتك في اليمن.",
       },
-      { property: "og:title", content: "السوق الشامل — تسوق عالمياً واستلم محلياً" },
-      { property: "og:type", content: "website" },
     ],
   }),
   component: Index,
@@ -38,7 +31,7 @@ export const Route = createFileRoute("/")({
 function WhatsAppIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <path d="M12 2a10 10 0 0 0-8.6 15l-1.3 4.7 4.8-1.3A10 10 0 1 0 12 2Zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1.1-1.6-.1-2.5-.7-4.3-2.7-5.4-4.4-.4-.6-.7-1.3-.5-2.1-.4.6-.9.9-1.2.2-.2.5-.2.7 0l.7.9c.1.2.1.4 0.6l-.4.5c.3.6 1.2 1.6 2.3 2.1l.5-.4c.2-.2.4-.2.6-.1l.9.6c.2.1.3.3.2.5Z" />
+      <path d="M12 2a10 10 0 0 0-8.6 15l-1.3 4.7 4.8-1.3A10 10 0 1 0 12 2Z" />
     </svg>
   );
 }
@@ -55,9 +48,7 @@ function BrandTruck() {
   return (
     <div className="flex items-end">
       <div className="rounded-md bg-card px-2 py-1 ring-1 ring-border shadow-sm">
-        <p className="whitespace-nowrap font-display text-[10px] font-extrabold leading-none text-cocoadeep sm:text-xs">
-          {BRAND}
-        </p>
+        <p className="whitespace-nowrap font-display text-[10px] font-extrabold leading-none text-cocoadeep sm:text-xs">{BRAND}</p>
       </div>
       <div className="-ms-0.5 size-0 border-y-[7px] border-s-[10px] border-y-transparent border-s-cocoa" />
       <div className="relative -ms-1 flex gap-1">
@@ -134,9 +125,9 @@ function Index() {
           0% { transform: translateX(0); }
           100% { transform: translateX(50%); }
         }
-      .animate-fly { animation: fly-across 8s linear infinite; }
-      .animate-truck { animation: truck-move 2.8s ease-in-out infinite; }
-      .animate-marquee { animation: scroll-rtl 18s linear infinite; }
+       .animate-fly { animation: fly-across 8s linear infinite; }
+       .animate-truck { animation: truck-move 2.8s ease-in-out infinite; }
+       .animate-marquee { animation: scroll-rtl 18s linear infinite; }
       `}</style>
 
       <div className="mx-auto flex max-w-4xl items-center justify-between px-4 pt-4">
@@ -240,4 +231,23 @@ function Index() {
       <section className="pb-14">
         <h2 className="mb-6 text-center font-display text-2xl font-extrabold text-cocoadeep">آراء عملائنا</h2>
         <div className="flex gap-4 overflow-x-auto px-6 pb-2">
-          {testimonials.map((t,
+          {testimonials.map((t, i) => (
+            <figure key={i} className="w-64 shrink-0 rounded-2xl bg-card p-5 ring-1 ring-border">
+              <Stars />
+              <blockquote className="mt-3 text-sm leading-relaxed text-foreground/80">{t.text}</blockquote>
+              <figcaption className="mt-3 text-center">
+                <p className="font-display text-sm font-bold text-cocoadeep">{t.name}</p>
+                <p className="text-xs text-muted-foreground">{t.city}</p>
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+      </section>
+
+      <footer className="pb-10 text-center">
+        <p className="font-display text-sm font-extrabold text-cocoadeep">شريككم نحو التميز والنجاح</p>
+        <p className="mt-3 font-display text-xs font-bold tracking-wide text-cocoa">{BRAND} © 2026</p>
+      </footer>
+    </div>
+  );
+}
