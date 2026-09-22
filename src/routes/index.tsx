@@ -59,9 +59,9 @@ function BrandTruck() {
   );
 }
 
-const heroCircles: { label: string; icon: LucideIcon }[] = [
-  { label: "التسجيل", icon: UserRound },
-  { label: "الطلب", icon: Hand },
+const heroCircles: { label: string; icon: LucideIcon; to?: string }[] = [
+  { label: "التسجيل", icon: UserRound, to: "/login" },
+  { label: "الطلب", icon: Hand, to: "/new-order" },
   { label: "الشحن", icon: FileText },
 ];
 
