@@ -7,7 +7,7 @@ const AIRobot = () => {
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const messagesEndRef = useRef(null);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const scrollToBottom = () => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); };
   useEffect(scrollToBottom, [messages]);
   const botResponses = [
@@ -23,7 +23,7 @@ const AIRobot = () => {
     setInputValue('');
     setIsTyping(true);
     setTimeout(() => {
-      const randomReply = botResponses[Math.floor(Math.random() * botResponses.length)];
+      const randomReply = botResponses[Math.floor(Math.random() * botResponses.length)] ?? botResponses[0] ?? '';
       setMessages(prev => [...prev, { id: Date.now() + 1, text: randomReply, sender: 'bot' }]);
       setIsTyping(false);
     }, 1200);
