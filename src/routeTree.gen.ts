@@ -15,7 +15,9 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as MyAccountRouteImport } from './routes/my-account'
 import { Route as NewOrderRouteImport } from './routes/new-order'
 import { Route as NotificationsRouteImport } from './routes/notifications'
+import { Route as RegisterRouteImport } from './routes/register'
 import { Route as VerifyRouteImport } from './routes/verify'
+import { Route as TrackIndexRouteImport } from './routes/track/index'
 import { Route as TrackTrackingCodeRouteImport } from './routes/track/$trackingCode'
 
 const IndexRoute = IndexRouteImport.update({
@@ -48,9 +50,19 @@ const NotificationsRoute = NotificationsRouteImport.update({
   path: '/notifications',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RegisterRoute = RegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const VerifyRoute = VerifyRouteImport.update({
   id: '/verify',
   path: '/verify',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TrackIndexRoute = TrackIndexRouteImport.update({
+  id: '/track/',
+  path: '/track/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TrackTrackingCodeRoute = TrackTrackingCodeRouteImport.update({
@@ -66,8 +78,10 @@ export interface FileRoutesByFullPath {
   '/my-account': typeof MyAccountRoute
   '/new-order': typeof NewOrderRoute
   '/notifications': typeof NotificationsRoute
+  '/register': typeof RegisterRoute
   '/verify': typeof VerifyRoute
   '/track/$trackingCode': typeof TrackTrackingCodeRoute
+  '/track/': typeof TrackIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -76,8 +90,10 @@ export interface FileRoutesByTo {
   '/my-account': typeof MyAccountRoute
   '/new-order': typeof NewOrderRoute
   '/notifications': typeof NotificationsRoute
+  '/register': typeof RegisterRoute
   '/verify': typeof VerifyRoute
   '/track/$trackingCode': typeof TrackTrackingCodeRoute
+  '/track': typeof TrackIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -87,8 +103,10 @@ export interface FileRoutesById {
   '/my-account': typeof MyAccountRoute
   '/new-order': typeof NewOrderRoute
   '/notifications': typeof NotificationsRoute
+  '/register': typeof RegisterRoute
   '/verify': typeof VerifyRoute
   '/track/$trackingCode': typeof TrackTrackingCodeRoute
+  '/track/': typeof TrackIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -99,8 +117,10 @@ export interface FileRouteTypes {
     | '/my-account'
     | '/new-order'
     | '/notifications'
+    | '/register'
     | '/verify'
     | '/track/$trackingCode'
+    | '/track/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -109,8 +129,10 @@ export interface FileRouteTypes {
     | '/my-account'
     | '/new-order'
     | '/notifications'
+    | '/register'
     | '/verify'
     | '/track/$trackingCode'
+    | '/track'
   id:
     | '__root__'
     | '/'
@@ -119,8 +141,10 @@ export interface FileRouteTypes {
     | '/my-account'
     | '/new-order'
     | '/notifications'
+    | '/register'
     | '/verify'
     | '/track/$trackingCode'
+    | '/track/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -130,8 +154,10 @@ export interface RootRouteChildren {
   MyAccountRoute: typeof MyAccountRoute
   NewOrderRoute: typeof NewOrderRoute
   NotificationsRoute: typeof NotificationsRoute
+  RegisterRoute: typeof RegisterRoute
   VerifyRoute: typeof VerifyRoute
   TrackTrackingCodeRoute: typeof TrackTrackingCodeRoute
+  TrackIndexRoute: typeof TrackIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -178,11 +204,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NotificationsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/verify': {
       id: '/verify'
       path: '/verify'
       fullPath: '/verify'
       preLoaderRoute: typeof VerifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/track/': {
+      id: '/track/'
+      path: '/track'
+      fullPath: '/track/'
+      preLoaderRoute: typeof TrackIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/track/$trackingCode': {
@@ -202,8 +242,10 @@ const rootRouteChildren: RootRouteChildren = {
   MyAccountRoute: MyAccountRoute,
   NewOrderRoute: NewOrderRoute,
   NotificationsRoute: NotificationsRoute,
+  RegisterRoute: RegisterRoute,
   VerifyRoute: VerifyRoute,
   TrackTrackingCodeRoute: TrackTrackingCodeRoute,
+  TrackIndexRoute: TrackIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

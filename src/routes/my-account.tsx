@@ -51,6 +51,7 @@ const items: { label: string; icon: LucideIcon }[] = [
 function MyAccountPage() {
   const navigate = useNavigate();
   const [phone, setPhone] = useState("");
+  const [name, setName] = useState("");
 
   useEffect(() => {
     if (!localStorage.getItem("sc_logged_in")) {
@@ -58,10 +59,12 @@ function MyAccountPage() {
       return;
     }
     setPhone(localStorage.getItem("sc_phone") ?? "");
+    setName(localStorage.getItem("sc_name") ?? "");
   }, [navigate]);
 
   const signOut = () => {
     localStorage.removeItem("sc_logged_in");
+    localStorage.removeItem("sc_verified");
     localStorage.removeItem("sc_code");
     navigate({ to: "/" });
   };
@@ -93,7 +96,7 @@ function MyAccountPage() {
           </span>
           <div>
             <p className="text-[11px] text-muted-foreground">أهلاً بك</p>
-            <p className="font-display text-base font-black text-cocoa">السوق الشامل</p>
+            <p className="font-display text-base font-black text-cocoa">{name || "عميل السوق الشامل"}</p>
             <p dir="ltr" className="text-[11px] text-muted-foreground">{phone || "أضف عنوان"}</p>
           </div>
         </div>

@@ -1,29 +1,79 @@
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { Hash, Phone, Search, ArrowRight } from "lucide-react";
 
-export default function TrackIndex() {
+export const Route = createFileRoute("/track/")({
+  component: TrackIndex,
+});
+
+function TrackIndex() {
   const [code, setCode] = useState("");
-  
+  const [phone, setPhone] = useState("");
+  const navigate = useNavigate();
+
+  const handleTrack = () => {
+    const trackingCode = code.trim() || "demo";
+    navigate({ to: "/track/$trackingCode", params: { trackingCode } });
+  };
+
   return (
-    <div dir="rtl" style={{minHeight:'100vh',background:'#E8DDD1',padding:20,fontFamily:'Segoe UI'}}>
-      <div style={{maxWidth:500,margin:'40px auto',background:'#FFFBF2',borderRadius:24,padding:24,textAlign:'center'}}>
-        <div style={{fontSize:50}}>📦</div>
-        <h2 style={{color:'#3E2410',margin:'10px 0'}}>تتبع شحنتك</h2>
-        <p style={{color:'#8A6D4B',fontSize:14}}>أدخل رقم التتبع لعرض حالة الشحنة</p>
-        
-        <div style={{display:'flex',gap:8,marginTop:20}}>
-          <input 
-            value={code} 
-            onChange={e=>setCode(e.target.value)}
-            placeholder="مثال: SH-12345"
-            style={{flex:1,padding:14,borderRadius:16,border:'2px solid #B78D5E',background:'#fff',textAlign:'center',outline:'none'}} 
-          />
+    <div dir="rtl" className="min-h-screen bg-background font-body">
+      <header className="flex items-center justify-between px-5 pt-6">
+        <div className="flex items-center gap-3">
+          <span className="grid size-12 place-items-center overflow-hidden rounded-2xl bg-card ring-1 ring-border">
+            <img src="/IMG-20260922-WA6153.jpg" alt="مساعد جلوبال" className="size-full object-cover" />
+          </span>
+          <h1 className="font-display text-2xl font-black text-cocoadeep">تتبع الطلب</h1>
         </div>
-        
-        <a href={`/track/${code || 'demo'}`} 
-          style={{display:'block',marginTop:12,background:'#5C3A21',color:'#fff',padding:14,borderRadius:16,textDecoration:'none',fontWeight:700}}>
-          تتبع الآن
-        </a>
-      </div>
+        <button
+          onClick={() => navigate({ to: "/" })}
+          className="inline-flex items-center gap-1.5 rounded-xl bg-card px-4 py-2 font-display text-sm font-bold text-cocoa ring-1 ring-border"
+        >
+          رجوع <ArrowRight className="size-4" />
+        </button>
+      </header>
+
+      <main className="mx-auto mt-8 max-w-md px-5">
+        <div className="rounded-3xl bg-card p-6 ring-1 ring-border">
+          <label className="mb-6 block">
+            <span className="mb-2 block text-right font-display text-sm font-extrabold text-cocoadeep">رقم الطلب</span>
+            <div className="flex items-center gap-3 rounded-2xl bg-background px-4 py-3.5 ring-1 ring-border focus-within:ring-2 focus-within:ring-gold">
+              <input
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="مثال: 123456"
+                className="min-w-0 flex-1 bg-transparent text-right text-base text-cocoadeep outline-none placeholder:text-muted-foreground"
+              />
+              <span className="grid size-8 place-items-center rounded-lg bg-secondary text-clay">
+                <Hash className="size-4" />
+              </span>
+            </div>
+          </label>
+
+          <label className="block">
+            <span className="mb-2 block text-right font-display text-sm font-extrabold text-cocoadeep">رقم الهاتف</span>
+            <div className="flex items-center gap-3 rounded-2xl bg-background px-4 py-3.5 ring-1 ring-border focus-within:ring-2 focus-within:ring-gold">
+              <input
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="رقم الهاتف المسجل بالطلب"
+                inputMode="tel"
+                className="min-w-0 flex-1 bg-transparent text-right text-base text-cocoadeep outline-none placeholder:text-muted-foreground"
+              />
+              <span className="grid size-8 place-items-center rounded-lg bg-secondary text-clay">
+                <Phone className="size-4" />
+              </span>
+            </div>
+          </label>
+        </div>
+
+        <button
+          onClick={handleTrack}
+          className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-gold to-cocoa px-6 py-4 font-display text-lg font-extrabold text-cream shadow-lg shadow-cocoa/20 transition active:scale-[0.99]"
+        >
+          <Search className="size-5" /> تتبع طلبك
+        </button>
+      </main>
     </div>
-  )
+  );
 }

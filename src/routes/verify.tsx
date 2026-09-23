@@ -55,8 +55,13 @@ function VerifyPage() {
       setError("الرمز غير صحيح");
       return;
     }
-    localStorage.setItem("sc_logged_in", "1");
-    navigate({ to: "/my-account" });
+    localStorage.setItem("sc_verified", "1");
+    if (localStorage.getItem("sc_name")) {
+      localStorage.setItem("sc_logged_in", "1");
+      navigate({ to: "/my-account" });
+    } else {
+      navigate({ to: "/register" });
+    }
   };
 
   const resend = () => {
