@@ -73,13 +73,13 @@ const steps: { title: string; desc: string; icon: LucideIcon }[] = [
   { title: "الاستلام", desc: "يوصلك حتى باب بيتك", icon: Package },
 ];
 
-const platforms: { name: string; className: string }[] = [
-  { name: "TEMU", className: "bg-temu text-white" },
-  { name: "Trendyol", className: "bg-trendyol text-white" },
-  { name: "SHEIN", className: "bg-shein text-white" },
-  { name: "Amazon", className: "bg-card text-amazon ring-1 ring-border" },
-  { name: "AliExpress", className: "bg-aliexpress text-white" },
-];
+    const platforms: { name: string; className: string }[] = [
+    { name: "TEMU", className: "text-temu" },
+    { name: "TrendYol", className: "text-trendyol" },
+    { name: "SHEIN", className: "text-shein" },
+    { name: "Amazon", className: "text-amazon" },
+    { name: "AliExpress", className: "text-aliexpress" },
+    ];
 
 const testimonials = [
   { name: "يوسف الحيفي", city: "صنعاء", text: "اشتريت لعبتين للأولاد من شي إن، التعامل كان صادق والتوصيل وصل لباب البيت." },
@@ -121,13 +121,8 @@ function Index() {
           0%, 100% { transform: translateX(0); }
           50% { transform: translateX(18px); }
         }
-        @keyframes scroll-rtl {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(50%); }
-        }
        .animate-fly { animation: fly-across 8s linear infinite; }
        .animate-truck { animation: truck-move 2.8s ease-in-out infinite; }
-       .animate-marquee { animation: scroll-rtl 18s linear infinite; }
       `}</style>
 
       <div className="mx-auto flex max-w-4xl items-center justify-between px-4 pt-4">
@@ -194,12 +189,15 @@ function Index() {
 
       <section className="px-4 pt-6">
         <p className="mb-4 text-center text-sm font-bold text-muted-foreground">نستورد لك من أشهر المتاجر العالمية</p>
-        <div className="overflow-hidden" dir="ltr">
-          <div className="flex w-max animate-marquee gap-3 px-3">
-            {[...platforms,...platforms].map((p, i) => (
-              <span key={i} className={`rounded-lg px-3.5 py-2 font-display text-sm font-extrabold shadow-sm whitespace-nowrap ${p.className}`}>{p.name}</span>
-            ))}
-          </div>
+        <div className="mx-auto flex max-w-2xl flex-wrap items-center justify-center gap-3 sm:gap-4" dir="ltr">
+          {platforms.map((p) => (
+            <span
+              key={p.name}
+              className={`grid size-20 place-items-center rounded-2xl bg-cream text-center font-display text-sm font-black leading-tight shadow-[6px_6px_14px_rgba(120,90,60,0.18),-6px_-6px_14px_rgba(255,255,255,0.85)] sm:size-24 sm:text-base ${p.className}`}
+            >
+              {p.name}
+            </span>
+          ))}
         </div>
       </section>
 
