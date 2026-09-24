@@ -1,78 +1,117 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
-import { Hash, Phone, Search, ArrowRight } from "lucide-react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { useState, type FormEvent } from "react";
+import { ArrowRight, Hash, Phone, Search, UserRound } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { findTrackedOrder } from "@/lib/order-tracking.functions";
 
 export const Route = createFileRoute("/track/")({
+  head: () => ({
+    meta: [
+      { title: "تتبع الطلب — السوق الشامل" },
+      { name: "description", content: "تابع طلبك من السوق الشامل باستخدام رقم الطلب ورقم الهاتف." },
+      { property: "og:title", content: "تتبع الطلب — السوق الشامل" },
+      { property: "og:description", content: "تابع حالة شحنتك ومسار وصولها إلى اليمن." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: TrackIndex,
 });
 
 function TrackIndex() {
   const [code, setCode] = useState("");
   const [phone, setPhone] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const lookupOrder = useServerFn(findTrackedOrder);
 
-  const handleTrack = () => {
-    const trackingCode = code.trim() || "demo";
-    navigate({ to: "/track/$trackingCode", params: { trackingCode } });
+  const handleTrack = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const trackingCode = code.trim();
+    const phoneDigits = phone.replace(/\D/g, "");
+
+    if (!trackingCode) {
+      setError("أدخل رقم الطلب");
+      return;
+    }
+    if (phoneDigits.length < 9) {
+      setError("أدخل رقم الهاتف المسجل بالطلب");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    try {
+      const order = await lookupOrder({ data: { code: trackingCode, phone: phoneDigits } });
+      if (!order) {
+        setError("رقم الطلب أو الهاتف غير صحيح");
+        return;
+      }
+      sessionStorage.setItem(`sc_tracking_${order.trackingCode}`, JSON.stringify(order));
+      await navigate({ to: "/track/$trackingCode", params: { trackingCode: order.trackingCode } });
+    } catch {
+      setError("تعذر البحث الآن، حاول مرة أخرى");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div dir="rtl" className="min-h-screen bg-background font-body">
-      <header className="flex items-center justify-between px-5 pt-6">
-        <div className="flex items-center gap-3">
-          <span className="grid size-12 place-items-center overflow-hidden rounded-2xl bg-card ring-1 ring-border">
-            <img src="/IMG-20260922-WA6153.jpg" alt="مساعد جلوبال" className="size-full object-cover" />
-          </span>
-          <h1 className="font-display text-2xl font-black text-cocoadeep">تتبع الطلب</h1>
-        </div>
-        <button
-          onClick={() => navigate({ to: "/" })}
-          className="inline-flex items-center gap-1.5 rounded-xl bg-card px-4 py-2 font-display text-sm font-bold text-cocoa ring-1 ring-border"
-        >
-          رجوع <ArrowRight className="size-4" />
-        </button>
-      </header>
+    <div dir="rtl" lang="ar" className="min-h-screen bg-background px-4 pb-12 pt-5 font-body">
+      <main className="mx-auto w-full max-w-md">
+        <header className="relative flex min-h-16 items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="grid size-12 place-items-center overflow-hidden rounded-2xl bg-card ring-1 ring-border">
+              <img src="/IMG-20260922-WA6153.jpg" alt="مساعد السوق الشامل" className="size-full object-cover" />
+            </span>
+            <Link to="/login" aria-label="تسجيل الدخول" className="grid size-10 place-items-center rounded-full bg-card text-cocoa ring-1 ring-border">
+              <UserRound className="size-5" />
+            </Link>
+          </div>
+          <h1 className="absolute start-1/2 -translate-x-1/2 font-display text-xl font-black text-cocoa">تتبع الطلب</h1>
+          <Button asChild variant="secondary" className="h-10 rounded-xl px-4 font-bold text-cocoa">
+            <Link to="/">رجوع <ArrowRight /></Link>
+          </Button>
+        </header>
 
-      <main className="mx-auto mt-8 max-w-md px-5">
-        <div className="rounded-3xl bg-card p-6 ring-1 ring-border">
-          <label className="mb-6 block">
-            <span className="mb-2 block text-right font-display text-sm font-extrabold text-cocoadeep">رقم الطلب</span>
-            <div className="flex items-center gap-3 rounded-2xl bg-background px-4 py-3.5 ring-1 ring-border focus-within:ring-2 focus-within:ring-gold">
+        <form onSubmit={handleTrack} className="mt-5 rounded-2xl bg-card p-5 ring-1 ring-border shadow-sm">
+          <label className="block">
+            <span className="mb-2 block text-sm font-extrabold text-cocoadeep">رقم الطلب</span>
+            <span className="flex h-14 items-center gap-3 rounded-xl bg-background px-4 ring-1 ring-border focus-within:ring-2 focus-within:ring-gold">
               <input
                 value={code}
-                onChange={(e) => setCode(e.target.value)}
-                placeholder="مثال: 123456"
+                onChange={(event) => { setCode(event.target.value); setError(""); }}
+                placeholder="مثال: SC-123456"
+                autoComplete="off"
                 className="min-w-0 flex-1 bg-transparent text-right text-base text-cocoadeep outline-none placeholder:text-muted-foreground"
               />
-              <span className="grid size-8 place-items-center rounded-lg bg-secondary text-clay">
-                <Hash className="size-4" />
-              </span>
-            </div>
+              <Hash className="size-5 shrink-0 text-clay" />
+            </span>
           </label>
 
-          <label className="block">
-            <span className="mb-2 block text-right font-display text-sm font-extrabold text-cocoadeep">رقم الهاتف</span>
-            <div className="flex items-center gap-3 rounded-2xl bg-background px-4 py-3.5 ring-1 ring-border focus-within:ring-2 focus-within:ring-gold">
+          <label className="mt-4 block">
+            <span className="mb-2 block text-sm font-extrabold text-cocoadeep">رقم الهاتف</span>
+            <span className="flex h-14 items-center gap-3 rounded-xl bg-background px-4 ring-1 ring-border focus-within:ring-2 focus-within:ring-gold">
               <input
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(event) => { setPhone(event.target.value); setError(""); }}
                 placeholder="رقم الهاتف المسجل بالطلب"
                 inputMode="tel"
+                dir="ltr"
                 className="min-w-0 flex-1 bg-transparent text-right text-base text-cocoadeep outline-none placeholder:text-muted-foreground"
               />
-              <span className="grid size-8 place-items-center rounded-lg bg-secondary text-clay">
-                <Phone className="size-4" />
-              </span>
-            </div>
+              <Phone className="size-5 shrink-0 text-clay" />
+            </span>
           </label>
-        </div>
 
-        <button
-          onClick={handleTrack}
-          className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-gold to-cocoa px-6 py-4 font-display text-lg font-extrabold text-cream shadow-lg shadow-cocoa/20 transition active:scale-[0.99]"
-        >
-          <Search className="size-5" /> تتبع طلبك
-        </button>
+          {error && <p role="alert" className="mt-3 text-sm font-bold text-destructive">{error}</p>}
+
+          <Button type="submit" disabled={loading} className="mt-5 h-14 w-full rounded-xl bg-cocoa font-display text-lg font-extrabold text-cream">
+            {loading ? "جاري البحث..." : "تتبع طلبك"} <Search />
+          </Button>
+        </form>
       </main>
     </div>
   );

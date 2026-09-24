@@ -64,7 +64,7 @@ function NewOrder() {
             </div>
             <div className="mt-6 flex flex-col gap-2">
               <button
-                onClick={() => navigate({ to: "/track/$trackingCode", params: { trackingCode: success } })}
+                onClick={() => navigate({ to: "/track" })}
                 className="flex w-full items-center justify-center gap-2 rounded-2xl bg-cocoa py-4 font-display text-lg font-extrabold text-cream"
               >
                 تتبع طلبي <Package className="size-5" />
