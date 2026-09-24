@@ -218,9 +218,9 @@ function Index() {
           })}
         </div>
         <div className="mt-8 flex items-center justify-center gap-3">
-          <a href={WHATSAPP} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-2xl bg-card px-6 py-3.5 font-display font-extrabold text-cocoa ring-1 ring-border">
+          <Link to="/track" className="inline-flex items-center gap-2 rounded-2xl bg-card px-6 py-3.5 font-display font-extrabold text-cocoa ring-1 ring-border">
             <Search className="size-4" /> تتبع شحنتك
-          </a>
+          </Link>
           <a href="/new-order" className="inline-flex items-center gap-2 rounded-2xl bg-cocoa px-8 py-4 font-display font-extrabold text-cream">
             <ShoppingCart className="size-4" /> اطلب الآن
           </a>
