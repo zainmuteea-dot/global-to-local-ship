@@ -61,7 +61,7 @@ function TrackIndex() {
   return (
     <div dir="rtl" lang="ar" className="min-h-screen bg-background px-4 pb-12 pt-5 font-body">
       <main className="mx-auto w-full max-w-md">
-        <header className="relative flex min-h-16 items-center justify-between">
+        <header className="grid min-h-16 grid-cols-[auto_1fr_auto] items-center gap-3">
           <div className="flex items-center gap-2">
             <span className="grid size-12 place-items-center overflow-hidden rounded-2xl bg-card ring-1 ring-border">
               <img src="/IMG-20260922-WA6153.jpg" alt="مساعد السوق الشامل" className="size-full object-cover" />
@@ -70,7 +70,7 @@ function TrackIndex() {
               <UserRound className="size-5" />
             </Link>
           </div>
-          <h1 className="absolute start-1/2 -translate-x-1/2 font-display text-xl font-black text-cocoa">تتبع الطلب</h1>
+          <h1 className="text-center font-display text-xl font-black text-cocoa">تتبع الطلب</h1>
           <Button asChild variant="secondary" className="h-10 rounded-xl px-4 font-bold text-cocoa">
             <Link to="/">رجوع <ArrowRight /></Link>
           </Button>
