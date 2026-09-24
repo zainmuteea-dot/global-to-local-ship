@@ -317,7 +317,7 @@ function AdminDashboard({ onSignOut }: { onSignOut: () => void }) {
             </div>
           ) : (
             filtered.map((o) => {
-              const st = STATUS_STYLES[o.status] ?? STATUS_STYLES["جديد"];
+              const st = (STATUS_STYLES[o.status] ?? STATUS_STYLES["جديد"])!;
               return (
                 <button
                   key={o.id}
@@ -392,7 +392,7 @@ function OrderDetail({
   const [notes, setNotes] = useState(order.notes ?? "");
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const st = STATUS_STYLES[order.status] ?? STATUS_STYLES["جديد"];
+  const st = (STATUS_STYLES[order.status] ?? STATUS_STYLES["جديد"])!;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" dir="rtl">
@@ -449,7 +449,7 @@ function OrderDetail({
           <p className="mb-2 mt-4 text-xs font-bold text-muted-foreground">تغيير الحالة</p>
           <div className="flex flex-wrap gap-2">
             {STATUS_OPTIONS.map((s) => {
-              const style = STATUS_STYLES[s];
+              const style = STATUS_STYLES[s]!;
               const active = order.status === s;
               return (
                 <button

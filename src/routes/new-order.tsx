@@ -32,15 +32,11 @@ function NewOrder() {
     if (digits.length < 9) { setError("أدخل رقم جوال صحيح (9 أرقام على الأقل)"); return; }
 
     setLoading(true);
-    const { data, error: err } = await supabase
-      .from("orders")
-      .insert({
-        product_link: link.trim(),
-        customer_name: name.trim(),
-        phone: `+967 ${digits}`,
-      })
-      .select()
-      .single();
+    const { data, error: err } = await supabase.rpc("create_order", {
+      _product_link: link.trim(),
+      _customer_name: name.trim(),
+      _phone: `+967 ${digits}`,
+    });
 
     setLoading(false);
 
@@ -49,7 +45,7 @@ function NewOrder() {
       return;
     }
 
-    setSuccess(data?.tracking_code ?? "تم");
+    setSuccess((data as string) ?? "تم");
   };
 
   if (success) {
