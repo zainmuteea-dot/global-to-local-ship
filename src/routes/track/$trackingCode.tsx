@@ -35,8 +35,8 @@ function TrackingDetailPage() {
       setLoading(true);
       try {
         const { supabase } = await import("@/lib/supabase");
-        const { data } = await supabase.from("orders").select("*").eq("tracking_code", trackingCode).maybeSingle();
-        setOrder(data);
+        const { data } = await supabase.rpc("track_order", { _code: trackingCode });
+        setOrder(Array.isArray(data) ? (data[0] ?? null) : null);
       } catch {
         // Supabase not configured in this environment — fall back to the URL params.
         setOrder(null);
