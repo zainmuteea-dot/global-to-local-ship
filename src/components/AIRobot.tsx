@@ -1,70 +1,141 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from "react";
+import { Link } from "@tanstack/react-router";
+import { Send, X } from "lucide-react";
 
-const AIRobot = () => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState([
-    { id: 1, text: 'أهلاً بك! أنا مساعد جلوبال الذكي 🤖 كيف أقدر أساعدك اليوم؟', sender: 'bot' }
-  ]);
-  const [inputValue, setInputValue] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement | null>(null);
-  const scrollToBottom = () => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); };
-  useEffect(scrollToBottom, [messages]);
-  const botResponses = [
-    'شكراً لسؤالك! فريق جلوبال جاهز لخدمتك. هل تريد الاستفسار عن خدمات الشحن؟',
-    'يمكنك تتبع شحنتك من صفحة التتبع، أو تواصل معنا واتساب للمساعدة السريعة.',
-    'أسعار الشحن تعتمد على الوزن والوجهة. أخبرني من أين إلى أين؟',
-    'نعم، نوفر شحن من الصين، تركيا، الإمارات، وأمريكا إلى اليمن.',
-  ];
-  const handleSend = () => {
-    if (!inputValue.trim()) return;
-    const userMsg = { id: Date.now(), text: inputValue, sender: 'user' };
-    setMessages(prev => [...prev, userMsg]);
-    setInputValue('');
-    setIsTyping(true);
+type Msg = { id: number; text: string; sender: "bot" | "user" };
+
+const SECTIONS: { label: string; to: "/new-order" | "/track" | "/login" }[] = [
+  { label: "اطلب الآن", to: "/new-order" },
+  { label: "تتبع شحنتك", to: "/track" },
+  { label: "حسابي", to: "/login" },
+];
+
+const WELCOME =
+  "مرحباً، كيف يمكنني مساعدتك؟ 👋\nأنا مساعد السوق الشامل. نشتري لك من TEMU وTrendyol وSHEIN وAmazon وAliExpress ونوصل طلبك لباب بيتك في اليمن.";
+
+function reply(q: string): string {
+  const t = q.toLowerCase();
+  if (/سعر|تكلف|كم|رسوم|فلوس/.test(t))
+    return "أرسل رابط المنتج من صفحة «اطلب الآن»، ونحسب لك السعر شامل الشراء والشحن حتى باب بيتك قبل ما تدفع أي شيء.";
+  if (/تتبع|شحن|وين|طلبي|وصل/.test(t))
+    return "تقدر تتابع طلبك من صفحة «تتبع شحنتك» برقم الطلب ورقم هاتفك.";
+  if (/اطلب|طلب|شراء|اشتري|رابط/.test(t))
+    return "الطلب سهل: 1) أرسل الرابط 2) اعرف السعر 3) نشتري لك 4) نتابع الشحنة 5) الاستلام. ابدأ من «اطلب الآن».";
+  if (/متجر|منصة|امازون|شي|تيمو|ترند|علي/.test(t))
+    return "نستورد لك من TEMU وTrendyol وSHEIN وAmazon وAliExpress.";
+  if (/مدة|متى|يوم|وقت/.test(t))
+    return "مدة التوصيل تختلف حسب المتجر وبلد الشحن، ونبلغك بالمدة المتوقعة مع السعر.";
+  if (/حساب|تسجيل|دخول/.test(t)) return "تقدر تسجل دخولك برقم جوالك من زر «حسابي».";
+  return "سؤال جميل! للتفاصيل تواصل معنا واتساب، أو اختر قسماً من الأزرار تحت.";
+}
+
+function RobotFace({ size = 64 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden="true">
+      <line x1="32" y1="6" x2="32" y2="14" className="stroke-cocoa" strokeWidth="3" strokeLinecap="round" />
+      <circle cx="32" cy="5" r="3.5" className="fill-gold" />
+      <rect x="10" y="14" width="44" height="36" rx="14" className="fill-goldsoft stroke-cocoa" strokeWidth="3" />
+      <rect x="4" y="26" width="6" height="12" rx="3" className="fill-cocoa" />
+      <rect x="54" y="26" width="6" height="12" rx="3" className="fill-cocoa" />
+      <rect x="17" y="22" width="30" height="16" rx="8" className="fill-cocoadeep" />
+      <circle cx="25" cy="30" r="3.2" className="fill-gold robot-blink" />
+      <circle cx="39" cy="30" r="3.2" className="fill-gold robot-blink" />
+      <path d="M24 43 q8 6 16 0" className="stroke-cocoa" strokeWidth="3" fill="none" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export default function AIRobot() {
+  const [open, setOpen] = useState(false);
+  const [messages, setMessages] = useState<Msg[]>([{ id: 1, text: WELCOME, sender: "bot" }]);
+  const [input, setInput] = useState("");
+  const [typing, setTyping] = useState(false);
+  const endRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, typing]);
+
+  const send = () => {
+    const q = input.trim();
+    if (!q) return;
+    setMessages((m) => [...m, { id: Date.now(), text: q, sender: "user" }]);
+    setInput("");
+    setTyping(true);
     setTimeout(() => {
-      const randomReply = botResponses[Math.floor(Math.random() * botResponses.length)] ?? botResponses[0] ?? '';
-      setMessages(prev => [...prev, { id: Date.now() + 1, text: randomReply, sender: 'bot' }]);
-      setIsTyping(false);
-    }, 1200);
+      setMessages((m) => [...m, { id: Date.now() + 1, text: reply(q), sender: "bot" }]);
+      setTyping(false);
+    }, 700);
   };
+
   return (
     <>
-      <div style={{ position: 'fixed', bottom: '20px', left: '20px', zIndex: 9999, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <div style={{ background: '#fff', color: '#8B5A2B', fontSize: '12px', fontWeight: 'bold', padding: '6px 12px', borderRadius: '20px', marginBottom: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', border: '2px solid #8B5A2B', whiteSpace: 'nowrap' }}>
-          اسألني! 🤖
-        </div>
-        <button onClick={() => setIsOpen(!isOpen)} style={{ width: '80px', height: '80px', borderRadius: '50%', border: '3px solid #8B5A2B', background: '#fff', cursor: 'pointer', padding: '5px', boxShadow: '0 8px 25px rgba(139,90,43,0.3)' }}>
-          <img src="/IMG-20260922-WA6153.jpg" alt="AI Assistant" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+      <div className="fixed bottom-5 left-5 z-50 flex flex-col items-center">
+        {!open && (
+          <div className="mb-2 rounded-full border-2 border-cocoa bg-card px-3 py-1 font-display text-sm font-bold text-cocoa shadow-md">
+            اسألني!
+          </div>
+        )}
+        <button
+          onClick={() => setOpen((o) => !o)}
+          aria-label="مساعد السوق الشامل"
+          className="robot-float relative grid size-20 place-items-center rounded-full border-[3px] border-cocoa bg-card shadow-xl transition-transform hover:scale-105 active:scale-95"
+        >
+          <RobotFace size={56} />
+          <span className="robot-wave absolute -right-1 top-2 text-2xl">👋</span>
         </button>
       </div>
-      {isOpen && (
-        <div style={{ position: 'fixed', bottom: '115px', left: '20px', width: '340px', maxWidth: '90vw', height: '480px', background: 'white', borderRadius: '20px', boxShadow: '0 20px 60px rgba(0,0,0,0.25)', zIndex: 9999, display: 'flex', flexDirection: 'column', overflow: 'hidden', border: '2px solid #8B5A2B' }}>
-          <div style={{ background: 'linear-gradient(135deg, #8B5A2B, #A06A35)', color: 'white', padding: '15px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <img src="/IMG-20260922-WA6153.jpg" alt="bot" style={{ width: '40px', height: '40px', borderRadius: '50%', border: '2px solid white', objectFit: 'cover' }} />
-            <div>
-              <div style={{ fontWeight: 'bold', fontSize: '15px' }}>مساعد جلوبال الذكي</div>
-              <div style={{ fontSize: '12px', opacity: 0.9 }}>🟢 متصل الآن</div>
+
+      {open && (
+        <div dir="rtl" className="fixed bottom-32 left-5 z-50 flex h-[480px] w-[340px] max-w-[90vw] flex-col overflow-hidden rounded-3xl border-2 border-cocoa bg-card shadow-2xl animate-scale-in">
+          <div className="flex items-center gap-3 bg-cocoa p-3 text-cream">
+            <div className="grid size-11 place-items-center rounded-full bg-cream">
+              <RobotFace size={36} />
             </div>
+            <div className="flex-1">
+              <div className="font-display font-bold">مساعد السوق الشامل</div>
+              <div className="text-xs opacity-90">متصل الآن</div>
+            </div>
+            <button onClick={() => setOpen(false)} aria-label="إغلاق" className="rounded-full p-1 hover:bg-cocoadeep">
+              <X className="size-5" />
+            </button>
           </div>
-          <div style={{ flex: 1, padding: '15px', overflowY: 'auto', background: '#FFF8F0' }}>
-            {messages.map(msg => (
-              <div key={msg.id} style={{ marginBottom: '12px', textAlign: msg.sender === 'user'? 'left' : 'right' }}>
-                <div style={{ display: 'inline-block', padding: '10px 14px', borderRadius: '15px', maxWidth: '80%', fontSize: '14px', background: msg.sender === 'user'? '#8B5A2B' : 'white', color: msg.sender === 'user'? 'white' : '#333', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', border: msg.sender === 'bot'? '1px solid #E8D5B5' : 'none' }}>
-                  {msg.text}
+          <div className="flex-1 space-y-3 overflow-y-auto bg-cream p-3">
+            {messages.map((m) => (
+              <div key={m.id} className={m.sender === "user" ? "text-left" : "text-right"}>
+                <div
+                  className={`inline-block max-w-[85%] whitespace-pre-line rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
+                    m.sender === "user" ? "bg-cocoa text-cream" : "border border-goldsoft bg-card text-cocoadeep"
+                  }`}
+                >
+                  {m.text}
                 </div>
               </div>
             ))}
-            {isTyping && <div style={{ fontSize: '13px', color: '#8B5A2B' }}>يكتب الآن...</div>}
-            <div ref={messagesEndRef} />
+            {typing && <div className="text-xs text-cocoa">يكتب الآن...</div>}
+            <div className="flex flex-wrap gap-2 pt-1">
+              {SECTIONS.map((s) => (
+                <Link key={s.to} to={s.to} onClick={() => setOpen(false)} className="rounded-full border border-cocoa px-3 py-1 text-xs font-bold text-cocoa hover:bg-cocoa hover:text-cream">
+                  {s.label}
+                </Link>
+              ))}
+            </div>
+            <div ref={endRef} />
           </div>
-          <div style={{ padding: '12px', borderTop: '1px solid #E8D5B5', display: 'flex', gap: '8px', background: 'white' }}>
-            <input value={inputValue} onChange={e => setInputValue(e.target.value)} onKeyPress={e => e.key === 'Enter' && handleSend()} placeholder="اكتب رسالتك..." style={{ flex: 1, padding: '10px 14px', borderRadius: '25px', border: '1.5px solid #E8D5B5', outline: 'none', fontSize: '14px' }} />
-            <button onClick={handleSend} style={{ background: '#8B5A2B', color: 'white', border: 'none', width: '42px', height: '42px', borderRadius: '50%', cursor: 'pointer', fontSize: '18px' }}>➤</button>
+          <div className="flex gap-2 border-t border-goldsoft bg-card p-3">
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && send()}
+              placeholder="اكتب سؤالك..."
+              className="flex-1 rounded-full border border-goldsoft bg-cream px-4 py-2 text-sm text-cocoadeep outline-none focus:border-cocoa"
+            />
+            <button onClick={send} aria-label="إرسال" className="grid size-10 place-items-center rounded-full bg-cocoa text-cream active:scale-95">
+              <Send className="size-4 -scale-x-100" />
+            </button>
           </div>
         </div>
       )}
     </>
   );
-};
-export default AIRobot;
+}

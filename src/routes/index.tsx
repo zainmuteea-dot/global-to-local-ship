@@ -169,9 +169,9 @@ function Index() {
               </div>
             </div>
           </div>
-          <a href={WHATSAPP} target="_blank" rel="noopener noreferrer" className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-gold px-5 py-2.5 font-display text-lg font-extrabold text-cocoadeep">
+          <Link to="/new-order" className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-gold px-5 py-2.5 font-display text-lg font-extrabold text-cocoadeep shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:scale-95">
             <Hand className="size-5 -scale-x-100" /> اضغط هنا
-          </a>
+          </Link>
         </div>
       </header>
 
