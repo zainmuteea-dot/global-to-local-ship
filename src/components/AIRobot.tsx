@@ -11,7 +11,7 @@ const SECTIONS: { label: string; to: "/new-order" | "/track" | "/login" }[] = [
 ];
 
 const WELCOME =
-  "مرحباً، كيف يمكنني مساعدتك؟\nأنا مساعد السوق الشامل. نشتري لك من TEMU وTrendyol وSHEIN وAmazon وAliExpress ونوصل طلبك لباب بيتك في اليمن.";
+  "مرحباً، كيف يمكنني مساعدتك؟\nأنا مساعد السوق الشامل. نشتري لك من TEMU، Trendyol، SHEIN، Amazon، AliExpress ونوصل طلبك لباب بيتك في اليمن.";
 
 function reply(q: string): string {
   const t = q.toLowerCase();
@@ -22,7 +22,7 @@ function reply(q: string): string {
   if (/اطلب|طلب|شراء|اشتري|رابط/.test(t))
     return "الطلب سهل: 1) أرسل الرابط 2) اعرف السعر 3) نشتري لك 4) نتابع الشحنة 5) الاستلام. ابدأ من «اطلب الآن».";
   if (/متجر|منصة|امازون|شي|تيمو|ترند|علي/.test(t))
-    return "نستورد لك من TEMU وTrendyol وSHEIN وAmazon وAliExpress.";
+    return "نستورد لك من TEMU، Trendyol، SHEIN، Amazon، AliExpress.";
   if (/مدة|متى|يوم|وقت/.test(t))
     return "مدة التوصيل تختلف حسب المتجر وبلد الشحن، ونبلغك بالمدة المتوقعة مع السعر.";
   if (/حساب|تسجيل|دخول/.test(t)) return "تقدر تسجل دخولك برقم جوالك من زر «حسابي».";
