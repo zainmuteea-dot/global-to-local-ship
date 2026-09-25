@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Send, X } from "lucide-react";
+import { Hand, Send, X } from "lucide-react";
 
 type Msg = { id: number; text: string; sender: "bot" | "user" };
 
@@ -11,7 +11,7 @@ const SECTIONS: { label: string; to: "/new-order" | "/track" | "/login" }[] = [
 ];
 
 const WELCOME =
-  "مرحباً، كيف يمكنني مساعدتك؟ 👋\nأنا مساعد السوق الشامل. نشتري لك من TEMU وTrendyol وSHEIN وAmazon وAliExpress ونوصل طلبك لباب بيتك في اليمن.";
+  "مرحباً، كيف يمكنني مساعدتك؟\nأنا مساعد السوق الشامل. نشتري لك من TEMU وTrendyol وSHEIN وAmazon وAliExpress ونوصل طلبك لباب بيتك في اليمن.";
 
 function reply(q: string): string {
   const t = q.toLowerCase();
@@ -82,7 +82,7 @@ export default function AIRobot() {
           className="robot-float relative grid size-20 place-items-center rounded-full border-[3px] border-cocoa bg-card shadow-xl transition-transform hover:scale-105 active:scale-95"
         >
           <RobotFace size={56} />
-          <span className="robot-wave absolute -right-1 top-2 text-2xl">👋</span>
+          <span className="robot-wave absolute -right-2 top-1 grid size-7 place-items-center rounded-full bg-gold text-cocoadeep shadow"><Hand className="size-4" /></span>
         </button>
       </div>
 
