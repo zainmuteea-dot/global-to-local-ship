@@ -157,3 +157,10 @@
     box-shadow: 0 20px 40px -20px color-mix(in oklab, var(--cocoadeep) 45%, transparent);
   }
 }
+
+@keyframes robot-float { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-8px) } }
+@keyframes robot-wave { 0%,60%,100% { transform: rotate(0) } 10%,30% { transform: rotate(20deg) } 20%,40% { transform: rotate(-12deg) } }
+@keyframes robot-blink { 0%,92%,100% { transform: scaleY(1) } 96% { transform: scaleY(0.1) } }
+.robot-float { animation: robot-float 3s ease-in-out infinite; }
+.robot-wave { display: inline-block; transform-origin: 70% 70%; animation: robot-wave 2.4s ease-in-out infinite; }
+.robot-blink { transform-box: fill-box; transform-origin: center; animation: robot-blink 4s infinite; }
