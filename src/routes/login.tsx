@@ -33,6 +33,8 @@ function LoginPage() {
   const [phone, setPhone] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [seconds, setSeconds] = useState(0);
+  const [resending, setResending] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -40,24 +42,46 @@ function LoginPage() {
     });
   }, [navigate]);
 
+  useEffect(() => {
+    if (seconds <= 0) return;
+    const t = setInterval(() => {
+      setSeconds((s) => {
+        if (s <= 1) { clearInterval(t); return 0; }
+        return s - 1;
+      });
+    }, 1000);
+    return () => clearInterval(t);
+  }, [seconds]);
+
   const submit = async () => {
+    if (busy || resending || seconds > 0) return;
     const parsed = schema.safeParse({ email, name, phone: phone.replace(/\D/g, "") });
     if (!parsed.success) return setError(parsed.error.issues[0].message);
     setBusy(true);
+    setResending(true);
+    setError("");
     const p = parsed.data;
     const { error: err } = await supabase.auth.signInWithOtp({
       email: p.email,
       options: {
         shouldCreateUser: true,
         emailRedirectTo: `${window.location.origin}/my-account`,
-        data: { full_name: p.name || null, phone: p.phone ? `+967 ${p.phone}` : null },
+        data: { full_name: p.name || null, phone: p.phone? `+967 ${p.phone}` : null },
       },
     });
     setBusy(false);
-    if (err) return setError("تعذر إرسال الرمز، حاول بعد قليل");
+    setResending(false);
+    if (err) {
+      console.error(err);
+      if (JSON.stringify(err).includes("429") || JSON.stringify(err).toLowerCase().includes("rate")) {
+        return setError("وصلت للحد الأقصى للمحاولات، انتظر 60 دقيقة ثم حاول بإيميل جديد");
+      }
+      return setError("تعذر إرسال الرمز، حاول بعد قليل");
+    }
     sessionStorage.setItem("sc_email", p.email);
     sessionStorage.setItem("sc_name", p.name);
-    sessionStorage.setItem("sc_phone", p.phone ? `+967 ${p.phone}` : "");
+    sessionStorage.setItem("sc_phone", p.phone? `+967 ${p.phone}` : "");
+    setSeconds(60);
     navigate({ to: "/verify" });
   };
 
@@ -90,8 +114,8 @@ function LoginPage() {
           </div>
           {error && <p className="mt-2 text-xs font-bold text-destructive">{error}</p>}
 
-          <button onClick={submit} disabled={busy} className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-cocoa py-4 font-display text-lg font-extrabold text-cream disabled:opacity-70">
-            {busy ? "جارٍ الإرسال…" : "إرسال الرمز"} <ArrowRight className="size-5" />
+          <button onClick={submit} disabled={busy || resending || seconds > 0} className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-cocoa py-4 font-display text-lg font-extrabold text-cream disabled:opacity-70">
+            {busy || resending? "جارٍ الإرسال…" : seconds > 0? `انتظر ${seconds} ثانية` : "إرسال الرمز"} <ArrowRight className="size-5" />
           </button>
 
           <p className="mt-5 text-center text-[11px] leading-relaxed text-muted-foreground">
