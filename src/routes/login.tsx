@@ -10,14 +10,13 @@ function LoginPage() {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [showSuccess, setShowSuccess] = useState(false);
 
   const handleCreate = () => {
     if (!email.trim() ||!name.trim()) return;
     sessionStorage.setItem("sc_email", email.trim());
     sessionStorage.setItem("sc_name", name.trim());
     sessionStorage.setItem("sc_phone", phone.trim());
-    setShowSuccess(true);
+    navigate({ to: "/account-success" });
   };
 
   return (
@@ -31,7 +30,7 @@ function LoginPage() {
 
         <div className="rounded-[28px] bg-[#fdf8ec] p-6 shadow-sm ring-1 ring-black/10">
           <h2 className="text-center font-display text-2xl font-black text-[#4b2e1f]">تسجيل الدخول</h2>
-          <p className="mt-1 text-center text-sm text-[#4b2e1f]/60">أدخل بريدك لترسيل لك رمز التحقق</p>
+          <p className="mt-1 text-center text-sm text-[#4b2e1f]/60">أدخل بريدك لإنشاء حسابك</p>
 
           <div className="mt-6">
             <label className="mb-2 flex items-center justify-end gap-1 text-sm font-bold text-[#4b2e1f]">البريد الإلكتروني <span>✉️</span></label>
@@ -39,12 +38,12 @@ function LoginPage() {
           </div>
 
           <div className="mt-4">
-            <label className="mb-2 flex items-center justify-end gap-1 text-sm font-bold text-[#4b2e1f]">الاسم <span className="text-xs font-normal text-[#4b2e1f]/50">(للحساب الجديد)</span> <span>👤</span></label>
+            <label className="mb-2 flex items-center justify-end gap-1 text-sm font-bold text-[#4b2e1f]">الاسم <span>👤</span></label>
             <input value={name} onChange={e=>setName(e.target.value)} placeholder="اسمك الكامل" className="w-full rounded-full bg-[#f1e8d0] px-5 py-3.5 text-right outline-none ring-1 ring-black/5" />
           </div>
 
           <div className="mt-4">
-            <label className="mb-2 flex items-center justify-end gap-1 text-sm font-bold text-[#4b2e1f]">رقم الجوال <span className="text-xs font-normal text-[#4b2e1f]/50">(اختياري)</span> <span>📞</span></label>
+            <label className="mb-2 flex items-center justify-end gap-1 text-sm font-bold text-[#4b2e1f]">رقم الجوال <span className="text-xs font-normal">(اختياري)</span> <span>📞</span></label>
             <div className="flex gap-2" dir="rtl">
               <input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="7XXXXXXXXX" className="flex-1 rounded-full bg-[#f1e8d0] px-5 py-3.5 text-right outline-none ring-1 ring-black/5" />
               <span className="grid w-16 place-items-center rounded-full bg-[#f1e8d0] text-sm font-bold text-[#a68b6b] ring-1 ring-black/5">+967</span>
@@ -58,16 +57,6 @@ function LoginPage() {
           <p className="mt-4 text-center text-xs leading-5 text-[#4b2e1f]/50">باستمرارك فأنت توافق على<br/><span className="font-bold text-[#4b2e1f]">شروط الاستخدام وسياسة الخصوصية</span></p>
         </div>
       </div>
-
-      {showSuccess && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="w-full max-w-sm rounded-3xl bg-white p-8 text-center">
-            <div className="mx-auto mb-4 grid size-16 place-items-center rounded-full bg-green-100 text-3xl">✅</div>
-            <h2 className="font-display text-xl font-black">تم انشاء حسابك بنجاح</h2>
-            <button onClick={()=>navigate({to:"/my-account"})} className="mt-6 w-full rounded-full bg-[#4b2e1f] py-3.5 font-bold text-white">موافق</button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
