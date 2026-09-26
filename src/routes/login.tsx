@@ -43,7 +43,7 @@ function LoginPage() {
 
   useEffect(() => {
     if (seconds <= 0) return;
-    const t = setInterval(() => setSeconds(s => s <= 1? 0 : s - 1), 1000);
+    const t = setInterval(() => setSeconds((s) => (s <= 1? 0 : s - 1)), 1000);
     return () => clearInterval(t);
   }, [seconds]);
 
