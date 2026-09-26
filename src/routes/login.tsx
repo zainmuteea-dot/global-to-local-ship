@@ -7,44 +7,64 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const navigate = useNavigate();
-  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
 
   const handleCreate = () => {
-    if (!name.trim() || !email.trim()) return alert("أدخل الاسم والإيميل");
-    sessionStorage.setItem("sc_name", name.trim());
+    if (!email.trim() ||!name.trim()) return;
     sessionStorage.setItem("sc_email", email.trim());
+    sessionStorage.setItem("sc_name", name.trim());
+    sessionStorage.setItem("sc_phone", phone.trim());
     setShowSuccess(true);
   };
 
   return (
-    <div dir="rtl" lang="ar" className="min-h-screen bg-background px-4 py-8 font-body">
+    <div dir="rtl" lang="ar" className="min-h-screen bg-[#f1e8d0] px-4 py-6 font-body">
       <div className="mx-auto w-full max-w-md">
-        <div className="rounded-3xl bg-card p-6 shadow-sm ring-1 ring-border">
-          <h1 className="font-display text-2xl font-black text-cocoadeep text-center">إنشاء حساب</h1>
-          
-          <label className="mt-6 block text-sm font-bold">الاسم الكامل</label>
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="مثال: محمد أحمد" className="mt-2 w-full rounded-2xl bg-background px-4 py-3.5 outline-none ring-1 ring-border focus:ring-2 focus:ring-cocoa" />
+        <div className="mb-8 flex items-center justify-between">
+          <div className="w-10" />
+          <h1 className="font-display text-3xl font-black text-[#4b2e1f]">السوق الشامل</h1>
+          <button onClick={() => window.history.back()} className="grid size-10 place-items-center rounded-full bg-white/50 ring-1 ring-black/10">←</button>
+        </div>
 
-          <label className="mt-4 block text-sm font-bold">البريد الإلكتروني</label>
-          <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="name@mail.com" className="mt-2 w-full rounded-2xl bg-background px-4 py-3.5 outline-none ring-1 ring-border focus:ring-2 focus:ring-cocoa" />
+        <div className="rounded-[28px] bg-[#fdf8ec] p-6 shadow-sm ring-1 ring-black/10">
+          <h2 className="text-center font-display text-2xl font-black text-[#4b2e1f]">تسجيل الدخول</h2>
+          <p className="mt-1 text-center text-sm text-[#4b2e1f]/60">أدخل بريدك لترسيل لك رمز التحقق</p>
 
-          <button onClick={handleCreate} className="mt-6 w-full rounded-2xl bg-cocoa py-4 font-display text-lg font-extrabold text-cream">
-            إنشاء حسابك
+          <div className="mt-6">
+            <label className="mb-2 flex items-center justify-end gap-1 text-sm font-bold text-[#4b2e1f]">البريد الإلكتروني <span>✉️</span></label>
+            <input dir="ltr" value={email} onChange={e=>setEmail(e.target.value)} placeholder="name@example.com" className="w-full rounded-full bg-[#f1e8d0] px-5 py-3.5 text-left outline-none ring-1 ring-black/5" />
+          </div>
+
+          <div className="mt-4">
+            <label className="mb-2 flex items-center justify-end gap-1 text-sm font-bold text-[#4b2e1f]">الاسم <span className="text-xs font-normal text-[#4b2e1f]/50">(للحساب الجديد)</span> <span>👤</span></label>
+            <input value={name} onChange={e=>setName(e.target.value)} placeholder="اسمك الكامل" className="w-full rounded-full bg-[#f1e8d0] px-5 py-3.5 text-right outline-none ring-1 ring-black/5" />
+          </div>
+
+          <div className="mt-4">
+            <label className="mb-2 flex items-center justify-end gap-1 text-sm font-bold text-[#4b2e1f]">رقم الجوال <span className="text-xs font-normal text-[#4b2e1f]/50">(اختياري)</span> <span>📞</span></label>
+            <div className="flex gap-2" dir="rtl">
+              <input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="7XXXXXXXXX" className="flex-1 rounded-full bg-[#f1e8d0] px-5 py-3.5 text-right outline-none ring-1 ring-black/5" />
+              <span className="grid w-16 place-items-center rounded-full bg-[#f1e8d0] text-sm font-bold text-[#a68b6b] ring-1 ring-black/5">+967</span>
+            </div>
+          </div>
+
+          <button onClick={handleCreate} className="mt-6 w-full rounded-full bg-[#4b2e1f] py-4 font-display text-lg font-bold text-white">
+            إنشاء حسابك ←
           </button>
+
+          <p className="mt-4 text-center text-xs leading-5 text-[#4b2e1f]/50">باستمرارك فأنت توافق على<br/><span className="font-bold text-[#4b2e1f]">شروط الاستخدام وسياسة الخصوصية</span></p>
         </div>
       </div>
 
       {showSuccess && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="w-full max-w-sm rounded-3xl bg-white p-8 text-center shadow-xl">
+          <div className="w-full max-w-sm rounded-3xl bg-white p-8 text-center">
             <div className="mx-auto mb-4 grid size-16 place-items-center rounded-full bg-green-100 text-3xl">✅</div>
-            <h2 className="font-display text-xl font-black text-cocoadeep">تم انشاء حسابك بنجاح</h2>
-            <p className="mt-2 text-sm text-gray-500">أهلاً {name}!</p>
-            <button onClick={() => navigate({ to: "/my-account" })} className="mt-6 w-full rounded-2xl bg-cocoa py-3.5 font-bold text-white">
-              موافق
-            </button>
+            <h2 className="font-display text-xl font-black">تم انشاء حسابك بنجاح</h2>
+            <button onClick={()=>navigate({to:"/my-account"})} className="mt-6 w-full rounded-full bg-[#4b2e1f] py-3.5 font-bold text-white">موافق</button>
           </div>
         </div>
       )}
