@@ -104,7 +104,7 @@ function LoginPage() {
           </div>
           {error && <p className="mt-2 text-xs font-bold text-destructive">{error}</p>}
           <button onClick={submit} disabled={disabled} className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-cocoa py-4 font-display text-lg font-extrabold text-cream disabled:opacity-70">
-            {busy? "جارٍ الإرسال…" : seconds > 0? `انتظر ${seconds} ثانية` : "إرسال الرمز"} <ArrowRight className="size-5" />
+            {busy? "جارٍ إنشاء الحساب…" : seconds > 0? `انتظر ${seconds} ثانية` : "إنشاء حسابك"} <ArrowRight className="size-5" />
           </button>
           <p className="mt-5 text-center text-[11px] leading-relaxed text-muted-foreground">
             باستمرارك فإنك توافق على <br />
