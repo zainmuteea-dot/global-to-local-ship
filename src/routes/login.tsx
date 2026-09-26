@@ -34,7 +34,6 @@ function LoginPage() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [seconds, setSeconds] = useState(0);
-  const [resending, setResending] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -44,21 +43,15 @@ function LoginPage() {
 
   useEffect(() => {
     if (seconds <= 0) return;
-    const t = setInterval(() => {
-      setSeconds((s) => {
-        if (s <= 1) { clearInterval(t); return 0; }
-        return s - 1;
-      });
-    }, 1000);
+    const t = setInterval(() => setSeconds(s => s <= 1? 0 : s - 1), 1000);
     return () => clearInterval(t);
   }, [seconds]);
 
   const submit = async () => {
-    if (busy || resending || seconds > 0) return;
+    if (busy || seconds > 0) return;
     const parsed = schema.safeParse({ email, name, phone: phone.replace(/\D/g, "") });
     if (!parsed.success) return setError(parsed.error.issues[0].message);
     setBusy(true);
-    setResending(true);
     setError("");
     const p = parsed.data;
     const { error: err } = await supabase.auth.signInWithOtp({
@@ -70,11 +63,11 @@ function LoginPage() {
       },
     });
     setBusy(false);
-    setResending(false);
     if (err) {
       console.error(err);
-      if (JSON.stringify(err).includes("429") || JSON.stringify(err).toLowerCase().includes("rate")) {
-        return setError("وصلت للحد الأقصى للمحاولات، انتظر 60 دقيقة ثم حاول بإيميل جديد");
+      const msg = JSON.stringify(err).toLowerCase();
+      if (msg.includes("429") || msg.includes("rate")) {
+        return setError("وصلت للحد الأقصى، انتظر 60 دقيقة وحاول بإيميل جديد");
       }
       return setError("تعذر إرسال الرمز، حاول بعد قليل");
     }
@@ -86,6 +79,7 @@ function LoginPage() {
   };
 
   const field = "w-full rounded-2xl bg-background px-4 py-3.5 text-cocoadeep outline-none ring-1 ring-border focus:ring-2 focus:ring-cocoa";
+  const disabled = busy || seconds > 0;
 
   return (
     <div dir="rtl" lang="ar" className="min-h-screen bg-background px-4 py-8 font-body">
@@ -96,31 +90,24 @@ function LoginPage() {
             <ArrowLeft className="size-5" />
           </button>
         </div>
-
         <div className="rounded-3xl bg-card p-6 shadow-sm ring-1 ring-border">
           <h1 className="text-center font-display text-2xl font-black text-cocoadeep">تسجيل الدخول</h1>
           <p className="mt-1 text-center text-sm text-muted-foreground">أدخل بريدك لنرسل لك رمز التحقق</p>
-
           <label className="mt-6 flex items-center gap-1.5 text-sm font-bold text-cocoa"><Mail className="size-4" /> البريد الإلكتروني</label>
           <input dir="ltr" type="email" value={email} onChange={(e) => { setEmail(e.target.value); setError(""); }} placeholder="name@example.com" className={`mt-2 ${field}`} />
-
           <label className="mt-4 flex items-center gap-1.5 text-sm font-bold text-cocoa"><UserRound className="size-4" /> الاسم <span className="text-[11px] font-normal text-muted-foreground">(للحساب الجديد)</span></label>
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="اسمك الكامل" className={`mt-2 ${field}`} />
-
           <label className="mt-4 flex items-center gap-1.5 text-sm font-bold text-cocoa"><Phone className="size-4" /> رقم الجوال <span className="text-[11px] font-normal text-muted-foreground">(اختياري)</span></label>
           <div className="mt-2 flex items-stretch gap-2">
             <span className="grid shrink-0 place-items-center rounded-2xl bg-secondary px-3 text-xs font-bold text-clay">+967</span>
             <input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="numeric" placeholder="7XXXXXXXX" className={`${field} tracking-widest`} />
           </div>
           {error && <p className="mt-2 text-xs font-bold text-destructive">{error}</p>}
-
-          <button onClick={submit} disabled={busy || resending || seconds > 0} className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-cocoa py-4 font-display text-lg font-extrabold text-cream disabled:opacity-70">
-            {busy || resending? "جارٍ الإرسال…" : seconds > 0? `انتظر ${seconds} ثانية` : "إرسال الرمز"} <ArrowRight className="size-5" />
+          <button onClick={submit} disabled={disabled} className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-cocoa py-4 font-display text-lg font-extrabold text-cream disabled:opacity-70">
+            {busy? "جارٍ الإرسال…" : seconds > 0? `انتظر ${seconds} ثانية` : "إرسال الرمز"} <ArrowRight className="size-5" />
           </button>
-
           <p className="mt-5 text-center text-[11px] leading-relaxed text-muted-foreground">
-            باستمرارك فإنك توافق على
-            <br />
+            باستمرارك فإنك توافق على <br />
             <Link to="/terms" className="font-bold text-cocoa">شروط الاستخدام</Link> و<Link to="/privacy" className="font-bold text-cocoa">سياسة الخصوصية</Link>
           </p>
         </div>
