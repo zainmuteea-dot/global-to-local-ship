@@ -14,6 +14,63 @@ export type Database = {
   }
   public: {
     Tables: {
+      addresses: {
+        Row: {
+          city: string
+          created_at: string
+          details: string
+          id: string
+          label: string
+          latitude: number | null
+          longitude: number | null
+          user_id: string
+        }
+        Insert: {
+          city: string
+          created_at?: string
+          details: string
+          id?: string
+          label?: string
+          latitude?: number | null
+          longitude?: number | null
+          user_id: string
+        }
+        Update: {
+          city?: string
+          created_at?: string
+          details?: string
+          id?: string
+          label?: string
+          latitude?: number | null
+          longitude?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          body: string | null
+          created_at: string
+          id: string
+          title: string
+          user_id: string | null
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          title: string
+          user_id?: string | null
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          title?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           created_at: string
@@ -26,6 +83,7 @@ export type Database = {
           status: string
           tracking_code: string
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -38,6 +96,7 @@ export type Database = {
           status?: string
           tracking_code?: string
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -49,6 +108,34 @@ export type Database = {
           product_name?: string | null
           status?: string
           tracking_code?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          full_name: string | null
+          id: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string | null
+          id: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          phone?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -67,6 +154,30 @@ export type Database = {
         Update: {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      wallet_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string | null
+          id?: string
           user_id?: string
         }
         Relationships: []
