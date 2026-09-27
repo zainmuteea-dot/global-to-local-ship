@@ -60,7 +60,7 @@ function BrandTruck() {
 }
 
 const heroCircles: { label: string; icon: LucideIcon; to?: string }[] = [
-  { label: "التسجيل", icon: UserRound, to: "/login" },
+  { label: "التسجيل", icon: UserRound, to: "/signup" },
   { label: "الطلب", icon: Hand, to: "/new-order" },
   { label: "الشحن", icon: FileText },
 ];
@@ -127,7 +127,7 @@ function Index() {
 
       <div className="mx-auto flex max-w-4xl items-center justify-between px-4 pt-4">
         <div className="flex items-center gap-2">
-          <Link to="/login" className="grid size-11 place-items-center rounded-full bg-card text-cocoa ring-1 ring-border shadow-sm">
+          <Link to="/signup" className="grid size-11 place-items-center rounded-full bg-card text-cocoa ring-1 ring-border shadow-sm">
             <UserRound className="size-6" />
           </Link>
           <Link to="/notifications" className="grid size-11 place-items-center rounded-full bg-card text-cocoa ring-1 ring-border shadow-sm">
