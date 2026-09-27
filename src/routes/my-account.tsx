@@ -19,17 +19,6 @@ function MyAccountPage() {
   const navigate = useNavigate();
   const { user, loading } = useSession(true);
 
-  if (loading) {
-    return (
-      <div dir="rtl" className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-4 border-[#8B5E3C]/30 border-t-[#8B5E3C] rounded-full animate-spin" />
-          <p className="text-sm text-[#7D6E63] font-medium">جارٍ تحميل بيانات الحساب...</p>
-        </div>
-      </div>
-    );
-  }
-
   const [profile, setProfile] = useState<{ full_name: string | null; phone: string | null; avatar_url: string | null } | null>(null);
   const [avatar, setAvatar] = useState<string | null>(null);
   const [hasAddress, setHasAddress] = useState(false);
@@ -49,9 +38,20 @@ function MyAccountPage() {
 
   useEffect(() => { if (user) load(user.id); }, [user]);
 
+  if (loading) {
+    return (
+      <div dir="rtl" className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-4 border-[#8B5E3C]/30 border-t-[#8B5E3C] rounded-full animate-spin" />
+          <p className="text-sm text-[#7D6E63] font-medium">جارٍ تحميل بيانات الحساب...</p>
+        </div>
+      </div>
+    );
+  }
+
   const upload = async (f: File) => {
     if (!user ||!f.type.startsWith("image/")) return;
-    const path = ${user.id}/avatar-${Date.now()};
+    const path = `${user.id}/avatar-${Date.now()}`;
     const { error } = await supabase.storage.from("avatars").upload(path, f, { upsert: true, contentType: f.type });
     if (error) return;
     await supabase.from("profiles").upsert({ id: user.id, avatar_url: path });
@@ -132,8 +132,8 @@ function MyAccountPage() {
 
 function BottomSheet({ sheet, onClose }: { sheet: Exclude<Sheet, null>; onClose: () => void }) {
   const url = typeof window!== "undefined"? window.location.origin : "";
-  const msg = encodeURIComponent(تسوّق عالمياً واستلم محلياً مع السوق الشامل ${url});
-  const [copied, setCopied] = useState(false);
+  const msg = encodeURIComponent(`تسوّق عالمياً واستلم محلياً مع السوق الشامل ${url}`);
+  const [copied][setCopied] = useState(false);
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={onClose}>
