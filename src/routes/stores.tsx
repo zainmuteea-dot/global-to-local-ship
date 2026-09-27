@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { supabase } from '@/integrations/supabase/client'
 
 export const Route = createFileRoute('/stores')({
   component: StoresPage,
@@ -11,10 +12,18 @@ function StoresPage() {
   const [location, setLocation] = useState('')
   const [manager, setManager] = useState('')
 
-  const addStore = () => {
+  const fetchStores = async () => {
+    const { data } = await supabase.from('stores').select('*').order('created_at', { ascending: false })
+    if (data) setStores(data)
+  }
+
+  useEffect(() => { fetchStores() }, [])
+
+  const addStore = async () => {
     if (!name) return alert('ادخل اسم المخزن')
-    setStores([...stores, { name, location, manager }])
+    await supabase.from('stores').insert({ name, location })
     setName(''); setLocation(''); setManager('')
+    fetchStores()
   }
 
   return (
@@ -30,7 +39,7 @@ function StoresPage() {
         <thead><tr className="bg-blue-800 text-white"><th className="p-2">#</th><th className="p-2">الاسم</th><th className="p-2">الموقع</th><th className="p-2">المسؤول</th></tr></thead>
         <tbody>
           {stores.map((s,i)=>(
-            <tr key={i} className="border-t"><td className="p-2">{i+1}</td><td className="p-2">{s.name}</td><td className="p-2">{s.location}</td><td className="p-2">{s.manager}</td></tr>
+            <tr key={s.id} className="border-t"><td className="p-2">{i+1}</td><td className="p-2">{s.name}</td><td className="p-2">{s.location}</td><td className="p-2">{s.manager}</td></tr>
           ))}
         </tbody>
       </table>
