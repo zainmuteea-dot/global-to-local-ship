@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AccountSuccessRouteImport } from './routes/account-success'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as MyAccountRouteImport } from './routes/my-account'
 import { Route as NewOrderRouteImport } from './routes/new-order'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as PrivacyRouteImport } from './routes/privacy'
@@ -38,6 +39,11 @@ const AccountSuccessRoute = AccountSuccessRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MyAccountRoute = MyAccountRouteImport.update({
+  id: '/my-account',
+  path: '/my-account',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NewOrderRoute = NewOrderRouteImport.update({
@@ -105,6 +111,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/account-success': typeof AccountSuccessRoute
   '/login': typeof LoginRoute
+  '/my-account': typeof MyAccountRoute
   '/new-order': typeof NewOrderRoute
   '/notifications': typeof NotificationsRoute
   '/privacy': typeof PrivacyRoute
@@ -122,6 +129,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/account-success': typeof AccountSuccessRoute
   '/login': typeof LoginRoute
+  '/my-account': typeof MyAccountRoute
   '/new-order': typeof NewOrderRoute
   '/notifications': typeof NotificationsRoute
   '/privacy': typeof PrivacyRoute
@@ -140,6 +148,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/account-success': typeof AccountSuccessRoute
   '/login': typeof LoginRoute
+  '/my-account': typeof MyAccountRoute
   '/new-order': typeof NewOrderRoute
   '/notifications': typeof NotificationsRoute
   '/privacy': typeof PrivacyRoute
@@ -159,6 +168,7 @@ export interface FileRouteTypes {
     | '/'
     | '/account-success'
     | '/login'
+    | '/my-account'
     | '/new-order'
     | '/notifications'
     | '/privacy'
@@ -176,6 +186,7 @@ export interface FileRouteTypes {
     | '/'
     | '/account-success'
     | '/login'
+    | '/my-account'
     | '/new-order'
     | '/notifications'
     | '/privacy'
@@ -193,6 +204,7 @@ export interface FileRouteTypes {
     | '/'
     | '/account-success'
     | '/login'
+    | '/my-account'
     | '/new-order'
     | '/notifications'
     | '/privacy'
@@ -211,6 +223,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountSuccessRoute: typeof AccountSuccessRoute
   LoginRoute: typeof LoginRoute
+  MyAccountRoute: typeof MyAccountRoute
   NewOrderRoute: typeof NewOrderRoute
   NotificationsRoute: typeof NotificationsRoute
   PrivacyRoute: typeof PrivacyRoute
@@ -246,6 +259,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/my-account': {
+      id: '/my-account'
+      path: '/my-account'
+      fullPath: '/my-account'
+      preLoaderRoute: typeof MyAccountRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/new-order': {
@@ -339,6 +359,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountSuccessRoute: AccountSuccessRoute,
   LoginRoute: LoginRoute,
+  MyAccountRoute: MyAccountRoute,
   NewOrderRoute: NewOrderRoute,
   NotificationsRoute: NotificationsRoute,
   PrivacyRoute: PrivacyRoute,
