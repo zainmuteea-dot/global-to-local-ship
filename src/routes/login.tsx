@@ -24,7 +24,7 @@ export function LoginPage() {
     e.preventDefault();
     setError(null);
 
-    if (!email.trim() || !email.includes("@")) {
+    if (!email.trim() ||!email.includes("@")) {
       setError("يرجى إدخال بريد إلكتروني صحيح");
       return;
     }
@@ -126,13 +126,22 @@ export function LoginPage() {
             </div>
           </div>
 
+          <div className="text-left mt-2 -mb-1 ml-1">
+            <Link
+              to="/forgot-password"
+              className="text-[12px] font-bold text-[#3d2314] underline hover:opacity-70 transition"
+            >
+              هل نسيت كلمة السر
+            </Link>
+          </div>
+
           <div className="pt-2">
             <button
               type="submit"
               disabled={loading}
               className="w-full h-13 rounded-2xl bg-[#3d2314] hover:bg-[#2b170c] text-white font-bold text-sm transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-60 flex items-center justify-center gap-2 px-5"
             >
-              <span>{loading ? "جارٍ تسجيل الدخول..." : "تسجيل الدخول إلى حسابي"}</span>
+              <span>{loading? "جارٍ تسجيل الدخول..." : "تسجيل الدخول إلى حسابي"}</span>
               <ArrowLeft className="w-4 h-4" />
             </button>
           </div>
