@@ -1,42 +1,49 @@
-import { useState } from "react";
-import { ORDER_STATUSES } from "@/constants/orderStatuses";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
 
-export default function Admin() {
-  const [orders, setOrders] = useState<any[]>([]);
-  const [filter, setFilter] = useState("الكل");
+export const Route = createFileRoute("/admin")({
+  component: AdminPage,
+});
 
-  const filtered = filter === "الكل" ? orders : orders.filter(o => o.status === filter);
+function AdminPage() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const role = sessionStorage.getItem("sc_role");
+    if (role!== "employee") {
+      navigate({ to: "/login" });
+    }
+  }, [navigate]);
+
+  const cards = [
+    { title: "الموظفين", desc: "إدارة بيانات الموظفين والرواتب", href: "/employees", icon: "👥" },
+    { title: "مبالغ التأمين", desc: "تسجيل ومتابعة مبالغ التأمين", href: "/insurance-amounts", icon: "🛡️" },
+    { title: "يوميات العملاء", desc: "حركات وعمليات العملاء اليومية", href: "/client-daily", icon: "📒" },
+    { title: "الحسابات", desc: "إدارة الحسابات المالية", href: "/accounts", icon: "💰" },
+  ];
 
   return (
-    <div className="p-4 max-w-6xl mx-auto" dir="rtl">
-      <h1 className="text-2xl font-black mb-4">إدارة الطلبات</h1>
-
-      <div className="flex gap-2 flex-wrap mb-4">
-        {["الكل", ...ORDER_STATUSES.map(s => s.value)].map(v => (
-          <button
-            key={v}
-            onClick={() => setFilter(v)}
-            className={`px-4 py-1.5 rounded-full text-sm font-bold ${filter === v ? 'bg-amber-900 text-white' : 'bg-amber-100 text-amber-900'}`}
-          >
-            {v}
-          </button>
-        ))}
+    <div dir="rtl" className="min-h-screen bg-[#faf7f2] p-6 font-['Cairo',sans-serif]">
+      <div className="flex justify-between items-center max-w-6xl mb-6">
+        <div>
+          <h1 className="text-2xl font-extrabold text-[#3d2314]">لوحة الإدارة - موظفين</h1>
+          <p className="text-sm text-[#8a7a65]">خاص بموظفي السوق الشامل فقط</p>
+        </div>
+        <button onClick={() => { sessionStorage.clear(); navigate({ to: "/login" }); }}
+          className="px-4 h-10 rounded-xl bg-red-50 text-red-600 text-sm font-bold border border-red-200">
+          تسجيل خروج
+        </button>
       </div>
 
-      <div className="grid gap-3">
-        {filtered.map((order) => (
-          <div key={order.id} className="bg-white rounded-2xl border p-4 shadow-sm">
-            <div className="flex justify-between items-center">
-              <span className="font-bold">طلب #{order.id?.slice(0,8)}</span>
-              <span className="text-sm bg-amber-100 px-3 py-1 rounded-full">{order.status}</span>
-            </div>
-            <p className="text-sm text-gray-600 mt-2">الزبون: {order.customer_name} - {order.phone}</p>
-            {order.delivery_notes && (
-              <p className="text-sm font-bold text-amber-800 bg-amber-50 p-2 rounded mt-2">
-                ملاحظة التوصيل: {order.delivery_notes}
-              </p>
-            )}
-          </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-6xl">
+        {cards.map((c) => (
+          <Link key={c.href} to={c.href}
+            className="bg-white rounded-[24px] p-6 border border-[#ede5d8] hover:shadow-lg hover:-translate-y-1 transition-all">
+            <div className="text-4xl mb-3">{c.icon}</div>
+            <h3 className="font-extrabold text-[#3d2314] mb-1">{c.title}</h3>
+            <p className="text-xs text-[#8a7a65]">{c.desc}</p>
+            <div className="mt-4 text-sm font-bold text-[#3d2314]">دخول ←</div>
+          </Link>
         ))}
       </div>
     </div>
