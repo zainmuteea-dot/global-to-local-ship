@@ -66,7 +66,7 @@ function TrackIndex() {
             <span className="grid size-12 place-items-center overflow-hidden rounded-2xl bg-card ring-1 ring-border">
               <img src="/IMG-20260922-WA6153.jpg" alt="مساعد السوق الشامل" className="size-full object-cover" />
             </span>
-            <Link to="/login" aria-label="تسجيل الدخول" className="grid size-10 place-items-center rounded-full bg-card text-cocoa ring-1 ring-border">
+            <Link to="/signup" aria-label="تسجيل الدخول" className="grid size-10 place-items-center rounded-full bg-card text-cocoa ring-1 ring-border">
               <UserRound className="size-5" />
             </Link>
           </div>
