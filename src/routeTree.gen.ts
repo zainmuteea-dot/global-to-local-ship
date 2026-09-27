@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AccountSuccessRouteImport } from './routes/account-success'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MyAccountRouteImport } from './routes/my-account'
 import { Route as NewOrderRouteImport } from './routes/new-order'
@@ -18,7 +19,6 @@ import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as TermsRouteImport } from './routes/terms'
-import { Route as VerifyRouteImport } from './routes/verify'
 import { Route as AccountAddressesRouteImport } from './routes/account/addresses'
 import { Route as AccountOrdersRouteImport } from './routes/account/orders'
 import { Route as AccountProfileRouteImport } from './routes/account/profile'
@@ -29,6 +29,11 @@ import { Route as TrackTrackingCodeRouteImport } from './routes/track/$trackingC
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccountSuccessRoute = AccountSuccessRouteImport.update({
+  id: '/account-success',
+  path: '/account-success',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -71,11 +76,6 @@ const TermsRoute = TermsRouteImport.update({
   path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
-const VerifyRoute = VerifyRouteImport.update({
-  id: '/verify',
-  path: '/verify',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AccountAddressesRoute = AccountAddressesRouteImport.update({
   id: '/account/addresses',
   path: '/account/addresses',
@@ -109,6 +109,7 @@ const TrackTrackingCodeRoute = TrackTrackingCodeRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/account-success': typeof AccountSuccessRoute
   '/login': typeof LoginRoute
   '/my-account': typeof MyAccountRoute
   '/new-order': typeof NewOrderRoute
@@ -117,7 +118,6 @@ export interface FileRoutesByFullPath {
   '/register': typeof RegisterRoute
   '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
-  '/verify': typeof VerifyRoute
   '/account/addresses': typeof AccountAddressesRoute
   '/account/orders': typeof AccountOrdersRoute
   '/account/profile': typeof AccountProfileRoute
@@ -127,6 +127,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/account-success': typeof AccountSuccessRoute
   '/login': typeof LoginRoute
   '/my-account': typeof MyAccountRoute
   '/new-order': typeof NewOrderRoute
@@ -135,7 +136,6 @@ export interface FileRoutesByTo {
   '/register': typeof RegisterRoute
   '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
-  '/verify': typeof VerifyRoute
   '/account/addresses': typeof AccountAddressesRoute
   '/account/orders': typeof AccountOrdersRoute
   '/account/profile': typeof AccountProfileRoute
@@ -146,6 +146,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/account-success': typeof AccountSuccessRoute
   '/login': typeof LoginRoute
   '/my-account': typeof MyAccountRoute
   '/new-order': typeof NewOrderRoute
@@ -154,7 +155,6 @@ export interface FileRoutesById {
   '/register': typeof RegisterRoute
   '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
-  '/verify': typeof VerifyRoute
   '/account/addresses': typeof AccountAddressesRoute
   '/account/orders': typeof AccountOrdersRoute
   '/account/profile': typeof AccountProfileRoute
@@ -166,6 +166,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/account-success'
     | '/login'
     | '/my-account'
     | '/new-order'
@@ -174,7 +175,6 @@ export interface FileRouteTypes {
     | '/register'
     | '/signup'
     | '/terms'
-    | '/verify'
     | '/account/addresses'
     | '/account/orders'
     | '/account/profile'
@@ -184,6 +184,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/account-success'
     | '/login'
     | '/my-account'
     | '/new-order'
@@ -192,7 +193,6 @@ export interface FileRouteTypes {
     | '/register'
     | '/signup'
     | '/terms'
-    | '/verify'
     | '/account/addresses'
     | '/account/orders'
     | '/account/profile'
@@ -202,6 +202,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/account-success'
     | '/login'
     | '/my-account'
     | '/new-order'
@@ -210,7 +211,6 @@ export interface FileRouteTypes {
     | '/register'
     | '/signup'
     | '/terms'
-    | '/verify'
     | '/account/addresses'
     | '/account/orders'
     | '/account/profile'
@@ -221,6 +221,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AccountSuccessRoute: typeof AccountSuccessRoute
   LoginRoute: typeof LoginRoute
   MyAccountRoute: typeof MyAccountRoute
   NewOrderRoute: typeof NewOrderRoute
@@ -229,7 +230,6 @@ export interface RootRouteChildren {
   RegisterRoute: typeof RegisterRoute
   SignupRoute: typeof SignupRoute
   TermsRoute: typeof TermsRoute
-  VerifyRoute: typeof VerifyRoute
   AccountAddressesRoute: typeof AccountAddressesRoute
   AccountOrdersRoute: typeof AccountOrdersRoute
   AccountProfileRoute: typeof AccountProfileRoute
@@ -245,6 +245,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/account-success': {
+      id: '/account-success'
+      path: '/account-success'
+      fullPath: '/account-success'
+      preLoaderRoute: typeof AccountSuccessRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -303,13 +310,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/verify': {
-      id: '/verify'
-      path: '/verify'
-      fullPath: '/verify'
-      preLoaderRoute: typeof VerifyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/account/addresses': {
       id: '/account/addresses'
       path: '/account/addresses'
@@ -357,6 +357,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AccountSuccessRoute: AccountSuccessRoute,
   LoginRoute: LoginRoute,
   MyAccountRoute: MyAccountRoute,
   NewOrderRoute: NewOrderRoute,
@@ -365,7 +366,6 @@ const rootRouteChildren: RootRouteChildren = {
   RegisterRoute: RegisterRoute,
   SignupRoute: SignupRoute,
   TermsRoute: TermsRoute,
-  VerifyRoute: VerifyRoute,
   AccountAddressesRoute: AccountAddressesRoute,
   AccountOrdersRoute: AccountOrdersRoute,
   AccountProfileRoute: AccountProfileRoute,
