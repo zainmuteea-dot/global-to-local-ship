@@ -75,7 +75,6 @@ function SignupPage() {
 
     setLoading(true);
 
-    // حفظ البيانات محلياً للجلسة
     const userData = {
       fullName: fullName.trim(),
       city,
@@ -96,33 +95,25 @@ function SignupPage() {
   };
 
   return (
-    <div dir="rtl" lang="ar" className="min-h-screen bg-[#faf7f2] flex flex-col items-center justify-center px-4 py-10 font-['Cairo',sans-serif] selection:bg-[#3d2314] selection:text-white">
+    <div
+      dir="rtl"
+      lang="ar"
+      className="min-h-screen bg-[#faf7f2] flex flex-col items-center justify-center px-4 py-10 font-['Cairo',sans-serif] selection:bg-[#3d2314] selection:text-white"
+    >
       {/* الترويسة العلوية */}
-      <div className="text-center mb-8">
-        <h1 className="text-3xl sm:text-4xl font-extrabold text-[#3d2314] tracking-tight">
+      <div className="text-center mb-7">
+        <h1 className="text-3xl sm:text-4xl font-extrabold text-[#3d2314] tracking-tight drop-shadow-[0_1px_1px_rgba(0,0,0,0.05)]">
           السوق الشامل
         </h1>
-        <p className="mt-2 text-sm sm:text-base text-[#7c6a59] font-medium">
+        <p className="mt-2 text-sm text-[#7c6a59] font-medium">
           إنشاء حساب جديد للبدء بالطلب وتتبع شحناتك
         </p>
       </div>
 
       {/* كرت النموذج الرئيسي */}
       <div className="w-full max-w-[460px] bg-white rounded-[32px] p-6 sm:p-8 shadow-[0_10px_35px_-5px_rgba(61,35,20,0.06)] border border-[#ede5d8]">
-        
-        {/* شريط التبديل العلوي */}
-        <div className="flex bg-[#f5ede1] p-1.5 rounded-2xl mb-7">
-          <button
-            type="button"
-            onClick={() => handleTabChange("login")}
-            className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 text-center ${
-              activeTab === "login"
-                ? "bg-[#3d2314] text-white shadow-sm"
-                : "text-[#5d4634] hover:text-[#3d2314]"
-            }`}
-          >
-            تسجيل الدخول
-          </button>
+        {/* شريط التبديل العلوي: إنشاء حساب جديد على اليمين وتسجيل الدخول على اليسار */}
+        <div className="flex bg-[#f5ede1] p-1.5 rounded-2xl mb-7 border border-[#e8dfd1]">
           <button
             type="button"
             onClick={() => handleTabChange("signup")}
@@ -133,6 +124,17 @@ function SignupPage() {
             }`}
           >
             إنشاء حساب جديد
+          </button>
+          <button
+            type="button"
+            onClick={() => handleTabChange("login")}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 text-center ${
+              activeTab === "login"
+                ? "bg-[#3d2314] text-white shadow-sm"
+                : "text-[#5d4634] hover:text-[#3d2314]"
+            }`}
+          >
+            تسجيل الدخول
           </button>
         </div>
 
@@ -154,16 +156,34 @@ function SignupPage() {
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="محمد عبد الله"
-                className="w-full bg-[#fbf9f5] border border-[#e8dfd1] rounded-2xl pr-4 pl-11 py-3 text-sm text-[#3d2314] placeholder-[#a49688] outline-none focus:border-[#3d2314] focus:ring-1 focus:ring-[#3d2314] transition-all"
+                className="w-full bg-[#fbf9f5] border border-[#e8dfd1] rounded-2xl pr-11 pl-4 py-3 text-sm text-[#3d2314] placeholder-[#a49688] outline-none focus:border-[#3d2314] focus:ring-1 focus:ring-[#3d2314] transition-all text-right"
                 required
               />
-              <User className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-[#8a7b6d]" />
+              <User className="absolute right-3.5 top-1/2 -translate-y-1/2 size-4 text-[#8a7b6d] pointer-events-none" />
             </div>
           </div>
 
-          {/* صف رقم الهاتف والمدينة */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {/* المدينة */}
+          {/* صف الهاتف على اليمين والمدينة على اليسار */}
+          <div className="grid grid-cols-2 gap-3">
+            {/* رقم الهاتف / واتساب (اليمين) */}
+            <div>
+              <label className="block text-xs font-bold text-[#3d2314] mb-1.5 mr-1">
+                رقم الهاتف / واتساب *
+              </label>
+              <div className="relative">
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="77000000"
+                  className="w-full bg-[#fbf9f5] border border-[#e8dfd1] rounded-2xl pr-11 pl-3 py-3 text-sm text-[#3d2314] placeholder-[#a49688] outline-none focus:border-[#3d2314] focus:ring-1 focus:ring-[#3d2314] transition-all text-right"
+                  required
+                />
+                <Phone className="absolute right-3.5 top-1/2 -translate-y-1/2 size-4 text-[#8a7b6d] pointer-events-none" />
+              </div>
+            </div>
+
+            {/* المدينة (اليسار) */}
             <div>
               <label className="block text-xs font-bold text-[#3d2314] mb-1.5 mr-1">
                 المدينة *
@@ -172,7 +192,7 @@ function SignupPage() {
                 <select
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
-                  className="w-full bg-[#fbf9f5] border border-[#e8dfd1] rounded-2xl pr-4 pl-10 py-3 text-sm text-[#3d2314] outline-none focus:border-[#3d2314] focus:ring-1 focus:ring-[#3d2314] transition-all appearance-none cursor-pointer font-medium"
+                  className="w-full bg-[#fbf9f5] border border-[#e8dfd1] rounded-2xl pr-4 pl-10 py-3 text-sm text-[#3d2314] outline-none focus:border-[#3d2314] focus:ring-1 focus:ring-[#3d2314] transition-all appearance-none cursor-pointer font-bold text-right"
                 >
                   {YEMEN_CITIES.map((c) => (
                     <option key={c} value={c}>
@@ -180,26 +200,7 @@ function SignupPage() {
                     </option>
                   ))}
                 </select>
-                <ChevronDown className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-[#8a7b6d] pointer-events-none" />
-              </div>
-            </div>
-
-            {/* رقم الهاتف / واتساب */}
-            <div>
-              <label className="block text-xs font-bold text-[#3d2314] mb-1.5 mr-1">
-                رقم الهاتف / واتساب *
-              </label>
-              <div className="relative">
-                <input
-                  type="tel"
-                  dir="ltr"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="77000000"
-                  className="w-full bg-[#fbf9f5] border border-[#e8dfd1] rounded-2xl pr-4 pl-11 py-3 text-sm text-[#3d2314] placeholder-[#a49688] outline-none focus:border-[#3d2314] focus:ring-1 focus:ring-[#3d2314] transition-all text-right"
-                  required
-                />
-                <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-[#8a7b6d]" />
+                <ChevronDown className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-[#3d2314] pointer-events-none stroke-[2.5]" />
               </div>
             </div>
           </div>
@@ -212,14 +213,13 @@ function SignupPage() {
             <div className="relative">
               <input
                 type="email"
-                dir="ltr"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="name@example.com"
-                className="w-full bg-[#fbf9f5] border border-[#e8dfd1] rounded-2xl pr-4 pl-11 py-3 text-sm text-[#3d2314] placeholder-[#a49688] outline-none focus:border-[#3d2314] focus:ring-1 focus:ring-[#3d2314] transition-all text-right"
+                className="w-full bg-[#fbf9f5] border border-[#e8dfd1] rounded-2xl pr-11 pl-4 py-3 text-sm text-[#3d2314] placeholder-[#a49688] outline-none focus:border-[#3d2314] focus:ring-1 focus:ring-[#3d2314] transition-all text-right"
                 required
               />
-              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-[#8a7b6d]" />
+              <Mail className="absolute right-3.5 top-1/2 -translate-y-1/2 size-4 text-[#8a7b6d] pointer-events-none" />
             </div>
           </div>
 
@@ -231,14 +231,13 @@ function SignupPage() {
             <div className="relative">
               <input
                 type="password"
-                dir="ltr"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full bg-[#fbf9f5] border border-[#e8dfd1] rounded-2xl pr-4 pl-11 py-3 text-sm text-[#3d2314] placeholder-[#a49688] outline-none focus:border-[#3d2314] focus:ring-1 focus:ring-[#3d2314] transition-all text-right"
+                className="w-full bg-[#fbf9f5] border border-[#e8dfd1] rounded-2xl pr-11 pl-4 py-3 text-sm text-[#3d2314] placeholder-[#a49688] outline-none focus:border-[#3d2314] focus:ring-1 focus:ring-[#3d2314] transition-all text-right font-mono"
                 required
               />
-              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-[#8a7b6d]" />
+              <Lock className="absolute right-3.5 top-1/2 -translate-y-1/2 size-4 text-[#8a7b6d] pointer-events-none" />
             </div>
           </div>
 
@@ -249,9 +248,9 @@ function SignupPage() {
               disabled={loading}
               className="w-full bg-[#3d2314] hover:bg-[#2c180d] active:scale-[0.99] text-white py-3.5 px-4 rounded-2xl font-bold text-sm sm:text-base flex items-center justify-center gap-2 transition-all duration-200 shadow-sm disabled:opacity-60 cursor-pointer"
             >
-              <Zap className="size-4 fill-amber-400 text-amber-400" />
+              <UserPlus className="size-4" />
               <span>{loading ? "جارٍ إنشاء الحساب..." : "إنشاء الحساب وتفعيله فوراً"}</span>
-              <UserPlus className="size-4 mr-0.5" />
+              <Zap className="size-4 fill-amber-400 text-amber-400" />
             </button>
           </div>
         </form>
