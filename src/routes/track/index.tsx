@@ -1,9 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
 import { useState, type FormEvent } from "react";
 import { ArrowRight, Hash, Phone, Search, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { findTrackedOrder } from "@/lib/order-tracking.functions";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/track/")({
   head: () => ({
@@ -19,40 +18,95 @@ export const Route = createFileRoute("/track/")({
   component: TrackIndex,
 });
 
+export type TrackedOrder = {
+  trackingCode: string;
+  status: string;
+  customerPhone: string;
+  productName: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 function TrackIndex() {
   const [code, setCode] = useState("");
   const [phone, setPhone] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const lookupOrder = useServerFn(findTrackedOrder);
 
   const handleTrack = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const trackingCode = code.trim();
-    const phoneDigits = phone.replace(/\D/g, "");
+    const trackingCode = code.trim().toUpperCase();
+    const cleanPhone = phone.replace(/\D/g, "");
 
     if (!trackingCode) {
-      setError("أدخل رقم الطلب");
+      setError("يرجى إدخال رقم الطلب");
       return;
     }
-    if (phoneDigits.length < 9) {
-      setError("أدخل رقم الهاتف المسجل بالطلب");
+    if (cleanPhone.length < 9) {
+      setError("أدخل رقم الهاتف المسجل بالطلب (9 أرقام على الأقل)");
       return;
     }
 
     setLoading(true);
     setError("");
+
     try {
-      const order = await lookupOrder({ data: { code: trackingCode, phone: phoneDigits } });
-      if (!order) {
-        setError("رقم الطلب أو الهاتف غير صحيح");
+      // 1. محاولة البحث عبر الدالة السحابية المخصصة للتتبع
+      const { data: rpcData, error: rpcError } = await supabase.rpc("track_order", {
+        _code: trackingCode,
+        _phone: cleanPhone,
+      });
+
+      let matchedOrder: TrackedOrder | null = null;
+
+      if (!rpcError && rpcData && rpcData.length > 0) {
+        const row = rpcData[0];
+        matchedOrder = {
+          trackingCode: row.tracking_code,
+          status: row.status,
+          customerPhone: row.customer_phone,
+          productName: row.product_name,
+          createdAt: row.created_at,
+          updatedAt: row.updated_at,
+        };
+      } else {
+        // 2. فحص احتياطي مباشر من جدول orders
+        const { data: directOrders } = await supabase
+          .from("orders")
+          .select("tracking_code, status, phone, product_name, created_at, updated_at")
+          .ilike("tracking_code", trackingCode);
+
+        if (directOrders && directOrders.length > 0) {
+          const match = directOrders.find(
+            (o) => o.phone.replace(/\D/g, "").endsWith(cleanPhone.slice(-9))
+          );
+          if (match) {
+            matchedOrder = {
+              trackingCode: match.tracking_code,
+              status: match.status,
+              customerPhone: match.phone,
+              productName: match.product_name,
+              createdAt: match.created_at,
+              updatedAt: match.updated_at,
+            };
+          }
+        }
+      }
+
+      if (!matchedOrder) {
+        setError("لم يتم العثور على شحنة مطابقة لرقم الطلب ورقم الهاتف المدخلين");
         return;
       }
-      sessionStorage.setItem(`sc_tracking_${order.trackingCode}`, JSON.stringify(order));
-      await navigate({ to: "/track/$trackingCode", params: { trackingCode: order.trackingCode } });
+
+      // حفظ بيانات التتبع محلياً والانتقال لصفحة التفاصيل ومسار الشحن
+      sessionStorage.setItem(`sc_tracking_${matchedOrder.trackingCode}`, JSON.stringify(matchedOrder));
+      await navigate({
+        to: "/track/$trackingCode",
+        params: { trackingCode: matchedOrder.trackingCode },
+      });
     } catch {
-      setError("تعذر البحث الآن، حاول مرة أخرى");
+      setError("تعذر الاتصال بقاعدة البيانات، تأكد من اتصال الإنترنت وحاول ثانية");
     } finally {
       setLoading(false);
     }
@@ -83,7 +137,7 @@ function TrackIndex() {
               <input
                 value={code}
                 onChange={(event) => { setCode(event.target.value); setError(""); }}
-                placeholder="مثال: SC-123456"
+                placeholder="مثال: SQ-892411 أو SC-123456"
                 autoComplete="off"
                 className="min-w-0 flex-1 bg-transparent text-right text-base text-cocoadeep outline-none placeholder:text-muted-foreground"
               />
@@ -109,7 +163,7 @@ function TrackIndex() {
           {error && <p role="alert" className="mt-3 text-sm font-bold text-destructive">{error}</p>}
 
           <Button type="submit" disabled={loading} className="mt-5 h-14 w-full rounded-xl bg-cocoa font-display text-lg font-extrabold text-cream">
-            {loading ? "جاري البحث..." : "تتبع طلبك"} <Search />
+            {loading ? "جاري البحث في قاعدة البيانات..." : "تتبع طلبك"} <Search />
           </Button>
         </form>
       </main>
