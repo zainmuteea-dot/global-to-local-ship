@@ -53,21 +53,21 @@ function MyAccountPage() {
 
   const load = async (uid: string) => {
     const { data } = await supabase
-      .from("profiles")
-      .select("full_name, phone, avatar_url")
-      .eq("id", uid)
-      .maybeSingle();
+     .from("profiles")
+     .select("full_name, phone, avatar_url")
+     .eq("id", uid)
+     .maybeSingle();
     setProfile(data);
     if (data?.avatar_url) {
       const { data: s } = await supabase.storage
-        .from("avatars")
-        .createSignedUrl(data.avatar_url, 3600);
-      setAvatar(s?.signedUrl ?? null);
+       .from("avatars")
+       .createSignedUrl(data.avatar_url, 3600);
+      setAvatar(s?.signedUrl?? null);
     }
     const { count } = await supabase
-      .from("addresses")
-      .select("id", { count: "exact", head: true });
-    setHasAddress((count ?? 0) > 0);
+     .from("addresses")
+     .select("id", { count: "exact", head: true });
+    setHasAddress((count?? 0) > 0);
   };
 
   useEffect(() => {
@@ -91,11 +91,11 @@ function MyAccountPage() {
   }
 
   const upload = async (f: File) => {
-    if (!user || !f.type.startsWith("image/")) return;
+    if (!user ||!f.type.startsWith("image/")) return;
     const path = `${user.id}/avatar-${Date.now()}`;
     const { error } = await supabase.storage
-      .from("avatars")
-      .upload(path, f, { upsert: true, contentType: f.type });
+     .from("avatars")
+     .upload(path, f, { upsert: true, contentType: f.type });
     if (error) return;
     await supabase.from("profiles").upsert({ id: user.id, avatar_url: path });
     load(user.id);
@@ -109,6 +109,7 @@ function MyAccountPage() {
   const items: { label: string; icon: LucideIcon; to?: string; sheet?: Sheet }[] = [
     { label: "حسابي", icon: UserRound, to: "/account/profile" },
     { label: "طلباتي", icon: Package, to: "/account/orders" },
+    { label: "فواتير المبيعات", icon: FileText, to: "/account/sales-invoices" },
     { label: "القطع الفورية", icon: Zap, to: "/new-order" },
     { label: "العناوين", icon: MapPin, to: "/account/addresses" },
     { label: "رصيدي", icon: Wallet, to: "/account/wallet" },
@@ -143,7 +144,7 @@ function MyAccountPage() {
             className="relative grid size-14 shrink-0 place-items-center overflow-hidden rounded-2xl bg-secondary text-clay"
             aria-label="إضافة صورة"
           >
-            {avatar ? (
+            {avatar? (
               <img src={avatar} alt="صورتي" className="size-full object-cover" />
             ) : (
               <UserRound className="size-7" />
@@ -173,7 +174,7 @@ function MyAccountPage() {
               to="/account/addresses"
               className="mt-0.5 flex items-center gap-1 text-[11px] font-bold text-clay"
             >
-              <MapPin className="size-3" /> {hasAddress ? "عناويني" : "أضف عنوان"}
+              <MapPin className="size-3" /> {hasAddress? "عناويني" : "أضف عنوان"}
             </Link>
           </div>
         </div>
@@ -189,7 +190,7 @@ function MyAccountPage() {
                 <ChevronLeft className="size-4 text-muted-foreground" />
               </>
             );
-            return to ? (
+            return to? (
               <Link key={label} to={to} className={row}>
                 {inner}
               </Link>
@@ -220,7 +221,7 @@ function BottomSheet({
   sheet: Exclude<Sheet, null>;
   onClose: () => void;
 }) {
-  const url = typeof window !== "undefined" ? window.location.origin : "";
+  const url = typeof window!== "undefined"? window.location.origin : "";
   const [copied, setCopied] = useState(false);
 
   return (
@@ -236,9 +237,9 @@ function BottomSheet({
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold">
             {sheet === "share"
-              ? "مشاركة المنصة"
+             ? "مشاركة المنصة"
               : sheet === "support"
-              ? "خدمة العملاء"
+             ? "خدمة العملاء"
               : "معلومات المنصة"}
           </h3>
           <button onClick={onClose}>
@@ -264,7 +265,7 @@ function BottomSheet({
             }}
             className="w-full rounded-xl bg-secondary p-3 text-sm font-bold"
           >
-            {copied ? "تم النسخ!" : "نسخ رابط المنصة"}
+            {copied? "تم النسخ!" : "نسخ رابط المنصة"}
           </button>
         )}
         {sheet === "info" && (
