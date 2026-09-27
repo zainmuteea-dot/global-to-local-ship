@@ -1,38 +1,64 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { supabase } from '@/integrations/supabase/client'
 
 export const Route = createFileRoute('/sales-invoices')({
-  component: SalesInvoices,
+  component: SalesPage,
 })
 
-function SalesInvoices() {
-  const [items, setItems] = useState<any[]>([{product:'', qty:1, price:0}])
-  const addRow = () => setItems([...items, {product:'', qty:1, price:0}])
-  const update = (i:number, f:string, v:any) => { const n=[...items]; n[i][f]=v; setItems(n) }
-  const total = items.reduce((s,it)=>s+(it.qty*it.price),0)
+function SalesPage() {
+  const [products, setProducts] = useState<any[]>([])
+  const [customers, setCustomers] = useState<any[]>([])
+  const [invoices, setInvoices] = useState<any[]>([])
+  const [customerId, setCustomerId] = useState('')
+  const [productId, setProductId] = useState('')
+  const [qty, setQty] = useState('1')
+
+  const fetchData = async () => {
+    const { data: p } = await supabase.from('products').select('*')
+    if(p) setProducts(p)
+    const { data: c } = await supabase.from('customers').select('*')
+    if(c) setCustomers(c)
+    const { data: inv } = await supabase.from('sales_invoices').select('*').order('created_at',{ascending:false}).limit(20)
+    if(inv) setInvoices(inv)
+  }
+  useEffect(()=>{fetchData()},[])
+
+  const createInvoice = async () => {
+    if(!productId) return alert('اختر المنتج')
+    const prod = products.find(x=>x.id===productId)
+    const total = (prod?.price||0) * Number(qty)
+    await supabase.from('sales_invoices').insert({
+      customer_id: customerId||null,
+      total,
+      items: [{ product_id: productId, qty: Number(qty), price: prod?.price }]
+    })
+    setProductId(''); setQty('1'); fetchData()
+    alert('تم حفظ الفاتورة')
+  }
 
   return (
     <div dir="rtl" className="p-6">
-      <h1 className="text-2xl font-bold mb-4">فاتورة مبيعات جديدة</h1>
-      <div className="bg-white p-4 rounded shadow">
-        <div className="flex gap-2 mb-4">
-          <input placeholder="اسم العميل" className="border p-2 rounded" />
-          <select className="border p-2 rounded">
-            <option>نقدي</option><option>آجل</option>
-          </select>
-          <input type="date" className="border p-2 rounded" />
-        </div>
-        {items.map((it,i)=>(
-          <div key={i} className="flex gap-2 mb-2">
-            <input value={it.product} onChange={e=>update(i,'product',e.target.value)} placeholder="ابحث بالاسم أو الباركود" className="border p-2 rounded flex-1" />
-            <input value={it.qty} onChange={e=>update(i,'qty',+e.target.value)} type="number" className="border p-2 rounded w-24" />
-            <input value={it.price} onChange={e=>update(i,'price',+e.target.value)} type="number" className="border p-2 rounded w-32" />
-            <span className="p-2 font-bold">{it.qty*it.price}</span>
+      <h1 className="text-2xl font-bold mb-4">فواتير المبيعات</h1>
+      <div className="bg-white p-4 rounded shadow mb-4 flex gap-2 flex-wrap">
+        <select value={customerId} onChange={e=>setCustomerId(e.target.value)} className="border p-2 rounded">
+          <option value="">عميل نقدي</option>
+          {customers.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+        <select value={productId} onChange={e=>setProductId(e.target.value)} className="border p-2 rounded">
+          <option value="">اختر المنتج</option>
+          {products.map(p=><option key={p.id} value={p.id}>{p.name} - {p.price}</option>)}
+        </select>
+        <input value={qty} onChange={e=>setQty(e.target.value)} type="number" placeholder="الكمية" className="border p-2 rounded w-24" />
+        <button onClick={createInvoice} className="bg-green-700 text-white px-4 py-2 rounded">حفظ فاتورة</button>
+      </div>
+      <div className="grid gap-2">
+        {invoices.map(inv=>(
+          <div key={inv.id} className="bg-white p-3 rounded shadow flex justify-between">
+            <span>{new Date(inv.created_at).toLocaleString('ar')}</span>
+            <span className="font-bold">{inv.total}</span>
           </div>
         ))}
-        <button onClick={addRow} className="bg-gray-200 px-3 py-1 rounded">+ صنف</button>
-        <div className="mt-4 text-xl font-bold">الإجمالي: {total} ريال</div>
-        <button className="bg-blue-800 text-white px-6 py-2 rounded mt-4">حفظ وطباعة</button>
       </div>
     </div>
   )
