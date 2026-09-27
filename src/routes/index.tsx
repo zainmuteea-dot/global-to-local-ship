@@ -1,46 +1,57 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
-import { supabase } from '@/integrations/supabase/client'
 
 export const Route = createFileRoute('/')({
-  component: Dashboard,
+  component: HomePage,
 })
 
-function Dashboard() {
-  const [stats, setStats] = useState({products:0, customers:0, sales:0, stores:0})
-
-  useEffect(()=>{
-    const load = async () => {
-      const { count: pc } = await supabase.from('products').select('*',{count:'exact', head:true})
-      const { count: cc } = await supabase.from('customers').select('*',{count:'exact', head:true})
-      const { count: sc } = await supabase.from('sales_invoices').select('*',{count:'exact', head:true})
-      const { count: stc } = await supabase.from('stores').select('*',{count:'exact', head:true})
-      setStats({products: pc||0, customers: cc||0, sales: sc||0, stores: stc||0})
-    }
-    load()
-  },[])
-
-  const cards = [
-    {title:'المنتجات', value: stats.products, link:'/products', color:'bg-blue-600'},
-    {title:'العملاء', value: stats.customers, link:'/customers', color:'bg-green-600'},
-    {title:'فواتير المبيعات', value: stats.sales, link:'/sales-invoices', color:'bg-purple-600'},
-    {title:'المخازن', value: stats.stores, link:'/stores', color:'bg-orange-600'},
-  ]
-
+function HomePage() {
   return (
-    <div dir="rtl" className="p-6">
-      <h1 className="text-3xl font-bold mb-6">لوحة التحكم - نظام المبيعات</h1>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        {cards.map((c,i)=>(
-          <Link key={i} to={c.link} className={`${c.color} text-white p-6 rounded-xl shadow`}>
-            <div className="text-3xl font-bold">{c.value}</div>
-            <div>{c.title}</div>
-          </Link>
-        ))}
+    <div dir="rtl" className="min-h-screen bg-[#fdf6e9] pb-20">
+      {/* Header */}
+      <div className="flex items-center justify-between p-4">
+        <Link to="/request" className="bg-white border rounded-full px-4 py-2 text-sm font-bold shadow">
+          اطلب الآن
+        </Link>
+        <div className="flex gap-3">
+          <button className="w-10 h-10 bg-white rounded-full shadow flex items-center justify-center">🔔</button>
+          <Link to="/my-account" className="w-10 h-10 bg-white rounded-full shadow flex items-center justify-center">👤</Link>
+        </div>
       </div>
-      <div className="grid grid-cols-2 gap-4">
-        <Link to="/sales-invoices" className="bg-white p-6 rounded shadow text-center font-bold">+ فاتورة مبيعات جديدة</Link>
-        <Link to="/purchase-invoices" className="bg-white p-6 rounded shadow text-center font-bold">+ فاتورة مشتريات جديدة</Link>
+
+      {/* Main Brown Card */}
+      <div className="mx-4 bg-[#5a3418] rounded-[2rem] p-6 text-center text-[#f5d78e]">
+        <div className="text-xs mb-1">◆◆◆◆◆</div>
+        <h1 className="text-2xl font-extrabold mb-6">السوق الشامل</h1>
+
+        <div className="flex justify-center gap-6 mb-8">
+          <Link to="/my-account" className="flex flex-col items-center gap-2">
+            <div className="w-14 h-14 border border-[#f5d78e] rounded-full flex items-center justify-center text-xl">👤</div>
+            <span className="text-sm">التسجيل</span>
+          </Link>
+          <Link to="/request" className="flex flex-col items-center gap-2">
+            <div className="w-14 h-14 border border-[#f5d78e] rounded-full flex items-center justify-center text-xl">👋</div>
+            <span className="text-sm">الطلب</span>
+          </Link>
+          <Link to="/shipments" className="flex flex-col items-center gap-2">
+            <div className="w-14 h-14 border border-[#f5d78e] rounded-full flex items-center justify-center text-xl">📄</div>
+            <span className="text-sm">الشحن</span>
+          </Link>
+        </div>
+
+        <div className="mx-auto w-32 h-32 bg-white/10 border-2 border-white/20 rounded-3xl flex items-center justify-center mb-6">
+          <div className="w-10 h-10 bg-[#f5d78e] rounded-full flex items-center justify-center text-[#5a3418]">▶</div>
+        </div>
+
+        <h2 className="text-3xl font-extrabold mb-4">كيف تطلب؟؟</h2>
+        <Link to="/how-to-order" className="inline-flex items-center gap-2 bg-[#d4a24e] text-[#5a3418] font-bold px-6 py-3 rounded-full">
+          👋 اضغط هنا
+        </Link>
+      </div>
+
+      {/* Bottom Section */}
+      <div className="p-6">
+        <h2 className="text-3xl font-extrabold mb-2">تسوّق عالمياً، واستلم</h2>
+        <p className="text-gray-600">اطلب من أي مكان في العالم وتوصله لباب</p>
       </div>
     </div>
   )
