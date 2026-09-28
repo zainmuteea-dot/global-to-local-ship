@@ -1,4 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { supabase } from "../lib/supabase";
 import {
   Bell,
   CircleDollarSign,
@@ -65,21 +67,55 @@ const heroCircles: { label: string; icon: LucideIcon; to?: string }[] = [
   { label: "الشحن", icon: FileText },
 ];
 
-const steps: { title: string; desc: string; icon: LucideIcon }[] = [
-  { title: "أرسل الرابط", desc: "انسخ رابط المنتج", icon: Link2 },
-  { title: "اعرف السعر", desc: "نوضح لك التكلفة", icon: CircleDollarSign },
-  { title: "نشتري لك", desc: "نشتري بدلاً عنك", icon: ShoppingCart },
-  { title: "تابع الشحنة", desc: "تتبع طلبك أولاً بأول", icon: Search },
-  { title: "الاستلام", desc: "يوصلك حتى باب بيتك", icon: Package },
+type StepItem = { title: string; desc: string; icon: LucideIcon; to: string };
+
+const defaultSteps: StepItem[] = [
+  { title: "أرسل الرابط", desc: "انسخ رابط المنتج", icon: Link2, to: "/new-order" },
+  { title: "اعرف السعر", desc: "نوضح لك التكلفة", icon: CircleDollarSign, to: "/new-order" },
+  { title: "نشتري لك", desc: "نشتري بدلاً عنك", icon: ShoppingCart, to: "/new-order" },
+  { title: "تابع الشحنة", desc: "تتبع طلبك أولاً بأول", icon: Search, to: "/track" },
+  { title: "الاستلام", desc: "يوصلك حتى باب بيتك", icon: Package, to: "/my-account" },
 ];
 
-    const platforms: { name: string; className: string }[] = [
-    { name: "TEMU", className: "text-temu" },
-    { name: "TrendYol", className: "text-trendyol" },
-    { name: "SHEIN", className: "text-shein" },
-    { name: "Amazon", className: "text-amazon" },
-    { name: "AliExpress", className: "text-aliexpress" },
-    ];
+const iconMap: Record<string, LucideIcon> = {
+  Link2,
+  CircleDollarSign,
+  ShoppingCart,
+  Search,
+  Package,
+};
+
+function useSteps() {
+  const [steps, setSteps] = useState<StepItem[]>(defaultSteps);
+  useEffect(() => {
+    supabase
+     .from("site_steps")
+     .select("*")
+     .eq("is_active", true)
+     .order("sort_order", { ascending: true })
+     .then(({ data, error }) => {
+        if (!error && data && data.length > 0) {
+          setSteps(
+            data.map((d: any) => ({
+              title: d.title,
+              desc: d.description,
+              icon: iconMap[d.icon_name] || Package,
+              to: d.link_to,
+            }))
+          );
+        }
+      });
+  }, []);
+  return steps;
+}
+
+const platforms: { name: string; className: string }[] = [
+  { name: "TEMU", className: "text-temu" },
+  { name: "TrendYol", className: "text-trendyol" },
+  { name: "SHEIN", className: "text-shein" },
+  { name: "Amazon", className: "text-amazon" },
+  { name: "AliExpress", className: "text-aliexpress" },
+];
 
 const testimonials = [
   { name: "يوسف الحيفي", city: "صنعاء", text: "اشتريت لعبتين للأولاد من شي إن، التعامل كان صادق والتوصيل وصل لباب البيت." },
@@ -108,6 +144,7 @@ function Confetti() {
 }
 
 function Index() {
+  const steps = useSteps();
   return (
     <div dir="rtl" lang="ar" className="min-h-screen overflow-x-hidden bg-background font-body text-foreground">
       <style>{`
@@ -121,8 +158,8 @@ function Index() {
           0%, 100% { transform: translateX(0); }
           50% { transform: translateX(18px); }
         }
-       .animate-fly { animation: fly-across 8s linear infinite; }
-       .animate-truck { animation: truck-move 2.8s ease-in-out infinite; }
+     .animate-fly { animation: fly-across 8s linear infinite; }
+     .animate-truck { animation: truck-move 2.8s ease-in-out infinite; }
       `}</style>
 
       <div className="mx-auto flex max-w-4xl items-center justify-between px-4 pt-4">
@@ -207,13 +244,17 @@ function Index() {
             const Icon = s.icon;
             const last = i === steps.length - 1;
             return (
-              <div key={s.title} className={`flex items-center gap-3 rounded-2xl bg-card p-4 ring-1 ring-border ${last? "sm:col-span-2 sm:mx-auto sm:w-1/2" : ""}`}>
-                <span className="grid size-10 place-items-center rounded-xl bg-secondary text-clay"><Icon className="size-5" /></span>
-                <div>
-                  <p className="font-display text-base font-extrabold text-cocoadeep">{s.title}</p>
+              <Link
+                key={s.title}
+                to={s.to}
+                className={`group flex cursor-pointer items-center gap-3 rounded-2xl bg-card p-4 ring-1 ring-border shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md hover:ring-cocoa/40 active:scale-95 ${last? "sm:col-span-2 sm:mx-auto sm:w-1/2" : ""}`}
+              >
+                <span className="grid size-10 place-items-center rounded-xl bg-secondary text-clay transition-colors group-hover:bg-cocoa group-hover:text-cream"><Icon className="size-5" /></span>
+                <div className="flex-1">
+                  <p className="font-display text-base font-extrabold text-cocoadeep transition-colors group-hover:text-cocoa">{s.title}</p>
                   <p className="text-xs text-muted-foreground">{s.desc}</p>
                 </div>
-              </div>
+              </Link>
             );
           })}
         </div>
