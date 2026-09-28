@@ -1,5 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import React, { useState } from 'react';
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import React, { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { PackageCheck, ArrowRight, Printer, Copy, Check } from "lucide-react";
 
@@ -28,6 +28,7 @@ function detectStore(url: string) {
 }
 
 function NewOrder() {
+  const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [url, setUrl] = useState('');
   const [store, setStore] = useState('');
@@ -41,9 +42,26 @@ function NewOrder() {
   const [trackingCode, setTrackingCode] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
+  // تعبئة تلقائية + حماية: زائر غير مسجل يروح لإنشاء حساب
+  useEffect(() => {
+    const autoFill = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate({ to: "/signup" });
+        return;
+      }
+      const savedName = user.user_metadata?.full_name || user.user_metadata?.name || "";
+      const savedPhone = user.user_metadata?.phone || (user as any).phone || "";
+      const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+      if (profile?.full_name || savedName) setName(profile?.full_name || savedName);
+      if (profile?.phone || savedPhone) setPhone(profile?.phone || savedPhone);
+    };
+    autoFill();
+  }, [navigate]);
+
   const onUrl = (v: string) => {
     setUrl(v);
-    setStore(v.length > 10 ? detectStore(v) : '');
+    setStore(v.length > 10? detectStore(v) : '');
   };
 
   const getLocation = () => {
@@ -62,36 +80,34 @@ function NewOrder() {
   };
 
   const submit = async () => {
-    if (!name || !phone || !address) {
+    if (!name ||!phone ||!address) {
       alert('يرجى إكمال الاسم ورقم الهاتف وعنوان التوصيل');
       return;
     }
     setLoading(true);
-
     try {
-      // إدراج الطلب مباشرة في جدول orders في قاعدة البيانات الحالية
-      const fullNotes = `العنوان: ${address}${lat ? ` (إحداثيات: ${lat}, ${lng})` : ''}`;
+      const fullNotes = `العنوان: ${address}${lat? ` (إحداثيات: ${lat}, ${lng})` : ''}`;
+      const { data: { user } } = await supabase.auth.getUser();
       const { data, error } = await supabase
-        .from('orders')
-        .insert([{
+       .from('orders')
+       .insert([{
           customer_name: name.trim(),
           phone: phone.trim(),
           product_link: url.trim(),
-          product_name: store ? `منتج من ${store}` : 'طلب وسيط شراء',
+          product_name: store? `منتج من ${store}` : 'طلب وسيط شراء',
           status: 'جديد',
           notes: fullNotes,
+          user_id: user?.id,
         }])
-        .select('tracking_code')
-        .single();
+       .select('tracking_code')
+       .single();
 
       if (error) {
-        // محاولة بديلة عبر create_order الدالة المضمنة
         const { data: codeData, error: funcError } = await supabase.rpc('create_order', {
           _product_link: url.trim() || 'https://example.com',
           _customer_name: name.trim(),
           _phone: phone.trim(),
         });
-
         if (funcError) {
           alert('تعذر حفظ الطلب: ' + (error.message || funcError.message));
           setLoading(false);
@@ -115,7 +131,6 @@ function NewOrder() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // شاشة نجاح إرسال الطلب وسند الاستلام
   if (trackingCode) {
     return (
       <div dir="rtl" className="min-h-screen bg-[#EDE0CC] flex items-center justify-center p-4 font-body">
@@ -123,12 +138,10 @@ function NewOrder() {
           <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto ring-8 ring-emerald-50">
             <PackageCheck className="size-9" />
           </div>
-
           <div>
             <h1 className="text-xl font-black text-[#4A3728]">تم استلام طلبك بنجاح!</h1>
             <p className="text-xs text-gray-500 mt-1">احتفظ برقم الشحنة لتتبع مسار طلبك حتى وصوله إليك</p>
           </div>
-
           <div className="bg-[#FFFBF2] border-2 border-dashed border-[#8B5E34] rounded-2xl p-4 relative">
             <span className="text-[11px] font-bold text-gray-500 block mb-1">رقم تتبع الشحنة</span>
             <div className="text-2xl font-black font-mono text-[#8B5E34] tracking-wider select-all">
@@ -138,18 +151,16 @@ function NewOrder() {
               onClick={copyCode}
               className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-[#8B5E34] bg-white px-3 py-1.5 rounded-lg border shadow-sm hover:bg-[#FAF4E6]"
             >
-              {copied ? <Check className="size-3.5 text-emerald-600" /> : <Copy className="size-3.5" />}
-              {copied ? "تم النسخ!" : "نسخ الرقم"}
+              {copied? <Check className="size-3.5 text-emerald-600" /> : <Copy className="size-3.5" />}
+              {copied? "تم النسخ!" : "نسخ الرقم"}
             </button>
           </div>
-
           <div className="text-right text-xs bg-gray-50 p-3.5 rounded-xl space-y-1.5 text-gray-700">
             <div><span className="font-bold">اسم العميل:</span> {name}</div>
             <div><span className="font-bold">رقم الهاتف:</span> <span dir="ltr">{phone}</span></div>
             <div><span className="font-bold">العنوان:</span> {address}</div>
             {store && <div><span className="font-bold">المتجر:</span> {store}</div>}
           </div>
-
           <div className="flex flex-col gap-2.5 pt-2">
             <Link
               to="/track/$trackingCode"
@@ -159,7 +170,6 @@ function NewOrder() {
               <span>تتبع مسار شحنتك الآن</span>
               <ArrowRight className="size-4" />
             </Link>
-
             <button
               onClick={() => window.print()}
               type="button"
@@ -177,14 +187,12 @@ function NewOrder() {
   return (
     <div className="min-h-screen bg-[#E9DCC3] py-6 px-4 font-body" dir="rtl">
       <div className="max-w-[430px] mx-auto bg-[#FFFBF2] rounded-[20px] p-5 shadow space-y-4">
-
         {step === 1 && (
           <>
             <div className="flex justify-between items-center">
               <h1 className="font-black text-[16px]">الخطوة 1: رابط المنتج</h1>
               <span className="text-[11px] bg-[#F1E6D0] px-2 py-1 rounded-full">الخطوة 1 من 2</span>
             </div>
-
             <div>
               <label className="text-[12px] font-bold block mb-1">رابط المنتج</label>
               <input
@@ -206,7 +214,6 @@ function NewOrder() {
                 </div>
               )}
             </div>
-
             <div>
               <label className="text-[12px] font-bold block mb-1">لقطات سلة المشتريات (اختياري)</label>
               <label className="block border-2 border-dashed border-[#8B5E34] rounded-xl bg-[#FDF8EE] p-6 text-center cursor-pointer">
@@ -230,7 +237,6 @@ function NewOrder() {
                 </div>
               )}
             </div>
-
             <button
               onClick={() => {
                 if (!url.trim()) {
@@ -245,7 +251,6 @@ function NewOrder() {
             </button>
           </>
         )}
-
         {step === 2 && (
           <>
             <div className="flex justify-between items-center">
@@ -253,7 +258,6 @@ function NewOrder() {
               <span className="text-[11px] bg-[#F1E6D0] px-2 py-1 rounded-full">الخطوة 2 من 2</span>
             </div>
             <p className="text-[11px] text-gray-500 -mt-2">أدخل تفاصيلك لإتمام التوصيل {store && `• المتجر: ${store}`}</p>
-
             <div>
               <label className="text-[12px] font-bold block mb-1">الاسم الكامل</label>
               <input
@@ -300,7 +304,6 @@ function NewOrder() {
               </button>
               {lat && <div className="text-[11px] text-emerald-600 mt-1 font-bold">✓ تم التقاط الإحداثيات بنجاح</div>}
             </div>
-
             <div className="flex gap-2 pt-2">
               <button onClick={() => setStep(1)} className="px-4 py-3 border rounded-xl font-bold text-[13px] hover:bg-gray-50">
                 رجوع
@@ -310,7 +313,7 @@ function NewOrder() {
                 disabled={loading}
                 className="flex-1 bg-[#B4662A] hover:bg-[#965421] text-white rounded-xl py-3.5 font-black transition disabled:opacity-50"
               >
-                {loading ? 'جاري الإرسال...' : 'تأكيد وإرسال الطلب'}
+                {loading? 'جاري الإرسال...' : 'تأكيد وإرسال الطلب'}
               </button>
             </div>
             <div className="text-center text-[10px] text-gray-500">🔒 بياناتك محفوظة ومحمية لأغراض الشحن والتوصيل فقط</div>
