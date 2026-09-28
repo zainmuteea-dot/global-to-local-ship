@@ -51,27 +51,54 @@ function MyAccountPage() {
   const [sheet, setSheet] = useState<Sheet>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const load = async (uid: string) => {
+  const load = async (uid: string, currentUser?: any) => {
     const { data } = await supabase
-     .from("profiles")
-     .select("full_name, phone, avatar_url")
-     .eq("id", uid)
-     .maybeSingle();
-    setProfile(data);
+      .from("profiles")
+      .select("full_name, phone, avatar_url")
+      .eq("id", uid)
+      .maybeSingle();
+
+    // جلب الاسم ورقم الهاتف من بيانات المستخدم المسجلة أو الذاكرة المؤقتة
+    const metaName =
+      currentUser?.user_metadata?.full_name ||
+      (typeof window !== "undefined" ? sessionStorage.getItem("sc_name") : null);
+    const metaPhone =
+      currentUser?.user_metadata?.phone ||
+      (typeof window !== "undefined" ? sessionStorage.getItem("sc_phone") : null);
+
+    // إذا كان الاسم موجوداً في الحساب وغير موجود في جدول profiles نقوم بحفظه تلقائياً
+    if (metaName && (!data || !data.full_name)) {
+      await supabase.from("profiles").upsert({
+        id: uid,
+        full_name: metaName,
+        phone: data?.phone || metaPhone || null,
+      });
+      setProfile({
+        full_name: metaName,
+        phone: data?.phone || metaPhone || null,
+        avatar_url: data?.avatar_url || null,
+      });
+    } else {
+      setProfile(data);
+    }
+
     if (data?.avatar_url) {
       const { data: s } = await supabase.storage
-       .from("avatars")
-       .createSignedUrl(data.avatar_url, 3600);
-      setAvatar(s?.signedUrl?? null);
+        .from("avatars")
+        .createSignedUrl(data.avatar_url, 3600);
+      setAvatar(s?.signedUrl ?? null);
     }
+
     const { count } = await supabase
-     .from("addresses")
-     .select("id", { count: "exact", head: true });
-    setHasAddress((count?? 0) > 0);
+      .from("addresses")
+      .select("id", { count: "exact", head: true });
+    setHasAddress((count ?? 0) > 0);
   };
 
   useEffect(() => {
-    if (user) load(user.id);
+    if (user) {
+      load(user.id, user);
+    }
   }, [user]);
 
   if (loading) {
@@ -91,20 +118,36 @@ function MyAccountPage() {
   }
 
   const upload = async (f: File) => {
-    if (!user ||!f.type.startsWith("image/")) return;
+    if (!user || !f.type.startsWith("image/")) return;
     const path = `${user.id}/avatar-${Date.now()}`;
     const { error } = await supabase.storage
-     .from("avatars")
-     .upload(path, f, { upsert: true, contentType: f.type });
+      .from("avatars")
+      .upload(path, f, { upsert: true, contentType: f.type });
     if (error) return;
     await supabase.from("profiles").upsert({ id: user.id, avatar_url: path });
-    load(user.id);
+    load(user.id, user);
   };
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    if (typeof window !== "undefined") {
+      sessionStorage.clear();
+    }
     navigate({ to: "/", replace: true });
   };
+
+  // استخراج الاسم الحقيقي ورقم الهاتف بدقة مع خيارات احتياطية ذكية
+  const displayName =
+    profile?.full_name ||
+    user?.user_metadata?.full_name ||
+    (typeof window !== "undefined" ? sessionStorage.getItem("sc_name") : null) ||
+    user?.email?.split("@")[0] ||
+    "عميلنا الكريم";
+
+  const displayPhone =
+    profile?.phone ||
+    user?.user_metadata?.phone ||
+    (typeof window !== "undefined" ? sessionStorage.getItem("sc_phone") : null);
 
   const items: { label: string; icon: LucideIcon; to?: string; sheet?: Sheet }[] = [
     { label: "حسابي", icon: UserRound, to: "/account/profile" },
@@ -144,7 +187,7 @@ function MyAccountPage() {
             className="relative grid size-14 shrink-0 place-items-center overflow-hidden rounded-2xl bg-secondary text-clay"
             aria-label="إضافة صورة"
           >
-            {avatar? (
+            {avatar ? (
               <img src={avatar} alt="صورتي" className="size-full object-cover" />
             ) : (
               <UserRound className="size-7" />
@@ -162,19 +205,21 @@ function MyAccountPage() {
           />
           <div className="min-w-0">
             <p className="text-[11px] text-muted-foreground">أهلاً بك،</p>
+            {/* عرض اسم العميل الحقيقي المسجل */}
             <p className="truncate font-display text-base font-black text-cocoa">
-              {profile?.full_name || "عميل السوق الشامل"}
+              {displayName}
             </p>
-            {profile?.phone && (
-              <p dir="ltr" className="text-right text-[11px] text-muted-foreground">
-                {profile.phone}
+            {/* عرض رقم هاتف العميل المسجل */}
+            {displayPhone && (
+              <p dir="ltr" className="text-right text-[11px] text-muted-foreground font-medium">
+                {displayPhone}
               </p>
             )}
             <Link
               to="/account/addresses"
               className="mt-0.5 flex items-center gap-1 text-[11px] font-bold text-clay"
             >
-              <MapPin className="size-3" /> {hasAddress? "عناويني" : "أضف عنوان"}
+              <MapPin className="size-3" /> {hasAddress ? "عناويني" : "أضف عنوان"}
             </Link>
           </div>
         </div>
@@ -190,7 +235,7 @@ function MyAccountPage() {
                 <ChevronLeft className="size-4 text-muted-foreground" />
               </>
             );
-            return to? (
+            return to ? (
               <Link key={label} to={to} className={row}>
                 {inner}
               </Link>
@@ -202,10 +247,10 @@ function MyAccountPage() {
           })}
           <button
             onClick={signOut}
-            className="flex w-full items-center gap-3 rounded-2xl bg-card px-4 py-3.5 ring-1 ring-border"
+            className="flex w-full items-center gap-3 rounded-2xl bg-card px-4 py-3.5 ring-1 ring-border text-destructive hover:bg-red-50/50 transition"
           >
-            <LogOut className="size-5 text-destructive" />
-            <span className="text-sm font-bold text-destructive">تسجيل الخروج</span>
+            <LogOut className="size-5" />
+            <span className="text-sm font-bold">تسجيل الخروج</span>
           </button>
         </div>
       </div>
@@ -221,7 +266,7 @@ function BottomSheet({
   sheet: Exclude<Sheet, null>;
   onClose: () => void;
 }) {
-  const url = typeof window!== "undefined"? window.location.origin : "";
+  const url = typeof window !== "undefined" ? window.location.origin : "";
   const [copied, setCopied] = useState(false);
 
   return (
@@ -237,9 +282,9 @@ function BottomSheet({
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold">
             {sheet === "share"
-             ? "مشاركة المنصة"
+              ? "مشاركة المنصة"
               : sheet === "support"
-             ? "خدمة العملاء"
+              ? "خدمة العملاء"
               : "معلومات المنصة"}
           </h3>
           <button onClick={onClose}>
@@ -265,7 +310,7 @@ function BottomSheet({
             }}
             className="w-full rounded-xl bg-secondary p-3 text-sm font-bold"
           >
-            {copied? "تم النسخ!" : "نسخ رابط المنصة"}
+            {copied ? "تم النسخ!" : "نسخ رابط المنصة"}
           </button>
         )}
         {sheet === "info" && (
