@@ -6,6 +6,7 @@ export const Route = createFileRoute("/admin")({
 
 const cards = [
   { title: "الموظفين", desc: "لإدارة بيانات الموظفين وترقيتهم", href: "/employees", icon: "👥" },
+  { title: "العملاء", desc: "عرض العملاء المسجلين", href: "/admin-clients", icon: "🧑‍💼" },
   { title: "مبالغ التأمين", desc: "تفعيل وإضافة مبالغ التأمين", href: "/insurance-amounts", icon: "🛡️" },
   { title: "يوميات العملاء", desc: "كشوف وحركات العملاء اليومية", href: "/client-daily", icon: "📒" },
   { title: "الحسابات", desc: "لإدارة الحسابات المالية", href: "/accounts", icon: "💰" },
@@ -20,7 +21,6 @@ function AdminPage() {
       <div className="mx-auto max-w-5xl">
         <h1 className="text-2xl font-black text-cocoadeep mb-2">لوحة الإدارة</h1>
         <p className="text-sm text-muted-foreground mb-6">إدارة جميع أقسام الموقع</p>
-
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {cards.map((c) => (
             <Link
