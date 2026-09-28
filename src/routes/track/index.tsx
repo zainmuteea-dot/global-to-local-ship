@@ -43,8 +43,8 @@ function TrackIndex() {
       setError("يرجى إدخال رقم الطلب");
       return;
     }
-    if (cleanPhone.length < 9) {
-      setError("أدخل رقم الهاتف المسجل بالطلب (9 أرقام على الأقل)");
+    if (cleanPhone.length < 8) {
+      setError("أدخل رقم الهاتف المسجل بالطلب");
       return;
     }
 
@@ -52,45 +52,34 @@ function TrackIndex() {
     setError("");
 
     try {
-      // 1. محاولة البحث عبر الدالة السحابية المخصصة للتتبع
-      const { data: rpcData, error: rpcError } = await supabase.rpc("track_order", {
-        _code: trackingCode,
-        _phone: cleanPhone,
-      });
+      // البحث المباشر في جدول الطلبات orders باستخدام select("*") لتجنب أي تعارض في أسماء الأعمدة
+      const { data: directOrders, error: queryError } = await supabase
+        .from("orders")
+        .select("*")
+        .ilike("tracking_code", trackingCode);
 
       let matchedOrder: TrackedOrder | null = null;
 
-      if (!rpcError && rpcData && rpcData.length > 0) {
-        const row = rpcData[0];
-        matchedOrder = {
-          trackingCode: row.tracking_code,
-          status: row.status,
-          customerPhone: row.customer_phone,
-          productName: row.product_name,
-          createdAt: row.created_at,
-          updatedAt: row.updated_at,
-        };
-      } else {
-        // 2. فحص احتياطي مباشر من جدول orders
-        const { data: directOrders } = await supabase
-          .from("orders")
-          .select("tracking_code, status, phone, product_name, created_at, updated_at")
-          .ilike("tracking_code", trackingCode);
-
-        if (directOrders && directOrders.length > 0) {
-          const match = directOrders.find(
-            (o) => o.phone.replace(/\D/g, "").endsWith(cleanPhone.slice(-9))
+      if (!queryError && directOrders && directOrders.length > 0) {
+        // التحقق من مطابقة رقم الهاتف (يقبل الأرقام بـ 9 أرقام أو مع مفتاح الدولة)
+        const match = directOrders.find((o) => {
+          const rowPhone = (o.phone || o.customer_phone || "").replace(/\D/g, "");
+          return (
+            !cleanPhone ||
+            rowPhone.endsWith(cleanPhone.slice(-8)) ||
+            cleanPhone.endsWith(rowPhone.slice(-8))
           );
-          if (match) {
-            matchedOrder = {
-              trackingCode: match.tracking_code,
-              status: match.status,
-              customerPhone: match.phone,
-              productName: match.product_name,
-              createdAt: match.created_at,
-              updatedAt: match.updated_at,
-            };
-          }
+        });
+
+        if (match) {
+          matchedOrder = {
+            trackingCode: match.tracking_code || trackingCode,
+            status: match.status || "جديد",
+            customerPhone: match.phone || match.customer_phone || cleanPhone,
+            productName: match.product_name || match.product_title || match.notes || match.product_link || "طلب شحن",
+            createdAt: match.created_at,
+            updatedAt: match.updated_at || match.created_at,
+          };
         }
       }
 
@@ -99,7 +88,7 @@ function TrackIndex() {
         return;
       }
 
-      // حفظ بيانات التتبع محلياً والانتقال لصفحة التفاصيل ومسار الشحن
+      // حفظ بيانات التتبع محلياً والانتقال لشاشة التفاصيل
       sessionStorage.setItem(`sc_tracking_${matchedOrder.trackingCode}`, JSON.stringify(matchedOrder));
       await navigate({
         to: "/track/$trackingCode",
@@ -137,7 +126,7 @@ function TrackIndex() {
               <input
                 value={code}
                 onChange={(event) => { setCode(event.target.value); setError(""); }}
-                placeholder="مثال: SQ-892411 أو SC-123456"
+                placeholder="مثال: SQ-371430"
                 autoComplete="off"
                 className="min-w-0 flex-1 bg-transparent text-right text-base text-cocoadeep outline-none placeholder:text-muted-foreground"
               />
@@ -151,7 +140,7 @@ function TrackIndex() {
               <input
                 value={phone}
                 onChange={(event) => { setPhone(event.target.value); setError(""); }}
-                placeholder="رقم الهاتف المسجل بالطلب"
+                placeholder="774399744"
                 inputMode="tel"
                 dir="ltr"
                 className="min-w-0 flex-1 bg-transparent text-right text-base text-cocoadeep outline-none placeholder:text-muted-foreground"
