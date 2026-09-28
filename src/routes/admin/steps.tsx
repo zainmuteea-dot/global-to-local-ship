@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { supabase } from "../../lib/supabase";
+import { supabase } from "../lib/supabase";
 
-export const Route = createFileRoute("/admin/steps")({
+export const Route = createFileRoute("/admin-steps")({
   component: StepsAdmin,
 });
 
