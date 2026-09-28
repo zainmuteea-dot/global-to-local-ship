@@ -44,7 +44,7 @@ function TrackingDetailPage() {
       // جلب تفاصيل الطلب من قاعدة البيانات
       const { data, error } = await supabase
         .from("orders")
-        .select("tracking_code, customer_name, phone, status, product_name, product_link, created_at, updated_at")
+        .select("*")
         .ilike("tracking_code", cleanCode)
         .maybeSingle();
 
