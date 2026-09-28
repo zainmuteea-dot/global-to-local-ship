@@ -26,7 +26,7 @@ function AdminPage() {
     { title: "يوميات العملاء", desc: "حركات وعمليات العملاء اليومية", href: "/client-daily", icon: "📒" },
     { title: "الحسابات", desc: "إدارة الحسابات المالية", href: "/accounts", icon: "💰" },
     { title: "الأسعار", desc: "إدارة أسعار الشحن والخدمات", href: "/prices", icon: "🏷️" },
-    { title: "المخازن", desc: "إدارة المخازن وعناوين التخزين", href: "/stores", icon: "🏬" },
+    { title: "المخازن", desc: "إدارة المخازن وعناوين التخزين", href: "/warehouses", icon: "🏬" },
   ];
 
   return (
