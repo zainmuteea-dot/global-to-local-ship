@@ -1,18 +1,23 @@
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 
-export default function AdminClients(){
+export const Route = createFileRoute("/admin-clients")({
+  component: AdminClients,
+});
+
+function AdminClients(){
   const [rows,setRows]=useState<any[]>([]);
   const [name,setName]=useState(""); const [phone,setPhone]=useState(""); const [city,setCity]=useState("");
   const load=async()=>{
     const {data,error}=await supabase.from("clients").select("*").order("id",{ascending:false});
-    if(!error) setRows(data||[]); else alert(error.message);
+    if(!error) setRows(data||[]);
   };
   useEffect(()=>{load()},[]);
   const add=async()=>{
     if(!name.trim()){alert("ادخل الاسم");return;}
     const {error}=await supabase.from("clients").insert([{name,phone,city}]);
-    if(error){alert("خطأ: "+error.message);return;}
+    if(error){alert(error.message);return;}
     setName("");setPhone("");setCity(""); load();
   };
   return(<div style={{padding:20,direction:"rtl"}}>
