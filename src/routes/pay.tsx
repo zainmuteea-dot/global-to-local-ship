@@ -1,14 +1,34 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
+import { supabase } from '../lib/supabase'
 
 export const Route = createFileRoute('/pay')({
-  validateSearch: (s: Record<string, string>) => ({ order: s.order ?? '' }),
+  validateSearch: (s: Record<string, string>) => ({ order: s.order?? '' }),
   component: PayPage,
 })
 
 function PayPage() {
   const { order } = Route.useSearch()
   const [method, setMethod] = useState('')
+  const [customerName, setCustomerName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [total, setTotal] = useState(3650)
+
+  useEffect(() => {
+    if (!order) return
+    const fetchOrder = async () => {
+      const { data } = await supabase
+       .from('orders')
+       .select('customer_name, phone')
+       .eq('tracking_code', order)
+       .maybeSingle()
+      if (data) {
+        setCustomerName(data.customer_name || '')
+        setPhone(data.phone || '')
+      }
+    }
+    fetchOrder()
+  }, [order])
 
   const methods = ['جيب','جوالي','فلوسك','حاسب','كاش','ون كاش','إيزي','موبايل موني']
 
@@ -18,6 +38,12 @@ function PayPage() {
         <h1 className="text-center text-xl font-bold text-[#8B5E34] my-4">الدفع</h1>
 
         <div className="bg-white rounded-2xl p-4 shadow">
+          {customerName && (
+            <div className="mb-3 p-3 bg-[#FFFBF2] rounded-xl text-sm">
+              <div><span className="font-bold">اسم العميل:</span> {customerName}</div>
+              <div><span className="font-bold">الهاتف:</span> <span dir="ltr">{phone}</span></div>
+            </div>
+          )}
           <div className="flex justify-between mb-3">
             <div className="text-center flex-1">
               <div className="text-sm text-gray-500">رقم الطلب</div>
@@ -30,13 +56,13 @@ function PayPage() {
           </div>
           <div className="flex gap-2 text-center">
             <div className="flex-1 bg-orange-50 rounded-xl p-3">
-              <div className="font-bold">3,650 ري</div><div className="text-xs">الإجمالي</div>
+              <div className="font-bold">{total.toLocaleString()} ري</div><div className="text-xs">الإجمالي</div>
             </div>
             <div className="flex-1 bg-green-50 rounded-xl p-3">
               <div className="font-bold text-green-600">0 ري</div><div className="text-xs">المدفوع</div>
             </div>
             <div className="flex-1 bg-red-50 rounded-xl p-3">
-              <div className="font-bold text-red-600">3,650 ري</div><div className="text-xs">المتبقي</div>
+              <div className="font-bold text-red-600">{total.toLocaleString()} ري</div><div className="text-xs">المتبقي</div>
             </div>
           </div>
         </div>
