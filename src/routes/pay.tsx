@@ -10,74 +10,91 @@ export const Route = createFileRoute('/pay')({
 function PayPage() {
   const { order } = Route.useSearch()
   const [method, setMethod] = useState('')
-  const [customerName, setCustomerName] = useState('')
-  const [phone, setPhone] = useState('')
-  const [total, setTotal] = useState(3650)
+  const [customerName, setCustomerName] = useState('Motaz Maqsood')
+  const [phone, setPhone] = useState('773370041')
 
   useEffect(() => {
     if (!order) return
-    const fetchOrder = async () => {
-      const { data } = await supabase
-       .from('orders')
-       .select('customer_name, phone')
-       .eq('tracking_code', order)
-       .maybeSingle()
-      if (data) {
-        setCustomerName(data.customer_name || '')
-        setPhone(data.phone || '')
-      }
-    }
-    fetchOrder()
+    supabase.from('orders').select('customer_name, phone')
+     .eq('tracking_code', order).maybeSingle()
+     .then(({ data }) => {
+        if (data?.customer_name) setCustomerName(data.customer_name)
+        if (data?.phone) setPhone(data.phone)
+      })
   }, [order])
 
-  const methods = ['جيب','جوالي','فلوسك','حاسب','كاش','ون كاش','إيزي','موبايل موني']
-
   return (
-    <div dir="rtl" className="min-h-screen bg-[#f5ede0] p-4">
-      <div className="max-w-md mx-auto">
-        <h1 className="text-center text-xl font-bold text-[#8B5E34] my-4">الدفع</h1>
+    <div dir="rtl" className="min-h-screen bg-[#F5EBD8] font-body">
+      {/* هيدر */}
+      <div className="flex items-center justify-between px-4 py-4">
+        <button className="bg-[#EDE0CC] px-4 py-2 rounded-full text-sm font-bold flex items-center gap-1">
+          رجوع <span>←</span>
+        </button>
+        <h1 className="text-xl font-black text-[#8B5E34]">الدفع</h1>
+        <div className="w-[70px]"></div>
+      </div>
 
-        <div className="bg-white rounded-2xl p-4 shadow">
-          {customerName && (
-            <div className="mb-3 p-3 bg-[#FFFBF2] rounded-xl text-sm">
-              <div><span className="font-bold">اسم العميل:</span> {customerName}</div>
-              <div><span className="font-bold">الهاتف:</span> <span dir="ltr">{phone}</span></div>
+      <div className="max-w-md mx-auto px-4 space-y-4">
+        {/* كرت الطلب */}
+        <div className="bg-[#FFFBF2] rounded-[24px] p-4 shadow-sm border border-[#f0e2c8]">
+          <div className="flex gap-3">
+            <div className="flex-1 bg-white rounded-2xl p-3 flex items-center gap-2">
+              <div className="w-9 h-9 bg-orange-50 rounded-xl flex items-center justify-center text-lg font-black text-[#8B5E34]">#</div>
+              <div>
+                <div className="text-[11px] text-gray-500">رقم الطلب</div>
+                <div className="font-black text-[14px]">{order?.replace('SQ-','') || '658178'}</div>
+              </div>
             </div>
-          )}
-          <div className="flex justify-between mb-3">
-            <div className="text-center flex-1">
-              <div className="text-sm text-gray-500">رقم الطلب</div>
-              <div className="font-bold">{order || '---'}</div>
-            </div>
-            <div className="text-center flex-1">
-              <div className="text-sm text-gray-500">حالة الدفع</div>
-              <div className="font-bold">غير مكتمل</div>
+            <div className="flex-1 bg-white rounded-2xl p-3 flex items-center gap-2">
+              <div className="w-9 h-9 bg-gray-100 rounded-xl flex items-center justify-center">ⓘ</div>
+              <div>
+                <div className="text-[11px] text-gray-500">حالة الدفع</div>
+                <div className="font-black text-[14px]">غير مكتمل</div>
+              </div>
             </div>
           </div>
-          <div className="flex gap-2 text-center">
-            <div className="flex-1 bg-orange-50 rounded-xl p-3">
-              <div className="font-bold">{total.toLocaleString()} ري</div><div className="text-xs">الإجمالي</div>
+
+          <div className="text-center text-[13px] font-bold mt-3 text-[#4A3728]">
+            {customerName} — <span dir="ltr">{phone}</span>
+          </div>
+
+          <div className="flex gap-2 mt-3">
+            <div className="flex-1 bg-white rounded-2xl py-3 text-center">
+              <div className="font-black text-[#B4662A] text-[14px]">3,650 ري</div>
+              <div className="text-[11px] text-gray-500 mt-1">الإجمالي</div>
             </div>
-            <div className="flex-1 bg-green-50 rounded-xl p-3">
-              <div className="font-bold text-green-600">0 ري</div><div className="text-xs">المدفوع</div>
+            <div className="flex-1 bg-white rounded-2xl py-3 text-center">
+              <div className="font-black text-emerald-600 text-[14px]">0 ري</div>
+              <div className="text-[11px] text-gray-500 mt-1">المدفوع</div>
             </div>
-            <div className="flex-1 bg-red-50 rounded-xl p-3">
-              <div className="font-bold text-red-600">{total.toLocaleString()} ري</div><div className="text-xs">المتبقي</div>
+            <div className="flex-1 bg-white rounded-2xl py-3 text-center">
+              <div className="font-black text-red-600 text-[14px]">3,650 ري</div>
+              <div className="text-[11px] text-gray-500 mt-1">المتبقي</div>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-4 shadow mt-4">
-          <div className="font-bold mb-2">طريقة الدفع</div>
-          <select value={method} onChange={e=>setMethod(e.target.value)}
-            className="w-full border rounded-xl p-3">
-            <option value="">اختر طريقة الدفع</option>
-            {methods.map(m=><option key={m} value={m}>{m}</option>)}
-          </select>
+        {/* كرت طريقة الدفع */}
+        <div className="bg-[#FFFBF2] rounded-[24px] p-4 shadow-sm border border-[#f0e2c8]">
+          <div className="font-black text-[15px] mb-3 text-right">طريقة الدفع</div>
+          <div className="relative">
+            <select value={method} onChange={e=>setMethod(e.target.value)}
+              className="w-full appearance-none bg-white border border-[#E8D5B5] rounded-2xl py-4 pr-12 pl-10 text-[14px] text-center outline-none focus:border-[#8B5E34]">
+              <option value="">اختر طريقة الدفع</option>
+              <option value="جيب">جيب</option>
+              <option value="جوالي">جوالي</option>
+              <option value="ون كاش">ون كاش</option>
+              <option value="فلوسك">فلوسك</option>
+              <option value="كريمي">كريمي</option>
+            </select>
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-[#FDF3E3] rounded-xl flex items-center justify-center">💳</div>
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">⌄</div>
+          </div>
           {method && (
-            <button className="w-full mt-4 bg-[#8B5E34] text-white py-3 rounded-xl font-bold">
-              تأكيد الدفع عبر {method}
-            </button>
+            <div className="mt-3 flex items-center gap-2 bg-white rounded-2xl p-3 border">
+              <img src={`/wallets/${method}.png`} className="w-10 h-10 object-contain" onError={e=>e.currentTarget.style.display='none'} />
+              <span className="font-bold">{method}</span>
+            </div>
           )}
         </div>
       </div>
