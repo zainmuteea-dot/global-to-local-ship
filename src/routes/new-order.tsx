@@ -42,7 +42,6 @@ function NewOrder() {
   const [trackingCode, setTrackingCode] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  // جلب اسم ورقم هاتف العميل المسجل تلقائياً + حماية
   useEffect(() => {
     const autoFill = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -52,10 +51,10 @@ function NewOrder() {
         return;
       }
       const { data: prof } = await supabase
-       .from("profiles")
-       .select("full_name, phone")
-       .eq("id", user.id)
-       .maybeSingle();
+      .from("profiles")
+      .select("full_name, phone")
+      .eq("id", user.id)
+      .maybeSingle();
 
       const savedName =
         prof?.full_name ||
@@ -104,8 +103,8 @@ function NewOrder() {
       const { data: { session } } = await supabase.auth.getSession();
       const user = session?.user;
       const { data, error } = await supabase
-      .from('orders')
-      .insert([{
+     .from('orders')
+     .insert([{
           customer_name: name.trim(),
           phone: phone.trim(),
           product_link: url.trim(),
@@ -114,8 +113,8 @@ function NewOrder() {
           notes: fullNotes,
           user_id: user?.id,
         }])
-      .select('tracking_code')
-      .single();
+     .select('tracking_code')
+     .single();
 
       if (error) throw error;
       if (data) setTrackingCode(data.tracking_code);
@@ -159,8 +158,8 @@ function NewOrder() {
             {store && <div><span className="font-bold">المتجر:</span> {store}</div>}
           </div>
           <div className="flex flex-col gap-2.5 pt-2">
-            <Link to="/track/$trackingCode" params={{ trackingCode }} className="w-full bg-[#8B5E34] hover:bg-[#6f4b29] text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 shadow-md transition">
-              <span>تتبع مسار شحنتك الآن</span><ArrowRight className="size-4" />
+            <Link to="/pay" search={{ order: trackingCode }} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 shadow-md transition">
+              <span>المتابعة إلى طريقة الدفع</span><ArrowRight className="size-4" />
             </Link>
             <button onClick={() => window.print()} type="button" className="w-full border border-gray-300 hover:bg-gray-50 text-gray-700 py-3 rounded-xl font-bold flex items-center justify-center gap-2 text-xs">
               <Printer className="size-4" /><span>طباعة سند الاستلام</span>
