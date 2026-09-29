@@ -1,69 +1,24 @@
 import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
-  Home,
-  PackagePlus,
-  Compass,
-  UserCheck,
-  MessageSquare,
-  Tag,
-  ShoppingCart,
-  Landmark,
-  ShieldCheck,
-  FileSpreadsheet,
-  Users,
-  Briefcase,
-  Store,
-  Bot,
-  BarChart3,
-  Headphones,
-  Sliders,
-  DollarSign,
-  ChevronDown,
-  X,
-  LogOut,
-  CircleDot,
+  Home, PackagePlus, Compass, UserCheck, MessageSquare, Tag,
+  ShoppingCart, Landmark, ShieldCheck, FileSpreadsheet, Users,
+  Briefcase, Store, Bot, BarChart3, Headphones, Sliders,
+  DollarSign, ChevronDown, X, LogOut,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
-interface MenuItem {
-  title: string;
-  icon: any;
-  href?: string;
-  badge?: string;
-  badgeColor?: string;
-  subItems?: { title: string; href: string }[];
-}
+interface MenuItem { title: string; icon: any; href?: string; badge?: string; badgeColor?: string; subItems?: { title: string; href: string }[]; }
+interface MenuSection { title: string; badge?: string; badgeColor?: string; items: MenuItem[]; }
 
-interface MenuSection {
-  title: string;
-  badge?: string;
-  badgeColor?: string;
-  items: MenuItem[];
-}
-
-export function AdminSidebar({
-  isOpen,
-  onToggle,
-}: {
-  isOpen: boolean;
-  onToggle: () => void;
-}) {
+export function AdminSidebar({ isOpen, onToggle }: { isOpen: boolean; onToggle: () => void; }) {
   const navigate = useNavigate();
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({
-    "الحسابات والدليل المالي": true,
-  });
-
-  const toggleExpand = (title: string) => {
-    setExpanded((prev) => ({ ...prev, [title]: !prev[title] }));
-  };
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({ "الحسابات والدليل المالي": true });
+  const toggleExpand = (title: string) => setExpanded((prev) => ({...prev, [title]:!prev[title] }));
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    if (typeof window !== "undefined") {
-      sessionStorage.clear();
-      localStorage.removeItem("user");
-    }
+    if (typeof window!== "undefined") { sessionStorage.clear(); localStorage.removeItem("user"); }
     navigate({ to: "/login" });
   };
 
@@ -127,39 +82,22 @@ export function AdminSidebar({
 
   return (
     <>
-      {isOpen && (
-        <div
-          onClick={onToggle}
-          className="fixed inset-0 bg-black/60 z-40 lg:hidden backdrop-blur-xs"
-        />
-      )}
+      {isOpen && <div onClick={onToggle} className="fixed inset-0 bg-black/60 z-40 backdrop-blur-xs" />}
 
-      <aside
-        dir="rtl"
-        className={`fixed top-0 right-0 h-full w-72 bg-[#1c130d] border-l border-[#3a2719] text-stone-200 z-50 flex flex-col transition-transform duration-300 ${
-          isOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"
-        }`}
-      >
-        {/* هيدر القائمة مع بيانات المشرف */}
+      <aside dir="rtl" className={`fixed top-0 right-0 h-full w-72 bg-[#1c130d] border-l border-[#3a2719] text-stone-200 z-50 flex flex-col transition-transform duration-300 ${isOpen? "translate-x-0" : "translate-x-full"}`}>
         <div className="p-4 border-b border-[#352316] bg-[#241810]">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <div className="size-9 rounded-xl bg-gradient-to-br from-amber-600 to-amber-900 flex items-center justify-center font-black text-amber-100 shadow-md">
-                س
-              </div>
+              <div className="size-9 rounded-xl bg-gradient-to-br from-amber-600 to-amber-900 flex items-center justify-center font-black text-amber-100 shadow-md">س</div>
               <div>
                 <h2 className="text-sm font-bold text-amber-100">السوق الشامل</h2>
                 <p className="text-[10px] text-stone-400">وسيط الشراء العالمي المعتمد</p>
               </div>
             </div>
-            <button
-              onClick={onToggle}
-              className="lg:hidden p-1.5 rounded-lg text-stone-400 hover:text-white hover:bg-stone-800"
-            >
+            <button onClick={onToggle} className="p-1.5 rounded-lg text-stone-400 hover:text-white hover:bg-stone-800">
               <X className="size-4" />
             </button>
           </div>
-
           <div className="bg-[#170f0a] border border-[#3b2718] rounded-xl p-2.5 flex items-center justify-between text-xs">
             <div className="flex items-center gap-2">
               <div className="size-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -170,81 +108,38 @@ export function AdminSidebar({
           </div>
         </div>
 
-        {/* عناصر القائمة مقسمة */}
-        <div className="flex-1 overflow-y-auto px-3 py-4 space-y-5 text-xs scrollbar-thin scrollbar-thumb-stone-800">
+        <div className="flex-1 overflow-y-auto px-3 py-4 space-y-5 text-xs">
           {sections.map((sec, sIdx) => (
             <div key={sIdx}>
               <div className="flex items-center justify-between px-2 mb-2">
-                <span className="text-[11px] font-bold text-stone-400 tracking-wider">
-                  {sec.title}
-                </span>
-                {sec.badge && (
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${sec.badgeColor}`}>
-                    {sec.badge}
-                  </span>
-                )}
+                <span className="text-[11px] font-bold text-stone-400 tracking-wider">{sec.title}</span>
+                {sec.badge && <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${sec.badgeColor}`}>{sec.badge}</span>}
               </div>
-
               <div className="space-y-1">
                 {sec.items.map((item, iIdx) => {
                   const Icon = item.icon;
                   const hasSub = item.subItems && item.subItems.length > 0;
                   const isExpanded = expanded[item.title];
-
                   return (
                     <div key={iIdx}>
-                      {hasSub ? (
-                        <button
-                          onClick={() => toggleExpand(item.title)}
-                          className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl transition text-stone-300 hover:bg-[#2b1c12] hover:text-amber-200 ${
-                            isExpanded ? "bg-[#271910] text-amber-300" : ""
-                          }`}
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <Icon className="size-4 text-amber-500/80" />
-                            <span className="font-medium">{item.title}</span>
-                          </div>
+                      {hasSub? (
+                        <button onClick={() => toggleExpand(item.title)} className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl transition text-stone-300 hover:bg-[#2b1c12] hover:text-amber-200 ${isExpanded? "bg-[#271910] text-amber-300" : ""}`}>
+                          <div className="flex items-center gap-2.5"><Icon className="size-4 text-amber-500/80" /><span className="font-medium">{item.title}</span></div>
                           <div className="flex items-center gap-1.5">
-                            {item.badge && (
-                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${item.badgeColor}`}>
-                                {item.badge}
-                              </span>
-                            )}
-                            <ChevronDown
-                              className={`size-3 text-stone-400 transition-transform ${
-                                isExpanded ? "rotate-180" : ""
-                              }`}
-                            />
+                            {item.badge && <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${item.badgeColor}`}>{item.badge}</span>}
+                            <ChevronDown className={`size-3 text-stone-400 transition-transform ${isExpanded? "rotate-180" : ""}`} />
                           </div>
                         </button>
                       ) : (
-                        <Link
-                          to={item.href || "/admin"}
-                          className="flex items-center justify-between px-2.5 py-2 rounded-xl transition text-stone-300 hover:bg-[#2b1c12] hover:text-amber-200"
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <Icon className="size-4 text-amber-500/80" />
-                            <span className="font-medium">{item.title}</span>
-                          </div>
-                          {item.badge && (
-                            <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${item.badgeColor}`}>
-                              {item.badge}
-                            </span>
-                          )}
+                        <Link to={item.href || "/admin"} onClick={onToggle} className="flex items-center justify-between px-2.5 py-2 rounded-xl transition text-stone-300 hover:bg-[#2b1c12] hover:text-amber-200">
+                          <div className="flex items-center gap-2.5"><Icon className="size-4 text-amber-500/80" /><span className="font-medium">{item.title}</span></div>
+                          {item.badge && <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${item.badgeColor}`}>{item.badge}</span>}
                         </Link>
                       )}
-
-                      {/* عناصر متفرعة */}
                       {hasSub && isExpanded && (
                         <div className="mr-6 my-1 space-y-1 border-r border-[#3f2a1b] pr-2">
                           {item.subItems?.map((sub, subIdx) => (
-                            <Link
-                              key={subIdx}
-                              to={sub.href}
-                              className="block py-1.5 px-2 rounded-lg text-[11px] text-stone-400 hover:text-amber-200 hover:bg-[#2c1d13] transition"
-                            >
-                              • {sub.title}
-                            </Link>
+                            <Link key={subIdx} to={sub.href} onClick={onToggle} className="block py-1.5 px-2 rounded-lg text-[11px] text-stone-400 hover:text-amber-200 hover:bg-[#2c1d13] transition">• {sub.title}</Link>
                           ))}
                         </div>
                       )}
@@ -256,14 +151,9 @@ export function AdminSidebar({
           ))}
         </div>
 
-        {/* زر تسجيل الخروج في الأسفل */}
         <div className="p-3 border-t border-[#352316] bg-[#22160e]">
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-red-950/40 text-red-300 border border-red-900/40 hover:bg-red-900/60 transition text-xs font-bold"
-          >
-            <LogOut className="size-4" />
-            تسجيل الخروج من المنظومة
+          <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-red-950/40 text-red-300 border border-red-900/40 hover:bg-red-900/60 transition text-xs font-bold">
+            <LogOut className="size-4" /> تسجيل الخروج من المنظومة
           </button>
         </div>
       </aside>
