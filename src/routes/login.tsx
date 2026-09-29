@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
-import { Mail, Lock, ArrowLeft, ShoppingBag } from "lucide-react";
+import { Phone, Lock, ArrowLeft, ShoppingBag } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/login")({
@@ -15,13 +15,13 @@ export const Route = createFileRoute("/login")({
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
+  const [phoneOrEmail, setPhoneOrEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [accountType, setAccountType] = useState<"client" | "employee">("client");
   const [loading, setLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // 1. فحص فوري: إذا كان مسجل دخول مسبقاً، تحويل مباشر بدون عرض صفحة الدخول
   useEffect(() => {
     let isMounted = true;
 
@@ -32,10 +32,10 @@ export function LoginPage() {
 
         if (session?.user) {
           const { data: profile } = await supabase
-           .from("profiles")
-           .select("role")
-           .eq("id", session.user.id)
-           .single();
+            .from("profiles")
+            .select("role")
+            .eq("id", session.user.id)
+            .single();
 
           const savedRole = profile?.role || localStorage.getItem("sc_role") || "client";
 
@@ -63,8 +63,9 @@ export function LoginPage() {
     e.preventDefault();
     setError(null);
 
-    if (!email.trim() ||!email.includes("@")) {
-      setError("يرجى إدخال بريد إلكتروني صحيح");
+    const inputVal = phoneOrEmail.trim().replace(/\s+/g, "");
+    if (!inputVal) {
+      setError("يرجى إدخال رقم الهاتف");
       return;
     }
     if (!password) {
@@ -75,32 +76,42 @@ export function LoginPage() {
     setLoading(true);
 
     try {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
+      // إذا كان الإدخال يحتوي @ يبقى بريداً، وإذا كان رقماً يحوّل لصيغة الدخول
+      const loginEmail = inputVal.includes("@") ? inputVal : `${inputVal}@alsouq.local`;
+
+      const { data: authData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: loginEmail,
         password: password,
       });
 
       if (signInError) {
-        setError("البريد الإلكتروني أو كلمة المرور غير صحيحة");
+        setError("رقم الهاتف أو كلمة المرور غير صحيحة");
         setLoading(false);
         return;
       }
 
-      const { data: { user } } = await supabase.auth.getUser();
+      // قراءة بيانات المستخدم وصلاحيته
+      const user = authData?.user;
+      let userRole = accountType;
 
-      let userRole = "client";
       if (user) {
         const { data: profile } = await supabase
-         .from("profiles")
-         .select("role")
-         .eq("id", user.id)
-         .single();
-        if (profile?.role) userRole = profile.role;
+          .from("profiles")
+          .select("role, full_name, phone")
+          .eq("id", user.id)
+          .single();
+
+        if (profile?.role) {
+          userRole = profile.role as "client" | "employee";
+        }
+        if (profile?.full_name) sessionStorage.setItem("sc_name", profile.full_name);
+        if (profile?.phone) sessionStorage.setItem("sc_phone", profile.phone);
       }
 
       localStorage.setItem("sc_role", userRole);
 
-      if (userRole === "employee" || userRole === "admin") {
+      // التوجيه بحسب نوع الحساب المختار أو صلاحيته
+      if (accountType === "employee" || userRole === "employee" || userRole === "admin") {
         navigate({ to: "/admin", replace: true });
       } else {
         navigate({ to: "/my-account", replace: true });
@@ -129,6 +140,7 @@ export function LoginPage() {
       </div>
 
       <div className="w-full max-w-[460px] bg-white rounded-[32px] p-6 sm:p-8 shadow-[0_10px_35px_-5px_rgba(61,35,20,0.06)] border border-[#ede5d8]">
+        {/* أزرار التبديل */}
         <div className="flex bg-[#f5ede1] p-1.5 rounded-2xl mb-7 border border-[#e8dfd1]">
           <Link to="/signup" className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 text-center text-[#5d4634] hover:text-[#3d2314]">
             إنشاء حساب جديد
@@ -145,22 +157,25 @@ export function LoginPage() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* رقم الهاتف */}
           <div>
             <label className="block text-xs font-bold text-[#3d2314] mb-1.5 mr-1">
-              البريد الإلكتروني <span className="text-red-500">*</span>
+              رقم الهاتف أو الواتساب <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@example.com"
+                type="tel"
+                required
+                value={phoneOrEmail}
+                onChange={(e) => setPhoneOrEmail(e.target.value)}
+                placeholder="770000000"
                 className="w-full h-12 pr-11 pl-4 rounded-xl border border-[#ded5c7] bg-[#fbf9f5] text-sm text-[#3d2314] placeholder-[#a89d8f] focus:outline-none focus:border-[#3d2314] focus:bg-white transition text-right"
               />
-              <Mail className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8a7663]" />
+              <Phone className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8a7663]" />
             </div>
           </div>
 
+          {/* كلمة المرور */}
           <div>
             <label className="block text-xs font-bold text-[#3d2314] mb-1.5 mr-1">
               كلمة المرور <span className="text-red-500">*</span>
@@ -168,6 +183,7 @@ export function LoginPage() {
             <div className="relative">
               <input
                 type="password"
+                required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
@@ -183,15 +199,47 @@ export function LoginPage() {
             </Link>
           </div>
 
+          {/* زر تسجيل الدخول */}
           <div className="pt-2">
             <button
               type="submit"
               disabled={loading}
               className="w-full h-13 rounded-2xl bg-[#3d2314] hover:bg-[#2b170c] text-white font-bold text-sm transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-60 flex items-center justify-center gap-2 px-5 py-3 cursor-pointer"
             >
-              <span>{loading? "جارٍ تسجيل الدخول..." : "تسجيل الدخول إلى حسابي"}</span>
+              <span>{loading ? "جارٍ تسجيل الدخول..." : "تسجيل الدخول إلى حسابي"}</span>
               <ArrowLeft className="w-4 h-4" />
             </button>
+          </div>
+
+          {/* تحديد نوع الحساب: عميل أو موظف */}
+          <div className="pt-3">
+            <p className="text-center text-xs font-bold text-[#8a7a65] mb-2.5">نوع الحساب</p>
+            <div className="flex gap-3 justify-center">
+              <button
+                type="button"
+                onClick={() => setAccountType("client")}
+                className={`flex items-center gap-2 px-6 h-10 rounded-full border-2 text-xs font-bold transition-all cursor-pointer ${
+                  accountType === "client"
+                    ? "border-[#3d2314] bg-[#3d2314] text-white shadow-sm"
+                    : "border-[#e8ddd0] bg-white text-[#8a7a65] hover:border-[#cfc1af]"
+                }`}
+              >
+                <span className={`w-2 h-2 rounded-full ${accountType === "client" ? "bg-white" : "bg-[#d9cfc0]"}`} />
+                عميل
+              </button>
+              <button
+                type="button"
+                onClick={() => setAccountType("employee")}
+                className={`flex items-center gap-2 px-6 h-10 rounded-full border-2 text-xs font-bold transition-all cursor-pointer ${
+                  accountType === "employee"
+                    ? "border-[#3d2314] bg-[#3d2314] text-white shadow-sm"
+                    : "border-[#e8ddd0] bg-white text-[#8a7a65] hover:border-[#cfc1af]"
+                }`}
+              >
+                <span className={`w-2 h-2 rounded-full ${accountType === "employee" ? "bg-white" : "bg-[#d9cfc0]"}`} />
+                موظفين
+              </button>
+            </div>
           </div>
         </form>
 
