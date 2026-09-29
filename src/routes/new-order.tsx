@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import React, { useState, useEffect } from 'react';
-import { supabase } from "@/integrations/supabase/client";
+import { useState, useEffect } from 'react';
+import { supabase } from "../lib/supabase";
 import { PackageCheck, ArrowRight, Printer, Copy, Check } from "lucide-react";
 
 export const Route = createFileRoute("/new-order")({ component: NewOrder });
@@ -42,19 +42,33 @@ function NewOrder() {
   const [trackingCode, setTrackingCode] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  // تعبئة تلقائية + حماية: زائر غير مسجل يروح لإنشاء حساب
+  // جلب اسم ورقم هاتف العميل المسجل تلقائياً + حماية
   useEffect(() => {
     const autoFill = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
       if (!user) {
         navigate({ to: "/signup" });
         return;
       }
-      const savedName = user.user_metadata?.full_name || user.user_metadata?.name || "";
-      const savedPhone = user.user_metadata?.phone || (user as any).phone || "";
-      const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-      if (profile?.full_name || savedName) setName(profile?.full_name || savedName);
-      if (profile?.phone || savedPhone) setPhone(profile?.phone || savedPhone);
+      const { data: prof } = await supabase
+       .from("profiles")
+       .select("full_name, phone")
+       .eq("id", user.id)
+       .maybeSingle();
+
+      const savedName =
+        prof?.full_name ||
+        user.user_metadata?.full_name ||
+        sessionStorage.getItem("sc_name") || "";
+
+      const savedPhone =
+        prof?.phone ||
+        user.user_metadata?.phone ||
+        sessionStorage.getItem("sc_phone") || "";
+
+      if (savedName) setName(savedName);
+      if (savedPhone) setPhone(savedPhone);
     };
     autoFill();
   }, [navigate]);
@@ -87,10 +101,11 @@ function NewOrder() {
     setLoading(true);
     try {
       const fullNotes = `العنوان: ${address}${lat? ` (إحداثيات: ${lat}, ${lng})` : ''}`;
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
       const { data, error } = await supabase
-       .from('orders')
-       .insert([{
+      .from('orders')
+      .insert([{
           customer_name: name.trim(),
           phone: phone.trim(),
           product_link: url.trim(),
@@ -99,24 +114,11 @@ function NewOrder() {
           notes: fullNotes,
           user_id: user?.id,
         }])
-       .select('tracking_code')
-       .single();
+      .select('tracking_code')
+      .single();
 
-      if (error) {
-        const { data: codeData, error: funcError } = await supabase.rpc('create_order', {
-          _product_link: url.trim() || 'https://example.com',
-          _customer_name: name.trim(),
-          _phone: phone.trim(),
-        });
-        if (funcError) {
-          alert('تعذر حفظ الطلب: ' + (error.message || funcError.message));
-          setLoading(false);
-          return;
-        }
-        setTrackingCode(codeData);
-      } else if (data) {
-        setTrackingCode(data.tracking_code);
-      }
+      if (error) throw error;
+      if (data) setTrackingCode(data.tracking_code);
     } catch (err: any) {
       alert('حدث خطأ أثناء الإرسال: ' + err.message);
     } finally {
@@ -142,15 +144,10 @@ function NewOrder() {
             <h1 className="text-xl font-black text-[#4A3728]">تم استلام طلبك بنجاح!</h1>
             <p className="text-xs text-gray-500 mt-1">احتفظ برقم الشحنة لتتبع مسار طلبك حتى وصوله إليك</p>
           </div>
-          <div className="bg-[#FFFBF2] border-2 border-dashed border-[#8B5E34] rounded-2xl p-4 relative">
+          <div className="bg-[#FFFBF2] border-2 border-dashed border-[#8B5E34] rounded-2xl p-4">
             <span className="text-[11px] font-bold text-gray-500 block mb-1">رقم تتبع الشحنة</span>
-            <div className="text-2xl font-black font-mono text-[#8B5E34] tracking-wider select-all">
-              {trackingCode}
-            </div>
-            <button
-              onClick={copyCode}
-              className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-[#8B5E34] bg-white px-3 py-1.5 rounded-lg border shadow-sm hover:bg-[#FAF4E6]"
-            >
+            <div className="text-2xl font-black font-mono text-[#8B5E34] tracking-wider select-all">{trackingCode}</div>
+            <button onClick={copyCode} className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-[#8B5E34] bg-white px-3 py-1.5 rounded-lg border shadow-sm hover:bg-[#FAF4E6]">
               {copied? <Check className="size-3.5 text-emerald-600" /> : <Copy className="size-3.5" />}
               {copied? "تم النسخ!" : "نسخ الرقم"}
             </button>
@@ -162,21 +159,11 @@ function NewOrder() {
             {store && <div><span className="font-bold">المتجر:</span> {store}</div>}
           </div>
           <div className="flex flex-col gap-2.5 pt-2">
-            <Link
-              to="/track/$trackingCode"
-              params={{ trackingCode }}
-              className="w-full bg-[#8B5E34] hover:bg-[#6f4b29] text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 shadow-md transition"
-            >
-              <span>تتبع مسار شحنتك الآن</span>
-              <ArrowRight className="size-4" />
+            <Link to="/track/$trackingCode" params={{ trackingCode }} className="w-full bg-[#8B5E34] hover:bg-[#6f4b29] text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 shadow-md transition">
+              <span>تتبع مسار شحنتك الآن</span><ArrowRight className="size-4" />
             </Link>
-            <button
-              onClick={() => window.print()}
-              type="button"
-              className="w-full border border-gray-300 hover:bg-gray-50 text-gray-700 py-3 rounded-xl font-bold flex items-center justify-center gap-2 text-xs"
-            >
-              <Printer className="size-4" />
-              <span>طباعة سند الاستلام</span>
+            <button onClick={() => window.print()} type="button" className="w-full border border-gray-300 hover:bg-gray-50 text-gray-700 py-3 rounded-xl font-bold flex items-center justify-center gap-2 text-xs">
+              <Printer className="size-4" /><span>طباعة سند الاستلام</span>
             </button>
           </div>
         </div>
@@ -195,17 +182,7 @@ function NewOrder() {
             </div>
             <div>
               <label className="text-[12px] font-bold block mb-1">رابط المنتج</label>
-              <input
-                value={url}
-                onChange={e => onUrl(e.target.value)}
-                onPaste={e => {
-                  const t = e.clipboardData.getData('text');
-                  setTimeout(() => onUrl(t), 30);
-                }}
-                placeholder="الصق رابط شي إن / أمازون / Temu..."
-                dir="ltr"
-                className="w-full bg-[#F9F5EB] border rounded-xl px-4 py-3 text-[12px] font-mono text-left outline-none focus:ring-2 focus:ring-[#8B5E34]"
-              />
+              <input value={url} onChange={e => onUrl(e.target.value)} placeholder="الصق رابط شي إن / أمازون / Temu..." dir="ltr" className="w-full bg-[#F9F5EB] border rounded-xl px-4 py-3 text-[12px] font-mono text-left outline-none focus:ring-2 focus:ring-[#8B5E34]" />
               {store && (
                 <div className="flex items-center justify-center gap-2 mt-2 bg-white border border-emerald-200 rounded-xl py-2.5">
                   <img src={LOGOS[store]} className="h-5 max-w-[90px] object-contain" onError={e => { e.currentTarget.style.display = 'none'; }} alt={store} />
@@ -214,41 +191,7 @@ function NewOrder() {
                 </div>
               )}
             </div>
-            <div>
-              <label className="text-[12px] font-bold block mb-1">لقطات سلة المشتريات (اختياري)</label>
-              <label className="block border-2 border-dashed border-[#8B5E34] rounded-xl bg-[#FDF8EE] p-6 text-center cursor-pointer">
-                <input
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  className="hidden"
-                  onChange={e => {
-                    if (e.target.files) setPreviews(Array.from(e.target.files).slice(0, 5).map(f => URL.createObjectURL(f)));
-                  }}
-                />
-                <div className="text-[13px] font-bold">اسحب وأفلت لقطات الشاشة هنا</div>
-                <div className="text-[11px] text-gray-500 mt-1">أو انقر للتحميل • حتى 5 صور</div>
-              </label>
-              {previews.length > 0 && (
-                <div className="grid grid-cols-3 gap-2 mt-2">
-                  {previews.map((s, i) => (
-                    <img key={i} src={s} className="h-20 w-full object-cover rounded-lg border" />
-                  ))}
-                </div>
-              )}
-            </div>
-            <button
-              onClick={() => {
-                if (!url.trim()) {
-                  alert('يرجى لصق رابط المنتج أولاً');
-                  return;
-                }
-                setStep(2);
-              }}
-              className="w-full bg-[#4A3728] hover:bg-[#382a1f] text-white rounded-xl py-3.5 font-black transition"
-            >
-              التالي: عنوان التوصيل
-            </button>
+            <button onClick={() => { if (!url.trim()) { alert('يرجى لصق رابط المنتج أولاً'); return; } setStep(2); }} className="w-full bg-[#4A3728] hover:bg-[#382a1f] text-white rounded-xl py-3.5 font-black transition">التالي: عنوان التوصيل</button>
           </>
         )}
         {step === 2 && (
@@ -257,66 +200,25 @@ function NewOrder() {
               <h1 className="font-black text-[18px]">إتمام الطلب</h1>
               <span className="text-[11px] bg-[#F1E6D0] px-2 py-1 rounded-full">الخطوة 2 من 2</span>
             </div>
-            <p className="text-[11px] text-gray-500 -mt-2">أدخل تفاصيلك لإتمام التوصيل {store && `• المتجر: ${store}`}</p>
             <div>
               <label className="text-[12px] font-bold block mb-1">الاسم الكامل</label>
-              <input
-                value={name}
-                onChange={e => setName(e.target.value)}
-                placeholder="أدخل اسمك الكامل"
-                className="w-full bg-[#FDF8EE] border rounded-xl px-4 py-3 text-[13px] outline-none focus:ring-2 focus:ring-[#C17A4A]"
-              />
+              <input value={name} onChange={e => setName(e.target.value)} placeholder="أدخل اسمك الكامل" className="w-full bg-[#FDF8EE] border rounded-xl px-4 py-3 text-[13px] outline-none focus:ring-2 focus:ring-[#C17A4A]" />
             </div>
             <div>
               <label className="text-[12px] font-bold block mb-1">رقم الهاتف (واتساب)</label>
-              <input
-                value={phone}
-                onChange={e => setPhone(e.target.value)}
-                placeholder="7XXXXXXXX"
-                dir="ltr"
-                className="w-full bg-[#FDF8EE] border rounded-xl px-4 py-3 text-[13px] text-left outline-none focus:ring-2 focus:ring-[#C17A4A]"
-              />
+              <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="7XXXXXXXX" dir="ltr" className="w-full bg-[#FDF8EE] border rounded-xl px-4 py-3 text-[13px] text-left outline-none focus:ring-2 focus:ring-[#C17A4A]" />
             </div>
             <div>
               <label className="text-[12px] font-bold block mb-1">عنوان التوصيل بالتفصيل</label>
               <div className="relative">
-                <input
-                  value={address}
-                  onChange={e => setAddress(e.target.value)}
-                  placeholder="المحافظة - الحي - الشارع - المعلم القريب..."
-                  className="w-full bg-[#FDF8EE] border rounded-xl px-4 py-3 pr-10 text-[13px] outline-none focus:ring-2 focus:ring-[#C17A4A]"
-                />
-                <button
-                  onClick={getLocation}
-                  type="button"
-                  title="تحديد موقعي"
-                  className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-[#F5B86E] hover:bg-[#e4a860] rounded-lg flex items-center justify-center text-lg shadow-sm"
-                >
-                  📍
-                </button>
+                <input value={address} onChange={e => setAddress(e.target.value)} placeholder="المحافظة - الحي - الشارع..." className="w-full bg-[#FDF8EE] border rounded-xl px-4 py-3 pr-10 text-[13px] outline-none focus:ring-2 focus:ring-[#C17A4A]" />
+                <button onClick={getLocation} type="button" className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-[#F5B86E] rounded-lg flex items-center justify-center text-lg">📍</button>
               </div>
-              <button
-                onClick={getLocation}
-                type="button"
-                className="w-full mt-2 border border-[#C17A4A] text-[#A05A2A] hover:bg-[#FAF4E6] rounded-xl py-2.5 text-[13px] font-bold transition"
-              >
-                📍 تحديد الموقع التلقائي بالجوال
-              </button>
-              {lat && <div className="text-[11px] text-emerald-600 mt-1 font-bold">✓ تم التقاط الإحداثيات بنجاح</div>}
             </div>
             <div className="flex gap-2 pt-2">
-              <button onClick={() => setStep(1)} className="px-4 py-3 border rounded-xl font-bold text-[13px] hover:bg-gray-50">
-                رجوع
-              </button>
-              <button
-                onClick={submit}
-                disabled={loading}
-                className="flex-1 bg-[#B4662A] hover:bg-[#965421] text-white rounded-xl py-3.5 font-black transition disabled:opacity-50"
-              >
-                {loading? 'جاري الإرسال...' : 'تأكيد وإرسال الطلب'}
-              </button>
+              <button onClick={() => setStep(1)} className="px-4 py-3 border rounded-xl font-bold text-[13px]">رجوع</button>
+              <button onClick={submit} disabled={loading} className="flex-1 bg-[#B4662A] text-white rounded-xl py-3.5 font-black disabled:opacity-50">{loading? 'جاري الإرسال...' : 'تأكيد وإرسال الطلب'}</button>
             </div>
-            <div className="text-center text-[10px] text-gray-500">🔒 بياناتك محفوظة ومحمية لأغراض الشحن والتوصيل فقط</div>
           </>
         )}
       </div>
