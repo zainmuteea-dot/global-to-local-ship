@@ -11,14 +11,36 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AccountSuccessRouteImport } from './routes/account-success'
+import { Route as AccountsRouteImport } from './routes/accounts'
+import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AdminClientsRouteImport } from './routes/admin-clients'
+import { Route as AdminStepsRouteImport } from './routes/admin-steps'
+import { Route as ClientDailyRouteImport } from './routes/client-daily'
+import { Route as ClientReportsRouteImport } from './routes/client-reports'
+import { Route as CustomersRouteImport } from './routes/customers'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as EmployeesRouteImport } from './routes/employees'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as InsuranceAmountsRouteImport } from './routes/insurance-amounts'
+import { Route as InventoryRouteImport } from './routes/inventory'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as MerchantReportsRouteImport } from './routes/merchant-reports'
 import { Route as MyAccountRouteImport } from './routes/my-account'
 import { Route as NewOrderRouteImport } from './routes/new-order'
 import { Route as NotificationsRouteImport } from './routes/notifications'
+import { Route as PricesRouteImport } from './routes/prices'
 import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as ProductsRouteImport } from './routes/products'
+import { Route as PurchaseInvoicesRouteImport } from './routes/purchase-invoices'
+import { Route as PurchaseReturnsRouteImport } from './routes/purchase-returns'
 import { Route as RegisterRouteImport } from './routes/register'
+import { Route as SalesInvoicesRouteImport } from './routes/sales-invoices'
+import { Route as SalesReturnsRouteImport } from './routes/sales-returns'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as StoresRouteImport } from './routes/stores'
+import { Route as SuppliersRouteImport } from './routes/suppliers'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as WarehousesRouteImport } from './routes/warehouses'
 import { Route as AccountAddressesRouteImport } from './routes/account/addresses'
 import { Route as AccountOrdersRouteImport } from './routes/account/orders'
 import { Route as AccountProfileRouteImport } from './routes/account/profile'
@@ -36,9 +58,74 @@ const AccountSuccessRoute = AccountSuccessRouteImport.update({
   path: '/account-success',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AccountsRoute = AccountsRouteImport.update({
+  id: '/accounts',
+  path: '/accounts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminClientsRoute = AdminClientsRouteImport.update({
+  id: '/admin-clients',
+  path: '/admin-clients',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminStepsRoute = AdminStepsRouteImport.update({
+  id: '/admin-steps',
+  path: '/admin-steps',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClientDailyRoute = ClientDailyRouteImport.update({
+  id: '/client-daily',
+  path: '/client-daily',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClientReportsRoute = ClientReportsRouteImport.update({
+  id: '/client-reports',
+  path: '/client-reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CustomersRoute = CustomersRouteImport.update({
+  id: '/customers',
+  path: '/customers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EmployeesRoute = EmployeesRouteImport.update({
+  id: '/employees',
+  path: '/employees',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InsuranceAmountsRoute = InsuranceAmountsRouteImport.update({
+  id: '/insurance-amounts',
+  path: '/insurance-amounts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InventoryRoute = InventoryRouteImport.update({
+  id: '/inventory',
+  path: '/inventory',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MerchantReportsRoute = MerchantReportsRouteImport.update({
+  id: '/merchant-reports',
+  path: '/merchant-reports',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MyAccountRoute = MyAccountRouteImport.update({
@@ -56,9 +143,29 @@ const NotificationsRoute = NotificationsRouteImport.update({
   path: '/notifications',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PricesRoute = PricesRouteImport.update({
+  id: '/prices',
+  path: '/prices',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PrivacyRoute = PrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProductsRoute = ProductsRouteImport.update({
+  id: '/products',
+  path: '/products',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PurchaseInvoicesRoute = PurchaseInvoicesRouteImport.update({
+  id: '/purchase-invoices',
+  path: '/purchase-invoices',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PurchaseReturnsRoute = PurchaseReturnsRouteImport.update({
+  id: '/purchase-returns',
+  path: '/purchase-returns',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RegisterRoute = RegisterRouteImport.update({
@@ -66,14 +173,39 @@ const RegisterRoute = RegisterRouteImport.update({
   path: '/register',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SalesInvoicesRoute = SalesInvoicesRouteImport.update({
+  id: '/sales-invoices',
+  path: '/sales-invoices',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SalesReturnsRoute = SalesReturnsRouteImport.update({
+  id: '/sales-returns',
+  path: '/sales-returns',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StoresRoute = StoresRouteImport.update({
+  id: '/stores',
+  path: '/stores',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SuppliersRoute = SuppliersRouteImport.update({
+  id: '/suppliers',
+  path: '/suppliers',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WarehousesRoute = WarehousesRouteImport.update({
+  id: '/warehouses',
+  path: '/warehouses',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AccountAddressesRoute = AccountAddressesRouteImport.update({
@@ -110,14 +242,36 @@ const TrackTrackingCodeRoute = TrackTrackingCodeRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/account-success': typeof AccountSuccessRoute
+  '/accounts': typeof AccountsRoute
+  '/admin': typeof AdminRoute
+  '/admin-clients': typeof AdminClientsRoute
+  '/admin-steps': typeof AdminStepsRoute
+  '/client-daily': typeof ClientDailyRoute
+  '/client-reports': typeof ClientReportsRoute
+  '/customers': typeof CustomersRoute
+  '/dashboard': typeof DashboardRoute
+  '/employees': typeof EmployeesRoute
+  '/forgot-password': typeof ForgotPasswordRoute
+  '/insurance-amounts': typeof InsuranceAmountsRoute
+  '/inventory': typeof InventoryRoute
   '/login': typeof LoginRoute
+  '/merchant-reports': typeof MerchantReportsRoute
   '/my-account': typeof MyAccountRoute
   '/new-order': typeof NewOrderRoute
   '/notifications': typeof NotificationsRoute
+  '/prices': typeof PricesRoute
   '/privacy': typeof PrivacyRoute
+  '/products': typeof ProductsRoute
+  '/purchase-invoices': typeof PurchaseInvoicesRoute
+  '/purchase-returns': typeof PurchaseReturnsRoute
   '/register': typeof RegisterRoute
+  '/sales-invoices': typeof SalesInvoicesRoute
+  '/sales-returns': typeof SalesReturnsRoute
   '/signup': typeof SignupRoute
+  '/stores': typeof StoresRoute
+  '/suppliers': typeof SuppliersRoute
   '/terms': typeof TermsRoute
+  '/warehouses': typeof WarehousesRoute
   '/account/addresses': typeof AccountAddressesRoute
   '/account/orders': typeof AccountOrdersRoute
   '/account/profile': typeof AccountProfileRoute
@@ -128,14 +282,36 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/account-success': typeof AccountSuccessRoute
+  '/accounts': typeof AccountsRoute
+  '/admin': typeof AdminRoute
+  '/admin-clients': typeof AdminClientsRoute
+  '/admin-steps': typeof AdminStepsRoute
+  '/client-daily': typeof ClientDailyRoute
+  '/client-reports': typeof ClientReportsRoute
+  '/customers': typeof CustomersRoute
+  '/dashboard': typeof DashboardRoute
+  '/employees': typeof EmployeesRoute
+  '/forgot-password': typeof ForgotPasswordRoute
+  '/insurance-amounts': typeof InsuranceAmountsRoute
+  '/inventory': typeof InventoryRoute
   '/login': typeof LoginRoute
+  '/merchant-reports': typeof MerchantReportsRoute
   '/my-account': typeof MyAccountRoute
   '/new-order': typeof NewOrderRoute
   '/notifications': typeof NotificationsRoute
+  '/prices': typeof PricesRoute
   '/privacy': typeof PrivacyRoute
+  '/products': typeof ProductsRoute
+  '/purchase-invoices': typeof PurchaseInvoicesRoute
+  '/purchase-returns': typeof PurchaseReturnsRoute
   '/register': typeof RegisterRoute
+  '/sales-invoices': typeof SalesInvoicesRoute
+  '/sales-returns': typeof SalesReturnsRoute
   '/signup': typeof SignupRoute
+  '/stores': typeof StoresRoute
+  '/suppliers': typeof SuppliersRoute
   '/terms': typeof TermsRoute
+  '/warehouses': typeof WarehousesRoute
   '/account/addresses': typeof AccountAddressesRoute
   '/account/orders': typeof AccountOrdersRoute
   '/account/profile': typeof AccountProfileRoute
@@ -147,14 +323,36 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/account-success': typeof AccountSuccessRoute
+  '/accounts': typeof AccountsRoute
+  '/admin': typeof AdminRoute
+  '/admin-clients': typeof AdminClientsRoute
+  '/admin-steps': typeof AdminStepsRoute
+  '/client-daily': typeof ClientDailyRoute
+  '/client-reports': typeof ClientReportsRoute
+  '/customers': typeof CustomersRoute
+  '/dashboard': typeof DashboardRoute
+  '/employees': typeof EmployeesRoute
+  '/forgot-password': typeof ForgotPasswordRoute
+  '/insurance-amounts': typeof InsuranceAmountsRoute
+  '/inventory': typeof InventoryRoute
   '/login': typeof LoginRoute
+  '/merchant-reports': typeof MerchantReportsRoute
   '/my-account': typeof MyAccountRoute
   '/new-order': typeof NewOrderRoute
   '/notifications': typeof NotificationsRoute
+  '/prices': typeof PricesRoute
   '/privacy': typeof PrivacyRoute
+  '/products': typeof ProductsRoute
+  '/purchase-invoices': typeof PurchaseInvoicesRoute
+  '/purchase-returns': typeof PurchaseReturnsRoute
   '/register': typeof RegisterRoute
+  '/sales-invoices': typeof SalesInvoicesRoute
+  '/sales-returns': typeof SalesReturnsRoute
   '/signup': typeof SignupRoute
+  '/stores': typeof StoresRoute
+  '/suppliers': typeof SuppliersRoute
   '/terms': typeof TermsRoute
+  '/warehouses': typeof WarehousesRoute
   '/account/addresses': typeof AccountAddressesRoute
   '/account/orders': typeof AccountOrdersRoute
   '/account/profile': typeof AccountProfileRoute
@@ -167,14 +365,36 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/account-success'
+    | '/accounts'
+    | '/admin'
+    | '/admin-clients'
+    | '/admin-steps'
+    | '/client-daily'
+    | '/client-reports'
+    | '/customers'
+    | '/dashboard'
+    | '/employees'
+    | '/forgot-password'
+    | '/insurance-amounts'
+    | '/inventory'
     | '/login'
+    | '/merchant-reports'
     | '/my-account'
     | '/new-order'
     | '/notifications'
+    | '/prices'
     | '/privacy'
+    | '/products'
+    | '/purchase-invoices'
+    | '/purchase-returns'
     | '/register'
+    | '/sales-invoices'
+    | '/sales-returns'
     | '/signup'
+    | '/stores'
+    | '/suppliers'
     | '/terms'
+    | '/warehouses'
     | '/account/addresses'
     | '/account/orders'
     | '/account/profile'
@@ -185,14 +405,36 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/account-success'
+    | '/accounts'
+    | '/admin'
+    | '/admin-clients'
+    | '/admin-steps'
+    | '/client-daily'
+    | '/client-reports'
+    | '/customers'
+    | '/dashboard'
+    | '/employees'
+    | '/forgot-password'
+    | '/insurance-amounts'
+    | '/inventory'
     | '/login'
+    | '/merchant-reports'
     | '/my-account'
     | '/new-order'
     | '/notifications'
+    | '/prices'
     | '/privacy'
+    | '/products'
+    | '/purchase-invoices'
+    | '/purchase-returns'
     | '/register'
+    | '/sales-invoices'
+    | '/sales-returns'
     | '/signup'
+    | '/stores'
+    | '/suppliers'
     | '/terms'
+    | '/warehouses'
     | '/account/addresses'
     | '/account/orders'
     | '/account/profile'
@@ -203,14 +445,36 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/account-success'
+    | '/accounts'
+    | '/admin'
+    | '/admin-clients'
+    | '/admin-steps'
+    | '/client-daily'
+    | '/client-reports'
+    | '/customers'
+    | '/dashboard'
+    | '/employees'
+    | '/forgot-password'
+    | '/insurance-amounts'
+    | '/inventory'
     | '/login'
+    | '/merchant-reports'
     | '/my-account'
     | '/new-order'
     | '/notifications'
+    | '/prices'
     | '/privacy'
+    | '/products'
+    | '/purchase-invoices'
+    | '/purchase-returns'
     | '/register'
+    | '/sales-invoices'
+    | '/sales-returns'
     | '/signup'
+    | '/stores'
+    | '/suppliers'
     | '/terms'
+    | '/warehouses'
     | '/account/addresses'
     | '/account/orders'
     | '/account/profile'
@@ -222,14 +486,36 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountSuccessRoute: typeof AccountSuccessRoute
+  AccountsRoute: typeof AccountsRoute
+  AdminRoute: typeof AdminRoute
+  AdminClientsRoute: typeof AdminClientsRoute
+  AdminStepsRoute: typeof AdminStepsRoute
+  ClientDailyRoute: typeof ClientDailyRoute
+  ClientReportsRoute: typeof ClientReportsRoute
+  CustomersRoute: typeof CustomersRoute
+  DashboardRoute: typeof DashboardRoute
+  EmployeesRoute: typeof EmployeesRoute
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
+  InsuranceAmountsRoute: typeof InsuranceAmountsRoute
+  InventoryRoute: typeof InventoryRoute
   LoginRoute: typeof LoginRoute
+  MerchantReportsRoute: typeof MerchantReportsRoute
   MyAccountRoute: typeof MyAccountRoute
   NewOrderRoute: typeof NewOrderRoute
   NotificationsRoute: typeof NotificationsRoute
+  PricesRoute: typeof PricesRoute
   PrivacyRoute: typeof PrivacyRoute
+  ProductsRoute: typeof ProductsRoute
+  PurchaseInvoicesRoute: typeof PurchaseInvoicesRoute
+  PurchaseReturnsRoute: typeof PurchaseReturnsRoute
   RegisterRoute: typeof RegisterRoute
+  SalesInvoicesRoute: typeof SalesInvoicesRoute
+  SalesReturnsRoute: typeof SalesReturnsRoute
   SignupRoute: typeof SignupRoute
+  StoresRoute: typeof StoresRoute
+  SuppliersRoute: typeof SuppliersRoute
   TermsRoute: typeof TermsRoute
+  WarehousesRoute: typeof WarehousesRoute
   AccountAddressesRoute: typeof AccountAddressesRoute
   AccountOrdersRoute: typeof AccountOrdersRoute
   AccountProfileRoute: typeof AccountProfileRoute
@@ -254,11 +540,102 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccountSuccessRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/accounts': {
+      id: '/accounts'
+      path: '/accounts'
+      fullPath: '/accounts'
+      preLoaderRoute: typeof AccountsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin-clients': {
+      id: '/admin-clients'
+      path: '/admin-clients'
+      fullPath: '/admin-clients'
+      preLoaderRoute: typeof AdminClientsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin-steps': {
+      id: '/admin-steps'
+      path: '/admin-steps'
+      fullPath: '/admin-steps'
+      preLoaderRoute: typeof AdminStepsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/client-daily': {
+      id: '/client-daily'
+      path: '/client-daily'
+      fullPath: '/client-daily'
+      preLoaderRoute: typeof ClientDailyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/client-reports': {
+      id: '/client-reports'
+      path: '/client-reports'
+      fullPath: '/client-reports'
+      preLoaderRoute: typeof ClientReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/customers': {
+      id: '/customers'
+      path: '/customers'
+      fullPath: '/customers'
+      preLoaderRoute: typeof CustomersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/employees': {
+      id: '/employees'
+      path: '/employees'
+      fullPath: '/employees'
+      preLoaderRoute: typeof EmployeesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/insurance-amounts': {
+      id: '/insurance-amounts'
+      path: '/insurance-amounts'
+      fullPath: '/insurance-amounts'
+      preLoaderRoute: typeof InsuranceAmountsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inventory': {
+      id: '/inventory'
+      path: '/inventory'
+      fullPath: '/inventory'
+      preLoaderRoute: typeof InventoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/merchant-reports': {
+      id: '/merchant-reports'
+      path: '/merchant-reports'
+      fullPath: '/merchant-reports'
+      preLoaderRoute: typeof MerchantReportsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/my-account': {
@@ -282,11 +659,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NotificationsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/prices': {
+      id: '/prices'
+      path: '/prices'
+      fullPath: '/prices'
+      preLoaderRoute: typeof PricesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/privacy': {
       id: '/privacy'
       path: '/privacy'
       fullPath: '/privacy'
       preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/products': {
+      id: '/products'
+      path: '/products'
+      fullPath: '/products'
+      preLoaderRoute: typeof ProductsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/purchase-invoices': {
+      id: '/purchase-invoices'
+      path: '/purchase-invoices'
+      fullPath: '/purchase-invoices'
+      preLoaderRoute: typeof PurchaseInvoicesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/purchase-returns': {
+      id: '/purchase-returns'
+      path: '/purchase-returns'
+      fullPath: '/purchase-returns'
+      preLoaderRoute: typeof PurchaseReturnsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/register': {
@@ -296,6 +701,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RegisterRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/sales-invoices': {
+      id: '/sales-invoices'
+      path: '/sales-invoices'
+      fullPath: '/sales-invoices'
+      preLoaderRoute: typeof SalesInvoicesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sales-returns': {
+      id: '/sales-returns'
+      path: '/sales-returns'
+      fullPath: '/sales-returns'
+      preLoaderRoute: typeof SalesReturnsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/signup': {
       id: '/signup'
       path: '/signup'
@@ -303,11 +722,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/stores': {
+      id: '/stores'
+      path: '/stores'
+      fullPath: '/stores'
+      preLoaderRoute: typeof StoresRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/suppliers': {
+      id: '/suppliers'
+      path: '/suppliers'
+      fullPath: '/suppliers'
+      preLoaderRoute: typeof SuppliersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/terms': {
       id: '/terms'
       path: '/terms'
       fullPath: '/terms'
       preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/warehouses': {
+      id: '/warehouses'
+      path: '/warehouses'
+      fullPath: '/warehouses'
+      preLoaderRoute: typeof WarehousesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/account/addresses': {
@@ -358,14 +798,36 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountSuccessRoute: AccountSuccessRoute,
+  AccountsRoute: AccountsRoute,
+  AdminRoute: AdminRoute,
+  AdminClientsRoute: AdminClientsRoute,
+  AdminStepsRoute: AdminStepsRoute,
+  ClientDailyRoute: ClientDailyRoute,
+  ClientReportsRoute: ClientReportsRoute,
+  CustomersRoute: CustomersRoute,
+  DashboardRoute: DashboardRoute,
+  EmployeesRoute: EmployeesRoute,
+  ForgotPasswordRoute: ForgotPasswordRoute,
+  InsuranceAmountsRoute: InsuranceAmountsRoute,
+  InventoryRoute: InventoryRoute,
   LoginRoute: LoginRoute,
+  MerchantReportsRoute: MerchantReportsRoute,
   MyAccountRoute: MyAccountRoute,
   NewOrderRoute: NewOrderRoute,
   NotificationsRoute: NotificationsRoute,
+  PricesRoute: PricesRoute,
   PrivacyRoute: PrivacyRoute,
+  ProductsRoute: ProductsRoute,
+  PurchaseInvoicesRoute: PurchaseInvoicesRoute,
+  PurchaseReturnsRoute: PurchaseReturnsRoute,
   RegisterRoute: RegisterRoute,
+  SalesInvoicesRoute: SalesInvoicesRoute,
+  SalesReturnsRoute: SalesReturnsRoute,
   SignupRoute: SignupRoute,
+  StoresRoute: StoresRoute,
+  SuppliersRoute: SuppliersRoute,
   TermsRoute: TermsRoute,
+  WarehousesRoute: WarehousesRoute,
   AccountAddressesRoute: AccountAddressesRoute,
   AccountOrdersRoute: AccountOrdersRoute,
   AccountProfileRoute: AccountProfileRoute,
