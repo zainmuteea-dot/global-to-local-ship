@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { supabase } from "../lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Bell,
   CircleDollarSign,
@@ -14,9 +14,6 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-const WHATSAPP = "https://wa.me/967775527993";
-const BRAND = "السوق الشامل";
-
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
@@ -24,136 +21,19 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "تسوق عالمياً واستلم محلياً: نشتري لك من TEMU وSHEIN وAmazon وTrendyol وAliExpress ونوصل لباب بيتك في اليمن.",
+          "تسوق عالمياً واستلم محلياً: نشتري لك من TEMU وSHEIN وAmazon وTrendyol وAliExpress ونوصل لباب بيتك في جميع مدن اليمن.",
       },
     ],
   }),
-  component: Index,
+  component: IndexPage,
 });
 
-function WhatsAppIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <path d="M12 2a10 10 0 0 0-8.6 15l-1.3 4.7 4.8-1.3A10 10 0 1 0 12 2Z" />
-    </svg>
-  );
-}
-
-function PlaneIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5Z" />
-    </svg>
-  );
-}
-
-function BrandTruck() {
-  return (
-    <div className="flex items-end">
-      <div className="rounded-md bg-card px-2 py-1 ring-1 ring-border shadow-sm">
-        <p className="whitespace-nowrap font-display text-[10px] font-extrabold leading-none text-cocoadeep sm:text-xs">
-          {BRAND}
-        </p>
-      </div>
-      <div className="-ms-0.5 size-0 border-y-[7px] border-s-[10px] border-y-transparent border-s-cocoa" />
-      <div className="relative -ms-1 flex gap-1">
-        <span className="size-2 rounded-full bg-cocoadeep ring-2 ring-card" />
-        <span className="size-2 rounded-full bg-cocoadeep ring-2 ring-card" />
-      </div>
-    </div>
-  );
-}
-
-type StepItem = { title: string; desc: string; icon: LucideIcon; to: string };
-
-const defaultSteps: StepItem[] = [
-  { title: "أرسل الرابط", desc: "انسخ رابط المنتج", icon: Link2, to: "/new-order" },
-  { title: "اعرف السعر", desc: "نوضح لك التكلفة", icon: CircleDollarSign, to: "/new-order" },
-  { title: "نشتري لك", desc: "نشتري بدلاً عنك", icon: ShoppingCart, to: "/new-order" },
-  { title: "تابع الشحنة", desc: "تتبع طلبك أولاً بأول", icon: Search, to: "/track" },
-  { title: "الاستلام", desc: "يوصلك حتى باب بيتك", icon: Package, to: "/my-account" },
-];
-
-const iconMap: Record<string, LucideIcon> = {
-  Link2,
-  CircleDollarSign,
-  ShoppingCart,
-  Search,
-  Package,
-};
-
-function useSteps() {
-  const [steps, setSteps] = useState<StepItem[]>(defaultSteps);
-
-  useEffect(() => {
-    supabase
-      .from("site_steps")
-      .select("*")
-      .eq("is_active", true)
-      .order("sort_order", { ascending: true })
-      .then(({ data, error }) => {
-        if (!error && data && data.length > 0) {
-          setSteps(
-            data.map((d: any) => ({
-              title: d.title,
-              desc: d.description,
-              icon: iconMap[d.icon_name] || Package,
-              to: d.link_to,
-            }))
-          );
-        }
-      });
-  }, []);
-
-  return steps;
-}
-
-const platforms: { name: string; className: string }[] = [
-  { name: "TEMU", className: "text-temu" },
-  { name: "TrendYol", className: "text-trendyol" },
-  { name: "SHEIN", className: "text-shein" },
-  { name: "Amazon", className: "text-amazon" },
-  { name: "AliExpress", className: "text-aliexpress" },
-];
-
-const testimonials = [
-  { name: "يوسف الحيفي", city: "صنعاء", text: "اشتريت لعبتين للأولاد من شي إن، التعامل كان صادق والتوصيل وصل لباب البيت." },
-  { name: "أمة الحكيمي", city: "عدن", text: "وأخيراً لقيت موقع يوصل لعدن! خدمة ممتازة والتجاوب سريع جداً في الواتساب." },
-  { name: "ياسر باشديد", city: "حضرموت", text: "التجربة فاقت التوقعات، تتبعت شحنتي كل يوم والتغليف كان ممتاز." },
-];
-
-function Stars() {
-  return (
-    <div className="flex justify-center gap-0.5 text-gold">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <span key={i} className="text-sm leading-none">
-          ★
-        </span>
-      ))}
-    </div>
-  );
-}
-
-function Confetti() {
-  return (
-    <div className="mb-1 flex flex-wrap justify-center gap-1" aria-hidden>
-      {["size-1.5", "size-2", "size-1.5", "size-2.5", "size-1.5", "size-2"].map((s, i) => (
-        <span
-          key={i}
-          className={`${s} rotate-45 bg-goldsoft/70 ${i % 2 ? "rounded-[2px]" : "rounded-full"}`}
-        />
-      ))}
-    </div>
-  );
-}
-
-function Index() {
-  const steps = useSteps();
+export function IndexPage() {
   const [currentUser, setCurrentUser] = useState<{ name: string; email: string } | null>(null);
 
-  // جلب بيانات العميل المسجل تلقائياً والتحقق من حالة اتصاله
+  // جلب بيانات العميل وحالة تسجيل دخوله تلقائياً
   useEffect(() => {
-    async function checkUser() {
+    async function loadUserSession() {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
@@ -164,6 +44,7 @@ function Index() {
             sessionStorage.getItem("sc_name") ||
             "";
 
+          // إذا لم يتوفر الاسم في الجلسة نجلبه من جدول profiles
           if (!name) {
             const { data } = await supabase
               .from("profiles")
@@ -184,21 +65,20 @@ function Index() {
           setCurrentUser(null);
         }
       } catch (err) {
-        console.error("Auth check err:", err);
+        console.error("Auth check error:", err);
       }
     }
 
-    checkUser();
+    loadUserSession();
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         const email = session.user.email || "";
         const name =
           session.user.user_metadata?.full_name ||
           localStorage.getItem("sc_name") ||
-          email.split("@")[0];
+          email.split("@")[0] ||
+          "العميل";
         setCurrentUser({ name, email });
       } else {
         setCurrentUser(null);
@@ -216,113 +96,140 @@ function Index() {
     { label: "الشحن", icon: FileText, to: "/track" },
   ];
 
-  return (
-    <div dir="rtl" lang="ar" className="min-h-screen overflow-x-hidden bg-background font-body text-foreground">
-      <style>{`
-        @keyframes fly-across {
-          0% { transform: translateX(120vw); opacity: 0; }
-          10% { opacity: 1; }
-          90% { opacity: 1; }
-          100% { transform: translateX(-120vw); opacity: 0; }
-        }
-        @keyframes truck-move {
-          0%, 100% { transform: translateX(0); }
-          50% { transform: translateX(18px); }
-        }
-        .animate-fly { animation: fly-across 8s linear infinite; }
-        .animate-truck { animation: truck-move 2.8s ease-in-out infinite; }
-      `}</style>
+  const platforms = [
+    { name: "TEMU", color: "text-[#FA6400]" },
+    { name: "TrendYol", color: "text-[#F27A1A]" },
+    { name: "SHEIN", color: "text-black" },
+    { name: "Amazon", color: "text-[#FF9900]" },
+    { name: "AliExpress", color: "text-[#FF4747]" },
+  ];
 
-      {/* الشريط العلوي مع الخط الأخضر للمتصل وزر إدارة الحساب والعمليات */}
-      <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3 px-4 pt-4">
+  const steps = [
+    { title: "أرسل الرابط", desc: "انسخ رابط المنتج من أي متجر", icon: Link2, to: "/new-order" },
+    { title: "اعرف السعر", desc: "نوضح لك التكلفة بالريال اليمني أو الدولار", icon: CircleDollarSign, to: "/new-order" },
+    { title: "نشتري لك", desc: "نشتري بدلاً عنك ونضمن جودة الطلب", icon: ShoppingCart, to: "/new-order" },
+    { title: "تابع الشحنة", desc: "تتبع طلبك أولاً بأول برقم الشحنة", icon: Search, to: "/track" },
+    { title: "الاستلام", desc: "يوصلك حتى باب بيتك في كل المحافظات", icon: Package, to: "/my-account" },
+  ];
+
+  const testimonials = [
+    { name: "يوسف الحيفي", city: "صنعاء", text: "اشتريت لعبتين للأولاد من شي إن، التعامل كان صادق والتوصيل وصل لباب البيت." },
+    { name: "أمة الحكيمي", city: "عدن", text: "وأخيراً لقيت موقع يوصل لعدن! خدمة ممتازة والتجاوب سريع جداً في الواتساب." },
+    { name: "ياسر باشديد", city: "حضرموت", text: "التجربة فاقت التوقعات، تتبعت شحنتي كل يوم والتغليف كان ممتاز." },
+  ];
+
+  return (
+    <div dir="rtl" lang="ar" className="min-h-screen bg-[#FDF8EE] text-[#4A3728] font-sans selection:bg-[#8B5E34] selection:text-white pb-14">
+      {/* الشريط العلوي مع الخط الأخضر والزر الأخضر المطلوبين */}
+      <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3 px-4 pt-5 pb-2">
         {/* جهة اليمين: أيقونة الحساب + الإشعارات + الخط الأخضر لاسم العميل وحالة الاتصال */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2.5">
           <Link
             to={currentUser ? "/my-account" : "/login"}
             title={currentUser ? "إدارة حسابي" : "تسجيل الدخول"}
-            className="grid size-11 place-items-center rounded-full bg-card text-cocoa ring-1 ring-border shadow-sm transition hover:scale-105"
+            className="grid size-11 place-items-center rounded-full bg-white text-[#8B5E34] ring-1 ring-[#E8D7BB] shadow-sm transition hover:scale-105 hover:bg-[#FAF4E6]"
           >
             <UserRound className="size-6" />
           </Link>
+
           <Link
             to="/notifications"
-            className="grid size-11 place-items-center rounded-full bg-card text-cocoa ring-1 ring-border shadow-sm transition hover:scale-105"
+            className="relative grid size-11 place-items-center rounded-full bg-white text-[#8B5E34] ring-1 ring-[#E8D7BB] shadow-sm transition hover:scale-105 hover:bg-[#FAF4E6]"
           >
             <Bell className="size-6" />
+            {currentUser && (
+              <span className="absolute top-2 right-2 size-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
+            )}
           </Link>
 
           {/* الخط الأخضر: نقطة متصل + اسم العميل + مرحباً بك في متجر السوق الشامل */}
-          {currentUser && (
-            <div className="flex items-center gap-2 rounded-full border border-emerald-400/80 bg-emerald-50 px-3.5 py-1.5 text-xs font-bold text-emerald-900 shadow-sm animate-in fade-in duration-300">
+          {currentUser ? (
+            <div className="flex items-center gap-2 rounded-full border border-emerald-400 bg-emerald-50/95 px-4 py-2 text-xs font-bold text-emerald-950 shadow-sm animate-in fade-in duration-200">
               <span className="relative flex size-2.5">
                 <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75" />
                 <span className="relative inline-flex size-2.5 rounded-full bg-emerald-600" />
               </span>
-              <span className="font-extrabold text-emerald-950">{currentUser.name}</span>
-              <span className="text-emerald-700 hidden sm:inline">| مرحباً بك في متجر السوق الشامل</span>
+              <span className="font-black text-emerald-950 text-sm">
+                متصل: {currentUser.name}
+              </span>
+              <span className="text-emerald-700 font-semibold hidden md:inline">
+                | مرحباً بك في متجر السوق الشامل
+              </span>
+            </div>
+          ) : (
+            <div className="text-xs text-[#8B5E34] bg-white/70 px-3 py-1.5 rounded-full border border-[#E8D7BB]">
+              مرحباً بك في السوق الشامل
             </div>
           )}
         </div>
 
-        {/* جهة اليسار: زر إدارة حسابك وعملياتك + زر اطلب الآن */}
+        {/* جهة اليسار: زر إدارة حسابك وعملياتك الأخضر + زر اطلب الآن */}
         <div className="flex items-center gap-2">
           {currentUser ? (
             <Link
               to="/my-account"
-              className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-emerald-600 to-emerald-700 px-4 py-2 font-display text-xs font-extrabold text-white shadow-md transition-all duration-200 hover:from-emerald-700 hover:to-emerald-800 hover:shadow-lg active:scale-95"
+              className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 px-4 py-2 font-black text-xs sm:text-sm text-white shadow-md transition-all duration-200 hover:shadow-lg active:scale-95 ring-2 ring-emerald-400/40"
             >
-              <Package className="size-4" />
+              <Package className="size-4 text-emerald-100" />
               <span>إدارة حسابك وعملياتك</span>
             </Link>
           ) : (
             <Link
               to="/login"
-              className="rounded-full border border-[#ede5d8] bg-card px-3.5 py-2 text-xs font-bold text-cocoa hover:bg-[#faf7f2] transition"
+              className="rounded-full border border-[#E8D7BB] bg-white px-4 py-2 text-xs font-bold text-[#8B5E34] hover:bg-[#FAF4E6] transition"
             >
-              تسجيل الدخول
+              تسجيل الدخول / حساب جديد
             </Link>
           )}
 
-          <a
-            href="/new-order"
-            className="grid size-11 place-items-center rounded-full bg-card text-cocoa ring-1 ring-border shadow-sm transition hover:scale-105"
+          <Link
+            to="/new-order"
+            className="grid size-11 place-items-center rounded-full bg-white text-[#8B5E34] ring-1 ring-[#E8D7BB] shadow-sm transition hover:scale-105 hover:bg-[#FAF4E6]"
           >
-            <span className="text-[10px] font-bold leading-none text-center">اطلب الآن</span>
-          </a>
+            <span className="text-[10px] font-black leading-none text-center">اطلب الآن</span>
+          </Link>
         </div>
       </div>
 
-      <header className="px-4 pt-4">
-        <div className="relative mx-auto max-w-2xl overflow-hidden rounded-3xl bg-cocoa p-6 text-cream ring-1 ring-black/10 sm:p-8">
+      {/* بنر الهيدر البني (كيف تطلب؟) */}
+      <header className="px-4 pt-3">
+        <div className="relative mx-auto max-w-2xl overflow-hidden rounded-3xl bg-[#593922] p-6 text-[#FDF8EE] ring-1 ring-black/10 shadow-lg sm:p-8">
           <div className="flex flex-col-reverse items-start justify-between gap-4 sm:flex-row">
             <div className="flex items-start gap-4">
               {heroCircles.map(({ label, icon: Icon, to }) => (
-                <Link key={label} to={to} className="flex flex-col items-center gap-1.5 transition hover:opacity-90">
-                  <span className="grid size-11 place-items-center rounded-full ring-2 ring-cream/50 sm:size-12">
-                    <Icon className="size-5 text-goldsoft sm:size-6" />
+                <Link
+                  key={label}
+                  to={to}
+                  className="flex flex-col items-center gap-1.5 transition hover:opacity-90"
+                >
+                  <span className="grid size-11 place-items-center rounded-full ring-2 ring-[#FDF8EE]/40 bg-white/10 sm:size-12">
+                    <Icon className="size-5 text-[#ECC880] sm:size-6" />
                   </span>
-                  <span className="text-xs font-bold text-goldsoft">{label}</span>
+                  <span className="text-xs font-bold text-[#ECC880]">{label}</span>
                 </Link>
               ))}
             </div>
             <div className="text-start">
-              <Confetti />
-              <p className="font-display text-2xl font-black tracking-tight text-goldsoft sm:text-3xl">
-                {BRAND}
+              <p className="font-black text-2xl tracking-tight text-[#ECC880] sm:text-3xl">
+                السوق الشامل
               </p>
+              <p className="text-[11px] text-[#FDF8EE]/80 mt-0.5">وسيط الشراء المعتمد إلى اليمن</p>
             </div>
           </div>
 
           <div className="mt-6 flex flex-col-reverse items-center gap-6 sm:flex-row sm:items-end">
             <div className="flex-1 text-center sm:text-start">
-              <p className="font-display text-4xl font-black leading-tight text-goldsoft sm:text-5xl">
-                كيف تطلب؟<span className="text-gold">؟</span>
+              <p className="text-3xl font-black leading-tight text-[#ECC880] sm:text-4xl">
+                كيف تطلب؟<span className="text-amber-400">؟</span>
+              </p>
+              <p className="text-xs text-[#FDF8EE]/80 mt-1">
+                انسخ رابط أي منتج عالمي وسنتولى الشراء والفحص والشحن حتى بابك
               </p>
             </div>
             <div className="relative shrink-0">
-              <div className="grid size-24 place-items-center rounded-xl bg-cream/10 ring-2 ring-cream/40 sm:size-28">
-                <span className="grid size-9 place-items-center rounded-full bg-goldsoft text-cocoa">
-                  <svg viewBox="0 0 24 24" className="size-4" fill="currentColor">
+              <div className="grid size-20 place-items-center rounded-2xl bg-white/10 ring-2 ring-white/30 sm:size-24 hover:bg-white/20 transition">
+                <span className="grid size-9 place-items-center rounded-full bg-[#ECC880] text-[#593922] shadow">
+                  <svg viewBox="0 0 24 24" className="size-4 ml-0.5" fill="currentColor">
                     <path d="M8 5.5v13l11-6.5-11-6.5Z" />
                   </svg>
                 </span>
@@ -330,50 +237,55 @@ function Index() {
             </div>
           </div>
 
-          <Link
-            to="/new-order"
-            className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-gold px-5 py-2.5 font-display text-lg font-extrabold text-cocoadeep shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:scale-95"
-          >
-            <Hand className="size-5 -scale-x-100" /> اضغط هنا
-          </Link>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Link
+              to="/new-order"
+              className="inline-flex items-center gap-2 rounded-2xl bg-[#C17A4A] hover:bg-[#a66336] px-6 py-2.5 font-bold text-base text-white shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg active:scale-95"
+            >
+              <Hand className="size-5 -scale-x-100" />
+              <span>اضغط هنا لطلب منتج</span>
+            </Link>
+
+            <Link
+              to="/track"
+              className="inline-flex items-center gap-2 rounded-2xl bg-white/15 hover:bg-white/25 px-4 py-2.5 font-bold text-sm text-white transition"
+            >
+              <Search className="size-4" />
+              <span>تتبع شحنة سابقة</span>
+            </Link>
+          </div>
         </div>
       </header>
 
-      <section className="px-4 pb-4 pt-8 text-center">
-        <h1 className="font-display text-3xl font-extrabold leading-snug text-cocoadeep sm:text-4xl">
+      {/* عنوان تسوق عالمياً واستلم محلياً */}
+      <section className="px-4 pb-2 pt-8 text-center">
+        <h1 className="text-2xl sm:text-3xl font-black leading-snug text-[#4A3728]">
           تسوّق عالمياً، واستلم محلياً
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground sm:text-base">
-          اطلب من أي مكان في العالم ونوصله لباب بيتك
+        <p className="mt-2 text-xs sm:text-sm text-[#8B5E34]">
+          اطلب من أي مكان في العالم ونوصله لباب بيتك في جميع مدن اليمن
         </p>
       </section>
 
-      <section className="relative mt-2 h-36 w-full overflow-hidden sm:h-44">
-        <PlaneIcon className="absolute top-3 start-[4%] size-10 -scale-x-100 text-cocoa/80 sm:top-4 sm:size-12 animate-fly" />
-        <div className="absolute inset-x-0 bottom-0 h-14 bg-sand sm:h-16" />
-        <div className="absolute inset-x-0 bottom-12 h-2 route-dots sm:bottom-14" />
-        <div className="absolute bottom-14 left-[8%] sm:bottom-16 sm:left-[46%] animate-truck">
-          <BrandTruck />
-        </div>
-      </section>
-
+      {/* شعارات المتاجر العالمية */}
       <section className="px-4 pt-6">
-        <p className="mb-4 text-center text-sm font-bold text-muted-foreground">
+        <p className="mb-4 text-center text-xs font-bold text-[#8B5E34]">
           نستورد لك من أشهر المتاجر العالمية
         </p>
         <div className="mx-auto flex max-w-2xl flex-wrap items-center justify-center gap-3 sm:gap-4" dir="ltr">
           {platforms.map((p) => (
-            <span
+            <div
               key={p.name}
-              className={`grid size-20 place-items-center rounded-2xl bg-cream text-center font-display text-sm font-black leading-tight shadow-[6px_6px_14px_rgba(120,90,60,0.18),-6px_-6px_14px_rgba(255,255,255,0.85)] sm:size-24 sm:text-base ${p.className}`}
+              className={`grid size-20 place-items-center rounded-2xl bg-white text-center font-black text-sm shadow-sm border border-[#E8D7BB] sm:size-24 sm:text-base ${p.color}`}
             >
               {p.name}
-            </span>
+            </div>
           ))}
         </div>
       </section>
 
-      <section className="mx-auto max-w-2xl px-4 py-10">
+      {/* خطوات الشراء الـ 5 */}
+      <section className="mx-auto max-w-2xl px-4 py-8">
         <div className="grid gap-3 sm:grid-cols-2">
           {steps.map((s, i) => {
             const Icon = s.icon;
@@ -382,59 +294,65 @@ function Index() {
               <Link
                 key={s.title}
                 to={s.to}
-                className={`group flex cursor-pointer items-center gap-3 rounded-2xl bg-card p-4 ring-1 ring-border shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md hover:ring-cocoa/40 active:scale-95 ${
-                  last ? "sm:col-span-2 sm:mx-auto sm:w-1/2" : ""
+                className={`group flex items-center gap-3 rounded-2xl bg-white p-4 ring-1 ring-[#E8D7BB] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:ring-[#8B5E34]/40 active:scale-95 text-right ${
+                  last ? "sm:col-span-2 sm:mx-auto sm:w-2/3" : ""
                 }`}
               >
-                <span className="grid size-10 place-items-center rounded-xl bg-secondary text-clay transition-colors group-hover:bg-cocoa group-hover:text-cream">
+                <span className="grid size-11 place-items-center rounded-xl bg-[#FAF4E6] text-[#8B5E34] transition-colors group-hover:bg-[#8B5E34] group-hover:text-white">
                   <Icon className="size-5" />
                 </span>
                 <div className="flex-1">
-                  <p className="font-display text-base font-extrabold text-cocoadeep transition-colors group-hover:text-cocoa">
+                  <p className="text-sm font-black text-[#4A3728] transition-colors group-hover:text-[#8B5E34]">
                     {s.title}
                   </p>
-                  <p className="text-xs text-muted-foreground">{s.desc}</p>
+                  <p className="text-xs text-[#8B5E34] mt-0.5">{s.desc}</p>
                 </div>
               </Link>
             );
           })}
         </div>
 
-        <div className="mt-8 flex items-center justify-center gap-3">
+        {/* أزرار الإجراءات السفلية */}
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+          <Link
+            to="/new-order"
+            className="inline-flex items-center gap-2 rounded-2xl bg-[#593922] hover:bg-[#432A18] px-8 py-3.5 font-black text-sm text-white shadow-md hover:shadow-lg transition"
+          >
+            <ShoppingCart className="size-4" />
+            <span>اطلب الآن</span>
+          </Link>
+
           <Link
             to="/track"
-            className="inline-flex items-center gap-2 rounded-2xl bg-card px-6 py-3.5 font-display font-extrabold text-cocoa ring-1 ring-border"
+            className="inline-flex items-center gap-2 rounded-2xl bg-white px-6 py-3.5 font-black text-sm text-[#8B5E34] ring-1 ring-[#E8D7BB] shadow-sm hover:bg-[#FAF4E6] transition"
           >
-            <Search className="size-4" /> تتبع شحنتك
+            <Search className="size-4" />
+            <span>تتبع شحنتك</span>
           </Link>
-          <a
-            href="/new-order"
-            className="inline-flex items-center gap-2 rounded-2xl bg-cocoa px-8 py-4 font-display font-extrabold text-cream"
-          >
-            <ShoppingCart className="size-4" /> اطلب الآن
-          </a>
         </div>
       </section>
 
-      <section className="pb-14">
-        <h2 className="mb-6 text-center font-display text-2xl font-extrabold text-cocoadeep">آراء عملائنا</h2>
-        <div className="flex gap-4 overflow-x-auto px-6 pb-2">
+      {/* آراء العملاء */}
+      <section className="pb-12 pt-4">
+        <h2 className="mb-4 text-center font-black text-xl text-[#4A3728]">آراء عملائنا</h2>
+        <div className="flex gap-4 overflow-x-auto px-6 pb-2 justify-center">
           {testimonials.map((t, i) => (
-            <figure key={i} className="w-64 shrink-0 rounded-2xl bg-card p-5 ring-1 ring-border">
-              <Stars />
-              <blockquote className="mt-3 text-sm leading-relaxed text-foreground/80">{t.text}</blockquote>
-              <figcaption className="mt-3 text-center">
-                <p className="font-display text-sm font-bold text-cocoadeep">{t.name}</p>
-                <p className="text-xs text-muted-foreground">{t.city}</p>
-              </figcaption>
-            </figure>
+            <div key={i} className="w-64 shrink-0 rounded-2xl bg-white p-5 ring-1 ring-[#E8D7BB] shadow-sm">
+              <div className="flex justify-center text-amber-500 mb-2">★★★★★</div>
+              <p className="text-xs leading-relaxed text-[#593922] text-center font-medium">"{t.text}"</p>
+              <div className="mt-3 text-center border-t border-[#FAF4E6] pt-2">
+                <p className="text-xs font-black text-[#4A3728]">{t.name}</p>
+                <p className="text-[10px] text-gray-500">{t.city}</p>
+              </div>
+            </div>
           ))}
         </div>
       </section>
 
-      <footer className="pb-10 text-center">
-        <p className="font-display text-sm font-extrabold text-cocoadeep">شريككم نحو التميز والنجاح</p>
-        <p className="mt-3 font-display text-xs font-bold tracking-wide text-cocoa">{BRAND} © 2026</p>
+      {/* تذييل الصفحة */}
+      <footer className="pb-8 text-center border-t border-[#E8D7BB] pt-6 bg-white/40">
+        <p className="text-xs font-black text-[#593922]">السوق الشامل — وسيطكم المعتمد نحو التميز</p>
+        <p className="mt-1 text-[11px] text-[#8B5E34]">جميع الحقوق محفوظة © 2026</p>
       </footer>
     </div>
   );
