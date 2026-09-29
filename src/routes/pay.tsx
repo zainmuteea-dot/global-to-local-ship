@@ -36,6 +36,23 @@ const CheckIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4 4L19 7" /></svg>
 );
 
+function WalletLogo({ m }: { m: PayMethod }) {
+  const [fail, setFail] = useState(false)
+  if (fail) {
+    return (
+      <span style={{
+        width: '100%', height: '100%', display: 'flex',
+        alignItems: 'center', justifyContent: 'center',
+        background: m.cbg, color: m.color,
+        fontWeight: 800, fontSize: 20, borderRadius: 8
+      }}>
+        {m.name[0]}
+      </span>
+    )
+  }
+  return <img src={m.logo} alt={m.name} onError={() => setFail(true)} style={{width:'100%',height:'100%',objectFit:'contain',display:'block'}} />
+}
+
 function Pay() {
   const { order } = Route.useSearch()
   const [selected, setSelected] = useState<string | null>(null);
@@ -115,7 +132,7 @@ function Pay() {
                       className={`method${selected === m.id ? " active" : ""}`}
                       style={{ ["--c"]: m.color } as Vars}
                       onClick={() => { setSelected(m.id); setCopied(false); }}>
-                      <span className="ic logo"><img src={m.logo} alt={m.name} onError={e=>{e.currentTarget.style.display='none'}} /></span>
+                      <span className="ic logo"><WalletLogo m={m} /></span>
                       <span className="meta"><span className="name">{m.name}</span><span className="sub">{m.sub}</span></span>
                       <span className="check"><CheckIcon /></span>
                     </button>
@@ -127,7 +144,7 @@ function Pay() {
 
           {active && (
             <div className="account" style={{ ["--c"]: active.color, ["--cbg"]: active.cbg } as Vars}>
-              <div className="head"><span className="badge-ic logo"><img src={active.logo} alt={active.name} /></span> أودِع عبر {active.name} ({active.sub})</div>
+              <div className="head"><span className="badge-ic logo"><WalletLogo m={active} /></span> أودِع عبر {active.name} ({active.sub})</div>
               <div className="acc-row"><span className="acc-label">اسم المستفيد</span><span className="acc-value">{ACCOUNT_NAME}</span></div>
               <div className="acc-row">
                 <span className="acc-label">رقم الحساب</span>
@@ -193,7 +210,6 @@ const CSS = `
 .pay-root .method:hover{background:var(--accent-soft)}
 .pay-root .method.active{background:var(--accent-soft)}
 .pay-root .method .ic{width:44px;height:44px;flex:0 0 44px;border-radius:12px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#fff;border:1px solid var(--line);padding:4px}
-.pay-root .method .ic img{width:100%;height:100%;object-fit:contain;display:block}
 .pay-root .method .name{font-weight:700;font-size:15px}
 .pay-root .method .sub{font-size:12px;color:var(--muted)}
 .pay-root .method .meta{display:flex;flex-direction:column;gap:2px}
@@ -204,7 +220,6 @@ const CSS = `
 .pay-root .account{margin-top:16px;background:var(--cbg);border:1.5px solid var(--c);border-radius:16px;padding:18px 20px}
 .pay-root .account .head{display:flex;align-items:center;gap:10px;font-weight:800;color:var(--c);margin-bottom:14px}
 .pay-root .account .head .badge-ic{width:34px;height:34px;border-radius:10px;background:#fff;border:1.5px solid var(--c);padding:4px;display:flex}
-.pay-root .account .head .badge-ic img{width:100%;height:100%;object-fit:contain}
 .pay-root .acc-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0}
 .pay-root .acc-row + .acc-row{border-top:1px dashed var(--c)}
 .pay-root .acc-label{color:var(--muted);font-size:14px}
