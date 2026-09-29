@@ -1,5 +1,13 @@
-// pay.tsx
-import React, { useState, type CSSProperties } from "react";
+import { createFileRoute } from "@tanstack/react-router";
+import { useState, useEffect, type CSSProperties } from "react";
+import { supabase } from "../lib/supabase";
+
+export const Route = createFileRoute("/pay")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    order: (search.order as string) || "",
+  }),
+  component: Pay,
+});
 
 type Vars = CSSProperties & { [key: `--${string}`]: string };
 
@@ -23,11 +31,9 @@ const METHODS: PayMethod[] = [
   { id: "mobile",  name: "موبايل موني", sub: "Mobile Money", color: "#1b3a6b", cbg: "#e8edf5", logo: "https://play-lh.googleusercontent.com/fnxxZ7KP15EhtTTw23pVYEMICO4O8KKjkYSG3tOF5YfZYT5MbWflqaAyJmhWoizSru9pFXIR8m9mb17fzGAKxQ=s512" },
 ];
 
-const ORDER_NO = "144684";
 const ORDER_REF = "7777866s – sxsaxs";
 const ACCOUNT_NAME = "زين العابدين مطيع حاتم الوصابي";
 const ACCOUNT_NUMBER = "772399744";
-const TOTAL = "3,650";
 
 const CopyIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V5a2 2 0 0 1 2-2h10" /></svg>
@@ -36,10 +42,48 @@ const CheckIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4 4L19 7" /></svg>
 );
 
-export default function Pay() {
+function WalletLogo({ m }: { m: PayMethod }) {
+  const [fail, setFail] = useState(false);
+  if (fail) {
+    return (
+      <span style={{
+        width: '100%', height: '100%', display: 'flex',
+        alignItems: 'center', justifyContent: 'center',
+        background: m.cbg, color: m.color,
+        fontWeight: 800, fontSize: 20, borderRadius: 8
+      }}>
+        {m.name[0]}
+      </span>
+    );
+  }
+  return <img src={m.logo} alt={m.name} onError={() => setFail(true)} style={{width:'100%',height:'100%',objectFit:'contain',display:'block'}} referrerPolicy="no-referrer" />;
+}
+
+function Pay() {
+  const { order } = Route.useSearch();
   const [selected, setSelected] = useState<string | null>(null);
   const [open, setOpen] = useState<boolean>(true);
   const [copied, setCopied] = useState<boolean>(false);
+  const [orderNo, setOrderNo] = useState(order || "144684");
+  const [total, setTotal] = useState("3,650");
+
+  useEffect(() => {
+    const fetchOrder = async () => {
+      if (!order) return;
+      setOrderNo(order);
+      const { data } = await supabase
+        .from("orders")
+        .select("tracking_code, notes")
+        .eq("tracking_code", order)
+        .maybeSingle();
+      if (data) {
+        setOrderNo(data.tracking_code);
+        const match = data.notes?.match(/السعر التقريبي:\s*([\d.,]+)/);
+        if (match) setTotal(match[1]);
+      }
+    };
+    fetchOrder();
+  }, [order]);
 
   const active = METHODS.find((m) => m.id === selected) ?? null;
 
@@ -48,9 +92,7 @@ export default function Pay() {
       await navigator.clipboard.writeText(ACCOUNT_NUMBER);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1800);
-    } catch {
-      // تجاهل فشل الحافظة
-    }
+    } catch {}
   };
 
   return (
@@ -59,7 +101,7 @@ export default function Pay() {
       <div className="wrap">
         <div className="topbar">
           <h1>الدفع</h1>
-          <button className="back-btn" type="button">
+          <button className="back-btn" type="button" onClick={() => window.history.back()}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
             رجوع
           </button>
@@ -67,15 +109,15 @@ export default function Pay() {
 
         <div className="card">
           <div className="order">
-            <div className="order-row"><span className="label">رقم الطلب</span><span className="value">{ORDER_NO}</span></div>
+            <div className="order-row"><span className="label">رقم الطلب</span><span className="value">{orderNo}</span></div>
             <div className="order-row"><span className="label">حالة الدفع</span><span className="badge"><span className="dot" /> غير مكتمل</span></div>
             <div className="ref">{ORDER_REF}</div>
           </div>
 
           <div className="summary">
-            <div className="sum-box total"><div className="label">الإجمالي</div><div className="amount">{TOTAL}<span className="cur">ري</span></div></div>
+            <div className="sum-box total"><div className="label">الإجمالي</div><div className="amount">{total}<span className="cur">ري</span></div></div>
             <div className="sum-box paid"><div className="label">المدفوع</div><div className="amount">0<span className="cur">ري</span></div></div>
-            <div className="sum-box remain"><div className="label">المتبقي</div><div className="amount">{TOTAL}<span className="cur">ري</span></div></div>
+            <div className="sum-box remain"><div className="label">المتبقي</div><div className="amount">{total}<span className="cur">ري</span></div></div>
           </div>
 
           <div className="pay-section">
@@ -95,7 +137,7 @@ export default function Pay() {
                       style={{ ["--c"]: m.color } as Vars}
                       onClick={() => { setSelected(m.id); setCopied(false); }}
                     >
-                      <span className="ic logo"><img src={m.logo} alt={m.name} /></span>
+                      <span className="ic logo"><WalletLogo m={m} /></span>
                       <span className="meta"><span className="name">{m.name}</span><span className="sub">{m.sub}</span></span>
                       <span className="check"><CheckIcon /></span>
                     </button>
@@ -107,7 +149,7 @@ export default function Pay() {
 
           {active && (
             <div className="account" style={{ ["--c"]: active.color, ["--cbg"]: active.cbg } as Vars}>
-              <div className="head"><span className="badge-ic logo"><img src={active.logo} alt={active.name} /></span> أودِع عبر {active.name} ({active.sub})</div>
+              <div className="head"><span className="badge-ic logo"><WalletLogo m={active} /></span> أودِع عبر {active.name} ({active.sub})</div>
               <div className="acc-row"><span className="acc-label">اسم المستفيد</span><span className="acc-value">{ACCOUNT_NAME}</span></div>
               <div className="acc-row">
                 <span className="acc-label">رقم الحساب</span>
@@ -118,11 +160,11 @@ export default function Pay() {
                   </button>
                 </span>
               </div>
-              <div className="acc-hint">{copied ? "✓ تم نسخ رقم الحساب" : `اضغط زر النسخ لنسخ الرقم · ثم أودِع ${TOTAL} ري واضغط «المتابعة»`}</div>
+              <div className="acc-hint">{copied ? "✓ تم نسخ رقم الحساب" : `اضغط زر النسخ لنسخ الرقم · ثم أودِع ${total} ري واضغط «المتابعة»`}</div>
             </div>
           )}
 
-          <button className="pay-btn" type="button">المتابعة للدفع · {TOTAL} ري</button>
+          <button className="pay-btn" type="button">المتابعة للدفع · {total} ري</button>
           <div className="footnote">مدفوعاتك محمية ومشفّرة 🔒</div>
         </div>
       </div>
@@ -175,7 +217,6 @@ const CSS = `
 .pay-root .method.active{background:var(--accent-soft)}
 .pay-root .method .ic{width:44px;height:44px;flex:0 0 44px;border-radius:12px;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .pay-root .method .ic.logo{background:#fff;border:1px solid var(--line);padding:4px}
-.pay-root .method .ic img{width:100%;height:100%;object-fit:contain;display:block}
 .pay-root .method .name{font-weight:700;font-size:15px}
 .pay-root .method .sub{font-size:12px;color:var(--muted);font-weight:600}
 .pay-root .method .meta{display:flex;flex-direction:column;gap:2px}
@@ -188,7 +229,6 @@ const CSS = `
 .pay-root .account .head{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:800;color:var(--c,var(--accent));margin-bottom:14px}
 .pay-root .account .head .badge-ic{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .pay-root .account .head .badge-ic.logo{background:#fff;border:1.5px solid var(--c,var(--accent-soft));padding:4px}
-.pay-root .account .head .badge-ic img{width:100%;height:100%;object-fit:contain;display:block}
 .pay-root .acc-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0}
 .pay-root .acc-row + .acc-row{border-top:1px dashed var(--c,var(--accent-soft))}
 .pay-root .acc-label{color:var(--muted);font-size:14px;font-weight:600}
