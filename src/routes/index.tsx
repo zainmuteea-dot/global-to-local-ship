@@ -23,7 +23,8 @@ export const Route = createFileRoute("/")({
       { title: "السوق الشامل — وسيط شراء يوصلك من العالم إلى اليمن" },
       {
         name: "description",
-        content: "تسوق عالمياً واستلم محلياً: نشتري لك من TEMU وSHEIN وAmazon وTrendyol وAliExpress ونوصل لباب بيتك في اليمن.",
+        content:
+          "تسوق عالمياً واستلم محلياً: نشتري لك من TEMU وSHEIN وAmazon وTrendyol وAliExpress ونوصل لباب بيتك في اليمن.",
       },
     ],
   }),
@@ -50,7 +51,9 @@ function BrandTruck() {
   return (
     <div className="flex items-end">
       <div className="rounded-md bg-card px-2 py-1 ring-1 ring-border shadow-sm">
-        <p className="whitespace-nowrap font-display text-[10px] font-extrabold leading-none text-cocoadeep sm:text-xs">{BRAND}</p>
+        <p className="whitespace-nowrap font-display text-[10px] font-extrabold leading-none text-cocoadeep sm:text-xs">
+          {BRAND}
+        </p>
       </div>
       <div className="-ms-0.5 size-0 border-y-[7px] border-s-[10px] border-y-transparent border-s-cocoa" />
       <div className="relative -ms-1 flex gap-1">
@@ -60,12 +63,6 @@ function BrandTruck() {
     </div>
   );
 }
-
-const heroCircles: { label: string; icon: LucideIcon; to?: string }[] = [
-  { label: "التسجيل", icon: UserRound, to: "/signup" },
-  { label: "الطلب", icon: Hand, to: "/new-order" },
-  { label: "الشحن", icon: FileText },
-];
 
 type StepItem = { title: string; desc: string; icon: LucideIcon; to: string };
 
@@ -87,13 +84,14 @@ const iconMap: Record<string, LucideIcon> = {
 
 function useSteps() {
   const [steps, setSteps] = useState<StepItem[]>(defaultSteps);
+
   useEffect(() => {
     supabase
-     .from("site_steps")
-     .select("*")
-     .eq("is_active", true)
-     .order("sort_order", { ascending: true })
-     .then(({ data, error }) => {
+      .from("site_steps")
+      .select("*")
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true })
+      .then(({ data, error }) => {
         if (!error && data && data.length > 0) {
           setSteps(
             data.map((d: any) => ({
@@ -106,6 +104,7 @@ function useSteps() {
         }
       });
   }, []);
+
   return steps;
 }
 
@@ -127,7 +126,9 @@ function Stars() {
   return (
     <div className="flex justify-center gap-0.5 text-gold">
       {Array.from({ length: 5 }).map((_, i) => (
-        <span key={i} className="text-sm leading-none">★</span>
+        <span key={i} className="text-sm leading-none">
+          ★
+        </span>
       ))}
     </div>
   );
@@ -137,7 +138,10 @@ function Confetti() {
   return (
     <div className="mb-1 flex flex-wrap justify-center gap-1" aria-hidden>
       {["size-1.5", "size-2", "size-1.5", "size-2.5", "size-1.5", "size-2"].map((s, i) => (
-        <span key={i} className={`${s} rotate-45 bg-goldsoft/70 ${i % 2? "rounded-[2px]" : "rounded-full"}`} />
+        <span
+          key={i}
+          className={`${s} rotate-45 bg-goldsoft/70 ${i % 2 ? "rounded-[2px]" : "rounded-full"}`}
+        />
       ))}
     </div>
   );
@@ -145,6 +149,73 @@ function Confetti() {
 
 function Index() {
   const steps = useSteps();
+  const [currentUser, setCurrentUser] = useState<{ name: string; email: string } | null>(null);
+
+  // جلب بيانات العميل المسجل تلقائياً والتحقق من حالة اتصاله
+  useEffect(() => {
+    async function checkUser() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          const email = session.user.email || "";
+          let name =
+            session.user.user_metadata?.full_name ||
+            localStorage.getItem("sc_name") ||
+            sessionStorage.getItem("sc_name") ||
+            "";
+
+          if (!name) {
+            const { data } = await supabase
+              .from("profiles")
+              .select("full_name")
+              .eq("id", session.user.id)
+              .maybeSingle();
+            if (data?.full_name) {
+              name = data.full_name;
+              localStorage.setItem("sc_name", name);
+            }
+          }
+
+          setCurrentUser({
+            name: name || email.split("@")[0] || "العميل",
+            email: email,
+          });
+        } else {
+          setCurrentUser(null);
+        }
+      } catch (err) {
+        console.error("Auth check err:", err);
+      }
+    }
+
+    checkUser();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        const email = session.user.email || "";
+        const name =
+          session.user.user_metadata?.full_name ||
+          localStorage.getItem("sc_name") ||
+          email.split("@")[0];
+        setCurrentUser({ name, email });
+      } else {
+        setCurrentUser(null);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const heroCircles: { label: string; icon: LucideIcon; to: string }[] = [
+    { label: currentUser ? "حسابي" : "التسجيل", icon: UserRound, to: currentUser ? "/my-account" : "/login" },
+    { label: "الطلب", icon: Hand, to: "/new-order" },
+    { label: "الشحن", icon: FileText, to: "/track" },
+  ];
+
   return (
     <div dir="rtl" lang="ar" className="min-h-screen overflow-x-hidden bg-background font-body text-foreground">
       <style>{`
@@ -158,74 +229,138 @@ function Index() {
           0%, 100% { transform: translateX(0); }
           50% { transform: translateX(18px); }
         }
-     .animate-fly { animation: fly-across 8s linear infinite; }
-     .animate-truck { animation: truck-move 2.8s ease-in-out infinite; }
+        .animate-fly { animation: fly-across 8s linear infinite; }
+        .animate-truck { animation: truck-move 2.8s ease-in-out infinite; }
       `}</style>
 
-      <div className="mx-auto flex max-w-4xl items-center justify-between px-4 pt-4">
-        <div className="flex items-center gap-2">
-          <Link to="/signup" className="grid size-11 place-items-center rounded-full bg-card text-cocoa ring-1 ring-border shadow-sm">
+      {/* الشريط العلوي مع الخط الأخضر للمتصل وزر إدارة الحساب والعمليات */}
+      <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3 px-4 pt-4">
+        {/* جهة اليمين: أيقونة الحساب + الإشعارات + الخط الأخضر لاسم العميل وحالة الاتصال */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            to={currentUser ? "/my-account" : "/login"}
+            title={currentUser ? "إدارة حسابي" : "تسجيل الدخول"}
+            className="grid size-11 place-items-center rounded-full bg-card text-cocoa ring-1 ring-border shadow-sm transition hover:scale-105"
+          >
             <UserRound className="size-6" />
           </Link>
-          <Link to="/notifications" className="grid size-11 place-items-center rounded-full bg-card text-cocoa ring-1 ring-border shadow-sm">
+          <Link
+            to="/notifications"
+            className="grid size-11 place-items-center rounded-full bg-card text-cocoa ring-1 ring-border shadow-sm transition hover:scale-105"
+          >
             <Bell className="size-6" />
           </Link>
+
+          {/* الخط الأخضر: نقطة متصل + اسم العميل + مرحباً بك في متجر السوق الشامل */}
+          {currentUser && (
+            <div className="flex items-center gap-2 rounded-full border border-emerald-400/80 bg-emerald-50 px-3.5 py-1.5 text-xs font-bold text-emerald-900 shadow-sm animate-in fade-in duration-300">
+              <span className="relative flex size-2.5">
+                <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex size-2.5 rounded-full bg-emerald-600" />
+              </span>
+              <span className="font-extrabold text-emerald-950">{currentUser.name}</span>
+              <span className="text-emerald-700 hidden sm:inline">| مرحباً بك في متجر السوق الشامل</span>
+            </div>
+          )}
         </div>
-        <a href="/new-order" className="grid size-11 place-items-center rounded-full bg-card text-cocoa ring-1 ring-border shadow-sm">
-          <span className="text-[10px] font-bold leading-none text-center">اطلب الآن</span>
-        </a>
+
+        {/* جهة اليسار: زر إدارة حسابك وعملياتك + زر اطلب الآن */}
+        <div className="flex items-center gap-2">
+          {currentUser ? (
+            <Link
+              to="/my-account"
+              className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-emerald-600 to-emerald-700 px-4 py-2 font-display text-xs font-extrabold text-white shadow-md transition-all duration-200 hover:from-emerald-700 hover:to-emerald-800 hover:shadow-lg active:scale-95"
+            >
+              <Package className="size-4" />
+              <span>إدارة حسابك وعملياتك</span>
+            </Link>
+          ) : (
+            <Link
+              to="/login"
+              className="rounded-full border border-[#ede5d8] bg-card px-3.5 py-2 text-xs font-bold text-cocoa hover:bg-[#faf7f2] transition"
+            >
+              تسجيل الدخول
+            </Link>
+          )}
+
+          <a
+            href="/new-order"
+            className="grid size-11 place-items-center rounded-full bg-card text-cocoa ring-1 ring-border shadow-sm transition hover:scale-105"
+          >
+            <span className="text-[10px] font-bold leading-none text-center">اطلب الآن</span>
+          </a>
+        </div>
       </div>
 
       <header className="px-4 pt-4">
         <div className="relative mx-auto max-w-2xl overflow-hidden rounded-3xl bg-cocoa p-6 text-cream ring-1 ring-black/10 sm:p-8">
           <div className="flex flex-col-reverse items-start justify-between gap-4 sm:flex-row">
             <div className="flex items-start gap-4">
-              {heroCircles.map(({ label, icon: Icon }) => (
-                <div key={label} className="flex flex-col items-center gap-1.5">
+              {heroCircles.map(({ label, icon: Icon, to }) => (
+                <Link key={label} to={to} className="flex flex-col items-center gap-1.5 transition hover:opacity-90">
                   <span className="grid size-11 place-items-center rounded-full ring-2 ring-cream/50 sm:size-12">
                     <Icon className="size-5 text-goldsoft sm:size-6" />
                   </span>
                   <span className="text-xs font-bold text-goldsoft">{label}</span>
-                </div>
+                </Link>
               ))}
             </div>
             <div className="text-start">
               <Confetti />
-              <p className="font-display text-2xl font-black tracking-tight text-goldsoft sm:text-3xl">{BRAND}</p>
+              <p className="font-display text-2xl font-black tracking-tight text-goldsoft sm:text-3xl">
+                {BRAND}
+              </p>
             </div>
           </div>
+
           <div className="mt-6 flex flex-col-reverse items-center gap-6 sm:flex-row sm:items-end">
             <div className="flex-1 text-center sm:text-start">
-              <p className="font-display text-4xl font-black leading-tight text-goldsoft sm:text-5xl">كيف تطلب؟<span className="text-gold">؟</span></p>
+              <p className="font-display text-4xl font-black leading-tight text-goldsoft sm:text-5xl">
+                كيف تطلب؟<span className="text-gold">؟</span>
+              </p>
             </div>
             <div className="relative shrink-0">
               <div className="grid size-24 place-items-center rounded-xl bg-cream/10 ring-2 ring-cream/40 sm:size-28">
                 <span className="grid size-9 place-items-center rounded-full bg-goldsoft text-cocoa">
-                  <svg viewBox="0 0 24 24" className="size-4" fill="currentColor"><path d="M8 5.5v13l11-6.5-11-6.5Z" /></svg>
+                  <svg viewBox="0 0 24 24" className="size-4" fill="currentColor">
+                    <path d="M8 5.5v13l11-6.5-11-6.5Z" />
+                  </svg>
                 </span>
               </div>
             </div>
           </div>
-          <Link to="/new-order" className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-gold px-5 py-2.5 font-display text-lg font-extrabold text-cocoadeep shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:scale-95">
+
+          <Link
+            to="/new-order"
+            className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-gold px-5 py-2.5 font-display text-lg font-extrabold text-cocoadeep shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:scale-95"
+          >
             <Hand className="size-5 -scale-x-100" /> اضغط هنا
           </Link>
         </div>
       </header>
 
       <section className="px-4 pb-4 pt-8 text-center">
-        <h1 className="font-display text-3xl font-extrabold leading-snug text-cocoadeep sm:text-4xl">تسوّق عالمياً، واستلم محلياً</h1>
-        <p className="mt-2 text-sm text-muted-foreground sm:text-base">اطلب من أي مكان في العالم ونوصله لباب بيتك</p>
+        <h1 className="font-display text-3xl font-extrabold leading-snug text-cocoadeep sm:text-4xl">
+          تسوّق عالمياً، واستلم محلياً
+        </h1>
+        <p className="mt-2 text-sm text-muted-foreground sm:text-base">
+          اطلب من أي مكان في العالم ونوصله لباب بيتك
+        </p>
       </section>
 
       <section className="relative mt-2 h-36 w-full overflow-hidden sm:h-44">
         <PlaneIcon className="absolute top-3 start-[4%] size-10 -scale-x-100 text-cocoa/80 sm:top-4 sm:size-12 animate-fly" />
         <div className="absolute inset-x-0 bottom-0 h-14 bg-sand sm:h-16" />
         <div className="absolute inset-x-0 bottom-12 h-2 route-dots sm:bottom-14" />
-        <div className="absolute bottom-14 left-[8%] sm:bottom-16 sm:left-[46%] animate-truck"><BrandTruck /></div>
+        <div className="absolute bottom-14 left-[8%] sm:bottom-16 sm:left-[46%] animate-truck">
+          <BrandTruck />
+        </div>
       </section>
 
       <section className="px-4 pt-6">
-        <p className="mb-4 text-center text-sm font-bold text-muted-foreground">نستورد لك من أشهر المتاجر العالمية</p>
+        <p className="mb-4 text-center text-sm font-bold text-muted-foreground">
+          نستورد لك من أشهر المتاجر العالمية
+        </p>
         <div className="mx-auto flex max-w-2xl flex-wrap items-center justify-center gap-3 sm:gap-4" dir="ltr">
           {platforms.map((p) => (
             <span
@@ -247,22 +382,35 @@ function Index() {
               <Link
                 key={s.title}
                 to={s.to}
-                className={`group flex cursor-pointer items-center gap-3 rounded-2xl bg-card p-4 ring-1 ring-border shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md hover:ring-cocoa/40 active:scale-95 ${last? "sm:col-span-2 sm:mx-auto sm:w-1/2" : ""}`}
+                className={`group flex cursor-pointer items-center gap-3 rounded-2xl bg-card p-4 ring-1 ring-border shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md hover:ring-cocoa/40 active:scale-95 ${
+                  last ? "sm:col-span-2 sm:mx-auto sm:w-1/2" : ""
+                }`}
               >
-                <span className="grid size-10 place-items-center rounded-xl bg-secondary text-clay transition-colors group-hover:bg-cocoa group-hover:text-cream"><Icon className="size-5" /></span>
+                <span className="grid size-10 place-items-center rounded-xl bg-secondary text-clay transition-colors group-hover:bg-cocoa group-hover:text-cream">
+                  <Icon className="size-5" />
+                </span>
                 <div className="flex-1">
-                  <p className="font-display text-base font-extrabold text-cocoadeep transition-colors group-hover:text-cocoa">{s.title}</p>
+                  <p className="font-display text-base font-extrabold text-cocoadeep transition-colors group-hover:text-cocoa">
+                    {s.title}
+                  </p>
                   <p className="text-xs text-muted-foreground">{s.desc}</p>
                 </div>
               </Link>
             );
           })}
         </div>
+
         <div className="mt-8 flex items-center justify-center gap-3">
-          <Link to="/track" className="inline-flex items-center gap-2 rounded-2xl bg-card px-6 py-3.5 font-display font-extrabold text-cocoa ring-1 ring-border">
+          <Link
+            to="/track"
+            className="inline-flex items-center gap-2 rounded-2xl bg-card px-6 py-3.5 font-display font-extrabold text-cocoa ring-1 ring-border"
+          >
             <Search className="size-4" /> تتبع شحنتك
           </Link>
-          <a href="/new-order" className="inline-flex items-center gap-2 rounded-2xl bg-cocoa px-8 py-4 font-display font-extrabold text-cream">
+          <a
+            href="/new-order"
+            className="inline-flex items-center gap-2 rounded-2xl bg-cocoa px-8 py-4 font-display font-extrabold text-cream"
+          >
             <ShoppingCart className="size-4" /> اطلب الآن
           </a>
         </div>
