@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import { PackageCheck, ArrowRight, Printer, Copy, Check, Tag, DollarSign, Store, ShoppingBag, Loader2 } from "lucide-react";
+import { PackageCheck, ArrowRight, Printer, Copy, Check, Tag, DollarSign, Store, ShoppingBag, Loader2, AlertCircle } from "lucide-react";
 
 export const Route = createFileRoute("/new-order")({ component: NewOrder });
 
@@ -33,11 +33,11 @@ function cleanProductTitle(url: string, store: string) {
     const segments = cleanUrl.split("/").filter(Boolean);
     const lastPart = segments[segments.length - 1] || segments[segments.length - 2] || "";
     let text = decodeURIComponent(lastPart)
-    .replace(/\.(html|htm|php)$/i, "")
-    .replace(/[-_]/g, " ")
-    .replace(/\b\d{6,}\b/g, "")
-    .replace(/\b(p|dp|item|product|goods|detail)\b/gi, "")
-    .trim();
+     .replace(/\.(html|htm|php)$/i, "")
+     .replace(/[-_]/g, " ")
+     .replace(/\b\d{6,}\b/g, "")
+     .replace(/\b(p|dp|item|product|goods|detail)\b/gi, "")
+     .trim();
     if (text.length > 5) return text;
     return store? `سلعة تسوق من متجر ${store}` : "منتج تسوق عالمي";
   } catch {
@@ -45,17 +45,49 @@ function cleanProductTitle(url: string, store: string) {
   }
 }
 
-async function fetchPriceAuto(url: string, setPrice: (v:string)=>void, setCurrency: (v:string)=>void, setFetchingPrice: (v:boolean)=>void) {
-  setFetchingPrice(true);
-  try {
-    const { data } = await supabase.functions.invoke("fetch-price", { body: { url } });
-    if (data?.price) {
-      setPrice(String(data.price).replace(/,/g,""));
-      setCurrency(data.currency || "ر.س");
+// Hook استخراج السعر مع معالجة الأخطاء والتحديث الديناميكي
+function useSheinPrice(setCurrency: (v:string)=>void) {
+  const [price, setPrice] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string|null>(null);
+
+  const fetchPrice = async (url: string) => {
+    if (!/shein\.com\//i.test(url) &&!/amazon\./i.test(url) &&!/temu\.com/i.test(url)) return;
+    setLoading(true); setError(null);
+    try {
+      let data: any = null;
+      // المحاولة 1: Supabase Edge Function
+      try {
+        const r = await supabase.functions.invoke("fetch-price", { body: { url } });
+        if (r.data?.price) data = r.data;
+      } catch {}
+
+      // المحاولة 2: Vercel Serverless كخطة بديلة
+      if (!data?.price) {
+        try {
+          const res = await fetch(`/api/shein-price?url=${encodeURIComponent(url)}`);
+          if (res.ok) {
+            const j = await res.json();
+            if (j.price) data = j;
+          }
+        } catch {}
+      }
+
+      if (data?.price) {
+        setPrice(String(data.price).replace(/,/g,""));
+        const cur = data.currency || "SAR";
+        setCurrency(cur === "SAR"? "ر.س" : cur === "USD"? "$" : cur === "YER"? "ر.ي" : "ر.س");
+        setError(null);
+      } else {
+        setError("لم يظهر السعر تلقائياً — أدخله يدوياً");
+      }
+    } catch {
+      setError("تعذّر جلب السعر — أدخله يدوياً");
+    } finally {
+      setLoading(false);
     }
-  } catch {} finally {
-    setFetchingPrice(false);
-  }
+  };
+  return { price, setPrice, loading, error, fetchPrice };
 }
 
 function NewOrder() {
@@ -64,8 +96,6 @@ function NewOrder() {
   const [url, setUrl] = useState("");
   const [store, setStore] = useState("");
   const [productType, setProductType] = useState("");
-  const [price, setPrice] = useState("");
-  const [fetchingPrice, setFetchingPrice] = useState(false);
   const [currency, setCurrency] = useState("ر.س");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -73,6 +103,8 @@ function NewOrder() {
   const [loading, setLoading] = useState(false);
   const [trackingCode, setTrackingCode] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+
+  const { price, setPrice, loading: fetchingPrice, error: priceError, fetchPrice } = useSheinPrice(setCurrency);
 
   useEffect(() => {
     const autoFill = async () => {
@@ -90,11 +122,11 @@ function NewOrder() {
 
   const onUrlChange = (val: string) => {
     setUrl(val);
-    if (val.length > 10) {
+    if (val.length > 15) {
       const detected = detectStore(val);
       setStore(detected);
       setProductType(cleanProductTitle(val, detected));
-      fetchPriceAuto(val, setPrice, setCurrency, setFetchingPrice);
+      fetchPrice(val);
     } else {
       setStore(""); setProductType("");
     }
@@ -156,11 +188,16 @@ function NewOrder() {
                 <div className="bg-white border border-[#dfcca9] rounded-xl p-3.5 space-y-3 shadow-sm">
                   <div><label className="text-[11px] font-bold text-[#4A3728] flex items-center gap-1.5 mb-1"><Tag className="size-3.5 text-[#8B5E34]" /><span>نوع المنتج / الوصف (يمكنك تعديله)</span></label><input value={productType} onChange={(e) => setProductType(e.target.value)} placeholder="مثال: فستان سهرة، قميص رجالي..." className="w-full bg-[#FDF8EE] border border-gray-200 rounded-lg px-3 py-2.5 text-[12px] font-medium text-[#4A3728] outline-none focus:ring-2 focus:ring-[#8B5E34]" /></div>
                   <div>
-                    <label className="text-[11px] font-bold text-[#4A3728] flex items-center justify-between mb-1"><span className="flex items-center gap-1.5"><DollarSign className="size-3.5 text-[#8B5E34]" /><span>سعر السلعة في المتجر الأصلي</span></span>{fetchingPrice? <span className="text-[10px] text-[#8B5E34] flex items-center gap-1"><Loader2 className="size-3 animate-spin"/> جاري استخراج السعر...</span> : <span className="text-[10px] text-gray-400 font-normal">تلقائي + يدوي</span>}</label>
+                    <label className="text-[11px] font-bold text-[#4A3728] flex items-center justify-between mb-1">
+                      <span className="flex items-center gap-1.5"><DollarSign className="size-3.5 text-[#8B5E34]" /><span>سعر السلعة في المتجر الأصلي</span></span>
+                      {fetchingPrice? <span className="text-[10px] text-[#8B5E34] flex items-center gap-1"><Loader2 className="size-3 animate-spin"/> جاري استخراج السعر...</span> : <span className="text-[10px] text-gray-400 font-normal">تلقائي + يدوي</span>}
+                    </label>
                     <div className="flex gap-2">
                       <input type="number" step="any" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="سيظهر تلقائياً أو أدخله يدوياً" dir="ltr" className="flex-1 bg-[#FDF8EE] border border-gray-200 rounded-lg px-3 py-2 text-[12px] text-left font-bold outline-none focus:ring-2 focus:ring-[#8B5E34]" />
                       <select value={currency} onChange={(e) => setCurrency(e.target.value)} className="bg-[#FDF8EE] border border-gray-200 rounded-lg px-2.5 py-2 text-[12px] font-bold text-[#4A3728] outline-none"><option value="$">$ دولار</option><option value="ر.س">ر.س (سعودي)</option><option value="ر.ي">ر.ي (يمني)</option></select>
                     </div>
+                    {priceError && <p className="text-[11px] text-red-500 font-bold mt-1.5 flex items-center gap-1"><AlertCircle className="size-3.5"/>{priceError}</p>}
+                    {!priceError &&!fetchingPrice && price && <p className="text-[11px] text-emerald-600 font-bold mt-1.5">✓ تم جلب السعر تلقائياً</p>}
                   </div>
                 </div>
               )}
