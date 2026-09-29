@@ -33,11 +33,11 @@ function cleanProductTitle(url: string, store: string) {
     const segments = cleanUrl.split("/").filter(Boolean);
     const lastPart = segments[segments.length - 1] || segments[segments.length - 2] || "";
     let text = decodeURIComponent(lastPart)
-     .replace(/\.(html|htm|php)$/i, "")
-     .replace(/[-_]/g, " ")
-     .replace(/\b\d{6,}\b/g, "")
-     .replace(/\b(p|dp|item|product|goods|detail)\b/gi, "")
-     .trim();
+    .replace(/\.(html|htm|php)$/i, "")
+    .replace(/[-_]/g, " ")
+    .replace(/\b\d{6,}\b/g, "")
+    .replace(/\b(p|dp|item|product|goods|detail)\b/gi, "")
+    .trim();
     if (text.length > 5) return text;
     return store? `سلعة تسوق من متجر ${store}` : "منتج تسوق عالمي";
   } catch {
@@ -45,18 +45,13 @@ function cleanProductTitle(url: string, store: string) {
   }
 }
 
-async function fetchPriceAuto(url: string, setPrice: (v:string)=>void, setFetchingPrice: (v:boolean)=>void) {
+async function fetchPriceAuto(url: string, setPrice: (v:string)=>void, setCurrency: (v:string)=>void, setFetchingPrice: (v:boolean)=>void) {
   setFetchingPrice(true);
   try {
-    const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-    const res = await fetch(proxy);
-    const data = await res.json();
-    const contents: string = data.contents || "";
-    let match = contents.match(/"salePrice"\s*:\s*"?\$?([\d,]+\.\d{2})/) ||
-                contents.match(/"price"\s*:\s*"?\$?([\d,]+\.\d{2})/) ||
-                contents.match(/\$\s?(\d{1,4}(?:,\d{3})*(?:\.\d{1,2})?)/);
-    if (match) {
-      setPrice(match[1].replace(/,/g,""));
+    const { data } = await supabase.functions.invoke("fetch-price", { body: { url } });
+    if (data?.price) {
+      setPrice(String(data.price).replace(/,/g,""));
+      setCurrency(data.currency || "ر.س");
     }
   } catch {} finally {
     setFetchingPrice(false);
@@ -71,7 +66,7 @@ function NewOrder() {
   const [productType, setProductType] = useState("");
   const [price, setPrice] = useState("");
   const [fetchingPrice, setFetchingPrice] = useState(false);
-  const [currency, setCurrency] = useState("$");
+  const [currency, setCurrency] = useState("ر.س");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
@@ -99,7 +94,7 @@ function NewOrder() {
       const detected = detectStore(val);
       setStore(detected);
       setProductType(cleanProductTitle(val, detected));
-      fetchPriceAuto(val, setPrice, setFetchingPrice);
+      fetchPriceAuto(val, setPrice, setCurrency, setFetchingPrice);
     } else {
       setStore(""); setProductType("");
     }
