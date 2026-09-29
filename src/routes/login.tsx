@@ -17,12 +17,11 @@ export function LoginPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"client" | "employee">("client");
   const [loading, setLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // 1. فحص فوري: إذا كان العميل مسجل دخول مسبقاً من هذا المتصفح، يتم تحويله مباشرة لحسابه دون طلب تسجيل الدخول مجدداً
+  // 1. فحص فوري: إذا كان مسجل دخول مسبقاً، تحويل مباشر بدون عرض صفحة الدخول
   useEffect(() => {
     let isMounted = true;
 
@@ -32,8 +31,15 @@ export function LoginPage() {
         if (!isMounted) return;
 
         if (session?.user) {
-          const savedRole = localStorage.getItem("sc_role") || sessionStorage.getItem("sc_role") || "client";
-          if (savedRole === "employee") {
+          const { data: profile } = await supabase
+           .from("profiles")
+           .select("role")
+           .eq("id", session.user.id)
+           .single();
+
+          const savedRole = profile?.role || localStorage.getItem("sc_role") || "client";
+
+          if (savedRole === "employee" || savedRole === "admin") {
             navigate({ to: "/admin", replace: true });
           } else {
             navigate({ to: "/my-account", replace: true });
@@ -48,7 +54,6 @@ export function LoginPage() {
     }
 
     checkExistingLogin();
-
     return () => {
       isMounted = false;
     };
@@ -58,7 +63,7 @@ export function LoginPage() {
     e.preventDefault();
     setError(null);
 
-    if (!email.trim() || !email.includes("@")) {
+    if (!email.trim() ||!email.includes("@")) {
       setError("يرجى إدخال بريد إلكتروني صحيح");
       return;
     }
@@ -81,14 +86,21 @@ export function LoginPage() {
         return;
       }
 
-      // 2. الحفظ في localStorage ليبقى مسجل الدخول دائماً من هذا المتصفح حتى بعد إغلاق الصفحة أو المتصفح
-      localStorage.setItem("sc_email", email.trim());
-      localStorage.setItem("sc_role", role);
-      sessionStorage.setItem("sc_email", email.trim());
-      sessionStorage.setItem("sc_role", role);
+      const { data: { user } } = await supabase.auth.getUser();
 
-      // توجيه تلقائي حسب نوع الحساب
-      if (role === "employee") {
+      let userRole = "client";
+      if (user) {
+        const { data: profile } = await supabase
+         .from("profiles")
+         .select("role")
+         .eq("id", user.id)
+         .single();
+        if (profile?.role) userRole = profile.role;
+      }
+
+      localStorage.setItem("sc_role", userRole);
+
+      if (userRole === "employee" || userRole === "admin") {
         navigate({ to: "/admin", replace: true });
       } else {
         navigate({ to: "/my-account", replace: true });
@@ -100,7 +112,6 @@ export function LoginPage() {
     }
   };
 
-  // شاشة تحميل سريعة أثناء فحص حالة الجلسة المحفوظة
   if (checkingSession) {
     return (
       <div dir="rtl" className="min-h-screen bg-[#faf7f2] flex flex-col items-center justify-center font-['Cairo',sans-serif]">
@@ -178,36 +189,9 @@ export function LoginPage() {
               disabled={loading}
               className="w-full h-13 rounded-2xl bg-[#3d2314] hover:bg-[#2b170c] text-white font-bold text-sm transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-60 flex items-center justify-center gap-2 px-5 py-3 cursor-pointer"
             >
-              <span>{loading ? "جارٍ تسجيل الدخول..." : "تسجيل الدخول إلى حسابي"}</span>
+              <span>{loading? "جارٍ تسجيل الدخول..." : "تسجيل الدخول إلى حسابي"}</span>
               <ArrowLeft className="w-4 h-4" />
             </button>
-          </div>
-
-          {/* نوع الدخول */}
-          <div className="pt-3">
-            <p className="text-center text-xs font-bold text-[#8a7a65] mb-3">نوع الدخول</p>
-            <div className="flex gap-3 justify-center">
-              <button
-                type="button"
-                onClick={() => setRole("client")}
-                className={`flex items-center gap-2 px-6 h-11 rounded-full border-2 text-sm font-bold transition-all cursor-pointer ${
-                  role === "client" ? "border-[#3d2314] bg-[#3d2314] text-white" : "border-[#e8ddd0] bg-white text-[#8a7a65]"
-                }`}
-              >
-                <span className={`w-2.5 h-2.5 rounded-full ${role === "client" ? "bg-white" : "bg-[#d9cfc0]"}`} />
-                عميل
-              </button>
-              <button
-                type="button"
-                onClick={() => setRole("employee")}
-                className={`flex items-center gap-2 px-6 h-11 rounded-full border-2 text-sm font-bold transition-all cursor-pointer ${
-                  role === "employee" ? "border-[#3d2314] bg-[#3d2314] text-white" : "border-[#e8ddd0] bg-white text-[#8a7a65]"
-                }`}
-              >
-                <span className={`w-2.5 h-2.5 rounded-full ${role === "employee" ? "bg-white" : "bg-[#d9cfc0]"}`} />
-                موظفين
-              </button>
-            </div>
           </div>
         </form>
 
