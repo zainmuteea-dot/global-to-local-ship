@@ -27,26 +27,21 @@ function detectStore(url: string) {
   return "";
 }
 
-// تنظيف وتنسيق اسم المنتج من مسار الرابط
 function cleanProductTitle(url: string, store: string) {
   try {
     const cleanUrl = url.split("?")[0];
     const segments = cleanUrl.split("/").filter(Boolean);
     const lastPart = segments[segments.length - 1] || segments[segments.length - 2] || "";
-    
     let text = decodeURIComponent(lastPart)
-      .replace(/\.(html|htm|php)$/i, "")
-      .replace(/[-_]/g, " ")
-      .replace(/\b\d{6,}\b/g, "") // إزالة الأكواد الرقمية الطويلة
-      .replace(/\b(p|dp|item|product|goods|detail)\b/gi, "")
-      .trim();
-
-    if (text.length > 5) {
-      return text;
-    }
-    return store ? `سلعة تسوق من متجر ${store}` : "منتج تسوق عالمي";
+     .replace(/\.(html|htm|php)$/i, "")
+     .replace(/[-_]/g, " ")
+     .replace(/\b\d{6,}\b/g, "")
+     .replace(/\b(p|dp|item|product|goods|detail)\b/gi, "")
+     .trim();
+    if (text.length > 5) return text;
+    return store? `سلعة تسوق من متجر ${store}` : "منتج تسوق عالمي";
   } catch {
-    return store ? `سلعة تسوق من متجر ${store}` : "منتج تسوق عالمي";
+    return store? `سلعة تسوق من متجر ${store}` : "منتج تسوق عالمي";
   }
 }
 
@@ -76,14 +71,12 @@ function NewOrder() {
         return;
       }
       const { data: prof } = await supabase
-        .from("profiles")
-        .select("full_name, phone")
-        .eq("id", user.id)
-        .maybeSingle();
-
+       .from("profiles")
+       .select("full_name, phone")
+       .eq("id", user.id)
+       .maybeSingle();
       const savedName = prof?.full_name || user.user_metadata?.full_name || sessionStorage.getItem("sc_name") || "";
       const savedPhone = prof?.phone || user.user_metadata?.phone || sessionStorage.getItem("sc_phone") || "";
-
       if (savedName) setName(savedName);
       if (savedPhone) setPhone(savedPhone);
     };
@@ -104,23 +97,21 @@ function NewOrder() {
   };
 
   const submit = async () => {
-    if (!name || !phone || !address) {
+    if (!name ||!phone ||!address) {
       alert("يرجى إكمال الاسم ورقم الهاتف وعنوان التوصيل");
       return;
     }
     setLoading(true);
     try {
-      const fullNotes = `العنوان: ${address}${lat ? ` (إحداثيات: ${lat}, ${lng})` : ""}${price ? ` | السعر التقريبي: ${price} ${currency}` : ""}`;
+      const fullNotes = `العنوان: ${address}${lat? ` (إحداثيات: ${lat}, ${lng})` : ""}${price? ` | السعر التقريبي: ${price} ${currency}` : ""}`;
       const { data: { session } } = await supabase.auth.getSession();
       const user = session?.user;
-
       const fullProductName = productType
-        ? `${productType}${store ? ` (${store})` : ""}`
-        : store ? `منتج من ${store}` : "طلب وسيط شراء";
-
+       ? `${productType}${store? ` (${store})` : ""}`
+        : store? `منتج من ${store}` : "طلب وسيط شراء";
       const { data, error } = await supabase
-        .from("orders")
-        .insert([
+       .from("orders")
+       .insert([
           {
             customer_name: name.trim(),
             phone: phone.trim(),
@@ -131,9 +122,8 @@ function NewOrder() {
             user_id: user?.id,
           },
         ])
-        .select("tracking_code")
-        .single();
-
+       .select("tracking_code")
+       .single();
       if (error) throw error;
       if (data) setTrackingCode(data.tracking_code);
     } catch (err: any) {
@@ -167,8 +157,8 @@ function NewOrder() {
               }}
               className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-[#8B5E34] bg-white px-3 py-1.5 rounded-lg border shadow-sm hover:bg-[#FAF4E6]"
             >
-              {copied ? <Check className="size-3.5 text-emerald-600" /> : <Copy className="size-3.5" />}
-              {copied ? "تم النسخ!" : "نسخ الرقم"}
+              {copied? <Check className="size-3.5 text-emerald-600" /> : <Copy className="size-3.5" />}
+              {copied? "تم النسخ!" : "نسخ الرقم"}
             </button>
           </div>
           <div className="text-right text-xs bg-gray-50 p-3.5 rounded-xl space-y-1.5 text-gray-700">
@@ -181,10 +171,19 @@ function NewOrder() {
           </div>
           <div className="flex flex-col gap-2.5 pt-2">
             <Link
-              to="/track"
-              className="w-full bg-[#4A3728] hover:bg-[#382a1f] text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 shadow-md transition"
+              to="/pay"
+              search={{ order: trackingCode }}
+              className="w-full bg-[#B4662A] hover:bg-[#96521e] text-white py-3.5 rounded-xl font-black flex items-center justify-center gap-2 shadow-md transition"
             >
-              <span>متابعة تتبع الشحنة الآن</span>
+              <span>المتابعة إلى الدفع 💳</span>
+              <ArrowRight className="size-4" />
+            </Link>
+            <Link
+              to="/track"
+              search={{ code: trackingCode }}
+              className="w-full bg-[#4A3728] hover:bg-[#382a1f] text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 text-sm transition"
+            >
+              <span>متابعة تتبع الشحنة</span>
               <ArrowRight className="size-4" />
             </Link>
             <button
@@ -221,7 +220,6 @@ function NewOrder() {
                   className="w-full bg-[#F9F5EB] border rounded-xl px-4 py-3 text-[12px] font-mono text-left outline-none focus:ring-2 focus:ring-[#8B5E34]"
                 />
               </div>
-
               {store && (
                 <div className="flex items-center justify-center gap-2 bg-white border border-emerald-200 rounded-xl py-2.5 shadow-sm">
                   <img
@@ -234,7 +232,6 @@ function NewOrder() {
                   <span className="text-emerald-600 text-[11px] font-bold">✓ تم التعرف على {store}</span>
                 </div>
               )}
-
               {url.length > 10 && (
                 <div className="bg-white border border-[#dfcca9] rounded-xl p-3.5 space-y-3 shadow-sm">
                   <div>
@@ -249,7 +246,6 @@ function NewOrder() {
                       className="w-full bg-[#FDF8EE] border border-gray-200 rounded-lg px-3 py-2.5 text-[12px] font-medium text-[#4A3728] outline-none focus:ring-2 focus:ring-[#8B5E34]"
                     />
                   </div>
-
                   <div>
                     <label className="text-[11px] font-bold text-[#4A3728] flex items-center justify-between mb-1">
                       <span className="flex items-center gap-1.5">
@@ -282,7 +278,6 @@ function NewOrder() {
                 </div>
               )}
             </div>
-
             <button
               onClick={() => {
                 if (!url.trim()) {
@@ -297,15 +292,12 @@ function NewOrder() {
             </button>
           </>
         )}
-
         {step === 2 && (
           <>
             <div className="flex justify-between items-center">
               <h1 className="font-black text-[18px]">إتمام الطلب</h1>
               <span className="text-[11px] bg-[#F1E6D0] px-2 py-1 rounded-full">الخطوة 2 من 2</span>
             </div>
-
-            {/* بطاقة ملخص للمنتج والسعر لكي لا يختفيا أمام العميل */}
             <div className="bg-amber-50/80 border border-amber-200/80 rounded-xl p-3 text-xs space-y-1">
               <div className="flex items-center justify-between font-bold text-[#4A3728]">
                 <span className="flex items-center gap-1.5">
@@ -322,7 +314,6 @@ function NewOrder() {
                 </div>
               )}
             </div>
-
             <div className="space-y-3">
               <div>
                 <label className="text-[12px] font-bold block mb-1">الاسم الكامل</label>
@@ -353,7 +344,6 @@ function NewOrder() {
                 />
               </div>
             </div>
-
             <div className="flex gap-2 pt-2">
               <button
                 onClick={() => setStep(1)}
@@ -366,7 +356,7 @@ function NewOrder() {
                 disabled={loading}
                 className="flex-1 bg-[#B4662A] hover:bg-[#96521e] text-white rounded-xl py-3.5 font-black disabled:opacity-50 transition shadow"
               >
-                {loading ? "جاري الإرسال..." : "تأكيد وإرسال الطلب"}
+                {loading? "جاري الإرسال..." : "تأكيد وإرسال الطلب"}
               </button>
             </div>
           </>
