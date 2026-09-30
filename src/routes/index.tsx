@@ -1,64 +1,160 @@
+// src/routes/index.tsx
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Bell,
-  CircleDollarSign,
-  FileText,
-  Hand,
-  Link2,
-  Package,
   Search,
   ShoppingCart,
   UserRound,
   ShieldCheck,
-  type LucideIcon,
+  Play,
+  Sparkles,
+  Link2,
+  DollarSign,
+  PackageCheck,
+  Truck,
+  Home,
+  CheckCircle2,
+  Star,
+  ExternalLink,
 } from "lucide-react";
-
-const BRAND = "السوق الشامل";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "السوق الشامل — وسيط شراء يوصلك من العالم إلى اليمن" },
+      { title: "السوق الشامل | AL SHAMEL SHOPPING — وسيط الشراء العالمي في اليمن" },
       {
         name: "description",
-        content: "تسوق عالمياً واستلم محلياً: نشتري لك من TEMU وSHEIN وAmazon وTrendyol وAliExpress ونوصل لباب بيتك في اليمن.",
+        content: "وسيط الشراء والاستيراد المعتمد في اليمن من SHEIN وAmazon وTEMU وAliExpress وTrendyol حتى باب بيتك.",
       },
     ],
   }),
   component: Index,
 });
 
-function PlaneIcon({ className }: { className?: string }) {
+// مكون الشعار الرسمي لعربة التسوق (مطابق للصورة 58)
+function AlShamelLogo({ className = "size-10" }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5Z" />
-    </svg>
-  );
-}
-
-function BrandTruck() {
-  return (
-    <div className="flex items-end">
-      <div className="rounded-md bg-card px-2 py-1 ring-1 ring-border shadow-sm">
-        <p className="whitespace-nowrap font-display text-[10px] font-extrabold leading-none text-cocoadeep sm:text-xs">{BRAND}</p>
-      </div>
-      <div className="-ms-0.5 size-0 border-y-[7px] border-s-[10px] border-y-transparent border-s-cocoa" />
-      <div className="relative -ms-1 flex gap-1">
-        <span className="size-2 rounded-full bg-cocoadeep ring-2 ring-card" />
-        <span className="size-2 rounded-full bg-cocoadeep ring-2 ring-card" />
+    <div className="flex items-center gap-2.5">
+      <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        {/* العجلات البرتقالية */}
+        <circle cx="44" cy="78" r="9" fill="#F97316" stroke="#C2410C" strokeWidth="2" />
+        <circle cx="44" cy="78" r="4" fill="#FFFFFF" />
+        <circle cx="68" cy="78" r="9" fill="#F97316" stroke="#C2410C" strokeWidth="2" />
+        <circle cx="68" cy="78" r="4" fill="#FFFFFF" />
+        {/* هيكل عربة التسوق بالحرفين A و S المدمجين */}
+        <path
+          d="M24 28H33L48 65H78"
+          stroke="#0F4C81"
+          strokeWidth="6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M36 38H80L73 57H45"
+          stroke="#0284C7"
+          strokeWidth="5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        {/* مسار حرف S واللمسة البرتقالية */}
+        <path
+          d="M50 42C56 36 67 36 71 43C73 47 70 52 61 54C52 56 50 61 56 65H72"
+          stroke="#EA580C"
+          strokeWidth="4"
+          strokeLinecap="round"
+        />
+        {/* النجمة الذهبية العلوية */}
+        <polygon
+          points="84,24 86,29 91,29 87,32 89,37 84,34 80,37 82,32 78,29 83,29"
+          fill="#F59E0B"
+        />
+      </svg>
+      <div className="flex flex-col text-right">
+        <span className="text-[13px] font-black text-[#0F4C81] tracking-tight leading-none">
+          SHOPPING <span className="text-[#EA580C]">AL SHAMEL</span>
+        </span>
+        <span className="text-[10px] font-bold text-sky-800 mt-0.5">
+          السوق الشامل - وسيطكم العالمي
+        </span>
       </div>
     </div>
   );
 }
 
 const platforms = [
-  { name: "TEMU", className: "text-[#ff5000]" },
-  { name: "TrendYol", className: "text-[#f27a1a]" },
-  { name: "SHEIN", className: "text-black" },
-  { name: "Amazon", className: "text-[#ff9900]" },
-  { name: "AliExpress", className: "text-[#e62e04]" },
+  { name: "TEMU", color: "text-[#ff5000]", border: "border-orange-200" },
+  { name: "TrendYol", color: "text-[#f27a1a]", border: "border-amber-200" },
+  { name: "SHEIN", color: "text-black font-black", border: "border-stone-300" },
+  { name: "Amazon", color: "text-[#ff9900]", border: "border-yellow-200" },
+  { name: "AliExpress", color: "text-[#e62e04]", border: "border-red-200" },
+];
+
+const steps = [
+  {
+    step: "خطوة 1",
+    title: "أرسل الرابط",
+    desc: "انسخ رابط المنتج من أي متجر عالمي",
+    icon: Link2,
+    color: "bg-sky-50 text-sky-600 border-sky-200",
+    stepColor: "bg-orange-100 text-orange-700",
+    href: "/new-order",
+  },
+  {
+    step: "خطوة 2",
+    title: "اعرف السعر",
+    desc: "نوضح لك التكلفة بالريال اليمني أو الدولار",
+    icon: DollarSign,
+    color: "bg-sky-50 text-sky-600 border-sky-200",
+    stepColor: "bg-orange-100 text-orange-700",
+    href: "/new-order",
+  },
+  {
+    step: "خطوة 3",
+    title: "نشتري لك",
+    desc: "نشتري بدلاً عنك ونفحص جودة وتطابق الطلب",
+    icon: ShoppingCart,
+    color: "bg-sky-50 text-sky-600 border-sky-200",
+    stepColor: "bg-orange-100 text-orange-700",
+    href: "/new-order",
+  },
+  {
+    step: "خطوة 4",
+    title: "تتبع الشحنة",
+    desc: "تتبع مسار شحنتك لحظة بلحظة برقم التتبع",
+    icon: Search,
+    color: "bg-sky-50 text-sky-600 border-sky-200",
+    stepColor: "bg-orange-100 text-orange-700",
+    href: "/track",
+  },
+  {
+    step: "خطوة 5",
+    title: "الاستلام",
+    desc: "توصيل موثوق حتى باب بيتك في كافة المحافظات",
+    icon: PackageCheck,
+    color: "bg-sky-50 text-sky-600 border-sky-200",
+    stepColor: "bg-orange-100 text-orange-700",
+    href: "/track",
+  },
+];
+
+const reviews = [
+  {
+    text: "اشتريت لعيالي طلبات من شي إن، التعامل كان راقي وسريع والتوصيل وصل لباب البيت بدون أي عناء.",
+    name: "يوسف العزاني",
+    city: "صنعاء",
+  },
+  {
+    text: "وأخيراً لقينا وسيط شحن رسمي وموثوق يوصل لعندن! خدمة ممتازة وتجاوب فوري عبر الواتساب.",
+    name: "أسماء السعدي",
+    city: "عدن",
+  },
+  {
+    text: "التجربة فاقت التوقعات، تتبعت شحنتي خطوة بخطوة والتغليف كان فائق الجودة والحماية.",
+    name: "رامي راجح",
+    city: "حضرموت",
+  },
 ];
 
 export function Index() {
@@ -66,7 +162,6 @@ export function Index() {
   const [userName, setUserName] = useState<string>("");
 
   useEffect(() => {
-    // فحص جلسة المستخدم الحالية
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         setUser(session.user);
@@ -74,7 +169,9 @@ export function Index() {
       }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         setUser(session.user);
         fetchProfileName(session.user);
@@ -88,7 +185,6 @@ export function Index() {
   }, []);
 
   const fetchProfileName = async (currentUser: any) => {
-    // محاولة جلب الاسم من جدول profiles ثم من metadata ثم sessionStorage
     const { data } = await supabase
       .from("profiles")
       .select("full_name")
@@ -105,230 +201,118 @@ export function Index() {
 
   const isLoggedIn = !!user;
 
-  // الخطوات حسب حالة تسجيل الدخول
-  const steps = isLoggedIn
-    ? [
-        { title: "أرسل الرابط", desc: "انسخ رابط المنتج من أي متجر", icon: Link2, to: "/new-order" },
-        { title: "اعرف السعر", desc: "نوضح لك التكلفة بالريال اليمني أو الدولار", icon: CircleDollarSign, to: "/new-order" },
-        { title: "نشتري لك", desc: "نشتري بدلاً عنك ونضمن جودة الطلب", icon: ShoppingCart, to: "/new-order" },
-        { title: "تابع الشحنة", desc: "تتبع طلبك أولاً بأول برقم الشحنة", icon: Search, to: "/track" },
-        { title: "الاستلام", desc: "يوصلك حتى باب بيتك في كل المحافظات", icon: Package, to: "/my-account" },
-      ]
-    : [
-        { title: "أرسل الرابط", desc: "انسخ رابط المنتج", icon: Link2, to: "/new-order" },
-        { title: "اعرف السعر", desc: "نوضح لك التكلفة", icon: CircleDollarSign, to: "/new-order" },
-        { title: "نشتري لك", desc: "نشتري بدلاً عنك", icon: ShoppingCart, to: "/new-order" },
-        { title: "تابع الشحنة", desc: "تتبع طلبك أولاً بأول", icon: Search, to: "/track" },
-        { title: "الاستلام", desc: "يوصلك حتى باب بيتك", icon: Package, to: "/signup" },
-      ];
-
   return (
-    <div dir="rtl" lang="ar" className="min-h-screen overflow-x-hidden bg-[#FAF7F2] font-['Cairo',sans-serif] text-[#3D2314]">
-      {/* الشريط العلوي التفاعلي */}
-      <div className="mx-auto flex max-w-5xl items-center justify-between px-4 pt-4">
-        {/* الجانب الأيمن / الأزرار */}
-        <div className="flex items-center gap-2">
-          {isLoggedIn ? (
-            <>
-              <Link
-                to="/new-order"
-                className="grid size-10 place-items-center rounded-full bg-white text-[#4A3728] border border-[#E5DAC6] shadow-sm text-[10px] font-bold"
-              >
-                اطلب الآن
-              </Link>
-              <Link
-                to="/my-account"
-                className="flex items-center gap-1.5 bg-[#0F766E] hover:bg-[#115E59] text-white px-3.5 py-2 rounded-full text-xs font-bold shadow-sm transition"
-              >
-                <ShieldCheck className="size-4" />
-                <span>إدارة حسابك وعملياتك</span>
-              </Link>
-            </>
-          ) : (
-            <div className="flex items-center gap-1 bg-white border border-[#E5DAC6] rounded-full p-1 shadow-sm">
-              <Link to="/login" className="px-3 py-1 text-xs font-bold text-[#6B5A4E] hover:text-[#3D2314]">
-                تسجيل الدخول
-              </Link>
-              <Link to="/new-order" className="bg-[#4A3728] text-white px-3 py-1 rounded-full text-xs font-bold">
-                اطلب الآن
-              </Link>
-            </div>
-          )}
-        </div>
-
-        {/* المنتصف: يظهر بعد تسجيل الدخول فقط (شارة الاتصال بالاسم) */}
-        {isLoggedIn && (
-          <div className="hidden sm:flex items-center gap-2 bg-[#F0FDF4] border border-[#BBF7D0] text-[#166534] px-4 py-1.5 rounded-full text-xs font-bold shadow-sm">
-            <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>متصل: <strong className="text-[#14532D]">{userName}</strong> | مرحباً بك في متجر السوق الشامل</span>
-          </div>
-        )}
-
-        {/* الجانب الأيسر: الإشعارات وأيقونة المستخدم */}
-        <div className="flex items-center gap-2">
-          <Link
-            to={isLoggedIn ? "/notifications" : "/login"}
-            className="grid size-10 place-items-center rounded-full bg-white text-[#4A3728] border border-[#E5DAC6] shadow-sm relative"
-          >
-            <Bell className="size-5" />
-            {isLoggedIn && <span className="absolute top-2 right-2 size-2 bg-emerald-500 rounded-full" />}
+    <div dir="rtl" lang="ar" className="min-h-screen bg-gradient-to-b from-[#F0F7FF] via-[#F8FAFC] to-white font-['Cairo',sans-serif] text-slate-800">
+      
+      {/* 1. الشريط العلوي التفاعلي */}
+      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-sky-100 shadow-xs">
+        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+          {/* الشعار الرسمي AL SHAMEL SHOPPING */}
+          <Link to="/" className="flex items-center gap-2">
+            <AlShamelLogo className="size-11" />
           </Link>
-          <Link
-            to={isLoggedIn ? "/my-account" : "/signup"}
-            className="grid size-10 place-items-center rounded-full bg-white text-[#4A3728] border border-[#E5DAC6] shadow-sm hover:border-[#4A3728] transition"
-            title={isLoggedIn ? "حسابي" : "إنشاء حساب"}
-          >
-            <UserRound className="size-5" />
-          </Link>
-        </div>
-      </div>
 
-      {/* بطاقة كيف تطلب */}
-      <header className="px-4 pt-4">
-        <div className="relative mx-auto max-w-2xl overflow-hidden rounded-3xl bg-[#4A3728] p-6 text-[#FDF8EE] shadow-xl sm:p-8">
-          <div className="flex flex-col-reverse items-start justify-between gap-4 sm:flex-row">
-            {/* الدوائر العلوية الثلاث */}
-            <div className="flex items-start gap-4">
-              <Link
-                to={isLoggedIn ? "/my-account" : "/signup"}
-                className="flex flex-col items-center gap-1.5 group cursor-pointer"
-              >
-                <span className="grid size-11 place-items-center rounded-full ring-2 ring-[#FDF8EE]/40 bg-[#3D2C1F] group-hover:bg-[#5C4533] transition">
-                  <UserRound className="size-5 text-[#F5B86E]" />
-                </span>
-                <span className="text-xs font-bold text-[#F5B86E]">
-                  {isLoggedIn ? "حسابي" : "التسجيل"}
-                </span>
-              </Link>
-
-              <Link to="/new-order" className="flex flex-col items-center gap-1.5 group cursor-pointer">
-                <span className="grid size-11 place-items-center rounded-full ring-2 ring-[#FDF8EE]/40 bg-[#3D2C1F] group-hover:bg-[#5C4533] transition">
-                  <Hand className="size-5 text-[#F5B86E]" />
-                </span>
-                <span className="text-xs font-bold text-[#F5B86E]">الطلب</span>
-              </Link>
-
-              <Link to="/track" className="flex flex-col items-center gap-1.5 group cursor-pointer">
-                <span className="grid size-11 place-items-center rounded-full ring-2 ring-[#FDF8EE]/40 bg-[#3D2C1F] group-hover:bg-[#5C4533] transition">
-                  <FileText className="size-5 text-[#F5B86E]" />
-                </span>
-                <span className="text-xs font-bold text-[#F5B86E]">الشحن</span>
-              </Link>
-            </div>
-
-            <div className="text-start">
-              <p className="font-display text-2xl font-black text-[#F5B86E] sm:text-3xl">{BRAND}</p>
-              {isLoggedIn && (
-                <p className="text-[11px] text-[#D8C7B5] font-bold mt-0.5">وسيط الشراء المعتمد إلى اليمن</p>
-              )}
-            </div>
-          </div>
-
-          <div className="mt-6 flex flex-col-reverse items-center gap-6 sm:flex-row sm:items-end">
-            <div className="flex-1 text-center sm:text-start">
-              <p className="font-display text-3xl font-black text-[#F5B86E] sm:text-4xl">
-                كيف تطلب؟<span className="text-[#E5A85A]">؟</span>
-              </p>
-              {isLoggedIn && (
-                <p className="text-xs text-[#E8DAC8] mt-1.5 max-w-sm">
-                  انسخ رابط أي منتج عالمي وسنتولى الشراء والفحص والشحن حتى بابك
-                </p>
-              )}
-            </div>
-            <div className="relative shrink-0">
-              <div className="grid size-20 place-items-center rounded-2xl bg-white/10 ring-2 ring-white/20 sm:size-24">
-                <span className="grid size-9 place-items-center rounded-full bg-[#F5B86E] text-[#4A3728]">
-                  <svg viewBox="0 0 24 24" className="size-4" fill="currentColor">
-                    <path d="M8 5.5v13l11-6.5-11-6.5Z" />
-                  </svg>
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* أزرار الإجراء أسفل البطاقة */}
-          <div className="mt-6 flex flex-wrap items-center gap-3">
-            <Link
-              to="/new-order"
-              className="inline-flex items-center gap-2 rounded-2xl bg-[#F5B86E] hover:bg-[#e4a860] px-5 py-2.5 font-bold text-[#3D2314] shadow-md transition active:scale-95"
-            >
-              <Hand className="size-5 -scale-x-100" />
-              <span>{isLoggedIn ? "اضغط هنا لطلب منتج" : "اضغط هنا"}</span>
-            </Link>
-
-            {isLoggedIn && (
-              <Link
-                to="/track"
-                className="inline-flex items-center gap-1.5 rounded-2xl bg-[#3D2C1F] hover:bg-[#5C4533] border border-[#6B523F] px-4 py-2.5 text-xs font-bold text-[#FDF8EE] transition"
-              >
-                <Search className="size-3.5" />
-                <span>تتبع شحنة سابقة</span>
-              </Link>
+          {/* الأزرار العلوية */}
+          <div className="flex items-center gap-2">
+            {isLoggedIn ? (
+              <>
+                <Link
+                  to="/my-account"
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-sky-200 bg-sky-50 text-[#0F4C81] text-xs font-bold hover:bg-sky-100 transition"
+                >
+                  <UserRound className="size-3.5 text-[#0284C7]" />
+                  <span>مرحباً بك ({userName})</span>
+                </Link>
+                <Link
+                  to="/notifications"
+                  className="p-2 rounded-full border border-slate-200 bg-white text-slate-600 hover:text-[#0F4C81] transition shadow-xs"
+                >
+                  <Bell className="size-4" />
+                </Link>
+                <Link
+                  to="/new-order"
+                  className="flex items-center gap-1.5 bg-gradient-to-r from-[#EA580C] to-[#F97316] text-white px-4 py-1.5 rounded-full text-xs font-bold shadow-md hover:shadow-lg transition"
+                >
+                  <ShoppingCart className="size-3.5" />
+                  <span>اطلب الآن</span>
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link
+                  to="/login"
+                  className="px-3.5 py-1.5 rounded-full border border-sky-200 bg-sky-50 text-[#0F4C81] text-xs font-bold hover:bg-sky-100 transition"
+                >
+                  تسجيل الدخول
+                </Link>
+                <Link
+                  to="/new-order"
+                  className="flex items-center gap-1.5 bg-gradient-to-r from-[#EA580C] to-[#F97316] text-white px-4 py-1.5 rounded-full text-xs font-bold shadow-md hover:shadow-lg transition"
+                >
+                  <ShoppingCart className="size-3.5" />
+                  <span>اطلب الآن</span>
+                </Link>
+              </>
             )}
           </div>
         </div>
       </header>
 
-      {/* العنوان الترويجي */}
-      <section className="px-4 pb-4 pt-8 text-center">
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-[#3D2314]">تسوّق عالمياً، واستلم محلياً</h1>
-        <p className="mt-2 text-xs sm:text-sm text-[#7D6E63]">
-          {isLoggedIn
-            ? "اطلب من أي مكان في العالم ونوصله لباب بيتك في جميع مدن اليمن"
-            : "اطلب من أي مكان في العالم ونوصله لباب بيتك"}
-        </p>
-      </section>
+      <main className="max-w-5xl mx-auto px-4 py-6 space-y-10">
 
-      {/* الطائرة والسيارة */}
-      <section className="relative mt-2 h-28 w-full overflow-hidden sm:h-36">
-        <PlaneIcon className="absolute top-2 start-[5%] size-8 -scale-x-100 text-[#4A3728]/70 sm:size-10" />
-        <div className="absolute inset-x-0 bottom-0 h-10 bg-[#EFE6D5]" />
-        <div className="absolute bottom-10 left-[10%] sm:left-[45%]">
-          <BrandTruck />
-        </div>
-      </section>
+        {/* 2. بنر الهيرو الكبير: كيف تطلب؟؟ بتدرج أزرق ملكي متطابق مع الصورة 60 */}
+        <div className="relative rounded-3xl bg-gradient-to-bl from-[#0A2540] via-[#0F4C81] to-[#0284C7] p-6 md:p-10 text-white shadow-2xl overflow-hidden border border-sky-400/20">
+          
+          {/* تأثيرات الإضاءة الخلفية */}
+          <div className="absolute top-0 right-0 -mr-16 -mt-16 size-72 rounded-full bg-sky-400/20 blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-0 -ml-16 -mb-16 size-72 rounded-full bg-orange-500/20 blur-3xl pointer-events-none" />
 
-      {/* المتاجر العالمية */}
-      <section className="px-4 pt-6">
-        <p className="mb-4 text-center text-xs font-bold text-[#8C7B6D]">نستورد لك من أشهر المتاجر العالمية</p>
-        <div className="mx-auto flex max-w-2xl flex-wrap items-center justify-center gap-3" dir="ltr">
-          {platforms.map((p) => (
-            <span
-              key={p.name}
-              className={`grid size-20 place-items-center rounded-2xl bg-white text-center font-bold text-sm shadow-sm border border-[#E8DFCFC] ${p.className}`}
-            >
-              {p.name}
-            </span>
-          ))}
-        </div>
-      </section>
-
-      {/* بطاقات الخطوات */}
-      <section className="mx-auto max-w-2xl px-4 py-8">
-        <div className="grid gap-3 sm:grid-cols-2">
-          {steps.map((s, i) => {
-            const Icon = s.icon;
-            const last = i === steps.length - 1;
-            return (
-              <Link
-                key={s.title}
-                to={s.to}
-                className={`flex items-center gap-3 rounded-2xl bg-white p-4 border border-[#EBE3D5] shadow-sm transition hover:shadow-md ${
-                  last ? "sm:col-span-2 sm:mx-auto sm:w-1/2" : ""
-                }`}
-              >
-                <span className="grid size-11 place-items-center rounded-xl bg-[#FAF5EB] text-[#4A3728]">
-                  <Icon className="size-5 text-[#8B5E34]" />
+          {/* الخطوات الدائرية العلوية (التسجيل / الطلب / الشحن) */}
+          <div className="flex items-center justify-between border-b border-white/15 pb-4 mb-6">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="bg-[#EA580C] text-white text-[10px] font-black px-2 py-0.5 rounded-md tracking-wider">
+                  AL SHAMEL
                 </span>
-                <div className="text-start">
-                  <p className="font-bold text-sm text-[#3D2314]">{s.title}</p>
-                  <p className="text-xs text-[#7D6E63]">{s.desc}</p>
-                </div>
-              </Link>
-            );
-          })}
-        </div>
-      </section>
-    </div>
-  );
-}
+                <span className="text-xl md:text-2xl font-black tracking-tight text-white">
+                  السوق الشامل
+                </span>
+              </div>
+              <p className="text-xs text-sky-150 text-sky-200 mt-1">
+                وسيط الشراء والاستيراد المعتمد في اليمن من كافة المتاجر العالمية
+              </p>
+            </div>
+
+            <div className="hidden sm:flex items-center gap-4 text-xs text-sky-200">
+              <div className="flex items-center gap-1.5">
+                <div className="size-6 rounded-full bg-white/10 flex items-center justify-center text-[11px] font-bold text-white border border-white/20">1</div>
+                <span>التسجيل</span>
+              </div>
+              <div className="w-4 h-px bg-white/20" />
+              <div className="flex items-center gap-1.5">
+                <div className="size-6 rounded-full bg-orange-500 flex items-center justify-center text-[11px] font-bold text-white shadow">2</div>
+                <span className="text-white font-bold">الطلب</span>
+              </div>
+              <div className="w-4 h-px bg-white/20" />
+              <div className="flex items-center gap-1.5">
+                <div className="size-6 rounded-full bg-white/10 flex items-center justify-center text-[11px] font-bold text-white border border-white/20">3</div>
+                <span>الشحن</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+            {/* المحتوى النصي */}
+            <div className="md:col-span-8 space-y-4">
+              <h1 className="text-3xl md:text-4xl font-black text-white flex items-center gap-2">
+                كيف تطلب؟؟ <span className="text-orange-400">❓</span>
+              </h1>
+              <p className="text-sm md:text-base text-sky-100 max-w-xl leading-relaxed">
+                انسخ رابط أي منتج تريده من أي موقع عالمي وسنتولى الشراء والفحص والشحن الآمن حتى باب بيتك في جميع المحافظات اليمنية.
+              </p>
+
+              {/* أزرار الإجراء السريع */}
+              <div className="flex flex-wrap items-center gap-3 pt-2">
+                <Link
+                  to="/new-order"
+                  className
