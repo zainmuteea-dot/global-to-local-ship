@@ -13,9 +13,9 @@ export const Route = createFileRoute("/admin")({
 export function AdminRoutePage() {
   const cards = [
     { to: "/admin-clients", title: "العملاء", desc: "إدارة وعرض العملاء المسجلين" },
-    { to: "/orders", title: "الطلبات", desc: "متابعة الطلبات والشحنات" },
-    { to: "/new-order", title: "طلب جديد", desc: "إنشاء طلب شحن جديد" },
-    { to: "/my-account", title: "حسابي", desc: "إدارة الحساب الشخصي" },
+    { to: "/dashboard", title: "لوحة المتابعة", desc: "متابعة الشحنات والعمليات" },
+    { to: "/customers", title: "الزبائن", desc: "قائمة الزبائن" },
+    { to: "/employees", title: "الموظفين", desc: "إدارة الموظفين" },
   ];
 
   return (
