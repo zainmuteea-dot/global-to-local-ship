@@ -1,68 +1,48 @@
-import { createFileRoute } from "@tanstack/react-router";
-import React, { useState } from "react";
-import { StaffDashboard } from "../components/StaffDashboard";
-import { AppSidebar } from "../components/AppSidebar";
-import { AccountsTreeModal } from "../components/AccountsTreeModal";
+import { createFileRoute, Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
       { title: "لوحة العمليات والإدارة | السوق الشامل AL SHAMEL" },
-      {
-        name: "description",
-        content: "لوحة عمليات الشحن والفرز وإدارة الطلبات والعملاء لمنظومة السوق الشامل.",
-      },
+      { name: "description", content: "لوحة عمليات الشحن والفرز وإدارة الطلبات والعملاء لمنظومة السوق الشامل." },
     ],
   }),
   component: AdminRoutePage,
 });
 
 export function AdminRoutePage() {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isAccountsTreeOpen, setIsAccountsTreeOpen] = useState(false);
-
-  const handleNavigate = (route: string) => {
-    if (typeof window !== "undefined") {
-      if (route === "home") window.location.href = "/";
-      else if (route === "new_order") window.location.href = "/new-order";
-      else if (route === "my_account") window.location.href = "/my-account";
-      else if (route === "admin_clients") window.location.href = "/admin-clients";
-      else window.location.href = `/${route}`;
-    }
-  };
+  const cards = [
+    { to: "/admin-clients", title: "العملاء", desc: "إدارة وعرض العملاء المسجلين" },
+    { to: "/orders", title: "الطلبات", desc: "متابعة الطلبات والشحنات" },
+    { to: "/new-order", title: "طلب جديد", desc: "إنشاء طلب شحن جديد" },
+    { to: "/my-account", title: "حسابي", desc: "إدارة الحساب الشخصي" },
+  ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#F0F7FF] via-[#F8FAFC] to-[#FFF9F5] text-[#0A2540]" dir="rtl">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4">
-        <StaffDashboard
-          onTrackOrder={(tr: string) => {
-            if (typeof window !== "undefined") {
-              window.location.href = `/track?no=${encodeURIComponent(tr)}`;
-            }
-          }}
-          onNavigateToStaff={() => handleNavigate("staff")}
-          onNavigateToPayments={() => handleNavigate("payments")}
-          onNavigateToOperations={() => handleNavigate("operations")}
-          onNavigateToCustomerOrder={() => handleNavigate("customer_booking")}
-          onNavigateToNewOrder={() => handleNavigate("new_order")}
-          onOpenSidebar={() => setIsSidebarOpen(true)}
-          onOpenAccountsTree={() => setIsAccountsTreeOpen(true)}
-          onNavigateToAccounting={() => handleNavigate("accounting")}
-        />
+    <div dir="rtl" className="min-h-screen bg-gradient-to-b from-[#F0F7FF] via-[#F8FAFC] to-[#FFF9F5] text-[#0A2540] p-6">
+      <div className="max-w-5xl mx-auto">
+        <h1 className="text-3xl font-black text-[#0F4C81] mb-2">لوحة الإدارة</h1>
+        <p className="text-sm text-slate-600 mb-8">السوق الشامل — إدارة العمليات والطلبات والعملاء</p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {cards.map((c) => (
+            <Link
+              key={c.to}
+              to={c.to}
+              className="bg-white border border-sky-100 rounded-2xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition"
+            >
+              <h2 className="font-bold text-[#0F4C81] mb-1">{c.title}</h2>
+              <p className="text-xs text-slate-500">{c.desc}</p>
+            </Link>
+          ))}
+        </div>
+
+        <div className="mt-8">
+          <Link to="/" className="text-xs font-bold text-[#0284C7] hover:underline">
+            العودة للرئيسية
+          </Link>
+        </div>
       </div>
-
-      <AppSidebar
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-        onNavigate={handleNavigate}
-        activeRoute="orders"
-        onOpenAccountsTree={() => setIsAccountsTreeOpen(true)}
-      />
-
-      <AccountsTreeModal
-        isOpen={isAccountsTreeOpen}
-        onClose={() => setIsAccountsTreeOpen(false)}
-      />
     </div>
   );
 }
