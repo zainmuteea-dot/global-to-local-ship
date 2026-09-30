@@ -1,137 +1,164 @@
 import { createFileRoute } from "@tanstack/react-router";
+import React, { useState } from "react";
+import {
+  CircleDollarSign,
+  Hand,
+  Link2,
+  Package,
+  Search,
+  ShoppingCart,
+} from "lucide-react";
 
 export const Route = createFileRoute("/")({
   component: Index,
 });
 
-function Index() {
+// مكونات داخلية عشان ما يفشل البناء
+function AlShamelLogo({ showText = true }: { size?: string; showText?: boolean }) {
   return (
-    <div dir="rtl" className="min-h-screen bg-[#F8FAFC] text-slate-800 font-sans">
-      {/* Top Header */}
-      <header className="max-w-5xl mx-auto flex items-center justify-between px-4 py-3">
-        <div className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-lg bg-[#0F4C81] grid place-items-center text-white font-black">☰</div>
-          <div className="text-center">
-            <div className="font-black text-[#EA580C] text-sm leading-none">SHOPPING AL SHAMEL</div>
-            <div className="text-[10px] text-[#0F4C81]">التسوق الشامل • استورد العالم</div>
-          </div>
+    <div className="flex items-center gap-2">
+      <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#0F4C81] to-[#0284C7] grid place-items-center text-white font-black text-lg">S</div>
+      {showText && (
+        <div className="leading-none">
+          <div className="font-black text-[#EA580C] text-xs">SHOPPING AL SHAMEL</div>
+          <div className="text-[10px] text-[#0F4C81] font-bold">التسوق الشامل</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AppSidebar({ isOpen, onClose, onNavigate }: { isOpen: boolean; onClose: () => void; onNavigate: (r: string) => void }) {
+  if (!isOpen) return null;
+  const items = [
+    { label: "اطلب الآن", route: "new-order" },
+    { label: "تتبع شحنة", route: "track" },
+    { label: "حسابي", route: "my-account" },
+    { label: "الطلبات", route: "orders" },
+  ];
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50" onClick={onClose}>
+      <div className="absolute right-0 top-0 h-full w-72 bg-white p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <button onClick={onClose} className="mb-4 text-sm font-bold">✕ إغلاق</button>
+        <div className="space-y-1">
+          {items.map((it) => (
+            <button key={it.route} onClick={() => onNavigate(it.route)} className="block w-full text-right p-3 rounded-xl hover:bg-sky-50 text-sm font-bold">
+              {it.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AccountsTreeModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50 grid place-items-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl p-6 max-w-sm w-full" onClick={(e) => e.stopPropagation()}>
+        <h3 className="font-black mb-4">شجرة الحسابات</h3>
+        <p className="text-sm text-slate-500">قريباً</p>
+        <button onClick={onClose} className="mt-4 px-4 py-2 bg-slate-100 rounded-xl text-sm font-bold">إغلاق</button>
+      </div>
+    </div>
+  );
+}
+
+function Index() {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isAccountsTreeOpen, setIsAccountsTreeOpen] = useState(false);
+
+  const platforms = [
+    { name: "TEMU", color: "text-[#FA6400]" },
+    { name: "TrendYol", color: "text-[#F27A1A]" },
+    { name: "SHEIN", color: "text-zinc-900" },
+    { name: "Amazon", color: "text-[#FF9900]" },
+    { name: "AliExpress", color: "text-[#FF4747]" },
+  ];
+
+  const steps = [
+    { title: "أرسل الرابط", desc: "انسخ رابط المنتج من أي متجر عالمي", icon: Link2 },
+    { title: "اعرف السعر", desc: "نوضح لك التكلفة بالريال اليمني أو الدولار", icon: CircleDollarSign },
+    { title: "نشتري لك", desc: "نشتري بدلاً عنك ونضمن جودة وتطابق الطلب", icon: ShoppingCart },
+    { title: "تابع الشحنة", desc: "تتبع مسار شحنتك لحظة بلحظة برقم التتبع", icon: Search },
+    { title: "الاستلام", desc: "توصيل موثوق حتى باب بيتك في كافة المحافظات", icon: Package },
+  ];
+
+  return (
+    <div dir="rtl" className="min-h-screen bg-gradient-to-b from-[#F0F7FF] via-[#F8FAFC] to-[#FFF9F5] text-[#0A2540]">
+      <header className="mx-auto flex max-w-5xl items-center justify-between p-4">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            className="flex flex-col justify-center items-center gap-1.5 size-12 rounded-2xl bg-gradient-to-tr from-[#0F4C81] to-[#0284C7] text-white shadow-md hover:scale-105 active:scale-95 ring-2 ring-sky-300/50 cursor-pointer"
+          >
+            <span className="w-6 h-1 rounded-full bg-white"></span>
+            <span className="w-6 h-1 rounded-full bg-orange-400"></span>
+            <span className="w-6 h-1 rounded-full bg-white"></span>
+          </button>
+          <AlShamelLogo size="md" showText={true} />
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex bg-orange-100 rounded-full p-1 text-[11px] font-bold">
-            <span className="px-3 py-1 rounded-full bg-[#EA580C] text-white">عميل جديد</span>
-            <span className="px-3 py-1 text-slate-600 flex items-center gap-1">A <span className="w-5 h-5 rounded-full bg-white grid place-items-center">🔔</span></span>
-          </div>
+          <a href="/new-order" className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[#F97316] via-[#EA580C] to-[#C2410C] px-5 py-2.5 font-black text-xs sm:text-sm text-white shadow-md shadow-orange-500/25 ring-2 ring-orange-300/40">
+            <ShoppingCart className="size-4" />
+            <span>اطلب الآن</span>
+          </a>
         </div>
       </header>
 
-      {/* Hero Card */}
-      <section className="max-w-5xl mx-auto px-4">
-        <div className="rounded-3xl bg-gradient-to-l from-[#0A2540] via-[#0F4C81] to-[#1a5a9a] p-6 text-white relative overflow-hidden">
-          <div className="flex justify-between items-start">
-            <div className="text-right">
-              <div className="inline-block text-[10px] bg-orange-500/20 text-orange-300 px-2 py-0.5 rounded-full mb-2">AL SHAMEL</div>
-              <h1 className="text-xl font-black">السوق الشامل</h1>
-              <p className="text-[11px] text-sky-200 mt-1">وسيطك الموثوق للاستيراد من الصين إلى العالم لمنتجاتك المفضلة</p>
-            </div>
-            <div className="flex gap-2">
-              {[ "📄","🛒","👤"].map((e,i)=>(
-                <div key={i} className="w-9 h-9 rounded-xl bg-white/10 grid place-items-center text-sm">{e}</div>
-              ))}
+      <section className="px-4 pt-4">
+        <div className="relative mx-auto max-w-4xl overflow-hidden rounded-3xl bg-gradient-to-br from-[#0A2540] via-[#0F4C81] to-[#134074] p-6 text-white shadow-2xl sm:p-8">
+          <div className="flex justify-between items-center">
+            <h2 className="text-3xl sm:text-4xl font-black">كيف تطلب؟<span className="text-orange-400">؟</span></h2>
+            <div className="grid size-16 sm:size-20 place-items-center rounded-2xl bg-gradient-to-tr from-[#F97316] to-[#FB923C] ring-4 ring-white/30 shadow-lg cursor-pointer">
+              <span className="grid size-8 place-items-center rounded-full bg-white text-[#EA580C]">▶</span>
             </div>
           </div>
-
-          <div className="mt-6 flex items-center justify-between">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#F97316] to-[#FB923C] grid place-items-center shadow-lg">
-              <span className="w-8 h-8 rounded-full bg-white grid place-items-center text-[#EA580C] text-sm">▶</span>
-            </div>
-            <div className="text-right max-w-[70%]">
-              <h2 className="text-lg font-black text-orange-300">كيف تطلب؟؟</h2>
-              <p className="text-[11px] text-sky-100 leading-5 mt-1">انسخ رابط المنتج من أي موقع عالمي وسنتولى الشراء والفحص والشحن الآمن للمنتج حتى باب بيتك</p>
-            </div>
-          </div>
-
-          <div className="mt-5 flex gap-2 flex-wrap">
-            <button className="flex-1 bg-[#EA580C] hover:bg-[#F97316] rounded-xl py-2.5 text-xs font-black">🛒 اضغط هنا لطلب منتج</button>
-            <button className="px-4 bg-white/10 border border-white/20 rounded-xl py-2.5 text-xs font-bold">🔍 تتبع شحنة</button>
-            <button className="px-4 bg-white/10 border border-white/20 rounded-xl py-2.5 text-xs font-bold flex items-center gap-1">💬 <span>تواصل معنا عبر واتساب للحصول على مساعدة</span></button>
+          <p className="mt-2 text-xs sm:text-sm text-sky-100 max-w-md">انسخ رابط أي منتج تريده من أي موقع عالمي وسنتولى الشراء والفحص والشحن الآمن حتى باب بيتك.</p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <a href="/new-order" className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[#F97316] to-[#EA580C] px-7 py-3 font-black text-sm text-white shadow-lg ring-2 ring-orange-300/40 hover:-translate-y-0.5 transition">
+              <Hand className="size-5 -scale-x-100" />
+              <span>اضغط هنا لطلب منتج</span>
+            </a>
+            <a href="/track" className="inline-flex items-center gap-2 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 px-5 py-3 font-bold text-xs sm:text-sm text-white">
+              <Search className="size-4 text-orange-300" />
+              <span>تتبع شحنة سابقة</span>
+            </a>
           </div>
         </div>
       </section>
 
-      {/* Subtitle */}
-      <section className="text-center mt-6 px-4">
-        <div className="inline-block text-[10px] bg-sky-100 text-[#0F4C81] px-3 py-1 rounded-full font-bold">💡 نوصل طلبك بالريال والدولار</div>
-        <h3 className="mt-2 font-black text-[#0A2540]">تسوق عالمياً، واستلم محلياً</h3>
-        <p className="text-[11px] text-slate-500 mt-1 max-w-md mx-auto leading-5">اختر من بين آلاف المنتجات العالمية الموثوقة. نحن نشتريها لك بكل أمان، ونوصلها إلى باب منزلك بكل سهولة وأمان.</p>
-        <div className="text-[10px] text-orange-500 font-bold mt-2">--- تسوق من كافة المتاجر العالمية ---</div>
-      </section>
-
-      {/* Stores */}
-      <section className="max-w-3xl mx-auto flex justify-center gap-3 mt-4 px-4 flex-wrap">
-        {[
-          {n:"TEMU",c:"text-[#FA6400]"},
-          {n:"TrendYol",c:"text-[#F27A1A]"},
-          {n:"SHEIN",c:"text-black"},
-          {n:"Amazon",c:"text-[#FF9900]"},
-          {n:"AliExpress",c:"text-[#FF4747]"},
-        ].map(s=>(
-          <div key={s.n} className={`w-16 h-16 bg-white rounded-2xl shadow-sm border border-slate-100 grid place-items-center font-black text-[11px] ${s.c}`}>{s.n}</div>
-        ))}
-      </section>
-
-      {/* Steps */}
-      <section className="max-w-4xl mx-auto grid sm:grid-cols-2 gap-3 mt-6 px-4">
-        {[
-          {t:"أرسل الرابط",d:"انسخ رابط المنتج من أي متجر عالمي",e:"🔗"},
-          {t:"اعرف السعر",d:"نوضح لك التكلفة بالريال اليمني",e:"💲"},
-          {t:"نشتري لك",d:"نشتري بدلاً عنك ونضمن جودة وتطابق الطلب",e:"🛒"},
-          {t:"تابع الشحنة",d:"تتبع مسار شحنتك لحظة بلحظة",e:"🔍"},
-        ].map(s=>(
-          <div key={s.t} className="bg-white rounded-2xl p-3 flex items-center gap-3 border border-slate-100 shadow-sm">
-            <div className="text-[10px] text-orange-500 font-bold whitespace-nowrap">{s.t} <span className="block text-slate-400 font-normal">{s.d}</span></div>
-            <div className="mr-auto w-8 h-8 rounded-full bg-sky-50 grid place-items-center">{s.e}</div>
-          </div>
-        ))}
-        <div className="sm:col-span-2 flex justify-center">
-          <div className="bg-white rounded-2xl p-3 flex items-center gap-3 border border-slate-100 shadow-sm w-full sm:w-1/2">
-            <div className="text-[10px] text-orange-500 font-bold">الاستلام <span className="block text-slate-400 font-normal">توصيل موثوق حتى باب بيتك</span></div>
-            <div className="mr-auto w-8 h-8 rounded-full bg-sky-50 grid place-items-center">📦</div>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="flex justify-center gap-2 mt-6">
-        <button className="px-6 py-2 rounded-full bg-white border text-[11px] font-bold">🛍️ تصفح المنتجات</button>
-        <button className="px-6 py-2 rounded-full bg-[#0F4C81] text-white text-[11px] font-black">اطلب الآن 🛒</button>
-      </section>
-
-      {/* Reviews */}
-      <section className="max-w-5xl mx-auto mt-8 px-4">
-        <h4 className="text-center text-[12px] font-black text-[#EA580C]">⭐⭐⭐⭐⭐ آراء وتجارب عملاء الشامل</h4>
-        <div className="grid sm:grid-cols-3 gap-3 mt-4">
-          {[
-            {n:"أحمد الحميري",t:"التجربة ممتازة والشحن سريع. طلبت سماعات ووصلت بحالة ممتازة ومغلفة بعناية."},
-            {n:"سارة العتيبي",t:"وأخيراً وسيط يفهم! سعره واضح وتوصيل سريع. أنصح فيه بشدة."},
-            {n:"محمد الشمري",t:"أفضل تجربة شراء من الصين. الدعم كان رائع وساعدوني في اختيار المقاس."},
-          ].map(r=>(
-            <div key={r.n} className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm text-center">
-              <div className="text-orange-400 text-[10px]">★★★★★</div>
-              <p className="text-[11px] text-slate-600 mt-2 leading-5">{r.t}</p>
-              <div className="mt-3 text-[11px] font-black text-[#0F4C81]">{r.n}</div>
-              <div className="text-[9px] text-orange-500">عميل موثق</div>
-            </div>
+      <section className="px-4 pt-10 text-center">
+        <h3 className="font-bold text-xs text-[#0F4C81] mb-4">نستورد لك من أشهر المتاجر العالمية</h3>
+        <div className="flex justify-center gap-3 flex-wrap">
+          {platforms.map((p) => (
+            <div key={p.name} className={`grid size-20 place-items-center rounded-2xl bg-white shadow-sm border border-sky-100 font-black text-sm ${p.color}`}>{p.name}</div>
           ))}
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="text-center mt-10 pb-8 px-4">
-        <div className="font-black text-[#EA580C] text-sm">SHOPPING AL SHAMEL 🛒</div>
-        <div className="text-[10px] text-[#0F4C81] font-bold">التسوق الشامل • استورد العالم</div>
-        <p className="text-[9px] text-slate-400 mt-2 max-w-md mx-auto leading-4">وجهتك الأولى للاستيراد الشخصي من الصين. نضمن لك تجربة تسوق آمنة ومريحة.</p>
-        <div className="text-[9px] text-slate-400 mt-1">صنعاء، اليمن • AL SHAMEL © 2026</div>
-      </footer>
+      <section className="mx-auto max-w-3xl px-4 py-10">
+        <div className="grid gap-3 sm:grid-cols-2">
+          {steps.map((s) => {
+            const Icon = s.icon;
+            return (
+              <div key={s.title} className="flex items-center gap-3 rounded-2xl bg-white p-4 ring-1 ring-sky-100 shadow-sm">
+                <span className="grid size-12 place-items-center rounded-xl bg-sky-50 text-[#0284C7]"><Icon className="size-5" /></span>
+                <div>
+                  <h4 className="text-sm font-black text-[#0F4C81]">{s.title}</h4>
+                  <p className="text-xs text-slate-500 mt-0.5">{s.desc}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <AppSidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} onNavigate={(r) => (window.location.href = `/${r}`)} />
+      <AccountsTreeModal isOpen={isAccountsTreeOpen} onClose={() => setIsAccountsTreeOpen(false)} />
     </div>
   );
 }
+
+export default Index;
