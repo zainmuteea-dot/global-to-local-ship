@@ -1,162 +1,269 @@
 import { createFileRoute } from "@tanstack/react-router";
 import React, { useState } from "react";
 import {
-  CircleDollarSign,
-  Hand,
-  Link2,
-  Package,
-  Search,
+  Bell,
+  UserRound,
   ShoppingCart,
+  Menu,
+  Search,
+  Play,
+  ShieldCheck,
+  Link2,
+  CircleDollarSign,
+  Package,
+  Truck,
+  FileText,
+  User,
+  ShoppingBag,
+  Sparkles,
+  Star,
+  Hand,
 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   component: Index,
 });
 
-// مكونات داخلية عشان ما يفشل البناء
-function AlShamelLogo({ showText = true }: { size?: string; showText?: boolean }) {
-  return (
-    <div className="flex items-center gap-2">
-      <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#0F4C81] to-[#0284C7] grid place-items-center text-white font-black text-lg">S</div>
-      {showText && (
-        <div className="leading-none">
-          <div className="font-black text-[#EA580C] text-xs">SHOPPING AL SHAMEL</div>
-          <div className="text-[10px] text-[#0F4C81] font-bold">التسوق الشامل</div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function AppSidebar({ isOpen, onClose, onNavigate }: { isOpen: boolean; onClose: () => void; onNavigate: (r: string) => void }) {
-  if (!isOpen) return null;
-  const items = [
-    { label: "اطلب الآن", route: "new-order" },
-    { label: "تتبع شحنة", route: "track" },
-    { label: "حسابي", route: "my-account" },
-    { label: "الطلبات", route: "orders" },
-  ];
-  return (
-    <div className="fixed inset-0 z-50 bg-black/50" onClick={onClose}>
-      <div className="absolute right-0 top-0 h-full w-72 bg-white p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <button onClick={onClose} className="mb-4 text-sm font-bold">✕ إغلاق</button>
-        <div className="space-y-1">
-          {items.map((it) => (
-            <button key={it.route} onClick={() => onNavigate(it.route)} className="block w-full text-right p-3 rounded-xl hover:bg-sky-50 text-sm font-bold">
-              {it.label}
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function AccountsTreeModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  if (!isOpen) return null;
-  return (
-    <div className="fixed inset-0 z-50 bg-black/50 grid place-items-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl p-6 max-w-sm w-full" onClick={(e) => e.stopPropagation()}>
-        <h3 className="font-black mb-4">شجرة الحسابات</h3>
-        <p className="text-sm text-slate-500">قريباً</p>
-        <button onClick={onClose} className="mt-4 px-4 py-2 bg-slate-100 rounded-xl text-sm font-bold">إغلاق</button>
-      </div>
-    </div>
-  );
-}
-
 function Index() {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isAccountsTreeOpen, setIsAccountsTreeOpen] = useState(false);
-
-  const platforms = [
-    { name: "TEMU", color: "text-[#FA6400]" },
-    { name: "TrendYol", color: "text-[#F27A1A]" },
-    { name: "SHEIN", color: "text-zinc-900" },
-    { name: "Amazon", color: "text-[#FF9900]" },
-    { name: "AliExpress", color: "text-[#FF4747]" },
-  ];
-
-  const steps = [
-    { title: "أرسل الرابط", desc: "انسخ رابط المنتج من أي متجر عالمي", icon: Link2 },
-    { title: "اعرف السعر", desc: "نوضح لك التكلفة بالريال اليمني أو الدولار", icon: CircleDollarSign },
-    { title: "نشتري لك", desc: "نشتري بدلاً عنك ونضمن جودة وتطابق الطلب", icon: ShoppingCart },
-    { title: "تابع الشحنة", desc: "تتبع مسار شحنتك لحظة بلحظة برقم التتبع", icon: Search },
-    { title: "الاستلام", desc: "توصيل موثوق حتى باب بيتك في كافة المحافظات", icon: Package },
-  ];
+  const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <div dir="rtl" className="min-h-screen bg-gradient-to-b from-[#F0F7FF] via-[#F8FAFC] to-[#FFF9F5] text-[#0A2540]">
-      <header className="mx-auto flex max-w-5xl items-center justify-between p-4">
+    <div dir="rtl" className="min-h-screen bg-[#f6f8fb] text-[#0d2238] font-sans">
+      {/* ===== الهيدر العلوي ===== */}
+      <header className="max-w-[1100px] mx-auto flex items-center justify-between px-4 py-3">
+        {/* اليمين: القائمة + الشعار */}
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setIsSidebarOpen(true)}
-            className="flex flex-col justify-center items-center gap-1.5 size-12 rounded-2xl bg-gradient-to-tr from-[#0F4C81] to-[#0284C7] text-white shadow-md hover:scale-105 active:scale-95 ring-2 ring-sky-300/50 cursor-pointer"
+            onClick={() => setMenuOpen(!menuOpen)}
+            className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#0d3a62] to-[#1a6db5] grid place-items-center text-white shadow-lg"
           >
-            <span className="w-6 h-1 rounded-full bg-white"></span>
-            <span className="w-6 h-1 rounded-full bg-orange-400"></span>
-            <span className="w-6 h-1 rounded-full bg-white"></span>
+            <Menu className="w-6 h-6" />
           </button>
-          <AlShamelLogo size="md" showText={true} />
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <div className="w-11 h-11 rounded-xl bg-[#0d2238] grid place-items-center">
+                <ShoppingCart className="w-6 h-6 text-white" />
+                <div className="absolute -bottom-1 flex gap-0.5">
+                  <div className="w-2 h-2 rounded-full bg-orange-500" />
+                  <div className="w-2 h-2 rounded-full bg-orange-500" />
+                </div>
+                <Star className="absolute -top-1 -right-1 w-4 h-4 text-yellow-400 fill-yellow-400" />
+              </div>
+            </div>
+            <div className="leading-tight">
+              <div className="font-black text-[15px] tracking-tight">
+                <span className="text-orange-500">SHOPPING</span>{" "}
+                <span className="text-[#0d3a62]">AL SHAMEL</span>
+              </div>
+              <div className="text-[11px] text-[#0d3a62] font-bold">السوق الشامل • وسيطكم العالمي</div>
+            </div>
+          </div>
         </div>
+
+        {/* اليسار */}
         <div className="flex items-center gap-2">
-          <a href="/new-order" className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[#F97316] via-[#EA580C] to-[#C2410C] px-5 py-2.5 font-black text-xs sm:text-sm text-white shadow-md shadow-orange-500/25 ring-2 ring-orange-300/40">
-            <ShoppingCart className="size-4" />
-            <span>اطلب الآن</span>
-          </a>
+          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-emerald-200 bg-emerald-50 text-[12px] font-bold text-emerald-700">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            زين مطيع | متصل
+          </div>
+          <button className="w-10 h-10 rounded-full bg-white shadow grid place-items-center">
+            <UserRound className="w-5 h-5 text-slate-600" />
+          </button>
+          <button className="relative w-10 h-10 rounded-full bg-white shadow grid place-items-center">
+            <Bell className="w-5 h-5 text-slate-600" />
+            <span className="absolute top-1.5 right-2 w-2.5 h-2.5 bg-orange-500 rounded-full ring-2 ring-white shadow-[0_0_8px_rgba(249,115,22,0.8)]" />
+          </button>
+          <button className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-b from-orange-500 to-orange-600 text-white text-[13px] font-black shadow-lg shadow-orange-200">
+            <ShoppingCart className="w-4 h-4" />
+            اطلب الآن
+          </button>
         </div>
       </header>
 
-      <section className="px-4 pt-4">
-        <div className="relative mx-auto max-w-4xl overflow-hidden rounded-3xl bg-gradient-to-br from-[#0A2540] via-[#0F4C81] to-[#134074] p-6 text-white shadow-2xl sm:p-8">
-          <div className="flex justify-between items-center">
-            <h2 className="text-3xl sm:text-4xl font-black">كيف تطلب؟<span className="text-orange-400">؟</span></h2>
-            <div className="grid size-16 sm:size-20 place-items-center rounded-2xl bg-gradient-to-tr from-[#F97316] to-[#FB923C] ring-4 ring-white/30 shadow-lg cursor-pointer">
-              <span className="grid size-8 place-items-center rounded-full bg-white text-[#EA580C]">▶</span>
+      {/* ===== بطاقة الهيرو ===== */}
+      <section className="max-w-[1020px] mx-auto px-4">
+        <div className="rounded-3xl bg-[#0d2238] text-white p-6 md:p-8 shadow-2xl relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-bl from-[#123a62]/60 to-transparent pointer-events-none" />
+
+          <div className="relative flex flex-col md:flex-row justify-between gap-6">
+            {/* يمين الهيرو */}
+            <div className="flex-1">
+              <div className="flex gap-3 justify-start mb-5">
+                {[
+                  { icon: User, label: "حسابي" },
+                  { icon: ShoppingBag, label: "الطلب" },
+                  { icon: FileText, label: "الشحن" },
+                ].map((it, i) => (
+                  <div key={i} className="flex flex-col items-center gap-1">
+                    <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/10 grid place-items-center backdrop-blur">
+                      <it.icon className="w-5 h-5 text-orange-400" />
+                    </div>
+                    <span className="text-[11px] text-slate-300">{it.label}</span>
+                  </div>
+                ))}
+              </div>
+
+              <h2 className="text-3xl font-black mb-2">
+                كيف تطلب<span className="text-orange-400">؟؟</span>
+              </h2>
+              <p className="text-[13px] text-slate-300 leading-relaxed max-w-[420px]">
+                انسخ رابط أي منتج تريده من أي موقع عالمي وتستلم الشراء والفحص والشحن والشحن حتى باب بيتك
+              </p>
+
+              <div className="flex flex-wrap gap-3 mt-6">
+                <button className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-b from-orange-500 to-orange-600 font-black text-[14px] shadow-lg shadow-orange-900/30">
+                  <Hand className="w-5 h-5" />
+                  اضغط هنا لطلب منتج
+                </button>
+                <button className="flex items-center gap-2 px-5 py-3 rounded-xl bg-white/10 border border-white/20 text-[13px] font-bold backdrop-blur">
+                  <Search className="w-4 h-4" />
+                  تتبع شحنة سابقة
+                </button>
+              </div>
             </div>
-          </div>
-          <p className="mt-2 text-xs sm:text-sm text-sky-100 max-w-md">انسخ رابط أي منتج تريده من أي موقع عالمي وسنتولى الشراء والفحص والشحن الآمن حتى باب بيتك.</p>
-          <div className="mt-6 flex flex-wrap gap-3">
-            <a href="/new-order" className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[#F97316] to-[#EA580C] px-7 py-3 font-black text-sm text-white shadow-lg ring-2 ring-orange-300/40 hover:-translate-y-0.5 transition">
-              <Hand className="size-5 -scale-x-100" />
-              <span>اضغط هنا لطلب منتج</span>
-            </a>
-            <a href="/track" className="inline-flex items-center gap-2 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 px-5 py-3 font-bold text-xs sm:text-sm text-white">
-              <Search className="size-4 text-orange-300" />
-              <span>تتبع شحنة سابقة</span>
-            </a>
+
+            {/* يسار الهيرو */}
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="px-2 py-0.5 rounded-md bg-yellow-600/30 border border-yellow-500/30 text-yellow-400 text-[10px] font-black">AL SHAMEL</span>
+                <h3 className="text-xl font-black">السوق الشامل</h3>
+              </div>
+              <p className="text-[12px] text-slate-300 mb-5">وسيط الشراء والاستيراد المعتمد في اليمن من كافة المتاجر العالمية</p>
+
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 grid place-items-center shadow-xl ring-4 ring-white/10 cursor-pointer hover:scale-105 transition">
+                <div className="w-10 h-10 rounded-full bg-white grid place-items-center">
+                  <Play className="w-5 h-5 text-orange-600 fill-orange-600 mr-[-2px]" />
+                </div>
+              </div>
+
+              <div className="mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/15 text-[12px]">
+                <ShieldCheck className="w-4 h-4 text-orange-400" />
+                ضمان استرجاع 100% في حال عدم مطابقة المنتج
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      <section className="px-4 pt-10 text-center">
-        <h3 className="font-bold text-xs text-[#0F4C81] mb-4">نستورد لك من أشهر المتاجر العالمية</h3>
+      {/* ===== العناوين ===== */}
+      <section className="text-center mt-10 px-4">
+        <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-[12px] text-[#0d3a62] font-bold mb-3">
+          <Sparkles className="w-4 h-4 text-orange-500" />
+          خدمة الشراء والوساطة الأولى في اليمن
+        </div>
+        <h1 className="text-3xl font-black text-[#0d2238]">تسوّق عالمياً، واستلم محلياً</h1>
+        <p className="text-[13px] text-slate-500 mt-2 leading-relaxed">
+          اطلب من أي مكان في العالم ويوصلك لباب بيتك في جميع المحافظات بأقل تكلفة وأعلى موثوقية
+        </p>
+
+        <div className="flex items-center justify-center gap-3 mt-8 mb-5">
+          <div className="h-[2px] w-10 bg-orange-400 rounded" />
+          <span className="text-[13px] font-bold text-[#0d2238]">نستورد لك من أشهر المتاجر العالمية</span>
+          <div className="h-[2px] w-10 bg-orange-400 rounded" />
+        </div>
+
         <div className="flex justify-center gap-3 flex-wrap">
-          {platforms.map((p) => (
-            <div key={p.name} className={`grid size-20 place-items-center rounded-2xl bg-white shadow-sm border border-sky-100 font-black text-sm ${p.color}`}>{p.name}</div>
+          {[
+            { n: "AliExpress", c: "text-red-500" },
+            { n: "Amazon", c: "text-[#ff9900]" },
+            { n: "SHEIN", c: "text-black" },
+            { n: "TrendYol", c: "text-orange-500" },
+            { n: "TEMU", c: "text-orange-600" },
+          ].map((s) => (
+            <div key={s.n} className={`w-[88px] h-[88px] bg-white rounded-2xl shadow-sm border border-slate-100 grid place-items-center font-black text-[14px] ${s.c}`}>
+              {s.n}
+            </div>
           ))}
         </div>
       </section>
 
-      <section className="mx-auto max-w-3xl px-4 py-10">
-        <div className="grid gap-3 sm:grid-cols-2">
-          {steps.map((s) => {
-            const Icon = s.icon;
-            return (
-              <div key={s.title} className="flex items-center gap-3 rounded-2xl bg-white p-4 ring-1 ring-sky-100 shadow-sm">
-                <span className="grid size-12 place-items-center rounded-xl bg-sky-50 text-[#0284C7]"><Icon className="size-5" /></span>
-                <div>
-                  <h4 className="text-sm font-black text-[#0F4C81]">{s.title}</h4>
-                  <p className="text-xs text-slate-500 mt-0.5">{s.desc}</p>
-                </div>
+      {/* ===== الخطوات الخمس ===== */}
+      <section className="max-w-[900px] mx-auto px-4 mt-10">
+        <div className="grid md:grid-cols-2 gap-4">
+          {[
+            { n: 1, t: "إرسل رابط المنتج", d: "انسخ رابط المنتج من أي متجر عالمي", icon: Link2 },
+            { n: 2, t: "اعرف السعر", d: "توضيح لك التكلفة بالريال اليمني أو الدولار", icon: CircleDollarSign },
+            { n: 3, t: "نشتري لك", d: "نشتري بلا عمولات ونفحص جودة وتغليف الطلب", icon: ShoppingCart },
+            { n: 4, t: "تتبع الشحنة", d: "تتبع مسار شحنتك لحظة بلحظة برقم التتبع", icon: Search },
+          ].map((s) => (
+            <div key={s.n} className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center justify-between">
+              <div>
+                <div className="inline-block px-2 py-0.5 rounded-md bg-orange-100 text-orange-600 text-[11px] font-black mb-1">خطوة {s.n}</div>
+                <h4 className="font-black text-[15px]">{s.t}</h4>
+                <p className="text-[12px] text-slate-500 mt-1">{s.d}</p>
               </div>
-            );
-          })}
+              <div className="w-12 h-12 rounded-xl bg-blue-50 grid place-items-center shrink-0">
+                <s.icon className="w-6 h-6 text-[#1a6db5]" />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="max-w-[420px] mx-auto mt-4">
+          <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center justify-between">
+            <div>
+              <div className="inline-block px-2 py-0.5 rounded-md bg-orange-100 text-orange-600 text-[11px] font-black mb-1">خطوة 5</div>
+              <h4 className="font-black text-[15px]">الاستلام</h4>
+              <p className="text-[12px] text-slate-500 mt-1">توصيل شحنتك حتى باب بيتك في كافة المحافظات</p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-blue-50 grid place-items-center shrink-0">
+              <Truck className="w-6 h-6 text-[#1a6db5]" />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex justify-center gap-3 mt-6">
+          <button className="flex items-center gap-2 px-8 py-3 rounded-xl bg-[#0d3a62] text-white font-black text-[14px] shadow-lg">
+            <ShoppingCart className="w-5 h-5" />
+            اطلب الآن فوراً
+          </button>
+          <button className="flex items-center gap-2 px-6 py-3 rounded-xl bg-white border-2 border-blue-100 text-[#0d3a62] font-bold text-[14px]">
+            <Search className="w-4 h-4 text-orange-500" />
+            تتبع شحنتك الآن
+          </button>
         </div>
       </section>
 
-      <AppSidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} onNavigate={(r) => (window.location.href = `/${r}`)} />
-      <AccountsTreeModal isOpen={isAccountsTreeOpen} onClose={() => setIsAccountsTreeOpen(false)} />
+      {/* ===== آراء العملاء ===== */}
+      <section className="max-w-[1000px] mx-auto px-4 mt-12 pb-16">
+        <h2 className="text-center font-black text-[18px] flex items-center justify-center gap-2">
+          <span className="flex text-orange-400">
+            {[...Array(5)].map((_, i) => (
+              <Star key={i} className="w-4 h-4 fill-orange-400" />
+            ))}
+          </span>
+          آراء وتجارب عملائنا الكرام
+        </h2>
+
+        <div className="grid md:grid-cols-3 gap-4 mt-6">
+          {[
+            { city: "تعز", text: "التجربة كانت ممتازة، طلبت شحنة ملابس من SHEIN، خطوة بخطوة وتابعها لحتى وصلت. المصداقية والأمانة." },
+            { city: "عدن", text: "وصلت لي الشحنة بسرعة وشحن موثوق من امازون، خدمة ممتازة وتواصل ممتاز عبر الواتساب." },
+            { city: "صنعاء", text: "اشتريت لأهلي لابتوب من شي ان، التغليف كان راقي وسريع والتوصيل وصل لباب البيت، دعم فني ممتاز." },
+          ].map((r, i) => (
+            <div key={i} className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+              <div className="flex justify-center text-orange-400 mb-3">
+                {[...Array(5)].map((_, j) => (
+                  <Star key={j} className="w-3.5 h-3.5 fill-orange-400" />
+                ))}
+              </div>
+              <p className="text-[12px] text-slate-600 leading-relaxed text-center">"{r.text}"</p>
+              <div className="text-center text-[11px] text-slate-400 mt-4">— عميل من {r.city} —</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* القائمة الجانبية */}
+      {menuOpen && (
+        <div className="fixed inset-0 z-50 bg-black/40" onClick={() => setMenuOpen(false)}>
+          <div className="absolute right-0 top-0 h-full w-72 bg-white p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-black mb-4">القائمة</h3>
+            {["اطلب الآن", "تتبع شحنة", "حسابي", "الشحن"].map((it) => (
+              <div key={it} className="p-3 rounded-xl hover:bg-slate-50 font-bold text-[14px] cursor-pointer">{it}</div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
