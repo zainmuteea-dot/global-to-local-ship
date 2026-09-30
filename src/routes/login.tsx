@@ -120,14 +120,14 @@ export function LoginPage() {
                 role: accountType,
               })
             );
-            window.location.href = accountType === "staff" ? "/orders" : "/my-account";
+            window.location.href = accountType === "staff" ? "/admin" : "/my-account";
             return;
           }
           throw new Error("بيانات الدخول غير صحيحة، يرجى التأكد من الرقم وكلمة المرور.");
         }
 
         localStorage.setItem("alsouk_customer_logged_in", "true");
-        window.location.href = accountType === "staff" ? "/orders" : "/my-account";
+        window.location.href = accountType === "staff" ? "/admin" : "/my-account";
       } else {
         // إنشاء حساب جديد
         const { error: signUpError } = await supabase.auth.signUp({
