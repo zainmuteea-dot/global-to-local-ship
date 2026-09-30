@@ -8,9 +8,37 @@ import {
   ShoppingCart,
   Hand,
 } from "lucide-react";
-import { AlShamelLogo } from "../components/AlShamelLogo";
-import { AppSidebar } from "../components/AppSidebar";
-import { AccountsTreeModal } from "../components/AccountsTreeModal";
+
+// بدائل مؤقتة حتى تنشئ المكونات الحقيقية
+function AlShamelLogo({ size = "md", showText = true }: { size?: string; showText?: boolean }) {
+  return (
+    <div className="flex items-center gap-2">
+      <div className="size-10 rounded-xl bg-gradient-to-tr from-[#0F4C81] to-[#0284C7] grid place-items-center text-white font-black">S</div>
+      {showText && <span className="font-black text-[#0F4C81] text-sm">السوق الشامل</span>}
+    </div>
+  );
+}
+
+function AppSidebar({ isOpen, onClose, onNavigate }: any) {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50" onClick={onClose}>
+      <div className="absolute right-0 top-0 h-full w-64 bg-white p-4" onClick={(e) => e.stopPropagation()}>
+        <button onClick={onClose} className="mb-4 text-sm font-bold">✕ إغلاق</button>
+        <div className="space-y-2 text-sm">
+          <button onClick={() => onNavigate("new-order")} className="block w-full text-right p-2 hover:bg-sky-50 rounded">اطلب الآن</button>
+          <button onClick={() => onNavigate("track")} className="block w-full text-right p-2 hover:bg-sky-50 rounded">تتبع شحنة</button>
+          <button onClick={() => onNavigate("my-account")} className="block w-full text-right p-2 hover:bg-sky-50 rounded">حسابي</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AccountsTreeModal({ isOpen, onClose }: any) {
+  if (!isOpen) return null;
+  return null;
+}
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -21,19 +49,19 @@ function Index() {
   const [isAccountsTreeOpen, setIsAccountsTreeOpen] = useState(false);
 
   const platforms = [
-    { name: 'TEMU', color: 'text-[#FA6400]' },
-    { name: 'TrendYol', color: 'text-[#F27A1A]' },
-    { name: 'SHEIN', color: 'text-zinc-900' },
-    { name: 'Amazon', color: 'text-[#FF9900]' },
-    { name: 'AliExpress', color: 'text-[#FF4747]' },
+    { name: "TEMU", color: "text-[#FA6400]" },
+    { name: "TrendYol", color: "text-[#F27A1A]" },
+    { name: "SHEIN", color: "text-zinc-900" },
+    { name: "Amazon", color: "text-[#FF9900]" },
+    { name: "AliExpress", color: "text-[#FF4747]" },
   ];
 
   const steps = [
-    { title: 'أرسل الرابط', desc: 'انسخ رابط المنتج من أي متجر عالمي', icon: Link2 },
-    { title: 'اعرف السعر', desc: 'نوضح لك التكلفة بالريال اليمني أو الدولار', icon: CircleDollarSign },
-    { title: 'نشتري لك', desc: 'نشتري بدلاً عنك ونضمن جودة وتطابق الطلب', icon: ShoppingCart },
-    { title: 'تابع الشحنة', desc: 'تتبع مسار شحنتك لحظة بلحظة برقم التتبع', icon: Search },
-    { title: 'الاستلام', desc: 'توصيل موثوق حتى باب بيتك في كافة المحافظات', icon: Package },
+    { title: "أرسل الرابط", desc: "انسخ رابط المنتج من أي متجر عالمي", icon: Link2 },
+    { title: "اعرف السعر", desc: "نوضح لك التكلفة بالريال اليمني أو الدولار", icon: CircleDollarSign },
+    { title: "نشتري لك", desc: "نشتري بدلاً عنك ونضمن جودة وتطابق الطلب", icon: ShoppingCart },
+    { title: "تابع الشحنة", desc: "تتبع مسار شحنتك لحظة بلحظة برقم التتبع", icon: Search },
+    { title: "الاستلام", desc: "توصيل موثوق حتى باب بيتك في كافة المحافظات", icon: Package },
   ];
 
   return (
@@ -51,7 +79,10 @@ function Index() {
           <AlShamelLogo size="md" showText={true} />
         </div>
         <div className="flex items-center gap-2">
-          <a href="/new-order" className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[#F97316] via-[#EA580C] to-[#C2410C] px-5 py-2.5 font-black text-xs sm:text-sm text-white shadow-md shadow-orange-500/25 ring-2 ring-orange-300/40">
+          <a
+            href="/new-order"
+            className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[#F97316] via-[#EA580C] to-[#C2410C] px-5 py-2.5 font-black text-xs sm:text-sm text-white shadow-md shadow-orange-500/25 ring-2 ring-orange-300/40"
+          >
             <ShoppingCart className="size-4" />
             <span>اطلب الآن</span>
           </a>
@@ -61,18 +92,30 @@ function Index() {
       <section className="px-4 pt-4">
         <div className="relative mx-auto max-w-4xl overflow-hidden rounded-3xl bg-gradient-to-br from-[#0A2540] via-[#0F4C81] to-[#134074] p-6 text-white shadow-2xl sm:p-8">
           <div className="flex justify-between items-center">
-            <h2 className="text-3xl sm:text-4xl font-black">كيف تطلب؟<span className="text-orange-400">؟</span></h2>
+            <h2 className="text-3xl sm:text-4xl font-black">
+              كيف تطلب؟<span className="text-orange-400">؟</span>
+            </h2>
             <div className="grid size-16 sm:size-20 place-items-center rounded-2xl bg-gradient-to-tr from-[#F97316] to-[#FB923C] ring-4 ring-white/30 shadow-lg cursor-pointer">
               <span className="grid size-8 place-items-center rounded-full bg-white text-[#EA580C]">▶</span>
             </div>
           </div>
-          <p className="mt-2 text-xs sm:text-sm text-sky-100 max-w-md">انسخ رابط أي منتج تريده من أي موقع عالمي وسنتولى الشراء والفحص والشحن الآمن حتى باب بيتك.</p>
+
+          <p className="mt-2 text-xs sm:text-sm text-sky-100 max-w-md">
+            انسخ رابط أي منتج تريده من أي موقع عالمي وسنتولى الشراء والفحص والشحن الآمن حتى باب بيتك.
+          </p>
+
           <div className="mt-6 flex flex-wrap gap-3">
-            <a href="/new-order" className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[#F97316] to-[#EA580C] px-7 py-3 font-black text-sm text-white shadow-lg ring-2 ring-orange-300/40 hover:-translate-y-0.5 transition">
+            <a
+              href="/new-order"
+              className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[#F97316] to-[#EA580C] px-7 py-3 font-black text-sm text-white shadow-lg ring-2 ring-orange-300/40 hover:-translate-y-0.5 transition"
+            >
               <Hand className="size-5 -scale-x-100" />
               <span>اضغط هنا لطلب منتج</span>
             </a>
-            <a href="/track" className="inline-flex items-center gap-2 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 px-5 py-3 font-bold text-xs sm:text-sm text-white">
+            <a
+              href="/track"
+              className="inline-flex items-center gap-2 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 px-5 py-3 font-bold text-xs sm:text-sm text-white"
+            >
               <Search className="size-4 text-orange-300" />
               <span>تتبع شحنة سابقة</span>
             </a>
@@ -84,7 +127,9 @@ function Index() {
         <h3 className="font-bold text-xs text-[#0F4C81] mb-4">نستورد لك من أشهر المتاجر العالمية</h3>
         <div className="flex justify-center gap-3 flex-wrap">
           {platforms.map((p) => (
-            <div key={p.name} className={`grid size-20 place-items-center rounded-2xl bg-white shadow-sm border border-sky-100 font-black text-sm ${p.color}`}>{p.name}</div>
+            <div key={p.name} className={`grid size-20 place-items-center rounded-2xl bg-white shadow-sm border border-sky-100 font-black text-sm ${p.color}`}>
+              {p.name}
+            </div>
           ))}
         </div>
       </section>
@@ -95,7 +140,9 @@ function Index() {
             const Icon = s.icon;
             return (
               <div key={s.title} className="flex items-center gap-3 rounded-2xl bg-white p-4 ring-1 ring-sky-100 shadow-sm">
-                <span className="grid size-12 place-items-center rounded-xl bg-sky-50 text-[#0284C7]"><Icon className="size-5" /></span>
+                <span className="grid size-12 place-items-center rounded-xl bg-sky-50 text-[#0284C7]">
+                  <Icon className="size-5" />
+                </span>
                 <div>
                   <h4 className="text-sm font-black text-[#0F4C81]">{s.title}</h4>
                   <p className="text-xs text-slate-500 mt-0.5">{s.desc}</p>
@@ -106,7 +153,7 @@ function Index() {
         </div>
       </section>
 
-      <AppSidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} onNavigate={(r) => window.location.href = `/${r}`} />
+      <AppSidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} onNavigate={(r: string) => (window.location.href = `/${r}`)} />
       <AccountsTreeModal isOpen={isAccountsTreeOpen} onClose={() => setIsAccountsTreeOpen(false)} />
     </div>
   );
