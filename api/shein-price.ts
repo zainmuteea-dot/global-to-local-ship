@@ -37,7 +37,7 @@ function extract(html: string): SheinResult | null {
   let m: RegExpExecArray | null;
   while ((m = ldRe.exec(html))) {
     try {
-      const raw = JSON.parse(m[1]);
+      const raw = JSON.parse(m[1] || "{}");
       const items = Array.isArray(raw)? raw : [raw];
       for (const it of items) {
         const graph = it["@graph"]? it["@graph"] : [it];
@@ -48,7 +48,7 @@ function extract(html: string): SheinResult | null {
             const o = Array.isArray(offers)? offers[0] : offers;
             const p = Number(o?.price?? o?.lowPrice);
             if (!Number.isNaN(p) && p > 0) {
-              return { price: p, currency: String(o?.priceCurrency || "USD"), title: g.name };
+              return { price: p, currency: String(o?.priceCurrency || "USD"), title: g.name? String(g.name) : undefined };
             }
           }
         }
@@ -61,13 +61,13 @@ function extract(html: string): SheinResult | null {
   const sm = stateRe.exec(html);
   if (sm) {
     const priceRe = /"(?:salePrice|retailPrice|detailPrice|price)"\s*:\s*"?([\d.]+)"?/;
-    const pm = priceRe.exec(sm[0] + html.slice(0, 20000));
+    const pm = priceRe.exec((sm[0] || "") + html.slice(0, 20000));
     const curRe = /"currency"\s*:\s*"([A-Z]{3})"/;
     const cm = curRe.exec(html.slice(0, 50000));
     if (pm) {
-      const p = Number(pm[1]);
+      const p = Number(pm[1] || "0");
       if (!Number.isNaN(p) && p > 0)
-        return { price: p, currency: cm? cm[1] : "USD" };
+        return { price: p, currency: cm?.[1] || "USD" };
     }
   }
 
@@ -75,9 +75,9 @@ function extract(html: string): SheinResult | null {
   const metaPrice = /<meta[^>]*property=["'](?:product:price:amount|og:price:amount)["'][^>]*content=["']([\d.]+)["']/i.exec(html);
   const metaCur = /<meta[^>]*property=["'](?:product:price:currency|og:price:currency)["'][^>]*content=["']([A-Z]{3})["']/i.exec(html);
   if (metaPrice) {
-    const p = Number(metaPrice[1]);
+    const p = Number(metaPrice[1] || "0");
     if (!Number.isNaN(p) && p > 0)
-      return { price: p, currency: metaCur? metaCur[1] : "USD" };
+      return { price: p, currency: metaCur?.[1] || "USD" };
   }
 
   return null;
