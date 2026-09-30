@@ -1,28 +1,22 @@
-import React, { useState } from 'react';
+import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
 import {
-  Menu,
-  Bell,
-  CircleDollarSign,
-  FileText,
-  Hand,
   Link2,
+  CircleDollarSign,
   Package,
   Search,
   ShoppingCart,
-  UserRound,
-  UserCheck,
-  LogIn,
-  Sparkles,
-  Shield,
-  FolderTree,
-  Coins,
-} from 'lucide-react';
-import { AlShamelLogo } from '../components/AlShamelLogo';
-import { AppSidebar } from '../components/AppSidebar';
-import { AccountsTreeModal } from '../components/AccountsTreeModal';
+  Hand,
+} from "lucide-react";
+import { AlShamelLogo } from "../components/AlShamelLogo";
+import { AppSidebar } from "../components/AppSidebar";
+import { AccountsTreeModal } from "../components/AccountsTreeModal";
 
-export default function StoreHomePage() {
-  const [isLoggedIn, setIsLoggedIn] = useState(true);
+export const Route = createFileRoute("/")({
+  component: Index,
+});
+
+function Index() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isAccountsTreeOpen, setIsAccountsTreeOpen] = useState(false);
 
@@ -44,7 +38,6 @@ export default function StoreHomePage() {
 
   return (
     <div dir="rtl" className="min-h-screen bg-gradient-to-b from-[#F0F7FF] via-[#F8FAFC] to-[#FFF9F5] text-[#0A2540]">
-      {/* Header */}
       <header className="mx-auto flex max-w-5xl items-center justify-between p-4">
         <div className="flex items-center gap-3">
           <button
@@ -57,48 +50,29 @@ export default function StoreHomePage() {
           </button>
           <AlShamelLogo size="md" showText={true} />
         </div>
-
         <div className="flex items-center gap-2">
-          <a
-            href="/new-order"
-            className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[#F97316] via-[#EA580C] to-[#C2410C] px-5 py-2.5 font-black text-xs sm:text-sm text-white shadow-md shadow-orange-500/25 ring-2 ring-orange-300/40"
-          >
+          <a href="/new-order" className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[#F97316] via-[#EA580C] to-[#C2410C] px-5 py-2.5 font-black text-xs sm:text-sm text-white shadow-md shadow-orange-500/25 ring-2 ring-orange-300/40">
             <ShoppingCart className="size-4" />
             <span>اطلب الآن</span>
           </a>
         </div>
       </header>
 
-      {/* Hero Banner (كيف تطلب؟؟) بألوان الشعار: كحلي محيطي + برتقالي */}
       <section className="px-4 pt-4">
         <div className="relative mx-auto max-w-4xl overflow-hidden rounded-3xl bg-gradient-to-br from-[#0A2540] via-[#0F4C81] to-[#134074] p-6 text-white shadow-2xl sm:p-8">
           <div className="flex justify-between items-center">
-            <h2 className="text-3xl sm:text-4xl font-black">
-              كيف تطلب؟<span className="text-orange-400">؟</span>
-            </h2>
+            <h2 className="text-3xl sm:text-4xl font-black">كيف تطلب؟<span className="text-orange-400">؟</span></h2>
             <div className="grid size-16 sm:size-20 place-items-center rounded-2xl bg-gradient-to-tr from-[#F97316] to-[#FB923C] ring-4 ring-white/30 shadow-lg cursor-pointer">
-              <span className="grid size-8 place-items-center rounded-full bg-white text-[#EA580C]">
-                ▶
-              </span>
+              <span className="grid size-8 place-items-center rounded-full bg-white text-[#EA580C]">▶</span>
             </div>
           </div>
-
-          <p className="mt-2 text-xs sm:text-sm text-sky-100 max-w-md">
-            انسخ رابط أي منتج تريده من أي موقع عالمي وسنتولى الشراء والفحص والشحن الآمن حتى باب بيتك.
-          </p>
-
+          <p className="mt-2 text-xs sm:text-sm text-sky-100 max-w-md">انسخ رابط أي منتج تريده من أي موقع عالمي وسنتولى الشراء والفحص والشحن الآمن حتى باب بيتك.</p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <a
-              href="/new-order"
-              className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[#F97316] to-[#EA580C] px-7 py-3 font-black text-sm text-white shadow-lg ring-2 ring-orange-300/40 hover:-translate-y-0.5 transition"
-            >
+            <a href="/new-order" className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[#F97316] to-[#EA580C] px-7 py-3 font-black text-sm text-white shadow-lg ring-2 ring-orange-300/40 hover:-translate-y-0.5 transition">
               <Hand className="size-5 -scale-x-100" />
               <span>اضغط هنا لطلب منتج</span>
             </a>
-            <a
-              href="/track"
-              className="inline-flex items-center gap-2 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 px-5 py-3 font-bold text-xs sm:text-sm text-white"
-            >
+            <a href="/track" className="inline-flex items-center gap-2 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 px-5 py-3 font-bold text-xs sm:text-sm text-white">
               <Search className="size-4 text-orange-300" />
               <span>تتبع شحنة سابقة</span>
             </a>
@@ -106,28 +80,22 @@ export default function StoreHomePage() {
         </div>
       </section>
 
-      {/* Global Platforms */}
       <section className="px-4 pt-10 text-center">
         <h3 className="font-bold text-xs text-[#0F4C81] mb-4">نستورد لك من أشهر المتاجر العالمية</h3>
         <div className="flex justify-center gap-3 flex-wrap">
           {platforms.map((p) => (
-            <div key={p.name} className={`grid size-20 place-items-center rounded-2xl bg-white shadow-sm border border-sky-100 font-black text-sm ${p.color}`}>
-              {p.name}
-            </div>
+            <div key={p.name} className={`grid size-20 place-items-center rounded-2xl bg-white shadow-sm border border-sky-100 font-black text-sm ${p.color}`}>{p.name}</div>
           ))}
         </div>
       </section>
 
-      {/* 5 Steps */}
       <section className="mx-auto max-w-3xl px-4 py-10">
         <div className="grid gap-3 sm:grid-cols-2">
-          {steps.map((s, i) => {
+          {steps.map((s) => {
             const Icon = s.icon;
             return (
               <div key={s.title} className="flex items-center gap-3 rounded-2xl bg-white p-4 ring-1 ring-sky-100 shadow-sm">
-                <span className="grid size-12 place-items-center rounded-xl bg-sky-50 text-[#0284C7]">
-                  <Icon className="size-5" />
-                </span>
+                <span className="grid size-12 place-items-center rounded-xl bg-sky-50 text-[#0284C7]"><Icon className="size-5" /></span>
                 <div>
                   <h4 className="text-sm font-black text-[#0F4C81]">{s.title}</h4>
                   <p className="text-xs text-slate-500 mt-0.5">{s.desc}</p>
@@ -138,9 +106,10 @@ export default function StoreHomePage() {
         </div>
       </section>
 
-      {/* Sidebar & Tree Modals */}
       <AppSidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} onNavigate={(r) => window.location.href = `/${r}`} />
       <AccountsTreeModal isOpen={isAccountsTreeOpen} onClose={() => setIsAccountsTreeOpen(false)} />
     </div>
   );
 }
+
+export default Index;
