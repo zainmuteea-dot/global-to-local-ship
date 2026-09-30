@@ -150,50 +150,106 @@ export function Index() {
         </div>
 
         <section>
-          <p className="text-center text-xs font-bold text-slate-500 mb-4">نستورد لك من أشهر المتاجر العالمية</p>
-          <div className="flex flex-wrap justify-center gap-3" dir="ltr">
-            {platforms.map((p) => (
-              <div key={p.name} className={`bg-white border ${p.border} rounded-2xl px-6 py-4 shadow-sm font-black ${p.color}`}>{p.name}</div>
-            ))}
-          </div>
-        </section>
+          {/* ===== النصف الثاني ===== */}
+<section className="text-center mt-8 px-4">
+  <span className="inline-flex items-center gap-1 bg-blue-50 text-[#0284C7] text-[11px] font-bold px-4 py-1.5 rounded-full">
+    🛒 خدمة الشراء والوساطة الأولى في اليمن
+  </span>
+  <h2 className="text-[26px] font-black text-[#0A2540] mt-3">تسوّق عالمياً، واستلم محلياً</h2>
+  <p className="text-[12px] text-slate-500 mt-2 leading-6 max-w-md mx-auto">
+    اطلب من أي مكان في العالم ونوصله لباب بيتك في جميع المحافظات بأقل تكلفة وأعلى موثوقية
+  </p>
+</section>
 
-        <section className="grid gap-3 md:grid-cols-5">
-          {steps.map((s) => (
-            <Link key={s.title} to={s.href} className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm hover:shadow-md hover:-translate-y-1 transition">
-              <span className={`text-[10px] font-black px-2 py-1 rounded-full ${s.stepColor}`}>{s.step}</span>
-              <div className={`mt-3 size-11 rounded-xl border flex items-center justify-center ${s.color}`}><s.icon className="size-5" /></div>
-              <h3 className="mt-3 font-black text-sm text-[#0F4C81]">{s.title}</h3>
-              <p className="text-xs text-slate-500 mt-1 leading-relaxed">{s.desc}</p>
-            </Link>
-          ))}
-        </section>
+{/* المتاجر */}
+<div className="mt-6 px-4">
+  <p className="text-center text-[11px] font-black text-slate-600 mb-4">
+    <span className="text-[#F97316]">—</span> تسوق الآن من أشهر المتاجر العالمية <span className="text-[#F97316]">—</span>
+  </p>
+  <div className="flex flex-wrap justify-center gap-3" dir="ltr">
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 w-[90px] py-5 text-center font-black text-[13px] text-[#FF5000]">TEMU</div>
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 w-[90px] py-5 text-center font-black text-[13px] text-[#F27A1A]">TrendYol</div>
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 w-[90px] py-5 text-center font-black text-[13px] text-black">SHEIN</div>
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 w-[90px] py-5 text-center font-black text-[13px] text-[#FF9900]">Amazon</div>
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 w-[90px] py-5 text-center font-black text-[13px] text-[#E62E04]">AliExpress</div>
+  </div>
+</div>
 
-        <section>
-          <h2 className="text-center font-black text-xl text-[#0F4C81] mb-6">ماذا قال عملاؤنا؟</h2>
-          <div className="grid md:grid-cols-3 gap-4">
-            {reviews.map((r) => (
-              <div key={r.name} className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
-                <div className="flex gap-1 text-[#F59E0B] mb-3">{[...Array(5)].map((_, i) => <Star key={i} className="size-4 fill-current" />)}</div>
-                <p className="text-sm text-slate-600 leading-relaxed">"{r.text}"</p>
-                <div className="mt-4 flex items-center gap-2">
-                  <div className="size-9 rounded-full bg-sky-100 flex items-center justify-center font-black text-[#0F4C81] text-xs">{r.name[0]}</div>
-                  <div><p className="text-xs font-black text-slate-800">{r.name}</p><p className="text-[11px] text-slate-500">{r.city}</p></div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      </main>
-
-      <nav className="sticky bottom-0 bg-white border-t border-slate-100 md:hidden">
-        <div className="grid grid-cols-4 text-center py-2">
-          <Link to="/" className="flex flex-col items-center gap-1 text-[#EA580C] text-[10px] font-bold"><Home className="size-5" />الرئيسية</Link>
-          <Link to="/new-order" className="flex flex-col items-center gap-1 text-slate-500 text-[10px] font-bold"><ShoppingCart className="size-5" />اطلب</Link>
-          <Link to="/track" className="flex flex-col items-center gap-1 text-slate-500 text-[10px] font-bold"><Truck className="size-5" />تتبع</Link>
-          <Link to="/my-account" className="flex flex-col items-center gap-1 text-slate-500 text-[10px] font-bold"><UserRound className="size-5" />حسابي</Link>
-        </div>
-      </nav>
+{/* الخطوات */}
+<div className="mt-6 px-4 max-w-3xl mx-auto" dir="rtl">
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+    <div className="bg-white rounded-2xl border border-slate-100 p-4 flex items-center gap-3 shadow-sm">
+      <div className="text-right flex-1">
+        <p className="text-[13px] font-black text-[#0F4C81]">أرسل الرابط <span className="text-[9px] bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full mr-1">خطوة 1</span></p>
+        <p className="text-[11px] text-slate-500 mt-1">انسخ رابط المنتج من أي متجر عالمي</p>
+      </div>
+      <div className="size-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center shrink-0"><Link2 className="size-5" /></div>
     </div>
-  );
-}
+
+    <div className="bg-white rounded-2xl border border-slate-100 p-4 flex items-center gap-3 shadow-sm">
+      <div className="text-right flex-1">
+        <p className="text-[13px] font-black text-[#0F4C81]">اعرف السعر <span className="text-[9px] bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full mr-1">خطوة 2</span></p>
+        <p className="text-[11px] text-slate-500 mt-1">نوضح لك التكلفة بالريال اليمني أو الدولار</p>
+      </div>
+      <div className="size-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center shrink-0"><DollarSign className="size-5" /></div>
+    </div>
+
+    <div className="bg-white rounded-2xl border border-slate-100 p-4 flex items-center gap-3 shadow-sm">
+      <div className="text-right flex-1">
+        <p className="text-[13px] font-black text-[#0F4C81]">نشتري لك <span className="text-[9px] bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full mr-1">خطوة 3</span></p>
+        <p className="text-[11px] text-slate-500 mt-1">نشتري بدلاً عنك ونفحص جودة وتطابق الطلب</p>
+      </div>
+      <div className="size-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center shrink-0"><ShoppingCart className="size-5" /></div>
+    </div>
+
+    <div className="bg-white rounded-2xl border border-slate-100 p-4 flex items-center gap-3 shadow-sm">
+      <div className="text-right flex-1">
+        <p className="text-[13px] font-black text-[#0F4C81]">تتبع الشحنة <span className="text-[9px] bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full mr-1">خطوة 4</span></p>
+        <p className="text-[11px] text-slate-500 mt-1">تتبع مسار شحنتك لحظة بلحظة برقم التتبع</p>
+      </div>
+      <div className="size-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center shrink-0"><Search className="size-5" /></div>
+    </div>
+  </div>
+
+  <div className="bg-white rounded-2xl border border-slate-100 p-4 mt-3 max-w-[500px] mx-auto flex items-center gap-3 shadow-sm">
+    <div className="text-center flex-1">
+      <p className="text-[13px] font-black text-[#0F4C81]">الاستلام <span className="text-[9px] bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full mr-1">خطوة 5</span></p>
+      <p className="text-[11px] text-slate-500 mt-1">توصيل موثوق حتى باب بيتك في كافة المحافظات</p>
+    </div>
+    <div className="size-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center shrink-0"><PackageCheck className="size-5" /></div>
+  </div>
+
+  <div className="flex justify-center gap-3 mt-5">
+    <Link to="/new-order" className="bg-[#0F4C81] text-white text-[13px] font-bold px-6 py-2.5 rounded-xl flex items-center gap-2">
+      <ShoppingCart className="size-4" /> اطلب الآن فوراً
+    </Link>
+    <Link to="/track" className="bg-white border border-slate-200 text-[#0F4C81] text-[13px] font-bold px-6 py-2.5 rounded-xl flex items-center gap-2">
+      <Search className="size-4" /> تتبع شحنتك الآن
+    </Link>
+  </div>
+</div>
+
+{/* آراء العملاء */}
+<section className="mt-10 px-4 max-w-4xl mx-auto">
+  <h3 className="text-center text-[16px] font-black text-[#0F4C81] mb-6">⭐⭐⭐⭐⭐ آراء وتجارب عملائنا الكرام</h3>
+  <div className="grid grid-cols-1 md:grid-cols-3 gap-4" dir="rtl">
+    <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm text-center">
+      <div className="text-[#F59E0B] text-[12px] mb-2">★★★★★</div>
+      <p className="text-[11px] text-slate-600 leading-6">"التجربة فاقت التوقعات، تتبعت شحنتي خطوة بخطوة والتغليف كان فائق الجودة والحماية."</p>
+      <p className="text-[12px] font-black text-[#0F4C81] mt-3">يوسف العزاني</p>
+      <p className="text-[10px] text-slate-400">صنعاء</p>
+    </div>
+    <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm text-center">
+      <div className="text-[#F59E0B] text-[12px] mb-2">★★★★★</div>
+      <p className="text-[11px] text-slate-600 leading-6">"وأخيراً لقينا وسيط شحن رسمي وموثوق يوصل لعندنا! خدمة ممتازة وتجاوب فوري عبر الواتساب."</p>
+      <p className="text-[12px] font-black text-[#0F4C81] mt-3">أسماء السعدي</p>
+      <p className="text-[10px] text-slate-400">عدن</p>
+    </div>
+    <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm text-center">
+      <div className="text-[#F59E0B] text-[12px] mb-2">★★★★★</div>
+      <p className="text-[11px] text-slate-600 leading-6">"اشتريت لعيالي طلبات من شي إن، التعامل كان راقي وسريع والتوصيل وصل لباب البيت."</p>
+      <p className="text-[12px] font-black text-[#0F4C81] mt-3">رامي راجح</p>
+      <p className="text-[10px] text-slate-400">حضرموت</p>
+    </div>
+  </div>
+</section>
