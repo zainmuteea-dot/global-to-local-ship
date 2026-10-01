@@ -31,7 +31,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
-export const Route = createFileRoute("/admin-clients")({
+export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
       { title: "لوحة عمليات الشحن والتوزيع | السوق الشامل AL SHAMEL" },
@@ -180,12 +180,12 @@ export function AdminOperationsDashboard() {
     if (orders.length === 0) return alert("لا توجد بيانات للتصدير.");
     const headers = ["رقم التتبع", "العميل", "الهاتف", "المنتج", "الحالة", "التاريخ"];
     const rows = filteredOrders.map((o) => [
-      o.tracking_code,
-      o.customer_name,
-      o.phone,
+      o.tracking_code || "",
+      o.customer_name || "",
+      o.phone || "",
       o.product_name || "",
-      o.status,
-      new Date(o.created_at).toLocaleDateString("ar-YE"),
+      o.status || "",
+      o.created_at ? new Date(o.created_at).toLocaleDateString("ar-YE") : "",
     ]);
 
     const csvContent =
@@ -214,13 +214,14 @@ export function AdminOperationsDashboard() {
     return { total, pending, shipping, delivered, canceled, deliveryRate };
   }, [orders]);
 
-  // الفلترة
+  // الفلترة والبحث
   const filteredOrders = useMemo(() => {
     return orders.filter((o) => {
+      const q = searchQuery.toLowerCase();
       const matchesSearch =
-        o.tracking_code?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        o.customer_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        o.phone?.includes(searchQuery);
+        (o.tracking_code || "").toLowerCase().includes(q) ||
+        (o.customer_name || "").toLowerCase().includes(q) ||
+        (o.phone || "").includes(searchQuery);
 
       const matchesStatus =
         selectedStatus === "all"
@@ -236,7 +237,7 @@ export function AdminOperationsDashboard() {
           : true;
 
       const matchesCity =
-        selectedCity === "all" ? true : o.notes?.includes(selectedCity);
+        selectedCity === "all" ? true : (o.notes || "").includes(selectedCity);
 
       return matchesSearch && matchesStatus && matchesCity;
     });
@@ -262,10 +263,10 @@ export function AdminOperationsDashboard() {
               <span>اطلب الآن (بوابة العميل) ⚡</span>
             </a>
             <a
-              href="/new-order"
+              href="/admin-clients"
               className="px-3 py-1.5 rounded-lg bg-[#0F4C81] text-white shadow-sm flex items-center gap-1 hover:bg-[#0c3c66]"
             >
-              <span>صفحة العملاء (/new-order)</span>
+              <span>سجل العملاء</span>
             </a>
             <a
               href="/track"
@@ -404,7 +405,7 @@ export function AdminOperationsDashboard() {
         {/* 4. بطاقات العمليات والمؤشرات الأربع (KPI Cards) */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           
-          {/* 1. إجمالي الطلبات (المميزة بإطار برتقالي متوهج) */}
+          {/* 1. إجمالي الطلبات */}
           <div
             onClick={() => setSelectedStatus("all")}
             className={`bg-white rounded-2xl p-4 sm:p-5 border transition cursor-pointer shadow-xs ${
@@ -427,7 +428,9 @@ export function AdminOperationsDashboard() {
             <div className="text-xs font-bold text-slate-700">إجمالي الطلبات</div>
             <div className="text-[11px] text-slate-400 mt-0.5">جميع الشحنات بالمنظومة</div>
             <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px]">
-              <span className="text-[#EA580C] font-bold">تصفية مفعلة ✓</span>
+              <span className="text-[#EA580C] font-bold">
+                {selectedStatus === "all" ? "تصفية مفعلة ✓" : "عرض الكل"}
+              </span>
             </div>
           </div>
 
@@ -452,9 +455,11 @@ export function AdminOperationsDashboard() {
               {stats.pending}
             </div>
             <div className="text-xs font-bold text-slate-700">قيد الانتظار</div>
-            <div className="text-[11px] text-slate-400 mt-0.5">بانتظار التجهيز</div>
-            <div className="mt-3 pt-2 border-t border-slate-100 text-[10px] text-amber-600 font-bold">
-              انقر للتصفية
+            <div className="text-[11px] text-slate-400 mt-0.5">بانتظار التأكيد أو الشراء</div>
+            <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px]">
+              <span className="text-amber-600 font-bold">
+                {selectedStatus === "pending" ? "تصفية مفعلة ✓" : "تصفية"}
+              </span>
             </div>
           </div>
 
@@ -463,25 +468,27 @@ export function AdminOperationsDashboard() {
             onClick={() => setSelectedStatus("shipping")}
             className={`bg-white rounded-2xl p-4 sm:p-5 border transition cursor-pointer shadow-xs ${
               selectedStatus === "shipping"
-                ? "border-[#00629B] ring-2 ring-sky-100"
+                ? "border-sky-500 ring-2 ring-sky-100"
                 : "border-slate-200 hover:border-slate-300"
             }`}
           >
             <div className="flex items-center justify-between mb-3">
-              <div className="size-10 rounded-xl bg-[#00629B] text-white grid place-items-center">
+              <div className="size-10 rounded-xl bg-[#0284C7] text-white grid place-items-center">
                 <Truck className="size-5" />
               </div>
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-sky-50 text-[#00629B]">
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-sky-50 text-[#0284C7]">
                 {stats.total > 0 ? Math.round((stats.shipping / stats.total) * 100) : 0}%
               </span>
             </div>
             <div className="text-3xl font-black text-[#0A2540] mb-1 font-mono">
               {stats.shipping}
             </div>
-            <div className="text-xs font-bold text-slate-700">تم الشحن</div>
-            <div className="text-[11px] text-slate-400 mt-0.5">في طريق التوصيل</div>
-            <div className="mt-3 pt-2 border-t border-slate-100 text-[10px] text-[#00629B] font-bold">
-              انقر للتصفية
+            <div className="text-xs font-bold text-slate-700">تم الشحن / في الطريق</div>
+            <div className="text-[11px] text-slate-400 mt-0.5">شحنات دولية ومحلية جارية</div>
+            <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px]">
+              <span className="text-[#0284C7] font-bold">
+                {selectedStatus === "shipping" ? "تصفية مفعلة ✓" : "تصفية"}
+              </span>
             </div>
           </div>
 
@@ -496,73 +503,68 @@ export function AdminOperationsDashboard() {
           >
             <div className="flex items-center justify-between mb-3">
               <div className="size-10 rounded-xl bg-emerald-600 text-white grid place-items-center">
-                <CheckCircle2 className="size-5" />
+                <PackageCheck className="size-5" />
               </div>
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600">
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">
                 {stats.total > 0 ? Math.round((stats.delivered / stats.total) * 100) : 0}%
               </span>
             </div>
             <div className="text-3xl font-black text-[#0A2540] mb-1 font-mono">
               {stats.delivered}
             </div>
-            <div className="text-xs font-bold text-slate-700">تم التوصيل</div>
-            <div className="text-[11px] text-slate-400 mt-0.5">تم الاستلام بنجاح</div>
-            <div className="mt-3 pt-2 border-t border-slate-100 text-[10px] text-emerald-600 font-bold">
-              انقر للتصفية
+            <div className="text-xs font-bold text-slate-700">تم التوصيل للعميل</div>
+            <div className="text-[11px] text-slate-400 mt-0.5">عمليات ناجحة ومكتملة</div>
+            <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px]">
+              <span className="text-emerald-700 font-bold">
+                {selectedStatus === "delivered" ? "تصفية مفعلة ✓" : "تصفية"}
+              </span>
             </div>
           </div>
 
         </div>
 
-        {/* 5. شريط معدل الإنجاز والتحصيل النقدي */}
-        <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs flex flex-wrap items-center justify-between gap-4">
+        {/* 5. شريط معدل الإنجاز والتسليم */}
+        <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="size-9 rounded-xl bg-emerald-50 text-emerald-600 grid place-items-center">
-              <ArrowUpDown className="size-4" />
+            <div className="size-10 rounded-xl bg-sky-50 text-[#0F4C81] grid place-items-center">
+              <CheckCircle2 className="size-5" />
             </div>
             <div>
-              <div className="text-xs font-bold text-slate-700">معدل الإنجاز والتسليم</div>
-              <div className="text-xs font-black text-emerald-600">
-                {stats.deliveryRate}% نسبة تسليم ناجحة
+              <div className="text-xs font-bold text-slate-700">نسبة نجاح التوصيل الفعلي</div>
+              <div className="text-sm font-black text-[#0A2540]">
+                {stats.deliveryRate}% من إجمالي الطرود المسجلة
               </div>
             </div>
           </div>
 
           <div className="flex items-center gap-4 text-xs font-bold">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-50/70 border border-amber-200/60 text-amber-900">
-              <span className="font-mono text-sm">💵</span>
-              <span>إجمالي التحصيل (COD): <strong className="font-mono">158 ر.س</strong></span>
+            <div className="px-3 py-1.5 rounded-xl bg-rose-50 text-rose-600 border border-rose-100">
+              ملغية: {stats.canceled}
             </div>
-
-            <div className="text-slate-400">|</div>
-
-            <div className="text-rose-600">
-              ملغاة: <span className="font-mono font-bold">{stats.canceled}</span> طلب
+            <div className="px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-100">
+              النشطة: {stats.total - stats.delivered - stats.canceled}
             </div>
           </div>
         </div>
 
-        {/* 6. شريط الفلاتر، وتصدير CSV، وتبديل الحالات */}
-        <div className="bg-white rounded-2xl p-3 sm:p-4 border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
+        {/* 6. شريط الفلاتر والإجراءات */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
           
-          {/* تبويبات الحالات */}
-          <div className="flex flex-wrap items-center gap-1.5 text-xs font-bold">
-            <span className="text-slate-500 ml-1">الحالة:</span>
-            
+          {/* أزرار الحالات */}
+          <div className="flex items-center gap-1.5 overflow-x-auto py-1 text-xs font-bold">
             <button
               onClick={() => setSelectedStatus("all")}
-              className={`px-3 py-1.5 rounded-xl transition ${
+              className={`px-3 py-1.5 rounded-xl transition cursor-pointer ${
                 selectedStatus === "all"
-                  ? "bg-[#004B87] text-white shadow-xs"
+                  ? "bg-[#0F4C81] text-white shadow-xs"
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
               الكل ({stats.total})
             </button>
-
             <button
               onClick={() => setSelectedStatus("pending")}
-              className={`px-3 py-1.5 rounded-xl transition ${
+              className={`px-3 py-1.5 rounded-xl transition cursor-pointer ${
                 selectedStatus === "pending"
                   ? "bg-amber-500 text-white shadow-xs"
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
@@ -570,21 +572,19 @@ export function AdminOperationsDashboard() {
             >
               انتظار ({stats.pending})
             </button>
-
             <button
               onClick={() => setSelectedStatus("shipping")}
-              className={`px-3 py-1.5 rounded-xl transition ${
+              className={`px-3 py-1.5 rounded-xl transition cursor-pointer ${
                 selectedStatus === "shipping"
-                  ? "bg-[#00629B] text-white shadow-xs"
+                  ? "bg-[#0284C7] text-white shadow-xs"
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
               شحن ({stats.shipping})
             </button>
-
             <button
               onClick={() => setSelectedStatus("delivered")}
-              className={`px-3 py-1.5 rounded-xl transition ${
+              className={`px-3 py-1.5 rounded-xl transition cursor-pointer ${
                 selectedStatus === "delivered"
                   ? "bg-emerald-600 text-white shadow-xs"
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
@@ -592,10 +592,9 @@ export function AdminOperationsDashboard() {
             >
               تم التوصيل ({stats.delivered})
             </button>
-
             <button
               onClick={() => setSelectedStatus("canceled")}
-              className={`px-3 py-1.5 rounded-xl transition ${
+              className={`px-3 py-1.5 rounded-xl transition cursor-pointer ${
                 selectedStatus === "canceled"
                   ? "bg-rose-600 text-white shadow-xs"
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
@@ -668,44 +667,46 @@ export function AdminOperationsDashboard() {
                       
                       {/* رقم الطلب */}
                       <td className="p-3.5 font-mono font-bold text-slate-800">
-                        {order.tracking_code}
+                        {order.tracking_code || "—"}
                       </td>
 
                       {/* العميل والمدينة */}
                       <td className="p-3.5">
-                        <div className="font-bold text-slate-900">{order.customer_name}</div>
+                        <div className="font-bold text-slate-900">{order.customer_name || "بدون اسم"}</div>
                         <div className="text-[11px] text-slate-400 truncate max-w-[200px]">
                           {order.notes || "اليمن"}
                         </div>
                       </td>
 
-                      {/* رقم الهاتف */}
+                      {/* رقم الهاتف والواتساب الآمن */}
                       <td className="p-3.5 font-mono text-slate-700">
                         <div className="flex items-center gap-1.5">
-                          <span>{order.phone}</span>
-                          <a
-                            href={order.phone ? `https://wa.me/${order.phone.replace(/[^0-9]/g, "")}` : undefined}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="size-5 rounded-full bg-emerald-50 text-emerald-600 grid place-items-center hover:bg-emerald-100 transition"
-                            title="مراسلة عبر واتساب"
-                          >
-                            <Send className="size-2.5" />
-                          </a>
+                          <span>{order.phone || "غير محدد"}</span>
+                          {order.phone && (
+                            <a
+                              href={`https://wa.me/${(order.phone || "").replace(/[^0-9]/g, "")}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="size-5 rounded-full bg-emerald-50 text-emerald-600 grid place-items-center hover:bg-emerald-100 transition"
+                              title="مراسلة عبر واتساب"
+                            >
+                              <Send className="size-2.5" />
+                            </a>
+                          )}
                         </div>
                       </td>
 
                       {/* رقم التتبع */}
                       <td className="p-3.5">
                         <span className="inline-block px-2.5 py-1 rounded-lg bg-orange-50 border border-orange-200 text-[#EA580C] font-mono font-bold text-xs">
-                          {order.tracking_code}
+                          {order.tracking_code || "—"}
                         </span>
                       </td>
 
                       {/* حالة الشحنة مع قائمة تغيير الحالة */}
                       <td className="p-3.5">
                         <select
-                          value={order.status}
+                          value={order.status || "جديد"}
                           onChange={(e) => handleStatusChange(order.id, e.target.value)}
                           className={`px-2.5 py-1 rounded-lg font-bold text-xs border outline-none cursor-pointer ${
                             order.status === "تم التوصيل" || order.status === "مكتمل"
@@ -728,7 +729,7 @@ export function AdminOperationsDashboard() {
 
                       {/* التاريخ */}
                       <td className="p-3.5 font-mono text-slate-500 text-[11px]">
-                        {new Date(order.created_at).toLocaleDateString("ar-YE")}
+                        {order.created_at ? new Date(order.created_at).toLocaleDateString("ar-YE") : "—"}
                       </td>
 
                       {/* أزرار الإجراءات */}
@@ -740,20 +741,20 @@ export function AdminOperationsDashboard() {
                               setActiveOrder(order);
                               setIsPreviewModalOpen(true);
                             }}
-                            className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-sky-50 hover:text-[#0284C7] transition cursor-pointer"
-                            title="معاينة تفاصيل الشحنة"
+                            className="size-7 rounded-lg border border-slate-200 bg-white grid place-items-center text-slate-600 hover:text-[#0F4C81] hover:border-[#0F4C81] transition cursor-pointer"
+                            title="معاينة البوليصة"
                           >
                             <Eye className="size-3.5" />
                           </button>
 
-                          {/* طباعة بوليصة */}
+                          {/* طباعة */}
                           <button
                             onClick={() => {
                               setActiveOrder(order);
-                              window.print();
+                              setIsPreviewModalOpen(true);
                             }}
-                            className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-amber-50 hover:text-amber-600 transition cursor-pointer"
-                            title="طباعة البوليصة"
+                            className="size-7 rounded-lg border border-slate-200 bg-white grid place-items-center text-slate-600 hover:text-[#0F4C81] hover:border-[#0F4C81] transition cursor-pointer"
+                            title="طباعة السند"
                           >
                             <Printer className="size-3.5" />
                           </button>
@@ -761,8 +762,8 @@ export function AdminOperationsDashboard() {
                           {/* حذف */}
                           <button
                             onClick={() => handleDeleteOrder(order.id)}
-                            className="p-1.5 rounded-lg border border-red-100 text-rose-500 hover:bg-rose-50 transition cursor-pointer"
-                            title="حذف"
+                            className="size-7 rounded-lg border border-red-100 bg-red-50/60 grid place-items-center text-red-500 hover:bg-red-100 transition cursor-pointer"
+                            title="حذف الشحنة"
                           >
                             <Trash2 className="size-3.5" />
                           </button>
@@ -776,51 +777,55 @@ export function AdminOperationsDashboard() {
             </table>
           </div>
 
-          {/* بطاقات الموبايل للمقاسات الصغيرة */}
+          {/* بطاقات الشاشات الصغيرة (Mobile Cards) */}
           <div className="lg:hidden divide-y divide-slate-100">
             {filteredOrders.length === 0 ? (
-              <div className="text-center py-8 text-slate-400 text-xs">
-                لا توجد شحنات مطابقة
+              <div className="p-8 text-center text-slate-400 text-xs">
+                {loading ? "جارٍ تحميل الشحنات..." : "لا توجد شحنات مطابقة."}
               </div>
             ) : (
               filteredOrders.map((order) => (
-                <div key={order.id} className="p-4 space-y-3 bg-white">
+                <div key={order.id} className="p-4 space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="font-mono font-bold text-xs bg-orange-50 text-[#EA580C] px-2.5 py-1 rounded-lg border border-orange-200">
-                      {order.tracking_code}
+                    <span className="px-2.5 py-1 rounded-lg bg-orange-50 border border-orange-200 text-[#EA580C] font-mono font-bold text-xs">
+                      {order.tracking_code || "—"}
                     </span>
                     <span className="text-[11px] text-slate-400 font-mono">
-                      {new Date(order.created_at).toLocaleDateString("ar-YE")}
+                      {order.created_at ? new Date(order.created_at).toLocaleDateString("ar-YE") : "—"}
                     </span>
                   </div>
 
                   <div>
-                    <h3 className="font-bold text-sm text-[#0A2540]">{order.customer_name}</h3>
-                    <p className="text-xs text-slate-500 mt-0.5">{order.notes || "اليمن"}</p>
+                    <div className="font-bold text-slate-900 text-sm">{order.customer_name || "بدون اسم"}</div>
+                    <div className="text-xs text-slate-500 mt-0.5">{order.notes || "اليمن"}</div>
                   </div>
 
                   <div className="flex items-center justify-between pt-1">
                     <div className="flex items-center gap-2">
-                      <a
-                        href={`tel:${order.phone}`}
-                        className="px-2.5 py-1 rounded-lg bg-sky-50 text-[#0F4C81] text-xs font-bold flex items-center gap-1"
-                      >
-                        <Phone className="size-3" />
-                        <span>اتصال</span>
-                      </a>
-                      <a
-                        href={order.phone ? `https://wa.me/${order.phone.replace(/[^0-9]/g, "")}` : undefined}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-bold flex items-center gap-1"
-                      >
-                        <Send className="size-3" />
-                        <span>واتساب</span>
-                      </a>
+                      {order.phone && (
+                        <a
+                          href={`tel:${order.phone}`}
+                          className="px-2.5 py-1 rounded-lg bg-sky-50 text-[#0F4C81] text-xs font-bold flex items-center gap-1"
+                        >
+                          <Phone className="size-3" />
+                          <span>اتصال</span>
+                        </a>
+                      )}
+                      {order.phone && (
+                        <a
+                          href={`https://wa.me/${(order.phone || "").replace(/[^0-9]/g, "")}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-bold flex items-center gap-1"
+                        >
+                          <Send className="size-3" />
+                          <span>واتساب</span>
+                        </a>
+                      )}
                     </div>
 
                     <select
-                      value={order.status}
+                      value={order.status || "جديد"}
                       onChange={(e) => handleStatusChange(order.id, e.target.value)}
                       className="px-2.5 py-1 rounded-lg text-xs font-bold border outline-none bg-slate-50"
                     >
@@ -957,22 +962,22 @@ export function AdminOperationsDashboard() {
               <div className="p-3 rounded-xl bg-sky-50 text-center">
                 <div className="text-[10px] text-slate-500 font-bold">رقم التتبع الرسمي</div>
                 <div className="text-lg font-mono font-black text-[#EA580C]">
-                  {activeOrder.tracking_code}
+                  {activeOrder.tracking_code || "—"}
                 </div>
               </div>
 
               <div className="space-y-1.5 border-t border-b border-slate-100 py-2">
                 <div className="flex justify-between">
                   <span className="text-slate-400">اسم العميل:</span>
-                  <span className="font-bold">{activeOrder.customer_name}</span>
+                  <span className="font-bold">{activeOrder.customer_name || "بدون اسم"}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400">رقم الهاتف:</span>
-                  <span className="font-mono font-bold">{activeOrder.phone}</span>
+                  <span className="font-mono font-bold">{activeOrder.phone || "غير محدد"}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400">حالة الشحنة:</span>
-                  <span className="font-bold text-[#0F4C81]">{activeOrder.status}</span>
+                  <span className="font-bold text-[#0F4C81]">{activeOrder.status || "جديد"}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400">الملاحظات:</span>
@@ -982,7 +987,7 @@ export function AdminOperationsDashboard() {
 
               <button
                 onClick={() => window.print()}
-                className="w-full py-2.5 rounded-xl bg-[#0F4C81] text-white font-bold flex items-center justify-center gap-2 hover:bg-[#0c3c66] transition shadow-md"
+                className="w-full py-2.5 rounded-xl bg-[#0F4C81] text-white font-bold flex items-center justify-center gap-2 hover:bg-[#0c3c66] transition shadow-md cursor-pointer"
               >
                 <Printer className="size-4" />
                 <span>طباعة السند / البوليصة</span>
