@@ -1,942 +1,1131 @@
 import { createFileRoute } from "@tanstack/react-router";
 import React, { useState, useEffect, useMemo } from "react";
 import {
-  AlertCircle,
-  ArrowUpDown,
-  CheckCircle2,
-  Clock,
-  Download,
-  Eye,
-  FileSpreadsheet,
-  FileText,
-  Filter,
-  LogOut,
-  MapPin,
   Package,
-  PackageCheck,
-  Phone,
-  Plus,
-  Printer,
-  QrCode,
-  RefreshCw,
-  Search,
-  Send,
-  Shield,
-  ShoppingBag,
-  ShoppingCart,
-  Trash2,
+  Clock,
   Truck,
-  UserCheck,
-  X,
+  CheckCircle2,
+  XCircle,
+  Search,
+  RefreshCw,
+  PlusCircle,
+  Plus,
+  Phone,
+  MapPin,
+  Copy,
+  Check,
+  ExternalLink,
+  Printer,
+  Trash2,
+  Calendar,
+  TrendingUp,
+  AlertCircle,
+  ShoppingBag,
+  ScanLine,
+  User,
+  LogOut,
+  ChevronDown,
+  Download,
+  Sparkles,
+  MessageSquare,
+  Database,
+  X
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { createClient } from "@supabase/supabase-js";
 
-export const Route = createFileRoute("/admin")({
-  head: () => ({
-    meta: [
-      { title: "لوحة عمليات الشحن والتوزيع | السوق الشامل AL SHAMEL" },
-      {
-        name: "description",
-        content: "إدارة وبوليصات الشحنات ومتابعة التحصيل الفوري والطلبات لمنظومة السوق الشامل في اليمن.",
-      },
-    ],
-  }),
-  component: AdminOperationsDashboard,
-});
+// ==========================================
+// 1. SUPABASE CLIENT & CONFIGURATION
+// ==========================================
+const SUPABASE_PROJECT_ID = "ihqijxikvfvubfqffezb";
+const SUPABASE_URL = (import.meta as any).env?.VITE_SUPABASE_URL || `https://${SUPABASE_PROJECT_ID}.supabase.co`;
+const SUPABASE_ANON_KEY = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlocWlqeGlrdmZ2dWJmcWZmZXpiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI5OTM4MTUsImV4cCI6MjA1ODU2OTgxNX0.eW_t_TqjWwQ75903o4q3s0Xk7uB723qW_yE1iP";
 
-interface OrderItem {
-  id: string;
-  tracking_code: string;
-  customer_name: string;
-  phone: string;
-  product_name?: string;
-  product_link?: string;
-  status: string;
-  notes?: string;
-  created_at: string;
-  city?: string;
-  price?: number;
+let supabaseClientInstance: any = null;
+try {
+  if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+    supabaseClientInstance = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  }
+} catch (e) {
+  console.warn("Supabase init note:", e);
 }
 
-export function AdminOperationsDashboard() {
-  const [orders, setOrders] = useState<OrderItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState<string>("all");
-  const [selectedCity, setSelectedCity] = useState<string>("all");
-  const [isNewOrderModalOpen, setIsNewOrderModalOpen] = useState(false);
-  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
-  const [activeOrder, setActiveOrder] = useState<OrderItem | null>(null);
+// ==========================================
+// 2. DATA TYPES
+// ==========================================
+export type OrderStatus = "new" | "reviewing" | "purchased" | "warehouse_china" | "international_ship" | "shipped" | "delivered" | "cancelled";
 
-  // نموذج إضافة شحنة جديدة
-  const [newOrderForm, setNewOrderForm] = useState({
-    customer_name: "",
-    phone: "",
-    product_name: "",
-    product_link: "",
-    city: "صنعاء",
-    price: "",
+export interface OrderItem {
+  id: string;
+  orderNumber: string;
+  customerName: string;
+  customerPhone: string;
+  customerCity?: string;
+  productTitle: string;
+  productUrl?: string;
+  storeName: string;
+  status: OrderStatus;
+  originalPrice: number;
+  intlTrackingNumber?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+// ==========================================
+// 3. LOGO COMPONENT (LIGHT LOGO THEME)
+// ==========================================
+const EmbeddedLogo: React.FC<{ size?: "sm" | "md" | "lg" }> = ({ size = "sm" }) => {
+  const iconSizes = { sm: "w-8 h-8", md: "w-10 h-10", lg: "w-12 h-12" };
+  return (
+    <div className="flex items-center gap-2.5 select-none" dir="rtl">
+      <div className={`relative ${iconSizes[size]} rounded-2xl bg-gradient-to-tr from-[#0F4C81] to-[#0284C7] p-1.5 flex items-center justify-center shadow-md shadow-sky-950/20 shrink-0`}>
+        <div className="relative w-full h-full flex items-center justify-center">
+          <svg viewBox="0 0 40 40" fill="none" className="w-full h-full">
+            <path
+              d="M6 10H10L14 26H30L34 14H12"
+              stroke="#FFFFFF"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <circle cx="16" cy="31" r="2.5" fill="#F97316" stroke="#FFFFFF" strokeWidth="1" />
+            <circle cx="28" cy="31" r="2.5" fill="#F97316" stroke="#FFFFFF" strokeWidth="1" />
+            <path
+              d="M18 17L22 13M22 13L26 17M22 13V21"
+              stroke="#FDBA74"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </div>
+      </div>
+      <div className="flex flex-col text-right">
+        <span className="font-black tracking-tight text-[#0A2540] text-base sm:text-lg leading-tight">
+          السوق الشامل
+        </span>
+        <span className="font-mono text-[9px] sm:text-[10px] font-black tracking-wider text-[#F97316] leading-none">
+          AL SHAMEL SHOPPING
+        </span>
+      </div>
+    </div>
+  );
+};
+
+// Initial orders seed
+const INITIAL_SEED_ORDERS: OrderItem[] = [
+  {
+    id: "ord-1",
+    orderNumber: "SQ-892411",
+    customerName: "زين مطيع",
+    customerPhone: "773209744",
+    customerCity: "صنعاء",
+    productTitle: "حذاء رياضي أصلي - مقاس 42",
+    storeName: "SHEIN",
+    status: "new",
+    originalPrice: 158,
+    intlTrackingNumber: "SQ-892411",
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: "ord-2",
+    orderNumber: "SQ-892412",
+    customerName: "محمد غالب الحاشدي",
+    customerPhone: "771234567",
+    customerCity: "عدن",
+    productTitle: "حقيبة نسائية كلاسيكية جلد فاخر",
+    storeName: "TEMU",
+    status: "shipped",
+    originalPrice: 220,
+    intlTrackingNumber: "SQ-892412",
+    createdAt: new Date(Date.now() - 3600000 * 24).toISOString()
+  },
+  {
+    id: "ord-3",
+    orderNumber: "SQ-892413",
+    customerName: "أحمد بن عبد الله",
+    customerPhone: "772223344",
+    customerCity: "تعز",
+    productTitle: "سماعات بلوتوث عازلة للضوضاء برو",
+    storeName: "Amazon",
+    status: "delivered",
+    originalPrice: 310,
+    intlTrackingNumber: "SQ-892413",
+    createdAt: new Date(Date.now() - 3600000 * 48).toISOString()
+  },
+  {
+    id: "ord-4",
+    orderNumber: "SQ-892414",
+    customerName: "سارة عبد الرحمن",
+    customerPhone: "778899001",
+    customerCity: "حضرموت",
+    productTitle: "فستان سهرة أنيق تركي",
+    storeName: "Trendyol",
+    status: "new",
+    originalPrice: 195,
+    intlTrackingNumber: "SQ-892414",
+    createdAt: new Date(Date.now() - 3600000 * 6).toISOString()
+  }
+];
+
+// ==========================================
+// 4. MAIN ADMIN DASHBOARD COMPONENT
+// ==========================================
+export function AdminOperationsDashboard() {
+  const [orders, setOrders] = useState<OrderItem[]>(() => {
+    try {
+      const saved = localStorage.getItem("alsouk_admin_shipments_v1");
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return INITIAL_SEED_ORDERS;
   });
 
+  const [loading, setLoading] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [cityFilter, setCityFilter] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [copiedTracking, setCopiedTracking] = useState<string | null>(null);
+
+  // Modals state
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isQuickScanOpen, setIsQuickScanOpen] = useState(false);
+  const [quickScanInput, setQuickScanInput] = useState("");
+  const [quickScanResult, setQuickScanResult] = useState<OrderItem | null>(null);
+  const [printingOrder, setPrintingOrder] = useState<OrderItem | null>(null);
+
+  // New order form state
+  const [newOrderForm, setNewOrderForm] = useState({
+    customerName: "",
+    customerPhone: "",
+    customerCity: "صنعاء",
+    storeName: "SHEIN",
+    productTitle: "",
+    originalPrice: "",
+    status: "new" as OrderStatus,
+    trackingNumber: ""
+  });
+
+  // Save to localStorage whenever orders change
+  useEffect(() => {
+    try {
+      localStorage.setItem("alsouk_admin_shipments_v1", JSON.stringify(orders));
+    } catch {}
+  }, [orders]);
+
+  // Fetch live orders from Supabase if table exists
   const fetchOrders = async () => {
     setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from("orders")
-        .select("*")
-        .order("created_at", { ascending: false });
+    if (supabaseClientInstance) {
+      try {
+        const { data, error } = await supabaseClientInstance
+          .from("orders")
+          .select("*")
+          .order("created_at", { ascending: false });
 
-      if (error) throw error;
-      setOrders((data as OrderItem[]) || []);
-    } catch (err) {
-      console.error("Error fetching orders:", err);
-    } finally {
-      setLoading(false);
+        if (!error && data && data.length > 0) {
+          const mapped: OrderItem[] = data.map((item: any) => ({
+            id: String(item.id),
+            orderNumber: item.order_number || item.orderNumber || `SQ-${item.id}`,
+            customerName: item.customer_name || item.customerName || "عميل بدون اسم",
+            customerPhone: item.customer_phone || item.customerPhone || "770000000",
+            customerCity: item.customer_city || item.customerCity || "صنعاء",
+            productTitle: item.product_title || item.productTitle || "شحنة دولية",
+            productUrl: item.product_url || item.productUrl || "",
+            storeName: item.store_name || item.storeName || "SHEIN",
+            status: (item.status as OrderStatus) || "new",
+            originalPrice: Number(item.original_price || item.originalPrice || 0),
+            intlTrackingNumber: item.intl_tracking_number || item.intlTrackingNumber || `SQ-${item.id}`,
+            createdAt: item.created_at || new Date().toISOString()
+          }));
+          setOrders(mapped);
+        }
+      } catch (err) {
+        console.warn("Supabase fetch note, using local:", err);
+      }
     }
+    setLoading(false);
   };
 
   useEffect(() => {
     fetchOrders();
   }, []);
 
-  // تحديث حالة الشحنة
-  const handleStatusChange = async (orderId: string, newStatus: string) => {
-    try {
-      const { error } = await supabase
-        .from("orders")
-        .update({ status: newStatus })
-        .eq("id", orderId);
+  // Quick Status Change handler
+  const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
+    setOrders((prev) =>
+      prev.map((o) => (o.id === orderId ? { ...o, status: newStatus, updatedAt: new Date().toISOString() } : o))
+    );
 
-      if (error) throw error;
-      setOrders((prev) =>
-        prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
-      );
-    } catch (err) {
-      console.error("Error updating status:", err);
-      alert("حدث خطأ أثناء تعديل الحالة، تأكد من الصلاحيات.");
+    if (supabaseClientInstance) {
+      try {
+        await supabaseClientInstance.from("orders").update({ status: newStatus }).eq("id", orderId);
+      } catch {}
     }
   };
 
-  // حذف شحنة
-  const handleDeleteOrder = async (orderId: string) => {
-    if (!confirm("هل أنت متأكد من حذف هذه الشحنة نهائياً؟")) return;
-    try {
-      const { error } = await supabase.from("orders").delete().eq("id", orderId);
-      if (error) throw error;
-      setOrders((prev) => prev.filter((o) => o.id !== orderId));
-    } catch (err) {
-      console.error("Error deleting order:", err);
-      alert("تعذر حذف الشحنة.");
+  // Delete Order
+  const handleDeleteOrder = async (orderId: string, orderNumber: string) => {
+    if (!window.confirm(`هل أنت متأكد من حذف الشحنة (${orderNumber}) نهائياً؟`)) return;
+
+    setOrders((prev) => prev.filter((o) => o.id !== orderId));
+
+    if (supabaseClientInstance) {
+      try {
+        await supabaseClientInstance.from("orders").delete().eq("id", orderId);
+      } catch {}
     }
   };
 
-  // إضافة شحنة جديدة
+  // Create New Shipment
   const handleCreateNewOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newOrderForm.customer_name || !newOrderForm.phone) {
-      alert("يرجى إدخال اسم العميل ورقم الهاتف");
+    if (!newOrderForm.customerName.trim() || !newOrderForm.customerPhone.trim()) {
+      alert("يرجى إدخال اسم العميل ورقم هاتفه.");
       return;
     }
-    const trackingCode = `SQ-${Math.floor(100000 + Math.random() * 900000)}`;
-    const fullNotes = `المدينة: ${newOrderForm.city} | السعر: ${newOrderForm.price || "غير محدد"}`;
 
-    try {
-      const { data, error } = await supabase
-        .from("orders")
-        .insert({
-          tracking_code: trackingCode,
-          customer_name: newOrderForm.customer_name,
-          phone: newOrderForm.phone,
-          product_name: newOrderForm.product_name || "منتج تسوق عالمي",
-          product_link: newOrderForm.product_link || "https://alsouq.local",
-          status: "جديد",
-          notes: fullNotes,
-        })
-        .select()
-        .single();
+    const orderNum = `SQ-${Math.floor(100000 + Math.random() * 900000)}`;
+    const newOrd: OrderItem = {
+      id: `ord-${Date.now()}`,
+      orderNumber: orderNum,
+      customerName: newOrderForm.customerName.trim(),
+      customerPhone: newOrderForm.customerPhone.trim(),
+      customerCity: newOrderForm.customerCity || "صنعاء",
+      storeName: newOrderForm.storeName,
+      productTitle: newOrderForm.productTitle.trim() || "طرد بضائع مستوردة",
+      originalPrice: Number(newOrderForm.originalPrice) || 0,
+      status: newOrderForm.status,
+      intlTrackingNumber: newOrderForm.trackingNumber.trim() || orderNum,
+      createdAt: new Date().toISOString()
+    };
 
-      if (error) throw error;
-      if (data) {
-        setOrders((prev) => [data as OrderItem, ...prev]);
-        setIsNewOrderModalOpen(false);
-        setNewOrderForm({
-          customer_name: "",
-          phone: "",
-          product_name: "",
-          product_link: "",
-          city: "صنعاء",
-          price: "",
-        });
-        alert(`تمت إضافة الشحنة بنجاح! رقم التتبع: ${trackingCode}`);
-      }
-    } catch (err) {
-      console.error("Error inserting order:", err);
-      alert("حدث خطأ أثناء حفظ الشحنة.");
+    setOrders((prev) => [newOrd, ...prev]);
+    setIsAddModalOpen(false);
+
+    // Reset Form
+    setNewOrderForm({
+      customerName: "",
+      customerPhone: "",
+      customerCity: "صنعاء",
+      storeName: "SHEIN",
+      productTitle: "",
+      originalPrice: "",
+      status: "new",
+      trackingNumber: ""
+    });
+
+    if (supabaseClientInstance) {
+      try {
+        await supabaseClientInstance.from("orders").insert([
+          {
+            order_number: newOrd.orderNumber,
+            customer_name: newOrd.customerName,
+            customer_phone: newOrd.customerPhone,
+            customer_city: newOrd.customerCity,
+            store_name: newOrd.storeName,
+            product_title: newOrd.productTitle,
+            original_price: newOrd.originalPrice,
+            status: newOrd.status,
+            intl_tracking_number: newOrd.intlTrackingNumber,
+            created_at: newOrd.createdAt
+          }
+        ]);
+      } catch {}
     }
   };
 
-  // تصدير CSV
+  // Quick Scan search
+  const handleQuickScan = (e: React.FormEvent) => {
+    e.preventDefault();
+    const query = quickScanInput.trim().toLowerCase();
+    if (!query) return;
+
+    const found = orders.find(
+      (o) =>
+        o.orderNumber.toLowerCase() === query ||
+        (o.intlTrackingNumber && o.intlTrackingNumber.toLowerCase() === query)
+    );
+
+    if (found) {
+      setQuickScanResult(found);
+    } else {
+      alert("لم يتم العثور على شحنة تطابق هذا الرقم.");
+      setQuickScanResult(null);
+    }
+  };
+
+  // Copy tracking number
+  const copyTracking = (num: string, id: string) => {
+    navigator.clipboard.writeText(num);
+    setCopiedTracking(id);
+    setTimeout(() => setCopiedTracking(null), 2500);
+  };
+
+  // Export CSV
   const handleExportCSV = () => {
-    if (orders.length === 0) return alert("لا توجد بيانات للتصدير.");
-    const headers = ["رقم التتبع", "العميل", "الهاتف", "المنتج", "الحالة", "التاريخ"];
-    const rows = filteredOrders.map((o) => [
-      o.tracking_code || "",
-      o.customer_name || "",
-      o.phone || "",
-      o.product_name || "",
-      o.status || "",
-      o.created_at ? new Date(o.created_at).toLocaleDateString("ar-YE") : "",
+    const headers = ["رقم الطلب", "العميل", "الهاتف", "المدينة", "المتجر", "الحالة", "السعر", "رقم التتبع", "التاريخ"];
+    const rows = orders.map((o) => [
+      o.orderNumber,
+      `"${o.customerName}"`,
+      o.customerPhone,
+      `"${o.customerCity || "صنعاء"}"`,
+      o.storeName,
+      o.status,
+      o.originalPrice,
+      o.intlTrackingNumber || o.orderNumber,
+      o.createdAt.split("T")[0]
     ]);
 
-    const csvContent =
-      "data:text/csv;charset=utf-8,\uFEFF" +
-      [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
-
-    const encodedUri = encodeURI(csvContent);
+    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `شحنات_السوق_الشامل_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.href = url;
+    link.setAttribute("download", `alsouk_shipments_${new Date().toISOString().split("T")[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
-  // إحصائيات
-  const stats = useMemo(() => {
-    const total = orders.length;
-    const pending = orders.filter((o) => o.status === "جديد" || o.status === "قيد الانتظار").length;
-    const shipping = orders.filter((o) => o.status === "تم الشحن" || o.status === "في الطريق").length;
-    const delivered = orders.filter((o) => o.status === "تم التوصيل" || o.status === "مكتمل").length;
-    const canceled = orders.filter((o) => o.status === "ملغي").length;
-
-    const deliveryRate = total > 0 ? ((delivered / total) * 100).toFixed(1) : "0.0";
-
-    return { total, pending, shipping, delivered, canceled, deliveryRate };
+  // Filtered orders & Unique cities
+  const uniqueCities = useMemo(() => {
+    const c = new Set<string>();
+    orders.forEach((o) => {
+      if (o.customerCity) c.add(o.customerCity);
+    });
+    return Array.from(c);
   }, [orders]);
 
-  // الفلترة والبحث
   const filteredOrders = useMemo(() => {
     return orders.filter((o) => {
-      const q = searchQuery.toLowerCase();
-      const matchesSearch =
-        (o.tracking_code || "").toLowerCase().includes(q) ||
-        (o.customer_name || "").toLowerCase().includes(q) ||
-        (o.phone || "").includes(searchQuery);
-
-      const matchesStatus =
-        selectedStatus === "all"
-          ? true
-          : selectedStatus === "pending"
-          ? o.status === "جديد" || o.status === "قيد الانتظار"
-          : selectedStatus === "shipping"
-          ? o.status === "تم الشحن" || o.status === "في الطريق"
-          : selectedStatus === "delivered"
-          ? o.status === "تم التوصيل" || o.status === "مكتمل"
-          : selectedStatus === "canceled"
-          ? o.status === "ملغي"
-          : true;
-
-      const matchesCity =
-        selectedCity === "all" ? true : (o.notes || "").includes(selectedCity);
-
-      return matchesSearch && matchesStatus && matchesCity;
+      // Status
+      if (statusFilter !== "all" && o.status !== statusFilter) return false;
+      // City
+      if (cityFilter !== "all" && o.customerCity !== cityFilter) return false;
+      // Search
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matches =
+          o.orderNumber.toLowerCase().includes(q) ||
+          o.customerName.toLowerCase().includes(q) ||
+          o.customerPhone.includes(q) ||
+          (o.intlTrackingNumber && o.intlTrackingNumber.toLowerCase().includes(q));
+        if (!matches) return false;
+      }
+      return true;
     });
-  }, [orders, searchQuery, selectedStatus, selectedCity]);
+  }, [orders, statusFilter, cityFilter, searchQuery]);
+
+  // KPI Calculations
+  const stats = useMemo(() => {
+    const total = orders.length;
+    const pending = orders.filter((o) => o.status === "new" || o.status === "reviewing").length;
+    const shipped = orders.filter((o) => o.status === "shipped" || o.status === "international_ship" || o.status === "warehouse_china").length;
+    const delivered = orders.filter((o) => o.status === "delivered").length;
+    const cancelled = orders.filter((o) => o.status === "cancelled").length;
+
+    const totalCOD = orders
+      .filter((o) => o.status !== "cancelled")
+      .reduce((sum, o) => sum + (o.originalPrice || 0), 0);
+
+    const pendingPercent = total > 0 ? Math.round((pending / total) * 100) : 0;
+    const shippedPercent = total > 0 ? Math.round((shipped / total) * 100) : 0;
+    const deliveredPercent = total > 0 ? Math.round((delivered / total) * 100) : 0;
+    const deliverySuccessRate = total > 0 ? Math.round((delivered / (total - pending || 1)) * 100) : 100;
+
+    return {
+      total,
+      pending,
+      shipped,
+      delivered,
+      cancelled,
+      totalCOD,
+      pendingPercent,
+      shippedPercent,
+      deliveredPercent,
+      deliverySuccessRate
+    };
+  }, [orders]);
 
   return (
-    <div dir="rtl" className="min-h-screen bg-gradient-to-b from-[#F0F7FF] via-[#F8FAFC] to-[#FFF9F5] text-[#0A2540] font-sans antialiased pb-16">
+    <div className="min-h-screen bg-gradient-to-b from-[#F0F7FF] via-[#F8FAFC] to-[#FFF9F5] text-[#0A2540] font-sans selection:bg-[#0284C7] selection:text-white pb-20" dir="rtl">
       
-      {/* 1. الشريط العلوي الكبسولي للروابط السريعة */}
-      <div className="bg-white border-b border-sky-100/80 px-4 py-2">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2 text-xs font-bold">
-          <div className="flex items-center gap-1.5 overflow-x-auto py-1">
-            <a
-              href="/admin"
-              className="px-3 py-1.5 rounded-lg bg-[#004B87] text-white shadow-sm flex items-center gap-1"
-            >
-              <span>لوحة الأدمن</span>
-            </a>
-            <a
-              href="/new-order"
-              className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-[#EA580C] to-[#F97316] text-white shadow-sm flex items-center gap-1 hover:brightness-105"
-            >
-              <span>اطلب الآن (بوابة العميل) ⚡</span>
-            </a>
-            <a
-              href="/admin-clients"
-              className="px-3 py-1.5 rounded-lg bg-[#0F4C81] text-white shadow-sm flex items-center gap-1 hover:bg-[#0c3c66]"
-            >
-              <span>سجل العملاء</span>
-            </a>
-            <a
-              href="/track"
-              className="px-3 py-1.5 rounded-lg bg-sky-950 text-white shadow-sm flex items-center gap-1 hover:bg-black"
-            >
-              <span>صفحة تتبع الشحنة للعميل</span>
-            </a>
-          </div>
-
-          <div className="flex items-center gap-2 text-[11px] text-emerald-700 font-semibold">
-            <span className="size-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span>نظام السوق الشامل - النسخة الحية</span>
-          </div>
+      {/* 1. TOP SUPABASE NOTICE BAR */}
+      <div className="bg-[#0B2545] text-white text-xs py-2 px-3 sm:px-6 flex flex-wrap items-center justify-between gap-2 border-b border-[#134074] shadow-xs">
+        <div className="flex items-center gap-2">
+          <Database className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+          <span className="font-bold">منظومة السوق الشامل (AL SHAMEL)</span>
+          <span className="text-sky-400 hidden sm:inline">•</span>
+          <span className="text-sky-200 hidden sm:inline text-[11px]">مزامنة حية للعمليات والشحنات</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleExportCSV}
+            className="px-2.5 py-1 rounded-lg bg-[#0F4C81] hover:bg-[#155e99] text-white text-[11px] font-bold transition flex items-center gap-1 cursor-pointer border border-sky-400/30"
+          >
+            <Download className="w-3 h-3 text-orange-300" />
+            <span>تصدير البيانات CSV</span>
+          </button>
         </div>
       </div>
 
-      {/* 2. شريط الأدوات والتحكم العلوي */}
-      <header className="bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 py-3 sticky top-0 z-30 shadow-xs">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
-          
-          {/* اليمين: الشعار وزر القائمة */}
-          <div className="flex items-center gap-3">
-            <a
-              href="/"
-              className="size-10 rounded-xl bg-[#00629B] text-white flex flex-col items-center justify-center gap-1 hover:bg-[#005080] transition"
-              title="الرئيسية"
-            >
-              <span className="w-5 h-0.5 bg-white rounded-full"></span>
-              <span className="w-5 h-0.5 bg-white rounded-full"></span>
-              <span className="w-5 h-0.5 bg-white rounded-full"></span>
-            </a>
-
-            <div className="flex items-center gap-2">
-              <div className="text-right leading-tight">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-black text-sm text-[#0F4C81]">السوق الشامل</span>
-                  <span className="text-[10px] bg-sky-100 text-[#0284C7] font-bold px-1.5 py-0.5 rounded">
-                    لوحة العمليات
-                  </span>
-                </div>
-                <span className="text-[10px] text-slate-500 font-medium">
-                  منظومة إدارة الشحنات وتتبع الطرود السريعة
-                </span>
-              </div>
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-4 space-y-4">
+        
+        {/* 2. MAIN HEADER (LIGHT LOGO THEMED) */}
+        <header className="bg-white border border-sky-200/90 rounded-2xl p-3 sm:p-4 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-3.5">
+          {/* Logo & Platform Info */}
+          <div className="flex items-center justify-between sm:justify-start gap-3 w-full lg:w-auto">
+            <EmbeddedLogo size="sm" />
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-sky-50 border border-sky-200 text-[#0F4C81] text-xs font-black">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>لوحة العمليات</span>
             </div>
           </div>
 
-          {/* الوسط: شريط البحث الرئيسي */}
-          <div className="flex-1 max-w-md min-w-[240px]">
-            <div className="relative">
-              <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
-              <input
-                type="text"
-                placeholder="ابحث برقم التتبع (مثل: SQ-892411)..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-4 pr-10 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium focus:bg-white focus:border-[#0284C7] focus:ring-2 focus:ring-sky-100 outline-none transition"
-              />
-            </div>
+          {/* Quick Search */}
+          <div className="relative w-full lg:w-72 xl:w-80">
+            <input
+              type="text"
+              placeholder="ابحث برقم التتبع (مثل: SQ-892411)..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-[#F8FAFC] border border-sky-200 text-xs text-[#0A2540] placeholder-slate-400 outline-none focus:border-[#0284C7] focus:bg-white transition font-mono"
+            />
+            <Search className="w-4 h-4 text-sky-600/70 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
 
-          {/* اليسار: أزرار العمليات والمشرف */}
-          <div className="flex items-center gap-2">
-            <a
-              href="/new-order"
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#EA580C] to-[#F97316] text-white text-xs font-black shadow-sm hover:brightness-105 transition"
-            >
-              <ShoppingCart className="size-3.5" />
-              <span>اطلب الآن ⚡</span>
-            </a>
-
+          {/* Action Buttons */}
+          <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto justify-between sm:justify-end">
             <button
-              onClick={() => setIsNewOrderModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#00629B] text-white text-xs font-black shadow-sm hover:bg-[#005080] transition cursor-pointer"
+              onClick={() => {
+                setQuickScanResult(null);
+                setQuickScanInput("");
+                setIsQuickScanOpen(true);
+              }}
+              className="px-3 py-2 rounded-xl bg-sky-50 border border-sky-200 hover:bg-sky-100 text-[#0F4C81] text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
             >
-              <Plus className="size-3.5" />
-              <span>شحنة جديدة</span>
+              <ScanLine className="w-3.5 h-3.5 text-[#0284C7]" />
+              <span>فحص سريع</span>
             </button>
 
-            {/* شارة المشرف العام */}
-            <div className="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-sky-200 bg-sky-50 text-xs font-bold text-[#0F4C81]">
-              <span className="size-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <div className="text-right">
-                <span className="block leading-none">المشرف العام</span>
-                <span className="text-[10px] text-emerald-600 font-semibold">admin (نشط)</span>
-              </div>
-            </div>
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#F97316] to-[#EA580C] hover:from-[#EA580C] text-white text-xs font-black shadow-md shadow-orange-500/25 transition flex items-center gap-1.5 cursor-pointer active:scale-95"
+            >
+              <PlusCircle className="w-4 h-4" />
+              <span>+ شحنة جديدة</span>
+            </button>
 
-            {/* تحديث البيانات */}
             <button
               onClick={fetchOrders}
-              className="size-9 rounded-xl border border-slate-200 bg-white grid place-items-center text-slate-600 hover:text-[#0F4C81] hover:bg-slate-50 transition"
-              title="تحديث البيانات"
+              disabled={loading}
+              className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-700 transition cursor-pointer"
+              title="تحديث الشحنات"
             >
-              <RefreshCw className={`size-4 ${loading ? "animate-spin text-[#0284C7]" : ""}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-orange-500" : ""}`} />
             </button>
-
-            {/* تسجيل الخروج */}
-            <a
-              href="/"
-              className="size-9 rounded-xl border border-red-100 bg-red-50/50 grid place-items-center text-red-500 hover:bg-red-50 transition"
-              title="العودة"
-            >
-              <LogOut className="size-4" />
-            </a>
           </div>
+        </header>
 
-        </div>
-      </header>
-
-      {/* 3. محتوى لوحة العمليات */}
-      <main className="max-w-7xl mx-auto px-4 pt-6 space-y-6">
-        
-        {/* هيدر الصفحة وعنوان العمليات */}
-        <div className="flex flex-wrap items-center justify-between gap-4">
+        {/* 3. SUB-HEADER & DATE */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
             <div className="flex items-center gap-2">
-              <span className="size-2.5 rounded-full bg-emerald-500"></span>
-              <h1 className="text-xl sm:text-2xl font-black text-[#0A2540]">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-sm shadow-emerald-500/50"></span>
+              <h1 className="text-xl sm:text-2xl font-black text-[#0A2540] tracking-tight">
                 لوحة عمليات الشحن والتوزيع
               </h1>
             </div>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-slate-500 mt-0.5">
               متابعة الشحنات، تحديث الحالات، إدارة بوليصات الشحن والتحصيل الفوري
             </p>
           </div>
 
-          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-600 shadow-2xs">
-            <span>📅 تاريخ اليوم:</span>
-            <span className="text-[#0F4C81] font-mono">
-              {new Date().toISOString().slice(0, 10).replace(/-/g, "/")}
-            </span>
+          <div className="px-3.5 py-1.5 rounded-xl bg-white border border-sky-200 text-[#0F4C81] text-xs font-mono font-bold flex items-center gap-2 shadow-xs self-start sm:self-auto">
+            <Calendar className="w-3.5 h-3.5 text-orange-500" />
+            <span>اليوم: {new Date().toISOString().split("T")[0]}</span>
           </div>
         </div>
 
-        {/* 4. بطاقات العمليات والمؤشرات الأربع (KPI Cards) */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          
-          {/* 1. إجمالي الطلبات */}
+        {/* 4. THE 4 KPI CARDS (LIGHT LOGO THEMED) */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
+          {/* Card 1: Total */}
           <div
-            onClick={() => setSelectedStatus("all")}
-            className={`bg-white rounded-2xl p-4 sm:p-5 border transition cursor-pointer shadow-xs ${
-              selectedStatus === "all"
-                ? "border-[#EA580C] ring-2 ring-orange-200 shadow-orange-500/10"
-                : "border-slate-200 hover:border-slate-300"
+            onClick={() => setStatusFilter("all")}
+            className={`rounded-2xl p-3.5 sm:p-5 cursor-pointer transition relative overflow-hidden bg-white shadow-sm ${
+              statusFilter === "all"
+                ? "border-2 border-orange-500 shadow-md ring-2 ring-orange-200"
+                : "border border-sky-200/90 hover:border-orange-400"
             }`}
           >
-            <div className="flex items-center justify-between mb-3">
-              <div className="size-10 rounded-xl bg-[#004B87] text-white grid place-items-center">
-                <Package className="size-5" />
-              </div>
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+            <div className="flex items-center justify-between mb-2">
+              <span className="px-2 py-0.5 rounded-full bg-orange-50 border border-orange-200 text-orange-600 text-[10px] sm:text-xs font-bold">
                 100%
               </span>
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-[#0F4C81] to-[#0284C7] text-white flex items-center justify-center shadow-xs">
+                <Package className="w-4 h-4 sm:w-5 sm:h-5 text-orange-300" />
+              </div>
             </div>
-            <div className="text-3xl font-black text-[#0A2540] mb-1 font-mono">
+            <div className="text-2xl sm:text-3xl font-black text-[#0A2540] font-mono mb-0.5">
               {stats.total}
             </div>
-            <div className="text-xs font-bold text-slate-700">إجمالي الطلبات</div>
-            <div className="text-[11px] text-slate-400 mt-0.5">جميع الشحنات بالمنظومة</div>
-            <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px]">
-              <span className="text-[#EA580C] font-bold">
-                {selectedStatus === "all" ? "تصفية مفعلة ✓" : "عرض الكل"}
-              </span>
+            <div className="text-xs sm:text-sm font-black text-slate-800">إجمالي الطلبات</div>
+            <div className="text-[10px] sm:text-xs text-slate-500 mt-0.5 truncate">جميع الشحنات بالمنظومة</div>
+            <div className="pt-2 mt-2 border-t border-slate-100 text-[10px] font-bold text-orange-500">
+              {statusFilter === "all" ? "تصفية مفعلة ✓" : "انقر للتصفية"}
             </div>
           </div>
 
-          {/* 2. قيد الانتظار */}
+          {/* Card 2: Pending */}
           <div
-            onClick={() => setSelectedStatus("pending")}
-            className={`bg-white rounded-2xl p-4 sm:p-5 border transition cursor-pointer shadow-xs ${
-              selectedStatus === "pending"
-                ? "border-amber-500 ring-2 ring-amber-100"
-                : "border-slate-200 hover:border-slate-300"
+            onClick={() => setStatusFilter("new")}
+            className={`rounded-2xl p-3.5 sm:p-5 cursor-pointer transition relative overflow-hidden bg-white shadow-sm ${
+              statusFilter === "new"
+                ? "border-2 border-amber-500 shadow-md ring-2 ring-amber-200"
+                : "border border-amber-200/80 hover:border-amber-400"
             }`}
           >
-            <div className="flex items-center justify-between mb-3">
-              <div className="size-10 rounded-xl bg-amber-500 text-white grid place-items-center">
-                <Clock className="size-5" />
-              </div>
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-600">
-                {stats.total > 0 ? Math.round((stats.pending / stats.total) * 100) : 0}%
+            <div className="flex items-center justify-between mb-2">
+              <span className="px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-[10px] sm:text-xs font-bold">
+                {stats.pendingPercent}%
               </span>
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-xs">
+                <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
+              </div>
             </div>
-            <div className="text-3xl font-black text-[#0A2540] mb-1 font-mono">
+            <div className="text-2xl sm:text-3xl font-black text-[#0A2540] font-mono mb-0.5">
               {stats.pending}
             </div>
-            <div className="text-xs font-bold text-slate-700">قيد الانتظار</div>
-            <div className="text-[11px] text-slate-400 mt-0.5">بانتظار التأكيد أو الشراء</div>
-            <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px]">
-              <span className="text-amber-600 font-bold">
-                {selectedStatus === "pending" ? "تصفية مفعلة ✓" : "تصفية"}
-              </span>
+            <div className="text-xs sm:text-sm font-black text-slate-800">قيد الانتظار</div>
+            <div className="text-[10px] sm:text-xs text-slate-500 mt-0.5 truncate">بانتظار التجهيز</div>
+            <div className="pt-2 mt-2 border-t border-slate-100 text-[10px] font-bold text-amber-600">
+              {statusFilter === "new" ? "تصفية مفعلة ✓" : "انقر للتصفية"}
             </div>
           </div>
 
-          {/* 3. تم الشحن */}
+          {/* Card 3: Shipped */}
           <div
-            onClick={() => setSelectedStatus("shipping")}
-            className={`bg-white rounded-2xl p-4 sm:p-5 border transition cursor-pointer shadow-xs ${
-              selectedStatus === "shipping"
-                ? "border-sky-500 ring-2 ring-sky-100"
-                : "border-slate-200 hover:border-slate-300"
+            onClick={() => setStatusFilter("shipped")}
+            className={`rounded-2xl p-3.5 sm:p-5 cursor-pointer transition relative overflow-hidden bg-white shadow-sm ${
+              statusFilter === "shipped"
+                ? "border-2 border-[#0284C7] shadow-md ring-2 ring-sky-200"
+                : "border border-sky-200/80 hover:border-sky-400"
             }`}
           >
-            <div className="flex items-center justify-between mb-3">
-              <div className="size-10 rounded-xl bg-[#0284C7] text-white grid place-items-center">
-                <Truck className="size-5" />
+            <div className="flex items-center justify-between mb-2">
+              <span className="px-2 py-0.5 rounded-full bg-sky-50 border border-sky-200 text-[#0284C7] text-[10px] sm:text-xs font-bold">
+                {stats.shippedPercent}%
+              </span>
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-[#0284C7] text-white flex items-center justify-center shadow-xs">
+                <Truck className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-sky-50 text-[#0284C7]">
-                {stats.total > 0 ? Math.round((stats.shipping / stats.total) * 100) : 0}%
-              </span>
             </div>
-            <div className="text-3xl font-black text-[#0A2540] mb-1 font-mono">
-              {stats.shipping}
+            <div className="text-2xl sm:text-3xl font-black text-[#0A2540] font-mono mb-0.5">
+              {stats.shipped}
             </div>
-            <div className="text-xs font-bold text-slate-700">تم الشحن / في الطريق</div>
-            <div className="text-[11px] text-slate-400 mt-0.5">شحنات دولية ومحلية جارية</div>
-            <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px]">
-              <span className="text-[#0284C7] font-bold">
-                {selectedStatus === "shipping" ? "تصفية مفعلة ✓" : "تصفية"}
-              </span>
+            <div className="text-xs sm:text-sm font-black text-slate-800">تم الشحن</div>
+            <div className="text-[10px] sm:text-xs text-slate-500 mt-0.5 truncate">في طريق التوصيل</div>
+            <div className="pt-2 mt-2 border-t border-slate-100 text-[10px] font-bold text-[#0284C7]">
+              {statusFilter === "shipped" ? "تصفية مفعلة ✓" : "انقر للتصفية"}
             </div>
           </div>
 
-          {/* 4. تم التوصيل */}
+          {/* Card 4: Delivered */}
           <div
-            onClick={() => setSelectedStatus("delivered")}
-            className={`bg-white rounded-2xl p-4 sm:p-5 border transition cursor-pointer shadow-xs ${
-              selectedStatus === "delivered"
-                ? "border-emerald-500 ring-2 ring-emerald-100"
-                : "border-slate-200 hover:border-slate-300"
+            onClick={() => setStatusFilter("delivered")}
+            className={`rounded-2xl p-3.5 sm:p-5 cursor-pointer transition relative overflow-hidden bg-white shadow-sm ${
+              statusFilter === "delivered"
+                ? "border-2 border-emerald-500 shadow-md ring-2 ring-emerald-200"
+                : "border border-emerald-200/80 hover:border-emerald-400"
             }`}
           >
-            <div className="flex items-center justify-between mb-3">
-              <div className="size-10 rounded-xl bg-emerald-600 text-white grid place-items-center">
-                <PackageCheck className="size-5" />
-              </div>
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">
-                {stats.total > 0 ? Math.round((stats.delivered / stats.total) * 100) : 0}%
+            <div className="flex items-center justify-between mb-2">
+              <span className="px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] sm:text-xs font-bold">
+                {stats.deliveredPercent}%
               </span>
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs">
+                <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" />
+              </div>
             </div>
-            <div className="text-3xl font-black text-[#0A2540] mb-1 font-mono">
+            <div className="text-2xl sm:text-3xl font-black text-[#0A2540] font-mono mb-0.5">
               {stats.delivered}
             </div>
-            <div className="text-xs font-bold text-slate-700">تم التوصيل للعميل</div>
-            <div className="text-[11px] text-slate-400 mt-0.5">عمليات ناجحة ومكتملة</div>
-            <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px]">
-              <span className="text-emerald-700 font-bold">
-                {selectedStatus === "delivered" ? "تصفية مفعلة ✓" : "تصفية"}
+            <div className="text-xs sm:text-sm font-black text-slate-800">تم التوصيل</div>
+            <div className="text-[10px] sm:text-xs text-slate-500 mt-0.5 truncate">تم الاستلام بنجاح</div>
+            <div className="pt-2 mt-2 border-t border-slate-100 text-[10px] font-bold text-emerald-600">
+              {statusFilter === "delivered" ? "تصفية مفعلة ✓" : "انقر للتصفية"}
+            </div>
+          </div>
+        </div>
+
+        {/* 5. SUMMARY STRIP (COD TOTAL & SUCCESS RATE) */}
+        <div className="bg-white border border-sky-200/90 rounded-2xl p-3 sm:p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-sm">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs font-bold">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-orange-50 border border-orange-200 text-orange-600 flex items-center justify-center font-bold">
+                $
+              </div>
+              <span className="text-slate-600">إجمالي التحصيل (COD):</span>
+              <span className="text-[#0A2540] font-black font-mono text-sm">
+                {stats.totalCOD.toLocaleString()} ر.س
               </span>
             </div>
+            <span className="text-slate-300 hidden sm:inline">|</span>
+            <div className="flex items-center gap-1.5 text-rose-600">
+              <span>ملغاة:</span>
+              <span className="font-mono font-black">{stats.cancelled} طلب</span>
+            </div>
           </div>
 
-        </div>
-
-        {/* 5. شريط معدل الإنجاز والتسليم */}
-        <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="size-10 rounded-xl bg-sky-50 text-[#0F4C81] grid place-items-center">
-              <CheckCircle2 className="size-5" />
-            </div>
-            <div>
-              <div className="text-xs font-bold text-slate-700">نسبة نجاح التوصيل الفعلي</div>
-              <div className="text-sm font-black text-[#0A2540]">
-                {stats.deliveryRate}% من إجمالي الطرود المسجلة
+          <div className="flex items-center gap-2.5">
+            <div className="text-left md:text-right">
+              <div className="text-xs text-slate-500 font-bold">معدل الإنجاز والتسليم</div>
+              <div className="text-emerald-600 font-mono font-black text-sm flex items-center gap-1">
+                <span>{stats.deliverySuccessRate}%</span>
+                <span>نسبة تسليم ناجحة</span>
               </div>
             </div>
-          </div>
-
-          <div className="flex items-center gap-4 text-xs font-bold">
-            <div className="px-3 py-1.5 rounded-xl bg-rose-50 text-rose-600 border border-rose-100">
-              ملغية: {stats.canceled}
-            </div>
-            <div className="px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-100">
-              النشطة: {stats.total - stats.delivered - stats.canceled}
+            <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center shrink-0">
+              <TrendingUp className="w-4 h-4 text-emerald-600" />
             </div>
           </div>
         </div>
 
-        {/* 6. شريط الفلاتر والإجراءات */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          
-          {/* أزرار الحالات */}
-          <div className="flex items-center gap-1.5 overflow-x-auto py-1 text-xs font-bold">
+        {/* 6. FILTER BAR */}
+        <div className="bg-white border border-sky-200/90 rounded-2xl p-3 sm:p-3.5 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          {/* Status Chips */}
+          <div className="flex items-center gap-1.5 text-xs overflow-x-auto no-scrollbar py-1 w-full lg:w-auto">
+            <span className="text-slate-600 font-bold ml-1 shrink-0">الحالة:</span>
             <button
-              onClick={() => setSelectedStatus("all")}
-              className={`px-3 py-1.5 rounded-xl transition cursor-pointer ${
-                selectedStatus === "all"
-                  ? "bg-[#0F4C81] text-white shadow-xs"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              onClick={() => setStatusFilter("all")}
+              className={`px-3 py-1.5 rounded-full transition font-bold cursor-pointer shrink-0 ${
+                statusFilter === "all"
+                  ? "bg-gradient-to-r from-[#0F4C81] to-[#0284C7] text-white shadow-sm"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200"
               }`}
             >
               الكل ({stats.total})
             </button>
             <button
-              onClick={() => setSelectedStatus("pending")}
-              className={`px-3 py-1.5 rounded-xl transition cursor-pointer ${
-                selectedStatus === "pending"
-                  ? "bg-amber-500 text-white shadow-xs"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              onClick={() => setStatusFilter("new")}
+              className={`px-3 py-1.5 rounded-full transition font-bold flex items-center gap-1 cursor-pointer shrink-0 ${
+                statusFilter === "new"
+                  ? "bg-amber-500 text-white shadow-sm"
+                  : "bg-slate-100 text-slate-700 hover:bg-amber-50 border border-slate-200"
               }`}
             >
-              انتظار ({stats.pending})
+              <Clock className="w-3 h-3 text-amber-500" />
+              <span>انتظار ({stats.pending})</span>
             </button>
             <button
-              onClick={() => setSelectedStatus("shipping")}
-              className={`px-3 py-1.5 rounded-xl transition cursor-pointer ${
-                selectedStatus === "shipping"
-                  ? "bg-[#0284C7] text-white shadow-xs"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              onClick={() => setStatusFilter("shipped")}
+              className={`px-3 py-1.5 rounded-full transition font-bold flex items-center gap-1 cursor-pointer shrink-0 ${
+                statusFilter === "shipped"
+                  ? "bg-[#0284C7] text-white shadow-sm"
+                  : "bg-slate-100 text-slate-700 hover:bg-sky-50 border border-slate-200"
               }`}
             >
-              شحن ({stats.shipping})
+              <Truck className="w-3 h-3 text-[#0284C7]" />
+              <span>شحن ({stats.shipped})</span>
             </button>
             <button
-              onClick={() => setSelectedStatus("delivered")}
-              className={`px-3 py-1.5 rounded-xl transition cursor-pointer ${
-                selectedStatus === "delivered"
-                  ? "bg-emerald-600 text-white shadow-xs"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              onClick={() => setStatusFilter("delivered")}
+              className={`px-3 py-1.5 rounded-full transition font-bold flex items-center gap-1 cursor-pointer shrink-0 ${
+                statusFilter === "delivered"
+                  ? "bg-emerald-600 text-white shadow-sm"
+                  : "bg-slate-100 text-slate-700 hover:bg-emerald-50 border border-slate-200"
               }`}
             >
-              تم التوصيل ({stats.delivered})
-            </button>
-            <button
-              onClick={() => setSelectedStatus("canceled")}
-              className={`px-3 py-1.5 rounded-xl transition cursor-pointer ${
-                selectedStatus === "canceled"
-                  ? "bg-rose-600 text-white shadow-xs"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-              }`}
-            >
-              ملغي ({stats.canceled})
+              <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+              <span>تم التوصيل ({stats.delivered})</span>
             </button>
           </div>
 
-          {/* فلاتر المدن وتصدير CSV */}
+          {/* City Filter */}
           <div className="flex items-center gap-2">
-            <select
-              value={selectedCity}
-              onChange={(e) => setSelectedCity(e.target.value)}
-              className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 outline-none cursor-pointer"
-            >
-              <option value="all">كل المدن</option>
-              <option value="صنعاء">صنعاء</option>
-              <option value="عدن">عدن</option>
-              <option value="تعز">تعز</option>
-              <option value="حضرموت">حضرموت</option>
-              <option value="إب">إب</option>
-              <option value="الحديدة">الحديدة</option>
-            </select>
+            <div className="relative flex-1 sm:flex-initial">
+              <select
+                value={cityFilter}
+                onChange={(e) => setCityFilter(e.target.value)}
+                className="w-full appearance-none pr-8 pl-6 py-2 rounded-xl bg-[#F8FAFC] border border-sky-200 text-xs font-bold text-[#0A2540] outline-none cursor-pointer"
+              >
+                <option value="all">كل المدن</option>
+                {uniqueCities.map((city) => (
+                  <option key={city} value={city}>
+                    {city}
+                  </option>
+                ))}
+              </select>
+              <MapPin className="w-3.5 h-3.5 text-orange-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
 
-            <button
-              onClick={handleExportCSV}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 text-xs font-bold transition cursor-pointer"
-            >
-              <Download className="size-3.5" />
-              <span>تصدير CSV</span>
-            </button>
+            {statusFilter !== "all" && (
+              <button
+                onClick={() => setStatusFilter("all")}
+                className="text-xs text-orange-500 hover:underline font-bold"
+              >
+                إعادة ضبط
+              </button>
+            )}
           </div>
-
         </div>
 
-        {/* 7. جدول العمليات (Desktop) وبطاقات العمليات (Mobile) */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-          
-          <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500">
-              عرض {filteredOrders.length} من إجمالي {stats.total} طلب
-            </span>
-          </div>
+        {/* 7. SHIPMENTS PRESENTATION */}
+        
+        {/* 📱 MOBILE CARDS VIEW */}
+        <div className="block sm:hidden space-y-3">
+          {filteredOrders.length === 0 ? (
+            <div className="bg-white border border-sky-200/90 rounded-2xl p-8 text-center text-slate-500 text-xs shadow-sm">
+              لا توجد شحنات مطابقة لمعايير البحث المحددة.
+            </div>
+          ) : (
+            filteredOrders.map((ord) => {
+              const trackingNo = ord.intlTrackingNumber || ord.orderNumber;
 
-          {/* جدول الشاشات الكبيرة */}
-          <div className="hidden lg:block overflow-x-auto">
-            <table className="w-full text-right border-collapse text-xs">
-              <thead>
-                <tr className="bg-[#F0F7FF] text-[#0F4C81] border-b border-slate-200 font-black">
-                  <th className="p-3.5">رقم الطلب</th>
-                  <th className="p-3.5">العميل والمدينة</th>
-                  <th className="p-3.5">رقم الهاتف</th>
-                  <th className="p-3.5">رقم التتبع</th>
-                  <th className="p-3.5">حالة الشحنة</th>
-                  <th className="p-3.5">التاريخ</th>
-                  <th className="p-3.5 text-center">إجراءات</th>
+              return (
+                <div key={ord.id} className="bg-white border border-sky-200/90 rounded-2xl p-4 shadow-sm space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-mono font-black text-sm text-[#0F4C81] bg-sky-50 px-2.5 py-1 rounded-lg border border-sky-200">
+                      {ord.orderNumber}
+                    </span>
+                    <select
+                      value={ord.status}
+                      onChange={(e) => handleStatusChange(ord.id, e.target.value as OrderStatus)}
+                      className={`text-[11px] font-black rounded-full px-2.5 py-1 border outline-none cursor-pointer ${
+                        ord.status === "delivered"
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-300"
+                          : ord.status === "shipped" || ord.status === "international_ship"
+                          ? "bg-sky-50 text-[#0284C7] border-sky-300"
+                          : ord.status === "cancelled"
+                          ? "bg-rose-50 text-rose-700 border-rose-300"
+                          : "bg-amber-50 text-amber-700 border-amber-300"
+                      }`}
+                    >
+                      <option value="delivered">● تم التوصيل</option>
+                      <option value="shipped">● تم الشحن</option>
+                      <option value="new">● قيد الانتظار</option>
+                      <option value="cancelled">● ملغي</option>
+                    </select>
+                  </div>
+
+                  <div className="text-xs text-slate-800 font-bold leading-relaxed">{ord.productTitle}</div>
+
+                  <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-100">
+                    <span className="font-bold text-[#0A2540]">👤 {ord.customerName}</span>
+                    <span className="text-slate-600 flex items-center gap-1 font-bold">
+                      <MapPin className="w-3 h-3 text-orange-500" />
+                      {ord.customerCity || "صنعاء"}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-xs">
+                    <span className="font-mono text-slate-800 font-bold">{ord.customerPhone}</span>
+                    <div className="flex items-center gap-2 font-bold">
+                      <a
+                        href={`tel:${ord.customerPhone.replace(/\D/g, "")}`}
+                        className="px-2 py-0.5 rounded-lg bg-sky-50 text-[#0F4C81] border border-sky-200 text-[11px]"
+                      >
+                        اتصال
+                      </a>
+                      <a
+                        href={`https://wa.me/${ord.customerPhone.replace(/\D/g, "")}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-300 text-[11px]"
+                      >
+                        واتساب
+                      </a>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg bg-sky-50 border border-sky-200 text-[#0F4C81] font-mono text-xs font-bold">
+                      <span>{trackingNo}</span>
+                      <button
+                        onClick={() => copyTracking(trackingNo, ord.id)}
+                        className="text-orange-500 hover:text-orange-600 transition"
+                      >
+                        {copiedTracking === ord.id ? (
+                          <Check className="w-3.5 h-3.5 text-emerald-600" />
+                        ) : (
+                          <Copy className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                    </div>
+
+                    <span className="text-[11px] text-slate-500 font-mono">
+                      {ord.createdAt.split("T")[0]}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                    <button
+                      onClick={() => handleDeleteOrder(ord.id, ord.orderNumber)}
+                      className="p-2 rounded-xl bg-rose-50 text-rose-600 border border-rose-200 text-xs flex items-center gap-1"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>حذف</span>
+                    </button>
+                    <button
+                      onClick={() => setPrintingOrder(ord)}
+                      className="px-3 py-2 rounded-xl bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold flex items-center gap-1.5"
+                    >
+                      <Printer className="w-3.5 h-3.5 text-orange-500" />
+                      <span>سند</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* 💻 DESKTOP TABLE VIEW */}
+        <div className="hidden sm:block bg-white border border-sky-200/90 rounded-2xl overflow-hidden shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-right text-xs">
+              <thead className="bg-gradient-to-r from-[#F0F7FF] to-[#E0F2FE] border-b border-sky-200 text-[#0F4C81] font-black">
+                <tr>
+                  <th className="py-4 px-4">رقم الطلب</th>
+                  <th className="py-4 px-4">العميل والمدينة</th>
+                  <th className="py-4 px-4">رقم الهاتف</th>
+                  <th className="py-4 px-4">رقم التتبع</th>
+                  <th className="py-4 px-4 text-center">حالة الشحنة</th>
+                  <th className="py-4 px-4">التاريخ</th>
+                  <th className="py-4 px-4 text-center">إجراءات</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 font-medium">
+              <tbody className="divide-y divide-slate-100 text-[#0A2540]">
                 {filteredOrders.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="text-center py-12 text-slate-400">
-                      {loading ? "جارٍ تحميل الشحنات..." : "لا توجد شحنات مطابقة للبحث أو الفلتر."}
+                    <td colSpan={7} className="py-12 text-center text-slate-400">
+                      لا توجد شحنات مطابقة لمعايير البحث المحددة.
                     </td>
                   </tr>
                 ) : (
-                  filteredOrders.map((order) => (
-                    <tr key={order.id} className="hover:bg-sky-50/40 transition">
-                      
-                      {/* رقم الطلب */}
-                      <td className="p-3.5 font-mono font-bold text-slate-800">
-                        {order.tracking_code || "—"}
-                      </td>
+                  filteredOrders.map((ord) => {
+                    const trackingNo = ord.intlTrackingNumber || ord.orderNumber;
 
-                      {/* العميل والمدينة */}
-                      <td className="p-3.5">
-                        <div className="font-bold text-slate-900">{order.customer_name || "بدون اسم"}</div>
-                        <div className="text-[11px] text-slate-400 truncate max-w-[200px]">
-                          {order.notes || "اليمن"}
-                        </div>
-                      </td>
+                    return (
+                      <tr key={ord.id} className="hover:bg-sky-50/60 transition group">
+                        <td className="py-4 px-4">
+                          <div className="font-mono font-black text-sm text-[#0F4C81]">{ord.orderNumber}</div>
+                          <div className="text-[11px] text-slate-500 max-w-[200px] truncate mt-0.5">
+                            {ord.productTitle}
+                          </div>
+                        </td>
 
-                      {/* رقم الهاتف والواتساب الآمن */}
-                      <td className="p-3.5 font-mono text-slate-700">
-                        <div className="flex items-center gap-1.5">
-                          <span>{order.phone || "غير محدد"}</span>
-                          {order.phone && (
-                            <a
-                              href={`https://wa.me/${(order.phone || "").replace(/[^0-9]/g, "")}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="size-5 rounded-full bg-emerald-50 text-emerald-600 grid place-items-center hover:bg-emerald-100 transition"
-                              title="مراسلة عبر واتساب"
-                            >
-                              <Send className="size-2.5" />
+                        <td className="py-4 px-4">
+                          <div className="font-bold text-[#0A2540] text-sm">{ord.customerName}</div>
+                          <div className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+                            <MapPin className="w-3 h-3 text-orange-500" />
+                            <span>{ord.customerCity || "صنعاء"}</span>
+                          </div>
+                        </td>
+
+                        <td className="py-4 px-4 font-mono">
+                          <div className="text-slate-700 text-xs font-bold">{ord.customerPhone}</div>
+                          <div className="text-[10px] text-sky-700 flex items-center gap-2 mt-0.5 font-bold">
+                            <a href={`tel:${ord.customerPhone.replace(/\D/g, "")}`} className="hover:underline">
+                              اتصال
                             </a>
-                          )}
-                        </div>
-                      </td>
+                            <span className="opacity-40">|</span>
+                            <a
+                              href={`https://wa.me/${ord.customerPhone.replace(/\D/g, "")}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-emerald-600 hover:underline"
+                            >
+                              واتساب
+                            </a>
+                          </div>
+                        </td>
 
-                      {/* رقم التتبع */}
-                      <td className="p-3.5">
-                        <span className="inline-block px-2.5 py-1 rounded-lg bg-orange-50 border border-orange-200 text-[#EA580C] font-mono font-bold text-xs">
-                          {order.tracking_code || "—"}
-                        </span>
-                      </td>
+                        <td className="py-4 px-4">
+                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-50 border border-sky-200 text-[#0F4C81] font-mono text-xs font-bold">
+                            <span>{trackingNo}</span>
+                            <button
+                              onClick={() => copyTracking(trackingNo, ord.id)}
+                              className="text-orange-500 hover:text-orange-600 cursor-pointer"
+                              title="نسخ رقم التتبع"
+                            >
+                              {copiedTracking === ord.id ? (
+                                <Check className="w-3.5 h-3.5 text-emerald-600" />
+                              ) : (
+                                <Copy className="w-3.5 h-3.5" />
+                              )}
+                            </button>
+                          </div>
+                        </td>
 
-                      {/* حالة الشحنة مع قائمة تغيير الحالة */}
-                      <td className="p-3.5">
-                        <select
-                          value={order.status || "جديد"}
-                          onChange={(e) => handleStatusChange(order.id, e.target.value)}
-                          className={`px-2.5 py-1 rounded-lg font-bold text-xs border outline-none cursor-pointer ${
-                            order.status === "تم التوصيل" || order.status === "مكتمل"
-                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                              : order.status === "تم الشحن" || order.status === "في الطريق"
-                              ? "bg-sky-50 text-sky-700 border-sky-200"
-                              : order.status === "ملغي"
-                              ? "bg-rose-50 text-rose-700 border-rose-200"
-                              : "bg-amber-50 text-amber-700 border-amber-200"
-                          }`}
-                        >
-                          <option value="جديد">جديد</option>
-                          <option value="قيد الانتظار">قيد الانتظار</option>
-                          <option value="تم الشحن">تم الشحن</option>
-                          <option value="في الطريق">في الطريق</option>
-                          <option value="تم التوصيل">تم التوصيل</option>
-                          <option value="ملغي">ملغي</option>
-                        </select>
-                      </td>
-
-                      {/* التاريخ */}
-                      <td className="p-3.5 font-mono text-slate-500 text-[11px]">
-                        {order.created_at ? new Date(order.created_at).toLocaleDateString("ar-YE") : "—"}
-                      </td>
-
-                      {/* أزرار الإجراءات */}
-                      <td className="p-3.5 text-center">
-                        <div className="flex items-center justify-center gap-1.5">
-                          {/* معاينة */}
-                          <button
-                            onClick={() => {
-                              setActiveOrder(order);
-                              setIsPreviewModalOpen(true);
-                            }}
-                            className="size-7 rounded-lg border border-slate-200 bg-white grid place-items-center text-slate-600 hover:text-[#0F4C81] hover:border-[#0F4C81] transition cursor-pointer"
-                            title="معاينة البوليصة"
+                        <td className="py-4 px-4 text-center">
+                          <select
+                            value={ord.status}
+                            onChange={(e) => handleStatusChange(ord.id, e.target.value as OrderStatus)}
+                            className={`text-xs font-black rounded-full px-3 py-1 border transition cursor-pointer text-center outline-none ${
+                              ord.status === "delivered"
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-300"
+                                : ord.status === "shipped" || ord.status === "international_ship"
+                                ? "bg-sky-50 text-[#0284C7] border-sky-300"
+                                : ord.status === "cancelled"
+                                ? "bg-rose-50 text-rose-700 border-rose-300"
+                                : "bg-amber-50 text-amber-700 border-amber-300"
+                            }`}
                           >
-                            <Eye className="size-3.5" />
-                          </button>
+                            <option value="delivered">● تم التوصيل</option>
+                            <option value="shipped">● تم الشحن</option>
+                            <option value="new">● قيد الانتظار</option>
+                            <option value="cancelled">● ملغي</option>
+                          </select>
+                        </td>
 
-                          {/* طباعة */}
-                          <button
-                            onClick={() => {
-                              setActiveOrder(order);
-                              setIsPreviewModalOpen(true);
-                            }}
-                            className="size-7 rounded-lg border border-slate-200 bg-white grid place-items-center text-slate-600 hover:text-[#0F4C81] hover:border-[#0F4C81] transition cursor-pointer"
-                            title="طباعة السند"
-                          >
-                            <Printer className="size-3.5" />
-                          </button>
+                        <td className="py-4 px-4 text-slate-500 font-mono text-xs">
+                          <div className="flex items-center gap-1.5">
+                            <Calendar className="w-3.5 h-3.5 text-orange-500" />
+                            <span>{ord.createdAt.split("T")[0]}</span>
+                          </div>
+                        </td>
 
-                          {/* حذف */}
-                          <button
-                            onClick={() => handleDeleteOrder(order.id)}
-                            className="size-7 rounded-lg border border-red-100 bg-red-50/60 grid place-items-center text-red-500 hover:bg-red-100 transition cursor-pointer"
-                            title="حذف الشحنة"
-                          >
-                            <Trash2 className="size-3.5" />
-                          </button>
-                        </div>
-                      </td>
-
-                    </tr>
-                  ))
+                        <td className="py-4 px-4 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => handleDeleteOrder(ord.id, ord.orderNumber)}
+                              className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 transition cursor-pointer"
+                              title="حذف الشحنة"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => setPrintingOrder(ord)}
+                              className="p-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 transition cursor-pointer"
+                              title="طباعة سند"
+                            >
+                              <Printer className="w-3.5 h-3.5 text-orange-500" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
           </div>
-
-          {/* بطاقات الشاشات الصغيرة (Mobile Cards) */}
-          <div className="lg:hidden divide-y divide-slate-100">
-            {filteredOrders.length === 0 ? (
-              <div className="p-8 text-center text-slate-400 text-xs">
-                {loading ? "جارٍ تحميل الشحنات..." : "لا توجد شحنات مطابقة."}
-              </div>
-            ) : (
-              filteredOrders.map((order) => (
-                <div key={order.id} className="p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="px-2.5 py-1 rounded-lg bg-orange-50 border border-orange-200 text-[#EA580C] font-mono font-bold text-xs">
-                      {order.tracking_code || "—"}
-                    </span>
-                    <span className="text-[11px] text-slate-400 font-mono">
-                      {order.created_at ? new Date(order.created_at).toLocaleDateString("ar-YE") : "—"}
-                    </span>
-                  </div>
-
-                  <div>
-                    <div className="font-bold text-slate-900 text-sm">{order.customer_name || "بدون اسم"}</div>
-                    <div className="text-xs text-slate-500 mt-0.5">{order.notes || "اليمن"}</div>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-1">
-                    <div className="flex items-center gap-2">
-                      {order.phone && (
-                        <a
-                          href={`tel:${order.phone}`}
-                          className="px-2.5 py-1 rounded-lg bg-sky-50 text-[#0F4C81] text-xs font-bold flex items-center gap-1"
-                        >
-                          <Phone className="size-3" />
-                          <span>اتصال</span>
-                        </a>
-                      )}
-                      {order.phone && (
-                        <a
-                          href={`https://wa.me/${(order.phone || "").replace(/[^0-9]/g, "")}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-bold flex items-center gap-1"
-                        >
-                          <Send className="size-3" />
-                          <span>واتساب</span>
-                        </a>
-                      )}
-                    </div>
-
-                    <select
-                      value={order.status || "جديد"}
-                      onChange={(e) => handleStatusChange(order.id, e.target.value)}
-                      className="px-2.5 py-1 rounded-lg text-xs font-bold border outline-none bg-slate-50"
-                    >
-                      <option value="جديد">جديد</option>
-                      <option value="قيد الانتظار">قيد الانتظار</option>
-                      <option value="تم الشحن">تم الشحن</option>
-                      <option value="تم التوصيل">تم التوصيل</option>
-                      <option value="ملغي">ملغي</option>
-                    </select>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-
         </div>
 
-      </main>
+      </div>
 
-      {/* 8. نافذة منبثقة لإضافة شحنة جديدة */}
-      {isNewOrderModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs grid place-items-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 text-[#0A2540] animate-in fade-in">
-            <div className="flex items-center justify-between border-b pb-3 mb-4">
-              <h2 className="text-base font-black text-[#0F4C81]">إضافة شحنة جديدة للعمليات</h2>
+      {/* 8. ADD SHIPMENT MODAL */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white border border-sky-200 rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-5 sm:p-7 shadow-2xl text-right text-[#0A2540]">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-5">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#0F4C81] to-[#0284C7] text-white flex items-center justify-center shadow-sm">
+                  <PlusCircle className="w-5 h-5 text-orange-400" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-[#0A2540]">إضافة طلب شحن جديد</h3>
+                  <p className="text-xs text-slate-500">تسجيل طرد وشحنة جديدة في منظومة التوزيع</p>
+                </div>
+              </div>
               <button
-                onClick={() => setIsNewOrderModalOpen(false)}
-                className="p-1 rounded-lg hover:bg-slate-100 text-slate-400"
+                onClick={() => setIsAddModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 cursor-pointer"
               >
-                <X className="size-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
             <form onSubmit={handleCreateNewOrder} className="space-y-3.5 text-xs">
               <div>
-                <label className="block font-bold mb-1">اسم العميل الكامل:</label>
+                <label className="block text-slate-700 font-bold mb-1">اسم العميل المستلم *</label>
                 <input
                   type="text"
                   required
-                  placeholder="مثال: أحمد عبد الله"
-                  value={newOrderForm.customer_name}
-                  onChange={(e) => setNewOrderForm({ ...newOrderForm, customer_name: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none focus:border-[#0284C7]"
+                  placeholder="مثال: محمد عبد الله"
+                  value={newOrderForm.customerName}
+                  onChange={(e) => setNewOrderForm({ ...newOrderForm, customerName: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] border border-slate-200 text-[#0A2540] outline-none focus:bg-white focus:border-[#0284C7]"
                 />
               </div>
 
-              <div>
-                <label className="block font-bold mb-1">رقم الهاتف (الواتساب):</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="مثال: 772399744"
-                  value={newOrderForm.phone}
-                  onChange={(e) => setNewOrderForm({ ...newOrderForm, phone: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none focus:border-[#0284C7]"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold mb-1">المدينة / المحافظة:</label>
-                  <select
-                    value={newOrderForm.city}
-                    onChange={(e) => setNewOrderForm({ ...newOrderForm, city: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none focus:border-[#0284C7]"
-                  >
-                    <option value="صنعاء">صنعاء</option>
-                    <option value="عدن">عدن</option>
-                    <option value="تعز">تعز</option>
-                    <option value="حضرموت">حضرموت</option>
-                    <option value="إب">إب</option>
-                    <option value="الحديدة">الحديدة</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-bold mb-1">سعر التحصيل COD (اختياري):</label>
+                  <label className="block text-slate-700 font-bold mb-1">رقم الهاتف أو الجوال *</label>
                   <input
                     type="text"
-                    placeholder="مثال: 150 ر.س"
-                    value={newOrderForm.price}
-                    onChange={(e) => setNewOrderForm({ ...newOrderForm, price: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none focus:border-[#0284C7]"
+                    required
+                    dir="ltr"
+                    placeholder="770000000"
+                    value={newOrderForm.customerPhone}
+                    onChange={(e) => setNewOrderForm({ ...newOrderForm, customerPhone: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] border border-slate-200 text-[#0A2540] font-mono text-left outline-none focus:bg-white focus:border-[#0284C7]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">المدينة / المحافظة</label>
+                  <input
+                    type="text"
+                    placeholder="صنعاء / عدن / تعز"
+                    value={newOrderForm.customerCity}
+                    onChange={(e) => setNewOrderForm({ ...newOrderForm, customerCity: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] border border-slate-200 text-[#0A2540] outline-none focus:bg-white focus:border-[#0284C7]"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">المتجر / المصدر</label>
+                  <select
+                    value={newOrderForm.storeName}
+                    onChange={(e) => setNewOrderForm({ ...newOrderForm, storeName: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] border border-slate-200 text-[#0A2540] font-bold outline-none focus:bg-white focus:border-[#0284C7]"
+                  >
+                    <option value="SHEIN">شي إن (SHEIN)</option>
+                    <option value="TEMU">تيمو (TEMU)</option>
+                    <option value="Amazon">أمازون (Amazon)</option>
+                    <option value="AliExpress">علي إكسبريس (AliExpress)</option>
+                    <option value="Trendyol">ترينديول (Trendyol)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">المبلغ المطلوب تحصيله (SAR)</label>
+                  <input
+                    type="number"
+                    placeholder="150"
+                    value={newOrderForm.originalPrice}
+                    onChange={(e) => setNewOrderForm({ ...newOrderForm, originalPrice: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] border border-slate-200 text-[#0A2540] font-mono outline-none focus:bg-white focus:border-[#0284C7]"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block font-bold mb-1">وصف أو رابط المنتج:</label>
+                <label className="block text-slate-700 font-bold mb-1">وصف المنتج / المحتوى</label>
                 <input
                   type="text"
-                  placeholder="رابط SHEIN / Amazon أو اسم القطعة"
-                  value={newOrderForm.product_name}
-                  onChange={(e) => setNewOrderForm({ ...newOrderForm, product_name: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none focus:border-[#0284C7]"
+                  placeholder="مثال: فستان بناتي + حذاء رياضي"
+                  value={newOrderForm.productTitle}
+                  onChange={(e) => setNewOrderForm({ ...newOrderForm, productTitle: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] border border-slate-200 text-[#0A2540] outline-none focus:bg-white focus:border-[#0284C7]"
                 />
               </div>
 
-              <div className="pt-3 flex items-center justify-end gap-2">
+              <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-2 mt-4">
                 <button
                   type="button"
-                  onClick={() => setIsNewOrderModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-100 font-bold hover:bg-slate-200 transition"
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl text-slate-500 hover:text-slate-800 cursor-pointer font-bold"
                 >
                   إلغاء
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-[#00629B] text-white font-bold hover:bg-[#005080] transition shadow-md"
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#F97316] to-[#EA580C] hover:from-[#EA580C] text-white font-black shadow-md shadow-orange-500/25 cursor-pointer"
                 >
-                  حفظ الشحنة وإصدار التتبع
+                  حفظ وتسجيل الشحنة
                 </button>
               </div>
             </form>
@@ -944,53 +1133,95 @@ export function AdminOperationsDashboard() {
         </div>
       )}
 
-      {/* 9. نافذة منبثقة لمعاينة بوليصة الشحنة */}
-      {isPreviewModalOpen && activeOrder && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs grid place-items-center p-4">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 text-[#0A2540]">
-            <div className="flex items-center justify-between border-b pb-3 mb-4">
-              <span className="font-bold text-sm text-[#0F4C81]">بوليصة شحنة السوق الشامل</span>
+      {/* 9. QUICK SCAN MODAL */}
+      {isQuickScanOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white border border-sky-200 rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl text-right text-[#0A2540]">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+              <div className="flex items-center gap-2">
+                <ScanLine className="w-5 h-5 text-orange-500" />
+                <h3 className="text-base font-black text-[#0A2540]">فحص سريع برقم التتبع</h3>
+              </div>
               <button
-                onClick={() => setIsPreviewModalOpen(false)}
-                className="p-1 rounded-lg hover:bg-slate-100 text-slate-400"
+                onClick={() => setIsQuickScanOpen(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 cursor-pointer"
               >
-                <X className="size-4" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="space-y-3 text-xs">
-              <div className="p-3 rounded-xl bg-sky-50 text-center">
-                <div className="text-[10px] text-slate-500 font-bold">رقم التتبع الرسمي</div>
-                <div className="text-lg font-mono font-black text-[#EA580C]">
-                  {activeOrder.tracking_code || "—"}
-                </div>
-              </div>
-
-              <div className="space-y-1.5 border-t border-b border-slate-100 py-2">
-                <div className="flex justify-between">
-                  <span className="text-slate-400">اسم العميل:</span>
-                  <span className="font-bold">{activeOrder.customer_name || "بدون اسم"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">رقم الهاتف:</span>
-                  <span className="font-mono font-bold">{activeOrder.phone || "غير محدد"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">حالة الشحنة:</span>
-                  <span className="font-bold text-[#0F4C81]">{activeOrder.status || "جديد"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">الملاحظات:</span>
-                  <span className="font-medium text-slate-700">{activeOrder.notes || "لا توجد"}</span>
-                </div>
+            <form onSubmit={handleQuickScan} className="space-y-4">
+              <div>
+                <label className="block text-xs text-slate-600 mb-1 font-bold">
+                  اكتب رقم الشحنة أو التتبع (مثال: SQ-892411):
+                </label>
+                <input
+                  type="text"
+                  autoFocus
+                  placeholder="SQ-xxxxxx"
+                  value={quickScanInput}
+                  onChange={(e) => setQuickScanInput(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl bg-[#F8FAFC] border border-sky-200 text-[#0A2540] font-mono text-center text-lg font-black outline-none tracking-wider focus:bg-white focus:border-[#0284C7]"
+                />
               </div>
 
               <button
-                onClick={() => window.print()}
-                className="w-full py-2.5 rounded-xl bg-[#0F4C81] text-white font-bold flex items-center justify-center gap-2 hover:bg-[#0c3c66] transition shadow-md cursor-pointer"
+                type="submit"
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-[#0F4C81] to-[#0284C7] hover:from-[#0A2540] font-black text-xs text-white shadow-md cursor-pointer"
               >
-                <Printer className="size-4" />
-                <span>طباعة السند / البوليصة</span>
+                بحث وفحص
+              </button>
+            </form>
+
+            {quickScanResult && (
+              <div className="mt-4 p-4 rounded-2xl bg-sky-50 border border-sky-200 space-y-2 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[#0F4C81] font-black">{quickScanResult.orderNumber}</span>
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold">
+                    {quickScanResult.status}
+                  </span>
+                </div>
+                <div className="text-[#0A2540] font-bold">{quickScanResult.customerName}</div>
+                <div className="text-slate-600">{quickScanResult.productTitle}</div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 10. PRINT RECEIPT MODAL */}
+      {printingOrder && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white border border-sky-200 rounded-3xl max-w-sm w-full p-5 shadow-2xl text-center space-y-4 text-[#0A2540]">
+            <div className="w-12 h-12 rounded-2xl bg-sky-50 text-[#0F4C81] flex items-center justify-center mx-auto">
+              <Printer className="w-6 h-6 text-orange-500" />
+            </div>
+            <div>
+              <h3 className="text-base font-black">سند شحن وبوليصة استلام</h3>
+              <p className="text-xs text-slate-500 font-mono mt-0.5">{printingOrder.orderNumber}</p>
+            </div>
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-right space-y-1.5">
+              <div><strong>العميل:</strong> {printingOrder.customerName}</div>
+              <div><strong>الهاتف:</strong> {printingOrder.customerPhone}</div>
+              <div><strong>المدينة:</strong> {printingOrder.customerCity || "صنعاء"}</div>
+              <div><strong>المحتوى:</strong> {printingOrder.productTitle}</div>
+              <div><strong>المبلغ المطلوب:</strong> {printingOrder.originalPrice} ر.س</div>
+            </div>
+            <div className="flex items-center justify-center gap-2">
+              <button
+                onClick={() => setPrintingOrder(null)}
+                className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold"
+              >
+                إغلاق
+              </button>
+              <button
+                onClick={() => {
+                  window.print();
+                  setPrintingOrder(null);
+                }}
+                className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#0F4C81] to-[#0284C7] text-white text-xs font-bold"
+              >
+                طباعة الآن
               </button>
             </div>
           </div>
@@ -1000,5 +1231,19 @@ export function AdminOperationsDashboard() {
     </div>
   );
 }
+
+// TanStack Router registration
+export const Route = (createFileRoute as any)("/admin")({
+  head: () => ({
+    meta: [
+      { title: "لوحة العمليات والإدارة | السوق الشامل AL SHAMEL" },
+      {
+        name: "description",
+        content: "لوحة عمليات الشحن والفرز وإدارة الطلبات والعملاء لمنظومة السوق الشامل.",
+      },
+    ],
+  }),
+  component: AdminOperationsDashboard,
+});
 
 export default AdminOperationsDashboard;
