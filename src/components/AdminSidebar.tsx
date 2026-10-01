@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
-import { X, Home, ShoppingCart, Search, Coins, Users, Package, Bell, UserRound, LifeBuoy, ChevronLeft } from "lucide-react";
+import { X, Home, ShoppingCart, Search, Coins, Users, Package, Bell, UserRound, LifeBuoy } from "lucide-react";
 
 const supabase = createClient(
   "https://ihqijxikvfvubfqffezb.supabase.co",
@@ -35,13 +35,16 @@ export function AdminSidebar({ isOpen, onToggle }: { isOpen: boolean; onToggle: 
   const [sections, setSections] = useState(defaultSections);
 
   useEffect(()=>{
-    supabase.from('sidebar_buttons').select('*').order('sort_order').then(({data})=>{
-      if(data && data.length>0){
+    supabase.from('sidebar_buttons').select('*').order('sort_order').then(({data, error})=>{
+      if(!error && data && data.length>0){
         const grouped: any = {};
         data.forEach((b:any)=>{
-          if(!grouped[b.section_title]) grouped[b.section_title]=[];
-          grouped[b.section_title].push({
-            to: b.path, label: b.label, badge: b.badge,
+          const sec = b.section || 'عام';
+          if(!grouped[sec]) grouped[sec]=[];
+          grouped[sec].push({
+            to: b.path || '/',
+            label: b.label,
+            badge: b.badge,
             icon: iconMap[b.icon] || Home
           });
         });
@@ -69,7 +72,6 @@ export function AdminSidebar({ isOpen, onToggle }: { isOpen: boolean; onToggle: 
                   return (
                     <Link key={item.label} to={item.to} onClick={onToggle} className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold ${active? "bg-gradient-to-r from-[#0F4C81] to-[#0284C7] text-white" : "text-slate-600 hover:bg-white"}`}>
                       <div className="flex items-center gap-2.5"><item.icon className="size-4"/><span>{item.label}</span></div>
-                      {item.badge? <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-600">{item.badge}</span> : <ChevronLeft className="size-3.5 opacity-40"/>}
                     </Link>
                   );
                 })}
