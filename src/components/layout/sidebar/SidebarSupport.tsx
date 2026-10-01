@@ -1,16 +1,10 @@
-import { Headphones, Settings, ChevronLeft } from "lucide-react";
+import { Headphones } from "lucide-react";
+import { useSidebarMenu } from "../../../hooks/useSidebarMenu";
 export function SidebarSupport() {
+  const { items } = useSidebarMenu("support");
   return (
-    <div className="space-y-1 pt-1 border-t border-slate-800/60">
-      <div className="px-2 pb-1 text-[11px] font-black text-sky-400">الدعم والمساعدة</div>
-      <a href="https://wa.me/967770000000" target="_blank" rel="noreferrer" className="flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:bg-[#0B1E36] hover:text-white transition font-bold">
-        <div className="flex items-center gap-2.5"><Headphones className="size-4 text-emerald-400" /><span>الدعم الفني وخدمة العملاء</span></div>
-        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-950 text-emerald-400 border border-emerald-800/40">واتساب</span>
-      </a>
-      <div className="flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:bg-[#0B1E36] hover:text-white transition font-bold cursor-pointer">
-        <div className="flex items-center gap-2.5"><Settings className="size-4 text-slate-400" /><span>إعدادات النظام والربط</span></div>
-        <ChevronLeft className="size-3.5 opacity-50" />
-      </div>
+    <div className="rounded-2xl bg-[#0B1E36] border border-sky-900/40 p-3">
+      {items.map(it => <a key={it.id} href={it.path || "#"} target="_blank" className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-[11px] font-bold text-slate-200 hover:bg-sky-950"><Headphones className="size-3.5 text-emerald-400" />{it.title}</a>)}
     </div>
   );
 }
