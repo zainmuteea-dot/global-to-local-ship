@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link } from "@tanstack/react-router";
 import { Home, Truck, Zap, ChevronDown } from "lucide-react";
 import { useSidebarMenu } from "../../../hooks/useSidebarMenu";
 
