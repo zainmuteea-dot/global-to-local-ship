@@ -665,15 +665,15 @@ export function AdminOperationsDashboard() {
                 ) : (
                   filteredOrders.map((order) => (
                     <tr key={order.id} className="hover:bg-sky-50/40 transition">
-                      
+
                       {/* رقم الطلب */}
                       <td className="p-3.5 font-mono font-bold text-slate-800">
-                        {order.tracking_code}
+                        {order.tracking_code || "—"}
                       </td>
 
                       {/* العميل والمدينة */}
                       <td className="p-3.5">
-                        <div className="font-bold text-slate-900">{order.customer_name}</div>
+                        <div className="font-bold text-slate-900">{order.customer_name || "بدون اسم"}</div>
                         <div className="text-[11px] text-slate-400 truncate max-w-[200px]">
                           {order.notes || "اليمن"}
                         </div>
@@ -682,25 +682,133 @@ export function AdminOperationsDashboard() {
                       {/* رقم الهاتف */}
                       <td className="p-3.5 font-mono text-slate-700">
                         <div className="flex items-center gap-1.5">
-                          <span>{order.phone}</span>
+                          <span>{order.phone || "—"}</span>
+                          {(order.phone || "") && (
+                            <a
+                              href={`https://wa.me/${(order.phone || "").replace(/[^0-9]/g, "")}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-[10px] font-bold flex items-center gap-1"
+                            >
+                              <Send className="size-3" />
+                              <span>واتساب</span>
+                            </a>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* رقم التتبع */}
+                      <td className="p-3.5">
+                        <span className="inline-block px-2.5 py-1 rounded-lg bg-orange-50 border border-orange-200 text-[#EA580C] font-mono font-bold text-xs">
+                          {order.tracking_code || "—"}
+                        </span>
+                      </td>
+
+                      {/* حالة الشحنة */}
+                      <td className="p-3.5">
+                        <select
+                          value={order.status || "جديد"}
+                          onChange={(e) => handleStatusChange(order.id, e.target.value)}
+                          className="px-2.5 py-1 rounded-lg text-xs font-bold border outline-none bg-slate-50"
+                        >
+                          <option value="جديد">جديد</option>
+                          <option value="قيد الانتظار">قيد الانتظار</option>
+                          <option value="تم الشحن">تم الشحن</option>
+                          <option value="تم التوصيل">تم التوصيل</option>
+                          <option value="ملغي">ملغي</option>
+                        </select>
+                      </td>
+
+                      {/* التاريخ */}
+                      <td className="p-3.5 text-slate-500 text-[11px]">
+                        {order.created_at
+                          ? new Date(order.created_at).toLocaleDateString("ar-YE")
+                          : "—"}
+                      </td>
+
+                      {/* إجراءات */}
+                      <td className="p-3.5">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={() => {
+                              setActiveOrder(order);
+                              setIsPreviewModalOpen(true);
+                            }}
+                            className="size-7 rounded-lg bg-sky-50 text-[#0F4C81] grid place-items-center hover:bg-sky-100 transition"
+                            title="معاينة البوليصة"
+                          >
+                            <Eye className="size-3.5" />
+                          </button>
+                          <button
+                            onClick={() => window.print()}
+                            className="size-7 rounded-lg bg-slate-50 text-slate-600 grid place-items-center hover:bg-slate-100 transition"
+                            title="طباعة السند"
+                          >
+                            <Printer className="size-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteOrder(order.id)}
+                            className="size-7 rounded-lg bg-red-50 text-red-500 grid place-items-center hover:bg-red-100 transition"
+                            title="حذف الشحنة"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* بطاقات الشاشات الصغيرة (Mobile) */}
+          <div className="lg:hidden divide-y divide-slate-100">
+            {filteredOrders.length === 0 ? (
+              <div className="p-8 text-center text-slate-400 text-xs">
+                {loading ? "جارٍ تحميل الشحنات..." : "لا توجد شحنات مطابقة للبحث أو الفلتر."}
+              </div>
+            ) : (
+              filteredOrders.map((order) => (
+                <div key={order.id} className="p-4 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono font-bold text-[#0F4C81]">{order.tracking_code || "—"}</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-50 text-[#0284C7] border border-sky-100">
+                      {order.status || "جديد"}
+                    </span>
+                  </div>
+
+                  <div>
+                    <h3 className="font-bold text-sm text-[#0A2540]">{order.customer_name || "بدون اسم"}</h3>
+                    <p className="text-xs text-slate-500 mt-0.5">{order.notes || "اليمن"}</p>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1">
+                    <div className="flex items-center gap-2">
+                      {(order.phone || "") && (
+                        <>
                           <a
-                           // بدلاً من:
-href={`https://wa.me/${order.phone.replace(/[^0-9]/g, "")}`}
-
-// التعديل الآمن:
-href={`https://wa.me/${(order.phone || "").replace(/[^0-9]/g, "")}`}
-
-                        target="_blank"
-                        rel="noreferrer"
-                        className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-bold flex items-center gap-1"
-                      >
-                        <Send className="size-3" />
-                        <span>واتساب</span>
-                      </a>
+                            href={`tel:${order.phone}`}
+                            className="px-2.5 py-1 rounded-lg bg-sky-50 text-[#0F4C81] text-xs font-bold flex items-center gap-1"
+                          >
+                            <Phone className="size-3" />
+                            <span>اتصال</span>
+                          </a>
+                          <a
+                            href={`https://wa.me/${(order.phone || "").replace(/[^0-9]/g, "")}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-bold flex items-center gap-1"
+                          >
+                            <Send className="size-3" />
+                            <span>واتساب</span>
+                          </a>
+                        </>
+                      )}
                     </div>
 
                     <select
-                      value={order.status}
+                      value={order.status || "جديد"}
                       onChange={(e) => handleStatusChange(order.id, e.target.value)}
                       className="px-2.5 py-1 rounded-lg text-xs font-bold border outline-none bg-slate-50"
                     >
@@ -719,6 +827,10 @@ href={`https://wa.me/${(order.phone || "").replace(/[^0-9]/g, "")}`}
         </div>
 
       </main>
+
+      {/* القائمة الجانبية للإدارة */}
+      <AdminSidebar isOpen={isSidebarOpen} onToggle={() => setIsSidebarOpen((v) => !v)} />
+
 
       {/* 8. نافذة منبثقة لإضافة شحنة جديدة */}
       {isNewOrderModalOpen && (
