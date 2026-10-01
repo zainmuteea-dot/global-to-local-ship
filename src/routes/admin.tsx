@@ -25,11 +25,22 @@ import {
   User,
   LogOut,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Download,
   Sparkles,
   MessageSquare,
   Database,
-  X
+  X,
+  Menu,
+  Home,
+  FolderTree,
+  DollarSign,
+  FileSpreadsheet,
+  Users,
+  Briefcase,
+  Zap,
+  Globe
 } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
 
@@ -186,6 +197,10 @@ export function AdminOperationsDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [copiedTracking, setCopiedTracking] = useState<string | null>(null);
 
+  // Sidebar & Navigation Drawers
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isAccountsTreeOpen, setIsAccountsTreeOpen] = useState(false);
+
   // Modals state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isQuickScanOpen, setIsQuickScanOpen] = useState(false);
@@ -204,6 +219,13 @@ export function AdminOperationsDashboard() {
     status: "new" as OrderStatus,
     trackingNumber: ""
   });
+
+  // Navigation Helper
+  const navigateTo = (path: string) => {
+    if (typeof window !== "undefined") {
+      window.location.href = path;
+    }
+  };
 
   // Save to localStorage whenever orders change
   useEffect(() => {
@@ -409,7 +431,7 @@ export function AdminOperationsDashboard() {
           o.orderNumber.toLowerCase().includes(q) ||
           o.customerName.toLowerCase().includes(q) ||
           o.customerPhone.includes(q) ||
-          (o.intlTrackingNumber && o.intlTrackingNumber.toLowerCase().includes(q));
+          (o.intlTrackingNumber && o.intlTrackingNumber.toLowerCase() === query);
         if (!matches) return false;
       }
       return true;
@@ -450,32 +472,96 @@ export function AdminOperationsDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#F0F7FF] via-[#F8FAFC] to-[#FFF9F5] text-[#0A2540] font-sans selection:bg-[#0284C7] selection:text-white pb-20" dir="rtl">
       
-      {/* 1. TOP SUPABASE NOTICE BAR */}
-      <div className="bg-[#0B2545] text-white text-xs py-2 px-3 sm:px-6 flex flex-wrap items-center justify-between gap-2 border-b border-[#134074] shadow-xs">
+      {/* 🌟 1. TOP BAR: SYSTEM STATUS & QUICK ADMIN NAVIGATION BUTTONS */}
+      <div className="bg-gradient-to-r from-[#0B2545] via-[#0F4C81] to-[#0284C7] text-white px-3 sm:px-6 py-2 flex flex-wrap items-center justify-between gap-2.5 text-xs shadow-md border-b border-[#134074]">
+        
+        {/* Right Info: Live System Badge */}
         <div className="flex items-center gap-2">
-          <Database className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-          <span className="font-bold">منظومة السوق الشامل (AL SHAMEL)</span>
-          <span className="text-sky-400 hidden sm:inline">•</span>
-          <span className="text-sky-200 hidden sm:inline text-[11px]">مزامنة حية للعمليات والشحنات</span>
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span className="font-bold">نظام السوق الشامل - النسخة الحية</span>
+          <span className="text-sky-300 hidden md:inline">•</span>
+          <span className="text-sky-100 hidden md:inline text-[11px]">مزامنة فورية للطلبات والطرود</span>
         </div>
-        <div className="flex items-center gap-2">
+
+        {/* 🌟 أزرار التنقل السريع لقائمة الأدمن (Quick Admin Menu Buttons) */}
+        <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 no-scrollbar w-full sm:w-auto justify-start sm:justify-end">
+          
+          {/* زر شجرة الحسابات */}
           <button
-            onClick={handleExportCSV}
-            className="px-2.5 py-1 rounded-lg bg-[#0F4C81] hover:bg-[#155e99] text-white text-[11px] font-bold transition flex items-center gap-1 cursor-pointer border border-sky-400/30"
+            onClick={() => setIsAccountsTreeOpen(true)}
+            className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/20 text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer shrink-0 shadow-xs active:scale-95"
+            title="فتح دليل وشجرة الحسابات المالية"
           >
-            <Download className="w-3 h-3 text-orange-300" />
-            <span>تصدير البيانات CSV</span>
+            <FolderTree className="w-3.5 h-3.5 text-amber-300" />
+            <span>🌳 شجرة الحسابات</span>
           </button>
+
+          {/* زر إدارة العملاء (Supabase) */}
+          <button
+            onClick={() => navigateTo("/admin-clients")}
+            className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/20 text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer shrink-0 shadow-xs active:scale-95"
+            title="الانتقال لصفحة إدارة حسابات العملاء"
+          >
+            <Users className="w-3.5 h-3.5 text-sky-200" />
+            <span>👥 إدارة العملاء</span>
+          </button>
+
+          {/* زر اطلب الآن (بوابة العميل) */}
+          <button
+            onClick={() => navigateTo("/new-order")}
+            className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#F97316] to-[#EA580C] hover:from-[#EA580C] text-white text-[11px] font-black transition flex items-center gap-1.5 cursor-pointer shrink-0 shadow-sm active:scale-95"
+            title="فتح بوابة الطلب الفوري"
+          >
+            <Zap className="w-3.5 h-3.5 text-white" />
+            <span>اطلب الآن ⚡</span>
+          </button>
+
+          {/* زر صفحة تتبع الشحنات */}
+          <button
+            onClick={() => navigateTo("/track")}
+            className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/20 text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer shrink-0 shadow-xs active:scale-95"
+          >
+            <Search className="w-3.5 h-3.5 text-orange-300" />
+            <span className="hidden sm:inline">تتبع الشحنة للعميل</span>
+            <span className="sm:hidden">تتبع</span>
+          </button>
+
+          {/* زر المتجر الرئيسي */}
+          <button
+            onClick={() => navigateTo("/")}
+            className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/20 text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer shrink-0 shadow-xs active:scale-95"
+            title="المتجر الرئيسي"
+          >
+            <Home className="w-3.5 h-3.5 text-sky-200" />
+            <span className="hidden md:inline">المتجر</span>
+          </button>
+
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-4 space-y-4">
         
-        {/* 2. MAIN HEADER (LIGHT LOGO THEMED) */}
+        {/* 🌟 2. MAIN NAV BOX (LIGHT LOGO THEMED + 3 STRIPES HAMBURGER BUTTON) */}
         <header className="bg-white border border-sky-200/90 rounded-2xl p-3 sm:p-4 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-3.5">
-          {/* Logo & Platform Info */}
-          <div className="flex items-center justify-between sm:justify-start gap-3 w-full lg:w-auto">
+          
+          {/* Right: 3 Stripes Button + Embedded Logo + Admin Title */}
+          <div className="flex items-center justify-between sm:justify-start gap-2.5 sm:gap-3 w-full lg:w-auto">
+            
+            {/* 🌟 زر الـ 3 شرطات للقائمة الجانبية (3-Stripes Hamburger Button) */}
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="flex flex-col justify-center items-center gap-1 p-2 sm:p-2.5 rounded-2xl bg-gradient-to-tr from-[#0F4C81] to-[#0284C7] hover:from-[#0A2540] hover:to-[#0F4C81] border border-sky-300/40 shadow-md cursor-pointer transition active:scale-95 group shrink-0"
+              title="فتح القائمة الجانبية الكاملة للأدمن (3 شُرطات)"
+            >
+              <span className="w-5 sm:w-6 h-0.5 sm:h-1 rounded-full bg-white group-hover:bg-orange-300 transition-all"></span>
+              <span className="w-5 sm:w-6 h-0.5 sm:h-1 rounded-full bg-orange-400 group-hover:bg-white transition-all"></span>
+              <span className="w-5 sm:w-6 h-0.5 sm:h-1 rounded-full bg-white group-hover:bg-orange-300 transition-all"></span>
+            </button>
+
+            {/* Embedded Logo */}
             <EmbeddedLogo size="sm" />
+
+            {/* Admin Badge */}
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-sky-50 border border-sky-200 text-[#0F4C81] text-xs font-black">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
               <span>لوحة العمليات</span>
@@ -496,6 +582,8 @@ export function AdminOperationsDashboard() {
 
           {/* Action Buttons */}
           <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto justify-between sm:justify-end">
+            
+            {/* Quick Scan */}
             <button
               onClick={() => {
                 setQuickScanResult(null);
@@ -508,6 +596,7 @@ export function AdminOperationsDashboard() {
               <span>فحص سريع</span>
             </button>
 
+            {/* Add Shipment Button */}
             <button
               onClick={() => setIsAddModalOpen(true)}
               className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#F97316] to-[#EA580C] hover:from-[#EA580C] text-white text-xs font-black shadow-md shadow-orange-500/25 transition flex items-center gap-1.5 cursor-pointer active:scale-95"
@@ -516,6 +605,7 @@ export function AdminOperationsDashboard() {
               <span>+ شحنة جديدة</span>
             </button>
 
+            {/* Refresh Button */}
             <button
               onClick={fetchOrders}
               disabled={loading}
@@ -524,6 +614,18 @@ export function AdminOperationsDashboard() {
             >
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-orange-500" : ""}`} />
             </button>
+
+            {/* Admin Badge */}
+            <div className="hidden sm:flex px-3 py-1.5 rounded-xl bg-sky-50 border border-sky-200 items-center gap-2">
+              <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-[#0F4C81] to-[#0284C7] text-white flex items-center justify-center font-bold text-xs">
+                <User className="w-3.5 h-3.5" />
+              </div>
+              <div className="text-right">
+                <div className="text-xs font-bold text-[#0A2540]">المشرف العام</div>
+                <div className="text-[10px] text-sky-700 font-mono">admin (نشط)</div>
+              </div>
+            </div>
+
           </div>
         </header>
 
@@ -1015,7 +1117,246 @@ export function AdminOperationsDashboard() {
 
       </div>
 
-      {/* 8. ADD SHIPMENT MODAL */}
+      {/* 🌟 8. SLIDE-OUT DRAWER (القائمة الجانبية الكاملة للأدمن) */}
+      {isSidebarOpen && (
+        <div className="fixed inset-0 z-50 overflow-hidden font-sans">
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity duration-300"
+            onClick={() => setIsSidebarOpen(false)}
+          />
+
+          <div className="fixed inset-y-0 right-0 flex max-w-full pl-10" dir="rtl">
+            <div className="w-80 sm:w-96 max-w-[85vw] bg-white text-[#0A2540] shadow-2xl flex flex-col border-l border-sky-200 animate-in slide-in-from-right duration-300">
+              
+              {/* Header of Sidebar */}
+              <div className="p-4 bg-gradient-to-r from-[#0B2545] to-[#0F4C81] text-white flex items-center justify-between">
+                <EmbeddedLogo size="sm" />
+                <button
+                  onClick={() => setIsSidebarOpen(false)}
+                  className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition cursor-pointer"
+                  title="إغلاق القائمة"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* User Status Badge */}
+              <div className="px-4 py-2.5 bg-sky-50 border-b border-sky-100 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span className="font-bold text-[#0A2540]">المشرف العام (زين مطيع)</span>
+                </div>
+                <span className="text-[10px] text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full font-bold">
+                  متصل 🟢
+                </span>
+              </div>
+
+              {/* Nav List with Links */}
+              <div className="flex-1 overflow-y-auto p-3 space-y-3 text-xs divide-y divide-slate-100">
+                
+                {/* 🌟 القسم الأول: العمليات والطلبات */}
+                <div className="space-y-1 pt-1">
+                  <div className="px-3 py-1 text-[10px] font-bold text-sky-700 uppercase tracking-wider">
+                    إدارة العمليات والطرود
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setIsSidebarOpen(false);
+                      navigateTo("/admin");
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-bold bg-gradient-to-r from-[#0F4C81] to-[#0284C7] text-white shadow-sm cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Truck className="w-4 h-4 text-orange-300" />
+                      <span>لوحة عمليات الشحن والفرز</span>
+                    </div>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/20 text-white font-mono">
+                      نشط
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setIsSidebarOpen(false);
+                      navigateTo("/new-order");
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-bold text-slate-700 hover:bg-sky-50 hover:text-[#0F4C81] transition cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Zap className="w-4 h-4 text-orange-500" />
+                      <span>طلب شراء جديد (بوابة العميل)</span>
+                    </div>
+                    <ChevronLeft className="w-3.5 h-3.5 opacity-60" />
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setIsSidebarOpen(false);
+                      navigateTo("/track");
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-bold text-slate-700 hover:bg-sky-50 hover:text-[#0F4C81] transition cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Search className="w-4 h-4 text-sky-600" />
+                      <span>صفحة تتبع الشحنة للعميل</span>
+                    </div>
+                    <ChevronLeft className="w-3.5 h-3.5 opacity-60" />
+                  </button>
+                </div>
+
+                {/* 🌟 القسم الثاني: إدارة العملاء وقواعد البيانات */}
+                <div className="space-y-1 pt-3">
+                  <div className="px-3 py-1 text-[10px] font-bold text-sky-700 uppercase tracking-wider">
+                    العملاء وقواعد البيانات
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setIsSidebarOpen(false);
+                      navigateTo("/admin-clients");
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-bold text-slate-700 hover:bg-sky-50 hover:text-[#0F4C81] transition cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Users className="w-4 h-4 text-emerald-600" />
+                      <span>إدارة العملاء والحسابات (Supabase)</span>
+                    </div>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold border border-emerald-200">
+                      قاعدة بيانات
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setIsSidebarOpen(false);
+                      setIsAccountsTreeOpen(true);
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-bold text-slate-700 hover:bg-sky-50 hover:text-[#0F4C81] transition cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <FolderTree className="w-4 h-4 text-amber-500" />
+                      <span>دليل وشجرة الحسابات المحاسبية</span>
+                    </div>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 font-bold border border-amber-200">
+                      مالية
+                    </span>
+                  </button>
+                </div>
+
+                {/* 🌟 القسم الثالث: المتجر والتسوق */}
+                <div className="space-y-1 pt-3">
+                  <div className="px-3 py-1 text-[10px] font-bold text-sky-700 uppercase tracking-wider">
+                    المتجر والتسوق
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setIsSidebarOpen(false);
+                      navigateTo("/");
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-bold text-slate-700 hover:bg-sky-50 hover:text-[#0F4C81] transition cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Home className="w-4 h-4 text-orange-500" />
+                      <span>المتجر الرئيسي (واجهة المتسوقين)</span>
+                    </div>
+                    <ChevronLeft className="w-3.5 h-3.5 opacity-60" />
+                  </button>
+                </div>
+
+              </div>
+
+              {/* Footer */}
+              <div className="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs">
+                <span className="font-mono text-slate-500 text-[10px]">Al Shamel System v2.4</span>
+                <button
+                  onClick={() => setIsSidebarOpen(false)}
+                  className="px-3 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold"
+                >
+                  إغلاق
+                </button>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🌟 9. ACCOUNTS TREE MODAL (نافذة شجرة الحسابات المحاسبية) */}
+      {isAccountsTreeOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white border border-sky-200 rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-5 sm:p-7 shadow-2xl text-right text-[#0A2540] space-y-4">
+            
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#0F4C81] to-[#0284C7] text-white flex items-center justify-center shadow-sm">
+                  <FolderTree className="w-5 h-5 text-orange-300" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-[#0A2540]">شجرة الحسابات المحاسبية العامة</h3>
+                  <p className="text-xs text-slate-500">الدليل المحاسبي الشامل لعمليات الاستيراد والطرود</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsAccountsTreeOpen(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Tree Categories */}
+            <div className="space-y-3 text-xs">
+              <div className="p-3 bg-sky-50 rounded-2xl border border-sky-200 space-y-2">
+                <div className="font-bold text-[#0F4C81] flex items-center justify-between">
+                  <span>1 - الأصول (Assets)</span>
+                  <span className="font-mono text-xs">كود: 1000</span>
+                </div>
+                <div className="pr-4 space-y-1 text-slate-600">
+                  <div>• 1010 - النقدية في الصندوق (الريال اليمني / السعودي / الدولار)</div>
+                  <div>• 1020 - حسابات البنوك والتحويلات (الكريمي، بنك اليمن والكويت)</div>
+                  <div>• 1030 - ذمم العملاء المستحقة والشحنات قيد التوصيل (COD)</div>
+                </div>
+              </div>
+
+              <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200 space-y-2">
+                <div className="font-bold text-amber-800 flex items-center justify-between">
+                  <span>2 - الخصوم والالتزامات (Liabilities)</span>
+                  <span className="font-mono text-xs">كود: 2000</span>
+                </div>
+                <div className="pr-4 space-y-1 text-slate-600">
+                  <div>• 2010 - مستحقات الموردين ومتاجر الشراء (شي إن، تيمو، أمازون)</div>
+                  <div>• 2020 - أمانات ودفعات العملاء المقدمة</div>
+                </div>
+              </div>
+
+              <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-200 space-y-2">
+                <div className="font-bold text-emerald-800 flex items-center justify-between">
+                  <span>3 - الإيرادات والأرباح (Revenue)</span>
+                  <span className="font-mono text-xs">كود: 4000</span>
+                </div>
+                <div className="pr-4 space-y-1 text-slate-600">
+                  <div>• 4010 - إيرادات عمولات الشراء والشحن الدولي</div>
+                  <div>• 4020 - رسوم التوصيل المحلي والفرز</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-end">
+              <button
+                onClick={() => setIsAccountsTreeOpen(false)}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#0F4C81] to-[#0284C7] text-white text-xs font-bold shadow-sm"
+              >
+                إغلاق الدليل
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* 10. ADD SHIPMENT MODAL */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
           <div className="bg-white border border-sky-200 rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-5 sm:p-7 shadow-2xl text-right text-[#0A2540]">
@@ -1133,7 +1474,7 @@ export function AdminOperationsDashboard() {
         </div>
       )}
 
-      {/* 9. QUICK SCAN MODAL */}
+      {/* 11. QUICK SCAN MODAL */}
       {isQuickScanOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
           <div className="bg-white border border-sky-200 rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl text-right text-[#0A2540]">
@@ -1189,7 +1530,7 @@ export function AdminOperationsDashboard() {
         </div>
       )}
 
-      {/* 10. PRINT RECEIPT MODAL */}
+      {/* 12. PRINT RECEIPT MODAL */}
       {printingOrder && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
           <div className="bg-white border border-sky-200 rounded-3xl max-w-sm w-full p-5 shadow-2xl text-center space-y-4 text-[#0A2540]">
