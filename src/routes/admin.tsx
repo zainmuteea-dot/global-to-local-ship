@@ -30,6 +30,7 @@ import {
   X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { AdminSidebar } from "@/components/AdminSidebar";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -67,6 +68,7 @@ export function AdminOperationsDashboard() {
   const [isNewOrderModalOpen, setIsNewOrderModalOpen] = useState(false);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const [activeOrder, setActiveOrder] = useState<OrderItem | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // نموذج إضافة شحنة جديدة
   const [newOrderForm, setNewOrderForm] = useState({
@@ -288,15 +290,15 @@ export function AdminOperationsDashboard() {
           
           {/* اليمين: الشعار وزر القائمة */}
           <div className="flex items-center gap-3">
-            <a
-              href="/"
-              className="size-10 rounded-xl bg-[#00629B] text-white flex flex-col items-center justify-center gap-1 hover:bg-[#005080] transition"
-              title="الرئيسية"
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="size-10 rounded-xl bg-[#00629B] text-white flex flex-col items-center justify-center gap-1 hover:bg-[#005080] transition cursor-pointer"
+              title="القائمة الجانبية"
             >
               <span className="w-5 h-0.5 bg-white rounded-full"></span>
               <span className="w-5 h-0.5 bg-white rounded-full"></span>
               <span className="w-5 h-0.5 bg-white rounded-full"></span>
-            </a>
+            </button>
 
             <div className="flex items-center gap-2">
               <div className="text-right leading-tight">
