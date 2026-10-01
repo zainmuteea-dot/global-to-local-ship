@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AccountSuccessRouteImport } from './routes/account-success'
+import { Route as AccountingRouteImport } from './routes/accounting'
 import { Route as AccountsRouteImport } from './routes/accounts'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AdminClientsRouteImport } from './routes/admin-clients'
@@ -57,6 +58,11 @@ const IndexRoute = IndexRouteImport.update({
 const AccountSuccessRoute = AccountSuccessRouteImport.update({
   id: '/account-success',
   path: '/account-success',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccountingRoute = AccountingRouteImport.update({
+  id: '/accounting',
+  path: '/accounting',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AccountsRoute = AccountsRouteImport.update({
@@ -248,6 +254,7 @@ const TrackTrackingCodeRoute = TrackTrackingCodeRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/account-success': typeof AccountSuccessRoute
+  '/accounting': typeof AccountingRoute
   '/accounts': typeof AccountsRoute
   '/admin': typeof AdminRoute
   '/admin-clients': typeof AdminClientsRoute
@@ -289,6 +296,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/account-success': typeof AccountSuccessRoute
+  '/accounting': typeof AccountingRoute
   '/accounts': typeof AccountsRoute
   '/admin': typeof AdminRoute
   '/admin-clients': typeof AdminClientsRoute
@@ -331,6 +339,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/account-success': typeof AccountSuccessRoute
+  '/accounting': typeof AccountingRoute
   '/accounts': typeof AccountsRoute
   '/admin': typeof AdminRoute
   '/admin-clients': typeof AdminClientsRoute
@@ -374,6 +383,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/account-success'
+    | '/accounting'
     | '/accounts'
     | '/admin'
     | '/admin-clients'
@@ -415,6 +425,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/account-success'
+    | '/accounting'
     | '/accounts'
     | '/admin'
     | '/admin-clients'
@@ -456,6 +467,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/account-success'
+    | '/accounting'
     | '/accounts'
     | '/admin'
     | '/admin-clients'
@@ -498,6 +510,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountSuccessRoute: typeof AccountSuccessRoute
+  AccountingRoute: typeof AccountingRoute
   AccountsRoute: typeof AccountsRoute
   AdminRoute: typeof AdminRoute
   AdminClientsRoute: typeof AdminClientsRoute
@@ -551,6 +564,13 @@ declare module '@tanstack/react-router' {
       path: '/account-success'
       fullPath: '/account-success'
       preLoaderRoute: typeof AccountSuccessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/accounting': {
+      id: '/accounting'
+      path: '/accounting'
+      fullPath: '/accounting'
+      preLoaderRoute: typeof AccountingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/accounts': {
@@ -818,6 +838,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountSuccessRoute: AccountSuccessRoute,
+  AccountingRoute: AccountingRoute,
   AccountsRoute: AccountsRoute,
   AdminRoute: AdminRoute,
   AdminClientsRoute: AdminClientsRoute,
