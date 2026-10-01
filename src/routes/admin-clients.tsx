@@ -31,7 +31,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
-export const Route = createFileRoute("/admin")({
+export const Route = createFileRoute("/admin-clients")({
   head: () => ({
     meta: [
       { title: "لوحة عمليات الشحن والتوزيع | السوق الشامل AL SHAMEL" },
@@ -684,7 +684,7 @@ export function AdminOperationsDashboard() {
                         <div className="flex items-center gap-1.5">
                           <span>{order.phone}</span>
                           <a
-                            href={`https://wa.me/${order.phone.replace(/[^0-9]/g, "")}`}
+                            href={order.phone ? `https://wa.me/${order.phone.replace(/[^0-9]/g, "")}` : undefined}
                             target="_blank"
                             rel="noreferrer"
                             className="size-5 rounded-full bg-emerald-50 text-emerald-600 grid place-items-center hover:bg-emerald-100 transition"
@@ -809,7 +809,7 @@ export function AdminOperationsDashboard() {
                         <span>اتصال</span>
                       </a>
                       <a
-                        href={`https://wa.me/${order.phone.replace(/[^0-9]/g, "")}`}
+                        href={order.phone ? `https://wa.me/${order.phone.replace(/[^0-9]/g, "")}` : undefined}
                         target="_blank"
                         rel="noreferrer"
                         className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-bold flex items-center gap-1"
