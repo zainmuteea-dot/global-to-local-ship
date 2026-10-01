@@ -31,7 +31,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
-export const Route = createFileRoute("/admin")({
+export const Route = createFileRoute("/admin-clients")({
   head: () => ({
     meta: [
       { title: "لوحة عمليات الشحن والتوزيع | السوق الشامل AL SHAMEL" },
