@@ -4,7 +4,7 @@ export const config = { runtime: "edge" };
 interface SheinResult {
   price: number;
   currency: string;
-  title?: string;
+  title?: string | undefined;
 }
 
 const UA_HEADERS = {
