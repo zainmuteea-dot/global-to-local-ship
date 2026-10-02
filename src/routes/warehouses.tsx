@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
+const db = supabase as any;
 
 export const Route = createFileRoute("/warehouses")({
   component: WarehousesPage,
@@ -22,7 +23,7 @@ function WarehousesPage() {
 
   const fetchWarehouses = async () => {
     setLoading(true);
-    const { data, error } = await supabase.from("warehouses").select("*").order("created_at", { ascending: false });
+    const { data, error } = await db.from("warehouses").select("*").order("created_at", { ascending: false });
     if (!error && data) setWarehouses(data);
     setLoading(false);
   };
@@ -33,7 +34,7 @@ function WarehousesPage() {
 
   const addWarehouse = async () => {
     if (!name.trim()) return;
-    const { error } = await supabase.from("warehouses").insert({
+    const { error } = await db.from("warehouses").insert({
       name: name.trim(),
       location: location.trim() || null,
       phone: phone.trim() || null,
@@ -46,7 +47,7 @@ function WarehousesPage() {
 
   const deleteWarehouse = async (id: string) => {
     if (!confirm("حذف هذا المخزن؟")) return;
-    await supabase.from("warehouses").delete().eq("id", id);
+    await db.from("warehouses").delete().eq("id", id);
     fetchWarehouses();
   };
 
