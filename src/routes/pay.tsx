@@ -56,6 +56,18 @@ const CSS = `
 .badge{font-size:12.5px;font-weight:800;padding:5px 12px;border-radius:999px}
 .badge.warn{background:#fff2df;color:#b96d05}
 .badge.ok{background:var(--green-bg);color:var(--green)}
+/* order details — تخطيط جديد (رقم يسار أخضر + اسم وسط) */
+.pay-ord{position:relative;text-align:center;padding-top:4px}
+.pay-ord .ono{position:absolute;inset-block-start:0;left:0;display:inline-flex;align-items:center;gap:6px;
+  background:var(--green-bg);border:1.4px solid #bfe9d2;color:var(--green);
+  font-weight:900;font-size:14px;padding:7px 12px;border-radius:12px;direction:ltr}
+.pay-ord .ono .k{font-size:10.5px;font-weight:800;opacity:.8;direction:rtl}
+.pay-ord .nm{font-size:18px;font-weight:900;color:var(--ink);margin-top:2px}
+.pay-ord .ph{direction:ltr;font-size:13.5px;color:var(--muted);font-weight:700;margin-top:3px}
+.pay-ord .st{margin-top:14px}
+.pay-ord .wait{margin-top:11px;display:flex;align-items:center;justify-content:center;gap:8px;
+  background:#fff6e9;border:1.4px solid #f3d9a8;color:#9a5b05;font-size:13px;font-weight:700;
+  padding:11px 14px;border-radius:13px;line-height:1.7}
 /* amount squares */
 .pay-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:11px}
 .stat{border-radius:16px;padding:15px 10px;text-align:center;border:1.6px solid var(--line);
@@ -129,7 +141,6 @@ const Wallet = () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none
 const Receipt = () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M4 2v20l3-2 3 2 2-2 2 2 3-2 3 2V2l-3 2-3-2-2 2-2-2-3 2z"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="14" y2="12"/></svg>)
 const Hash = () => (<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>)
 const Info = () => (<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>)
-const UserIc = () => (<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>)
 const Card = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>)
 const Caret = () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6"/></svg>)
 const Copy = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>)
@@ -202,14 +213,12 @@ function PayPage() {
             <div className="pay-ico"><Receipt /></div>
             <div className="pay-title">تفاصيل الطلب</div>
           </div>
-          <div className="pay-row">
-            <div className="ric"><Hash /></div>
-            <div className="rtx"><div className="k">رقم الطلب</div><div className="v ltr">{orderNo}</div></div>
-            <span className="badge warn">غير مكتمل</span>
-          </div>
-          <div className="pay-row">
-            <div className="ric"><UserIc /></div>
-            <div className="rtx"><div className="k">الاسم ورقم الهاتف</div><div className="v ltr">{customer} – {phone}</div></div>
+          <div className="pay-ord">
+            <span className="ono"><Hash />{orderNo}</span>
+            <div className="nm">{customer}</div>
+            <div className="ph">{phone}</div>
+            <div className="st"><span className="badge warn">غير مكتمل</span></div>
+            <div className="wait"><Info /><span>يرجى الانتظار حتى يتم مراجعة طلبك من الإدارة</span></div>
           </div>
         </section>
 
