@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useMemo, useState } from 'react'
 
 export const Route = createFileRoute('/new-order')({
@@ -90,6 +90,30 @@ const CSS = `
 .no-foot .f svg{color:var(--blue-500)}
 .no-foot .f svg{width:15px;height:15px}
 .no-warn{display:flex;align-items:center;gap:8px;margin-top:12px;background:#fff6e9;border:1.4px solid #f3d9a8;color:#9a5b05;font-size:12.5px;font-weight:700;padding:10px 13px;border-radius:12px}
+.no-success{background:#fff;border:2px solid #bfe9d2;border-radius:22px;padding:34px 22px;margin-top:16px;
+  text-align:center;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.no-success::before{content:'';position:absolute;inset:0;
+  background:radial-gradient(260px 160px at 50% -10%,rgba(26,162,96,.12),transparent 70%)}
+.no-scheck{width:84px;height:84px;border-radius:50%;margin:0 auto 18px;display:grid;place-items:center;
+  color:#fff;position:relative;z-index:1;background:linear-gradient(140deg,#2ec46e,#1aa260);
+  box-shadow:0 14px 30px -10px rgba(26,162,96,.6);animation:pop .45s cubic-bezier(.2,1.4,.4,1)}
+@keyframes pop{0%{transform:scale(.4);opacity:0}100%{transform:scale(1);opacity:1}}
+.no-success h2{position:relative;z-index:1;font-size:21px;font-weight:900;color:var(--ink);margin-bottom:10px}
+.no-success .desc{position:relative;z-index:1;font-size:14px;color:#5a7294;font-weight:600;max-width:420px;margin:0 auto;line-height:1.8}
+.no-codebox{position:relative;z-index:1;margin:22px auto 6px;max-width:360px;
+  background:var(--blue-50);border:1.6px dashed var(--blue-500);border-radius:16px;padding:16px}
+.no-codebox .lab{font-size:12.5px;font-weight:700;color:#5a7294;margin-bottom:6px}
+.no-codebox .code{display:flex;align-items:center;justify-content:center;gap:10px;
+  font-size:26px;font-weight:900;letter-spacing:1px;color:var(--blue-800);direction:ltr}
+.no-copy{border:none;background:var(--blue-100);color:var(--blue-800);width:34px;height:34px;border-radius:10px;
+  display:grid;place-items:center;cursor:pointer;transition:.2s}
+.no-copy:hover{background:var(--blue-500);color:#fff}
+.no-copy.ok{background:#1aa260;color:#fff}
+.no-sbtns{position:relative;z-index:1;display:flex;gap:11px;margin-top:24px}
+.no-sbtns .no-btn{margin-top:0}
+.no-gold{background:#fff;color:var(--blue-800);border:1.8px solid var(--orange-400)}
+.no-gold:hover{background:#fff8ec;border-color:var(--orange-600)}
+@media(max-width:460px){.no-sbtns{flex-direction:column}}
 .no-foot .f:nth-child(2) svg{color:var(--orange-500)}
 @media(max-width:520px){.no-brand h1{font-size:16px}.no-price{flex-direction:column}.no-price select{flex:1}}
 @media(max-width:360px){.no-badge{width:44px;height:44px}.no-badge svg{width:28px;height:28px}.no-brand h1{font-size:14px}}
@@ -190,6 +214,9 @@ function NewOrderPage() {
   const [status, setStatus] = useState<'idle' | 'sending' | 'done'>('idle')
   const [priceLoading, setPriceLoading] = useState(false)
   const [sbError, setSbError] = useState('')
+  const [orderCode, setOrderCode] = useState('')
+  const [copied, setCopied] = useState(false)
+  const navigate = useNavigate()
 
   const store = useMemo(() => detectStore(url), [url])
 
@@ -226,9 +253,85 @@ function NewOrderPage() {
     if (status === 'sending') return
     setStatus('sending')
     // TODO: استبدل بنداء API الفعلي (Serverless / Supabase insert)
-    const payload = { url, store: store?.key ?? null, address, name, phone, price, currency, notes, duplicates: dup }
+    const code = 'SHP - ' + Math.floor(10000 + Math.random() * 90000)
+    const payload = { code, url, store: store?.key ?? null, address, name, phone, price, currency, notes, duplicates: dup }
     console.log('order payload', payload)
-    setTimeout(() => setStatus('done'), 900)
+    setTimeout(() => {
+      setOrderCode(code)
+      setStatus('done')
+      if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
+    }, 900)
+  }
+
+  // إعادة تعيين النموذج لطلب جديد
+  const resetForm = () => {
+    setUrl(''); setAddress(''); setPrice(''); setNotes(''); setDup('لا')
+    setOrderCode(''); setStatus('idle')
+  }
+
+  const copyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(orderCode)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1800)
+    } catch { /* النسخ غير متاح */ }
+  }
+
+  const Header = (
+    <header className="no-topbar">
+      <div className="no-badge"><Logo /></div>
+      <div className="no-brand">
+        <h1>SHOPPING <b>AL SHAMEL</b></h1>
+        <p>السوق الشامل • وسيطكم العالمي</p>
+      </div>
+      <button className="no-arrow" type="button" title="الرجوع"><Arrow /></button>
+    </header>
+  )
+
+  // ===== شاشة نجاح الطلب (تظهر بعد الإرسال) =====
+  if (status === 'done') {
+    return (
+      <div className="no-root">
+        <style>{CSS}</style>
+        <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+        <div className="no-wrap">
+          {Header}
+          <section className="no-success">
+            <div className="no-scheck">
+              <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
+            </div>
+            <h2>تم إرسال واستلام طلبك بنجاح! 🎉</h2>
+            <p className="desc">تم تسجيل طلبك فوراً في لوحة عمليات السوق الشامل وسيتواصل معك مندوبنا لتأكيد السعر وموعد الاستلام.</p>
+            <div className="no-codebox">
+              <div className="lab">رقم تتبع طلبك المباشر:</div>
+              <div className="code">
+                <span>{orderCode}</span>
+                <button className={'no-copy' + (copied ? ' ok' : '')} type="button" onClick={copyCode} title="نسخ الكود">
+                  {copied
+                    ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
+                    : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>}
+                </button>
+              </div>
+            </div>
+            <div className="no-sbtns">
+              <button className="no-btn no-gold" type="button" onClick={resetForm}>
+                <span>طلب منتج آخر</span>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+              </button>
+              <button className="no-btn no-primary" type="button" onClick={() => navigate({ to: '/pay' })}>
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" /><line x1="1" y1="10" x2="23" y2="10" /></svg>
+                <span>طرق الدفع</span>
+              </button>
+            </div>
+          </section>
+          <div className="no-foot">
+            <div className="f"><Check /> فحص ومطابقة أصلية</div>
+            <div className="f"><Truck /> توصيل لكافة المدن</div>
+            <div className="f"><Check /> تأكيد بالواتساب</div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -237,14 +340,7 @@ function NewOrderPage() {
       <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
       <div className="no-wrap">
 
-        <header className="no-topbar">
-          <div className="no-badge"><Logo /></div>
-          <div className="no-brand">
-            <h1>SHOPPING <b>AL SHAMEL</b></h1>
-            <p>السوق الشامل • وسيطكم العالمي</p>
-          </div>
-          <button className="no-arrow" type="button" title="الرجوع"><Arrow /></button>
-        </header>
+        {Header}
 
         {sbError && (
           <div className="no-warn">
@@ -347,7 +443,7 @@ function NewOrderPage() {
 
         <button className="no-btn no-primary" type="button" onClick={submit} disabled={status === 'sending'}>
           <Rocket />
-          <span>{status === 'sending' ? 'جارٍ إرسال الطلب...' : status === 'done' ? '✓ تم استلام طلبك بنجاح' : 'تقديم الطلب'}</span>
+          <span>{status === 'sending' ? 'جارٍ إرسال الطلب...' : 'تقديم الطلب'}</span>
         </button>
         <button className="no-btn no-ghost" type="button"><Arrow /><span>الرجوع للصفحة الرئيسية</span></button>
 
