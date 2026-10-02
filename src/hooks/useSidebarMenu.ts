@@ -17,7 +17,7 @@ export function useSidebarMenu(section: string) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase
+    db
      .from("sidebar_menu")
      .select("*")
      .eq("section", section)
