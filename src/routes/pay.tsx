@@ -56,18 +56,19 @@ const CSS = `
 .badge{font-size:12.5px;font-weight:800;padding:5px 12px;border-radius:999px}
 .badge.warn{background:#fff2df;color:#b96d05}
 .badge.ok{background:var(--green-bg);color:var(--green)}
-/* order details — تخطيط جديد (رقم يسار أخضر + اسم وسط) */
-.pay-ord{position:relative;text-align:center;padding-top:4px}
-.pay-ord .ono{position:absolute;inset-block-start:0;left:0;display:inline-flex;align-items:center;gap:6px;
-  background:var(--green-bg);border:1.4px solid #bfe9d2;color:var(--green);
-  font-weight:900;font-size:14px;padding:7px 12px;border-radius:12px;direction:ltr}
-.pay-ord .ono .k{font-size:10.5px;font-weight:800;opacity:.8;direction:rtl}
-.pay-ord .nm{font-size:18px;font-weight:900;color:var(--ink);margin-top:2px}
-.pay-ord .ph{direction:ltr;font-size:13.5px;color:var(--muted);font-weight:700;margin-top:3px}
-.pay-ord .st{margin-top:14px}
-.pay-ord .wait{margin-top:11px;display:flex;align-items:center;justify-content:center;gap:8px;
+/* order details — تخطيط مرتّب بصناديق */
+.od-top{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.od-box{border:1.6px solid var(--line);border-radius:14px;padding:12px 10px;text-align:center;
+  display:flex;flex-direction:column;align-items:center;gap:7px;background:#fff}
+.od-box .od-k{font-size:12px;font-weight:800;color:var(--muted)}
+.od-box.num{background:linear-gradient(160deg,var(--green-bg),#fff);border-color:#bfe9d2}
+.od-box.num .od-v{display:inline-flex;align-items:center;gap:5px;font-size:18px;font-weight:900;
+  color:var(--green);direction:ltr}
+.od-box.stat .od-v{display:flex}
+.od-name{text-align:center;margin-top:14px;font-size:17px;font-weight:900;color:var(--ink);direction:ltr}
+.pay-wait{margin-top:13px;display:flex;align-items:center;justify-content:center;gap:8px;
   background:#fff6e9;border:1.4px solid #f3d9a8;color:#9a5b05;font-size:13px;font-weight:700;
-  padding:11px 14px;border-radius:13px;line-height:1.7}
+  padding:12px 14px;border-radius:13px;line-height:1.7;text-align:center}
 /* amount squares */
 .pay-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:11px}
 .stat{border-radius:16px;padding:15px 10px;text-align:center;border:1.6px solid var(--line);
@@ -214,11 +215,18 @@ function PayPage() {
             <div className="pay-title">تفاصيل الطلب</div>
           </div>
           <div className="pay-ord">
-            <span className="ono"><Hash />{orderNo}</span>
-            <div className="nm">{customer}</div>
-            <div className="ph">{phone}</div>
-            <div className="st"><span className="badge warn">غير مكتمل</span></div>
-            <div className="wait"><Info /><span>يرجى الانتظار حتى يتم مراجعة طلبك من الإدارة</span></div>
+            <div className="od-top">
+              <div className="od-box num">
+                <div className="od-k">رقم الطلب</div>
+                <div className="od-v"><Hash />{orderNo}</div>
+              </div>
+              <div className="od-box stat">
+                <div className="od-k">حالة الدفع</div>
+                <div className="od-v"><span className="badge warn">غير مكتمل</span></div>
+              </div>
+            </div>
+            <div className="od-name">{customer} – {phone}</div>
+            <div className="pay-wait"><Info /><span>يرجى الانتظار حتى يتم مراجعة طلبك من الإدارة</span></div>
           </div>
         </section>
 
