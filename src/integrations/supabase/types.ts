@@ -182,69 +182,6 @@ export type Database = {
         }
         Relationships: []
       }
-      sidebar_menu: {
-        Row: {
-          id: string
-          section: string
-          title: string
-          path: string | null
-          icon: string | null
-          badge: string | null
-          sort_order: number
-          is_active: boolean
-        }
-        Insert: {
-          id?: string
-          section: string
-          title: string
-          path?: string | null
-          icon?: string | null
-          badge?: string | null
-          sort_order?: number
-          is_active?: boolean
-        }
-        Update: {
-          id?: string
-          section?: string
-          title?: string
-          path?: string | null
-          icon?: string | null
-          badge?: string | null
-          sort_order?: number
-          is_active?: boolean
-        }
-        Relationships: []
-      }
-      site_steps: {
-        Row: {
-          id: string
-          title: string
-          description: string
-          icon_name: string
-          link_to: string
-          sort_order: number
-          is_active: boolean
-        }
-        Insert: {
-          id?: string
-          title: string
-          description?: string
-          icon_name?: string
-          link_to?: string
-          sort_order?: number
-          is_active?: boolean
-        }
-        Update: {
-          id?: string
-          title?: string
-          description?: string
-          icon_name?: string
-          link_to?: string
-          sort_order?: number
-          is_active?: boolean
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never
