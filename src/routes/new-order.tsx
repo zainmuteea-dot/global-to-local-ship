@@ -43,7 +43,7 @@ function NewOrder() {
       const { data, error } = await supabase.from("orders").insert([{
         customer_name: name.trim(), phone: phone.trim(),
         product_link: url.trim(), product_name: productType || "منتج من SHEIN",
-        status: "جديد", notes: fullNotes, user_id: user?.id
+        status: "جديد", notes: fullNotes, user_id: user?.id ?? null
       }]).select("tracking_code").single();
       if (error) throw error;
       if (data) setTrackingCode(data.tracking_code);

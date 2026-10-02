@@ -138,15 +138,15 @@ function MyAccountPage() {
 
   // استخراج الاسم الحقيقي ورقم الهاتف بدقة مع خيارات احتياطية ذكية
   const displayName =
-    profile?.full_name ||
-    user?.user_metadata?.full_name ||
+    profile?.["full_name"] ||
+    user?.user_metadata?.["full_name"] ||
     (typeof window !== "undefined" ? sessionStorage.getItem("sc_name") : null) ||
     user?.email?.split("@")[0] ||
     "عميلنا الكريم";
 
   const displayPhone =
-    profile?.phone ||
-    user?.user_metadata?.phone ||
+    profile?.["phone"] ||
+    user?.user_metadata?.["phone"] ||
     (typeof window !== "undefined" ? sessionStorage.getItem("sc_phone") : null);
 
   const items: { label: string; icon: LucideIcon; to?: string; sheet?: Sheet }[] = [
