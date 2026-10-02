@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
+const db = supabase as any;
 
 export type MenuItem = {
   id: string;

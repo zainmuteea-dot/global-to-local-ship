@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+const db = supabase as any;
 
 export const Route = createFileRoute("/insurance-amounts")({
   component: InsurancePage,
@@ -15,9 +16,9 @@ function InsurancePage() {
   const [loading, setLoading] = useState(false);
 
   const fetchData = async () => {
-    const { data } = await supabase.from("insurance_amounts").select("*").order("created_at", { ascending: false });
+    const { data } = await db.from("insurance_amounts").select("*").order("created_at", { ascending: false });
     if (data) setList(data);
-    const { data: acc } = await supabase.from("accounts").select("id, name");
+    const { data: acc } = await db.from("accounts").select("id, name");
     if (acc) setAccounts(acc);
   };
 
@@ -27,7 +28,7 @@ function InsurancePage() {
     e.preventDefault();
     if (!accountId ||!amount) return;
     setLoading(true);
-    const { error } = await supabase.from("insurance_amounts").insert({
+    const { error } = await db.from("insurance_amounts").insert({
       account_id: parseInt(accountId),
       amount: parseFloat(amount),
       description: desc,

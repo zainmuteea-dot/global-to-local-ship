@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/integrations/supabase/client'
+const db = supabase as any;
 
 export const Route = createFileRoute('/dashboard')({
   component: Dashboard,
@@ -10,10 +11,10 @@ function Dashboard() {
   const [stats, setStats] = useState({products:0, customers:0, sales:0, suppliers:0})
   useEffect(()=>{
     const load = async () => {
-      const { count: pc } = await supabase.from('products').select('*',{count:'exact', head:true})
-      const { count: cc } = await supabase.from('customers').select('*',{count:'exact', head:true})
-      const { count: sc } = await supabase.from('sales_invoices').select('*',{count:'exact', head:true})
-      const { count: supc } = await supabase.from('suppliers').select('*',{count:'exact', head:true})
+      const { count: pc } = await db.from('products').select('*',{count:'exact', head:true})
+      const { count: cc } = await db.from('customers').select('*',{count:'exact', head:true})
+      const { count: sc } = await db.from('sales_invoices').select('*',{count:'exact', head:true})
+      const { count: supc } = await db.from('suppliers').select('*',{count:'exact', head:true})
       setStats({products: pc||0, customers: cc||0, sales: sc||0, suppliers: supc||0})
     }
     load()
