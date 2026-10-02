@@ -23,7 +23,7 @@ export function useSidebarMenu(section: string) {
      .eq("section", section)
      .eq("is_active", true)
      .order("sort_order")
-     .then(({ data }) => {
+     .then(({ data }: any) => {
         if (data) setItems(data as MenuItem[]);
         setLoading(false);
       });

@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from "react"
 import { supabase } from "@/integrations/supabase/client"
+const db = supabase as any;
 
 export const Route = createFileRoute('/sales-returns')({
   component: SalesReturnsComponent,
@@ -15,25 +16,25 @@ function SalesReturnsComponent() {
   const [items, setItems] = useState([{ product_id: "", quantity: 1, unit_price: 0 }])
 
   const load = async () => {
-    const { data } = await supabase.from("sales_returns").select("*, sales_invoices(invoice_number)").order("created_at", { ascending: false })
+    const { data } = await db.from("sales_returns").select("*, sales_invoices(invoice_number)").order("created_at", { ascending: false })
     setReturns(data || [])
-    const inv = await supabase.from("sales_invoices").select("id, invoice_number")
+    const inv = await db.from("sales_invoices").select("id, invoice_number")
     setInvoices(inv.data || [])
-    const prod = await supabase.from("products").select("id, name, sale_price")
+    const prod = await db.from("products").select("id, name, sale_price")
     setProducts(prod.data || [])
   }
   useEffect(() => { load() }, [])
 
   const submit = async () => {
     const total = items.reduce((s, i) => s + i.quantity * i.unit_price, 0)
-    const { data: ret, error } = await supabase.from("sales_returns").insert({
+    const { data: ret, error } = await db.from("sales_returns").insert({
       invoice_id: invoiceId,
       return_number: `SR-${Date.now()}`,
       reason, total_amount: total, status: "completed"
     }).select().single()
     if (error) return alert(error.message)
     for (const it of items) {
-      await supabase.from("sales_return_items").insert({
+      await db.from("sales_return_items").insert({
         return_id: ret.id, product_id: it.product_id,
         quantity: it.quantity, unit_price: it.unit_price,
         total_price: it.quantity * it.unit_price

@@ -10,7 +10,7 @@ export const Route = createFileRoute('/inventory')({
 function InventoryPage() {
   const [products, setProducts] = useState<any[]>([])
   useEffect(()=>{
-    db.from('products').select('*').order('name').then(({data})=>{ if(data) setProducts(data) })
+    db.from('products').select('*').order('name').then(({data}: any)=>{ if(data) setProducts(data) })
   },[])
   return (
     <div dir="rtl" className="p-6">
