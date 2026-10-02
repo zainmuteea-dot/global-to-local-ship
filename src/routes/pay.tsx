@@ -1,246 +1,268 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useState, useEffect, type CSSProperties } from "react";
-import { supabase } from "../lib/supabase";
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { useMemo, useState } from 'react'
 
-export const Route = createFileRoute("/pay")({
-  validateSearch: (search: Record<string, unknown>) => ({
-    order: (search["order"] as string) || "",
-  }),
-  component: Pay,
-});
+export const Route = createFileRoute('/pay')({
+  component: PayPage,
+  validateSearch: (s: Record<string, unknown>) => ({ order: (s.order as string) || '' }),
+})
 
-type Vars = CSSProperties & { [key: `--${string}`]: string };
-
-interface PayMethod {
-  id: string;
-  name: string;
-  sub: string;
-  color: string;
-  cbg: string;
-  logo: string;
+/* ===================== Styles ===================== */
+const CSS = `
+:root{
+  --blue-900:#013a70;--blue-800:#004A8D;--blue-600:#2f6fb0;--blue-500:#3E86C4;
+  --blue-100:#e3eef8;--blue-50:#f0f6fc;--orange-600:#D86616;--orange-500:#f08a2d;
+  --orange-400:#F5A623;--ink:#0f2440;--muted:#6b7f99;--line:#e4ecf5;--bg:#eef3f9;
+  --card:#fff;--green:#1aa260;--green-bg:#e8f8ef;--red:#e3443a;--red-bg:#fdecea;
+  --radius:18px;--shadow:0 10px 30px -12px rgba(0,74,141,.22);--shadow-sm:0 4px 14px -6px rgba(0,74,141,.18);
 }
+.pay-root *{box-sizing:border-box;margin:0;padding:0}
+.pay-root{font-family:'Cairo',system-ui,sans-serif;min-height:100vh;color:var(--ink);line-height:1.6;
+  direction:rtl;padding:24px 14px 60px;-webkit-font-smoothing:antialiased;
+  background:radial-gradient(1200px 500px at 100% -10%,rgba(62,134,196,.12),transparent 60%),
+    radial-gradient(1000px 500px at 0% 110%,rgba(245,166,35,.10),transparent 55%),var(--bg);}
+.pay-wrap{max-width:620px;margin:0 auto}
+.pay-topbar{background:linear-gradient(135deg,var(--blue-800) 0%,var(--blue-900) 55%,#06284a 100%);
+  border-radius:22px;padding:18px 20px;color:#fff;box-shadow:var(--shadow);position:relative;
+  overflow:hidden;display:flex;align-items:center;gap:14px}
+.pay-topbar::after{content:'';position:absolute;inset:0;
+  background:radial-gradient(140px 140px at 10% 120%,rgba(245,166,35,.35),transparent 70%)}
+.pay-badge{width:52px;height:52px;border-radius:15px;flex:0 0 auto;
+  background:linear-gradient(145deg,#fff,#eaf2fb);display:grid;place-items:center;position:relative;z-index:1;
+  box-shadow:0 6px 16px -6px rgba(0,0,0,.4)}
+.pay-badge svg{width:34px;height:34px}
+.pay-brand{z-index:1}
+.pay-brand h1{font-size:19px;font-weight:900;letter-spacing:.3px;line-height:1.2}
+.pay-brand h1 b{color:var(--orange-400)}
+.pay-brand p{font-size:12px;color:#bcd3ec;font-weight:600;margin-top:2px}
+.pay-arrow{margin-inline-start:auto;z-index:1;width:38px;height:38px;border-radius:11px;
+  display:grid;place-items:center;background:rgba(255,255,255,.12);color:#fff;cursor:pointer;transition:.2s;border:none}
+.pay-arrow:hover{background:rgba(255,255,255,.22)}
+.pay-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  padding:18px;margin-top:16px;box-shadow:var(--shadow-sm)}
+.pay-head{display:flex;align-items:center;gap:11px;margin-bottom:15px}
+.pay-ico{width:36px;height:36px;flex:0 0 auto;border-radius:11px;display:grid;place-items:center;
+  color:#fff;background:linear-gradient(140deg,var(--blue-600),var(--blue-800))}
+.pay-head.alt .pay-ico{background:linear-gradient(140deg,var(--orange-400),var(--orange-600))}
+.pay-title{font-weight:800;font-size:16px}
+/* order summary rows */
+.pay-row{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px dashed var(--line)}
+.pay-row:last-child{border-bottom:none}
+.pay-row .ric{width:34px;height:34px;flex:0 0 auto;border-radius:10px;display:grid;place-items:center;
+  background:var(--blue-50);color:var(--blue-800)}
+.pay-row .rtx{flex:1}
+.pay-row .rtx .k{font-size:12px;color:var(--muted);font-weight:700}
+.pay-row .rtx .v{font-size:15px;font-weight:800;color:var(--ink)}
+.pay-row .rtx .v.ltr{direction:ltr;text-align:right}
+.badge{font-size:12.5px;font-weight:800;padding:5px 12px;border-radius:999px}
+.badge.warn{background:#fff2df;color:#b96d05}
+.badge.ok{background:var(--green-bg);color:var(--green)}
+/* amount squares */
+.pay-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:11px}
+.stat{border-radius:16px;padding:15px 10px;text-align:center;border:1.6px solid var(--line);
+  background:#fff;position:relative;overflow:hidden;transition:.2s}
+.stat:hover{transform:translateY(-2px);box-shadow:var(--shadow-sm)}
+.stat .lab{font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px}
+.stat .num{font-size:19px;font-weight:900;line-height:1.1}
+.stat .cur{font-size:11px;font-weight:700;color:var(--muted);margin-top:2px}
+.stat.total{background:linear-gradient(160deg,#eef5fc,#fff);border-color:var(--blue-100)}
+.stat.total .num{color:var(--blue-800)}
+.stat.paid{background:linear-gradient(160deg,var(--green-bg),#fff);border-color:#bfe9d2}
+.stat.paid .num{color:var(--green)}
+.stat.rest{background:linear-gradient(160deg,var(--red-bg),#fff);border-color:#f6c9c4}
+.stat.rest .num{color:var(--red)}
+.stat::after{content:'';position:absolute;inset-inline-start:0;top:0;bottom:0;width:4px}
+.stat.total::after{background:var(--blue-600)}
+.stat.paid::after{background:var(--green)}
+.stat.rest::after{background:var(--red)}
+/* select */
+.pay-selwrap{position:relative}
+.pay-selwrap .lic{position:absolute;inset-inline-start:14px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none}
+.pay-selwrap .caret{position:absolute;inset-inline-end:14px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none}
+.pay-root select{width:100%;font-family:inherit;font-size:15px;font-weight:700;color:var(--ink);
+  background:var(--blue-50);border:1.6px solid var(--line);border-radius:14px;
+  padding:14px 44px;-webkit-appearance:none;appearance:none;outline:none;transition:.18s;cursor:pointer}
+.pay-root select:focus{border-color:var(--blue-500);background:#fff;box-shadow:0 0 0 4px rgba(62,134,196,.14)}
+/* account box (أودِع عبر) */
+.pay-acc{margin-top:16px;border-radius:16px;padding:16px;color:#fff;position:relative;overflow:hidden;
+  box-shadow:0 12px 26px -12px rgba(0,0,0,.4);animation:slideUp .35s ease}
+@keyframes slideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.pay-acc::after{content:'';position:absolute;inset:0;background:radial-gradient(180px 120px at 110% -20%,rgba(255,255,255,.22),transparent 70%)}
+.pay-acc .atop{display:flex;align-items:center;gap:10px;position:relative;z-index:1}
+.pay-acc .wlogo{width:40px;height:40px;border-radius:11px;background:rgba(255,255,255,.2);display:grid;place-items:center;font-weight:900;font-size:16px}
+.pay-acc .atop .at{font-size:13px;font-weight:700;opacity:.9}
+.pay-acc .atop .an{font-size:16px;font-weight:900}
+.pay-accnum{position:relative;z-index:1;margin-top:14px;background:rgba(255,255,255,.16);
+  border:1.4px solid rgba(255,255,255,.3);border-radius:13px;padding:13px 15px;
+  display:flex;align-items:center;gap:12px}
+.pay-accnum .k{font-size:11.5px;font-weight:700;opacity:.85}
+.pay-accnum .num{font-size:22px;font-weight:900;letter-spacing:1px;direction:ltr}
+.pay-accnum .cp{margin-inline-start:auto;border:none;background:rgba(255,255,255,.25);color:#fff;
+  width:40px;height:40px;border-radius:11px;display:grid;place-items:center;cursor:pointer;transition:.2s;flex:0 0 auto}
+.pay-accnum .cp:hover{background:rgba(255,255,255,.4)}
+.pay-accnum .cp.ok{background:#fff;color:var(--green)}
+.pay-hint{position:relative;z-index:1;margin-top:11px;font-size:12.5px;font-weight:600;opacity:.92;display:flex;gap:7px;align-items:flex-start}
+/* confirm button */
+.pay-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:9px;font-family:inherit;
+  font-weight:800;font-size:16px;border:none;cursor:pointer;padding:15px;border-radius:14px;transition:.2s;margin-top:16px}
+.pay-primary{color:#fff;background:linear-gradient(135deg,var(--blue-600),var(--blue-800));box-shadow:0 12px 26px -10px rgba(0,74,141,.6)}
+.pay-primary:hover{transform:translateY(-2px)}
+.pay-primary:disabled{opacity:.5;cursor:not-allowed;transform:none}
+@media(max-width:420px){.pay-stats{gap:8px}.stat .num{font-size:16px}.pay-brand h1{font-size:16px}}
+`
 
-const METHODS: PayMethod[] = [
-  { id: "jeeb",    name: "جيب",          sub: "Jeeb",         color: "#e23b3b", cbg: "#fdeceb", logo: "https://pbs.twimg.com/profile_images/1909228883901136896/xfI4p59P_400x400.jpg" },
-  { id: "jawali",  name: "جوالي",        sub: "Jawali",       color: "#f39c12", cbg: "#fef4e3", logo: "https://jawali.com.ye/Terms/jawali.png" },
-  { id: "floosak", name: "فلوسك",        sub: "Floosak",      color: "#1e7fd4", cbg: "#e9f2fb", logo: "https://play-lh.googleusercontent.com/zFQM3P20sCb90Z6JHrp7vHAPJAPxXNDyMzVHxABxSMTWVA6i2mCKPQJhtLf3FUlV01jkVS87iDT_wa80NUaQLw=s512" },
-  { id: "haseb",   name: "حاسب",         sub: "Haseb",        color: "#2e9e5b", cbg: "#e8f5ec", logo: "https://haseb.co/assets/app/img/header/logo.png" },
-  { id: "cash",    name: "كاش",          sub: "Cash",         color: "#0ea5b5", cbg: "#e5f5f6", logo: "https://cdn.aptoide.com/imgs/1/e/5/1e5c9d05ea1abde2246212a3150fb522_icon.png" },
-  { id: "onecash", name: "ون كاش",       sub: "One Cash",     color: "#ef7d00", cbg: "#fef1e3", logo: "https://play-lh.googleusercontent.com/WqrsU_pFeqT63UuvAH8vavDeee22oJWtrp6TuVyqbWddB8EtkSToVwPUzp-arwD_3em6VnzDHF-8STWhujko1Q=s512" },
-  { id: "easy",    name: "إيزي",         sub: "Easy",         color: "#7cb518", cbg: "#f0f7e3", logo: "https://play-lh.googleusercontent.com/zNc2yh5uga4GBRv0AiXGgE4LHbLupRKwkULQz3tj1pDUH0CW9rHlsZbk10PYLP-Ry7mBmT-0aXMLSLPeBqQWSA=s512" },
-  { id: "mobile",  name: "موبايل موني", sub: "Mobile Money", color: "#1b3a6b", cbg: "#e8edf5", logo: "https://play-lh.googleusercontent.com/fnxxZ7KP15EhtTTw23pVYEMICO4O8KKjkYSG3tOF5YfZYT5MbWflqaAyJmhWoizSru9pFXIR8m9mb17fzGAKxQ=s512" },
-];
+/* ===================== Icons ===================== */
+const Logo = () => (
+  <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="pgBlue" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#3E86C4"/><stop offset="1" stopColor="#004A8D"/></linearGradient>
+      <linearGradient id="pgOr" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stopColor="#D86616"/><stop offset="1" stopColor="#F5A623"/></linearGradient>
+    </defs>
+    <path d="M22 12 L34 44 H18 L30 12 Z" fill="url(#pgBlue)"/>
+    <path d="M40 14 c7 0 7 9 0 9 c-7 0 -7 9 0 9" stroke="url(#pgBlue)" strokeWidth={5} strokeLinecap="round" fill="none"/>
+    <path d="M14 46 H46 L50 32 H20" stroke="url(#pgOr)" strokeWidth={4.5} strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+    <circle cx="22" cy="54" r="4" fill="url(#pgOr)"/><circle cx="42" cy="54" r="4" fill="url(#pgOr)"/>
+    <path d="M50 10 l1.6 3.4 L55 15 l-3.4 1.6 L50 20 l-1.6-3.4 L45 15 l3.4-1.6 Z" fill="#F5A623"/>
+  </svg>
+)
+const Arrow = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>)
+const Wallet = () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></svg>)
+const Receipt = () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M4 2v20l3-2 3 2 2-2 2 2 3-2 3 2V2l-3 2-3-2-2 2-2-2-3 2z"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="14" y2="12"/></svg>)
+const Hash = () => (<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>)
+const Info = () => (<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>)
+const UserIc = () => (<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>)
+const Card = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>)
+const Caret = () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6"/></svg>)
+const Copy = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>)
+const CheckIc = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>)
 
-const ORDER_REF = "7777866s – sxsaxs";
-const ACCOUNT_NAME = "زين العابدين مطيع حاتم الوصابي";
-const ACCOUNT_NUMBER = "772399744";
+/* ===================== محافظ الدفع (اليمن) ===================== */
+// الرقم موحّد لكل الطرق — عدّله حسب كل محفظة عند الحاجة
+const ACCOUNT = '772399744'
+type W = { key: string; label: string; color: string; account: string }
+const WALLETS: W[] = [
+  { key: 'jaib', label: 'جيب', color: '#1b9e77', account: ACCOUNT },
+  { key: 'jawali', label: 'جوالي', color: '#c0392b', account: ACCOUNT },
+  { key: 'floosak', label: 'فلوسك', color: '#8e44ad', account: ACCOUNT },
+  { key: 'hasab', label: 'حاسب', color: '#2c6fbb', account: ACCOUNT },
+  { key: 'cash', label: 'كاش', color: '#e67e22', account: ACCOUNT },
+  { key: 'onecash', label: 'ون كاش', color: '#16a085', account: ACCOUNT },
+  { key: 'easy', label: 'إيزي', color: '#2980b9', account: ACCOUNT },
+  { key: 'mobilemoney', label: 'موبايل موني', color: '#d35400', account: ACCOUNT },
+  { key: 'kuraimi', label: 'الكريمي', color: '#004A8D', account: ACCOUNT },
+]
 
-const CopyIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V5a2 2 0 0 1 2-2h10" /></svg>
-);
-const CheckIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4 4L19 7" /></svg>
-);
+/* ===================== تنسيق الأرقام ===================== */
+const fmt = (n: number) => n.toLocaleString('en-US')
 
-function WalletLogo({ m }: { m: PayMethod }) {
-  const [fail, setFail] = useState(false);
-  if (fail) {
-    return (
-      <span style={{
-        width: '100%', height: '100%', display: 'flex',
-        alignItems: 'center', justifyContent: 'center',
-        background: m.cbg, color: m.color,
-        fontWeight: 800, fontSize: 20, borderRadius: 8
-      }}>
-        {m.name[0]}
-      </span>
-    );
-  }
-  return <img src={m.logo} alt={m.name} onError={() => setFail(true)} style={{width:'100%',height:'100%',objectFit:'contain',display:'block'}} referrerPolicy="no-referrer" />;
-}
+/* ===================== Component ===================== */
+function PayPage() {
+  const { order } = Route.useSearch()
+  const navigate = useNavigate()
 
-function Pay() {
-  const { order } = Route.useSearch();
-  const [selected, setSelected] = useState<string | null>(null);
-  const [open, setOpen] = useState<boolean>(true);
-  const [copied, setCopied] = useState<boolean>(false);
-  const [orderNo, setOrderNo] = useState(order || "144684");
-  const [total, setTotal] = useState("3,650");
+  // بيانات الطلب — تأتي لاحقاً من Supabase/API (قيم تجريبية الآن)
+  const orderNo = order || '658178'
+  const customer = 'Motaz Maqsood'
+  const phone = '773370041'
+  const currency = 'ر.ي'
+  const total = 3650
+  const paid = 0
+  const remaining = total - paid
 
-  useEffect(() => {
-    const fetchOrder = async () => {
-      if (!order) return;
-      setOrderNo(order);
-      const { data } = await supabase
-        .from("orders")
-        .select("tracking_code, notes")
-        .eq("tracking_code", order)
-        .maybeSingle();
-      if (data) {
-        setOrderNo(data.tracking_code);
-        const match = data.notes?.match(/السعر التقريبي:\s*([\d.,]+)/);
-        if (match && match[1]) setTotal(match[1]);
-      }
-    };
-    fetchOrder();
-  }, [order]);
+  const [walletKey, setWalletKey] = useState('')
+  const [copied, setCopied] = useState(false)
+  const wallet = useMemo(() => WALLETS.find((w) => w.key === walletKey) || null, [walletKey])
 
-  const active = METHODS.find((m) => m.id === selected) ?? null;
-
-  const handleCopy = async () => {
+  const copyAcc = async () => {
+    if (!wallet) return
     try {
-      await navigator.clipboard.writeText(ACCOUNT_NUMBER);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1800);
-    } catch {}
-  };
+      await navigator.clipboard.writeText(wallet.account)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1800)
+    } catch { /* غير متاح */ }
+  }
 
   return (
-    <div dir="rtl" className="pay-root">
+    <div className="pay-root">
       <style>{CSS}</style>
-      <div className="wrap">
-        <div className="topbar">
-          <h1>الدفع</h1>
-          <button className="back-btn" type="button" onClick={() => window.history.back()}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
-            رجوع
-          </button>
-        </div>
+      <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+      <div className="pay-wrap">
 
-        <div className="card">
-          <div className="order">
-            <div className="order-row"><span className="label">رقم الطلب</span><span className="value">{orderNo}</span></div>
-            <div className="order-row"><span className="label">حالة الدفع</span><span className="badge"><span className="dot" /> غير مكتمل</span></div>
-            <div className="ref">{ORDER_REF}</div>
+        <header className="pay-topbar">
+          <div className="pay-badge"><Logo /></div>
+          <div className="pay-brand">
+            <h1>SHOPPING <b>AL SHAMEL</b></h1>
+            <p>طرق الدفع • أودِع بأمان</p>
+          </div>
+          <button className="pay-arrow" type="button" title="رجوع" onClick={() => navigate({ to: '/new-order' })}><Arrow /></button>
+        </header>
+
+        {/* تفاصيل الطلب */}
+        <section className="pay-card">
+          <div className="pay-head">
+            <div className="pay-ico"><Receipt /></div>
+            <div className="pay-title">تفاصيل الطلب</div>
+          </div>
+          <div className="pay-row">
+            <div className="ric"><Hash /></div>
+            <div className="rtx"><div className="k">رقم الطلب</div><div className="v ltr">{orderNo}</div></div>
+            <span className="badge warn">غير مكتمل</span>
+          </div>
+          <div className="pay-row">
+            <div className="ric"><UserIc /></div>
+            <div className="rtx"><div className="k">الاسم ورقم الهاتف</div><div className="v ltr">{customer} – {phone}</div></div>
+          </div>
+        </section>
+
+        {/* ملخص المبالغ (المربعات) */}
+        <section className="pay-card">
+          <div className="pay-head">
+            <div className="pay-ico"><Wallet /></div>
+            <div className="pay-title">ملخص المبالغ</div>
+          </div>
+          <div className="pay-stats">
+            <div className="stat total"><div className="lab">الإجمالي</div><div className="num">{fmt(total)}</div><div className="cur">{currency}</div></div>
+            <div className="stat paid"><div className="lab">المدفوع</div><div className="num">{fmt(paid)}</div><div className="cur">{currency}</div></div>
+            <div className="stat rest"><div className="lab">المتبقي</div><div className="num">{fmt(remaining)}</div><div className="cur">{currency}</div></div>
+          </div>
+        </section>
+
+        {/* طريقة الدفع */}
+        <section className="pay-card">
+          <div className="pay-head alt">
+            <div className="pay-ico"><Card /></div>
+            <div className="pay-title">طريقة الدفع</div>
+          </div>
+          <div className="pay-selwrap">
+            <span className="lic"><Card /></span>
+            <select value={walletKey} onChange={(e) => { setWalletKey(e.target.value); setCopied(false) }}>
+              <option value="">اختر طريقة الدفع</option>
+              {WALLETS.map((w) => (<option key={w.key} value={w.key}>{w.label}</option>))}
+            </select>
+            <span className="caret"><Caret /></span>
           </div>
 
-          <div className="summary">
-            <div className="sum-box total"><div className="label">الإجمالي</div><div className="amount">{total}<span className="cur">ري</span></div></div>
-            <div className="sum-box paid"><div className="label">المدفوع</div><div className="amount">0<span className="cur">ري</span></div></div>
-            <div className="sum-box remain"><div className="label">المتبقي</div><div className="amount">{total}<span className="cur">ري</span></div></div>
-          </div>
-
-          <div className="pay-section">
-            <div className="section-title">طريقة الدفع</div>
-            <div className={`dropdown${open ? " open" : ""}`}>
-              <button type="button" className="summary-row" onClick={() => setOpen((v) => !v)}>
-                <span>{active ? `${active.name} (${active.sub})` : "اختر طريقة الدفع"}</span>
-                <svg className="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
-              </button>
-              {open && (
-                <div className="methods">
-                  {METHODS.map((m) => (
-                    <button
-                      key={m.id}
-                      type="button"
-                      className={`method${selected === m.id ? " active" : ""}`}
-                      style={{ ["--c"]: m.color } as Vars}
-                      onClick={() => { setSelected(m.id); setCopied(false); }}
-                    >
-                      <span className="ic logo"><WalletLogo m={m} /></span>
-                      <span className="meta"><span className="name">{m.name}</span><span className="sub">{m.sub}</span></span>
-                      <span className="check"><CheckIcon /></span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {active && (
-            <div className="account" style={{ ["--c"]: active.color, ["--cbg"]: active.cbg } as Vars}>
-              <div className="head"><span className="badge-ic logo"><WalletLogo m={active} /></span> أودِع عبر {active.name} ({active.sub})</div>
-              <div className="acc-row"><span className="acc-label">اسم المستفيد</span><span className="acc-value">{ACCOUNT_NAME}</span></div>
-              <div className="acc-row">
-                <span className="acc-label">رقم الحساب</span>
-                <span className="copy-chip">
-                  <span className="acc-num sel">{ACCOUNT_NUMBER}</span>
-                  <button type="button" className="copy-ic" onClick={handleCopy} aria-label="نسخ رقم الحساب" title="نسخ">
-                    {copied ? <CheckIcon /> : <CopyIcon />}
-                  </button>
-                </span>
+          {wallet && (
+            <div className="pay-acc" style={{ background: `linear-gradient(140deg, ${wallet.color}, ${wallet.color}cc)` }}>
+              <div className="atop">
+                <div className="wlogo">{wallet.label.charAt(0)}</div>
+                <div><div className="at">أودِع عبر</div><div className="an">{wallet.label}</div></div>
               </div>
-              <div className="acc-hint">{copied ? "✓ تم نسخ رقم الحساب" : `اضغط زر النسخ لنسخ الرقم · ثم أودِع ${total} ري واضغط «المتابعة»`}</div>
+              <div className="pay-accnum">
+                <div><div className="k">رقم الحساب</div><div className="num">{wallet.account}</div></div>
+                <button className={'cp' + (copied ? ' ok' : '')} type="button" onClick={copyAcc} title="نسخ الرقم">
+                  {copied ? <CheckIc /> : <Copy />}
+                </button>
+              </div>
+              <div className="pay-hint"><Info /><span>أودِع المبلغ المتبقي ({fmt(remaining)} {currency}) على الرقم أعلاه ثم أرسل إشعار التحويل عبر الواتساب لتأكيد الدفع.</span></div>
             </div>
           )}
 
-          <button className="pay-btn" type="button">المتابعة للدفع · {total} ري</button>
-          <div className="footnote">مدفوعاتك محمية ومشفّرة 🔒</div>
-        </div>
+          <button className="pay-btn pay-primary" type="button" disabled={!wallet}>
+            <CheckIc /><span>لقد أودعت المبلغ</span>
+          </button>
+        </section>
+
       </div>
     </div>
-  );
+  )
 }
-
-const CSS = `
-.pay-root{
-  --bg:#f3ede4;--card:#fff;--ink:#2b2b2b;--muted:#8a8378;--line:#ece4d7;
-  --soft:#faf6ef;--accent:#e8873b;--accent-soft:#fbe9d7;
-  --green-ink:#2e9e5b;--red:#fdecec;--red-ink:#d9534f;
-  font-family:'Cairo',system-ui,'Segoe UI',Tahoma,sans-serif;
-  color:var(--ink);
-  background:radial-gradient(1200px 600px at 80% -10%,#fbf6ee 0%,var(--bg) 60%);
-  min-height:100vh;display:flex;justify-content:center;align-items:flex-start;
-  padding:40px 16px 60px;box-sizing:border-box;
-}
-.pay-root *{box-sizing:border-box}
-.pay-root .wrap{width:100%;max-width:560px}
-.pay-root .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px}
-.pay-root .topbar h1{font-size:26px;font-weight:800;letter-spacing:-.5px;margin:0}
-.pay-root .back-btn{display:inline-flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);color:var(--ink);font-family:inherit;font-size:14px;font-weight:600;padding:10px 16px;border-radius:12px;cursor:pointer;box-shadow:0 4px 12px -6px rgba(90,70,40,.3);transition:.18s}
-.pay-root .back-btn:hover{transform:translateY(-1px);border-color:var(--accent);color:var(--accent)}
-.pay-root .back-btn svg{width:16px;height:16px}
-.pay-root .card{background:var(--card);border-radius:20px;box-shadow:0 20px 50px -20px rgba(90,70,40,.35);padding:26px 24px;border:1px solid #fff}
-.pay-root .order{background:var(--soft);border:1px solid var(--line);border-radius:16px;padding:18px 20px;display:flex;flex-direction:column;gap:14px}
-.pay-root .order-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
-.pay-root .label{color:var(--muted);font-size:14px;font-weight:600}
-.pay-root .value{font-size:17px;font-weight:800}
-.pay-root .badge{display:inline-flex;align-items:center;gap:7px;background:var(--red);color:var(--red-ink);font-size:13px;font-weight:700;padding:6px 12px;border-radius:999px}
-.pay-root .badge .dot{width:8px;height:8px;border-radius:50%;background:var(--red-ink)}
-.pay-root .ref{font-size:14px;color:var(--muted);font-weight:600;border-top:1px dashed var(--line);padding-top:12px;direction:ltr;text-align:right}
-.pay-root .summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0}
-.pay-root .sum-box{background:var(--soft);border:1px solid var(--line);border-radius:14px;padding:16px 12px;text-align:center}
-.pay-root .sum-box .label{font-size:13px;margin-bottom:8px}
-.pay-root .amount{font-size:20px;font-weight:800;line-height:1.1}
-.pay-root .amount .cur{font-size:13px;font-weight:700;color:var(--muted);margin-inline-start:3px}
-.pay-root .sum-box.paid .amount{color:var(--green-ink)}
-.pay-root .sum-box.remain .amount{color:var(--accent)}
-.pay-root .section-title{font-size:16px;font-weight:800;margin-bottom:12px}
-.pay-root .dropdown{border:1px solid var(--line);border-radius:14px;background:var(--soft);overflow:hidden}
-.pay-root .dropdown.open{border-color:var(--accent);background:#fff}
-.pay-root .summary-row{width:100%;background:none;border:none;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:16px 18px;font-weight:700;font-size:15px;color:var(--ink)}
-.pay-root .summary-row .chev{width:20px;height:20px;color:var(--muted);transition:.2s}
-.pay-root .dropdown.open .summary-row .chev{transform:rotate(180deg);color:var(--accent)}
-.pay-root .methods{padding:6px;display:flex;flex-direction:column}
-.pay-root .method{width:100%;background:none;border:none;font-family:inherit;text-align:start;display:flex;align-items:center;gap:14px;padding:12px 14px;border-radius:12px;cursor:pointer;transition:.15s}
-.pay-root .method:hover{background:var(--accent-soft)}
-.pay-root .method.active{background:var(--accent-soft)}
-.pay-root .method .ic{width:44px;height:44px;flex:0 0 44px;border-radius:12px;display:flex;align-items:center;justify-content:center;overflow:hidden}
-.pay-root .method .ic.logo{background:#fff;border:1px solid var(--line);padding:4px}
-.pay-root .method .name{font-weight:700;font-size:15px}
-.pay-root .method .sub{font-size:12px;color:var(--muted);font-weight:600}
-.pay-root .method .meta{display:flex;flex-direction:column;gap:2px}
-.pay-root .method .check{margin-inline-start:auto;width:22px;height:22px;border-radius:50%;border:2px solid var(--line);flex:0 0 22px;display:flex;align-items:center;justify-content:center;transition:.15s}
-.pay-root .method .check svg{width:12px;height:12px;color:#fff;opacity:0;transition:.15s}
-.pay-root .method.active .check{background:var(--accent);border-color:var(--accent)}
-.pay-root .method.active .check svg{opacity:1}
-.pay-root .account{margin-top:16px;background:var(--cbg,#fff8ef);border:1.5px solid var(--c,var(--accent-soft));border-radius:16px;padding:18px 20px;animation:pfade .25s ease}
-@keyframes pfade{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
-.pay-root .account .head{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:800;color:var(--c,var(--accent));margin-bottom:14px}
-.pay-root .account .head .badge-ic{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;overflow:hidden}
-.pay-root .account .head .badge-ic.logo{background:#fff;border:1.5px solid var(--c,var(--accent-soft));padding:4px}
-.pay-root .acc-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0}
-.pay-root .acc-row + .acc-row{border-top:1px dashed var(--c,var(--accent-soft))}
-.pay-root .acc-label{color:var(--muted);font-size:14px;font-weight:600}
-.pay-root .acc-value{font-size:16px;font-weight:800;text-align:left}
-.pay-root .copy-chip{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1.5px solid var(--c,var(--accent-soft));border-radius:10px;padding:6px 8px 6px 12px}
-.pay-root .copy-chip .sel{user-select:all;-webkit-user-select:all;direction:ltr;letter-spacing:1px;font-weight:800;font-size:16px;cursor:text;color:var(--ink)}
-.pay-root .copy-chip .copy-ic{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;flex:0 0 30px;background:var(--c,var(--accent));color:#fff;cursor:pointer;border:none;transition:.15s}
-.pay-root .copy-chip .copy-ic:hover{filter:brightness(1.08);transform:translateY(-1px)}
-.pay-root .copy-chip .copy-ic svg{width:15px;height:15px}
-.pay-root .acc-hint{font-size:12px;color:var(--muted);font-weight:600;margin-top:10px;text-align:center}
-.pay-root .pay-btn{margin-top:22px;width:100%;background:linear-gradient(135deg,#ef9a4e,#e8873b);color:#fff;border:none;font-family:inherit;font-size:17px;font-weight:800;padding:16px;border-radius:14px;cursor:pointer;box-shadow:0 12px 24px -10px rgba(232,135,59,.7);transition:.18s}
-.pay-root .pay-btn:hover{transform:translateY(-2px)}
-.pay-root .footnote{text-align:center;color:var(--muted);font-size:12px;margin-top:16px;font-weight:600}
-@media(max-width:440px){.pay-root .summary{grid-template-columns:1fr}.pay-root .topbar h1{font-size:22px}}
-`;
