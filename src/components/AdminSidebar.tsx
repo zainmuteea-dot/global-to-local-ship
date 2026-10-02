@@ -14,7 +14,6 @@ import {
   Receipt,
   FileSpreadsheet,
   TrendingUp,
-  LayoutDashboard,
   Database,
   Users,
   UserCog,
@@ -31,10 +30,21 @@ import {
 interface AdminSidebarProps {
   isOpen: boolean;
   onClose: () => void;
+  onOpenAccountsTree?: () => void;
+  onOpenQuickScan?: () => void;
+  onOpenAddModal?: () => void;
+  navigateTo?: (path: string) => void;
 }
 
-export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
-  // حالة فتح وإغلاق القوائم المنسدلة
+export function AdminSidebar({
+  isOpen,
+  onClose,
+  onOpenAccountsTree,
+  onOpenQuickScan,
+  onOpenAddModal,
+  navigateTo,
+}: AdminSidebarProps) {
+  // حالات فتح وإغلاق القوائم المنسدلة الفرعية
   const [isAccountsTreeOpen, setIsAccountsTreeOpen] = useState(true);
   const [isPricesOpen, setIsPricesOpen] = useState(false);
   const [isStoreOpen, setIsStoreOpen] = useState(false);
@@ -42,24 +52,30 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
   const [isHrOpen, setIsHrOpen] = useState(false);
   const [isReportsOpen, setIsReportsOpen] = useState(false);
 
-  // الرابط الحالي لتحديد العنصر النشط
   const location = useLocation();
   const currentPath = location.pathname;
 
   if (!isOpen) return null;
 
+  const handleLinkClick = (path: string) => {
+    onClose();
+    if (navigateTo) {
+      navigateTo(path);
+    }
+  };
+
   return (
     <>
-      {/* خلفية معتمة للموبايل */}
+      {/* خلفية معتمة عند الفتح */}
       <div
         onClick={onClose}
-        className="fixed inset-0 z-40 bg-black/60 backdrop-blur-xs transition-opacity lg:hidden"
+        className="fixed inset-0 z-40 bg-black/60 backdrop-blur-xs transition-opacity"
       />
 
       {/* القائمة الجانبية الداكنة */}
       <aside
         dir="rtl"
-        className="fixed top-0 right-0 z-50 h-full w-[295px] bg-[#071426] border-l border-sky-950/60 text-slate-100 flex flex-col shadow-2xl transition-transform duration-300 overflow-hidden font-sans select-none"
+        className="fixed top-0 right-0 z-50 h-full w-[300px] max-w-[88vw] bg-[#071426] border-l border-sky-950/60 text-slate-100 flex flex-col shadow-2xl transition-transform duration-300 overflow-hidden font-sans select-none"
       >
         {/* 1. رأس القائمة: زر الإغلاق + الشعار الرسمي */}
         <div className="flex items-center justify-between p-4 border-b border-slate-800/80 bg-[#06101f]">
@@ -82,7 +98,6 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
               </div>
             </div>
 
-            {/* أيقونة عربة التسوق المصغرة */}
             <div className="size-8 rounded-lg bg-gradient-to-tr from-[#EA580C] to-[#F97316] grid place-items-center text-white shadow-sm shadow-orange-500/30">
               <ShoppingBag className="size-4" />
             </div>
@@ -101,7 +116,7 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
           <span className="font-mono text-[11px] font-bold text-sky-400">ID: #92841</span>
         </div>
 
-        {/* 3. عناصر القائمة القابلة للتمرير */}
+        {/* 3. عناصر وأزرار القائمة */}
         <div className="flex-1 overflow-y-auto px-3 py-3 space-y-4 text-xs scrollbar-thin scrollbar-thumb-sky-900/40">
           
           {/* ================= القسم 1: التسوق وخدمات العملاء ================= */}
@@ -113,6 +128,7 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
             {/* الرئيسية */}
             <Link
               to="/"
+              onClick={() => handleLinkClick("/")}
               className={`flex items-center justify-between px-3 py-2.5 rounded-xl font-bold transition ${
                 currentPath === "/"
                   ? "bg-[#0284C7] text-white shadow-md shadow-sky-600/30"
@@ -129,7 +145,10 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
             {/* لوحة عمليات الشحن والفرز */}
             <Link
               to="/admin"
-              className="flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:bg-[#0B1E36] hover:text-white transition font-bold"
+              onClick={() => handleLinkClick("/admin")}
+              className={`flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:bg-[#0B1E36] hover:text-white transition font-bold ${
+                currentPath === "/admin" ? "bg-[#0B1E36] text-white border border-sky-800/40" : ""
+              }`}
             >
               <div className="flex items-center gap-2.5">
                 <Truck className="size-4 text-sky-400" />
@@ -143,6 +162,7 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
             {/* طلب جديد (اطلب الآن) */}
             <Link
               to="/new-order"
+              onClick={() => handleLinkClick("/new-order")}
               className="flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:bg-[#0B1E36] hover:text-white transition font-bold"
             >
               <div className="flex items-center gap-2.5">
@@ -157,6 +177,7 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
             {/* تتبع الطلبات والشحنات */}
             <Link
               to="/track"
+              onClick={() => handleLinkClick("/track")}
               className="flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:bg-[#0B1E36] hover:text-white transition font-bold"
             >
               <div className="flex items-center gap-2.5">
@@ -169,6 +190,7 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
             {/* حسابي وإدارة العمليات */}
             <Link
               to="/my-account"
+              onClick={() => handleLinkClick("/my-account")}
               className="flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:bg-[#0B1E36] hover:text-white transition font-bold"
             >
               <div className="flex items-center gap-2.5">
@@ -179,7 +201,11 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
             </Link>
 
             {/* الرسائل والمحادثات */}
-            <div className="flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:bg-[#0B1E36] hover:text-white transition font-bold cursor-pointer">
+            <Link
+              to="/notifications"
+              onClick={() => handleLinkClick("/notifications")}
+              className="flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:bg-[#0B1E36] hover:text-white transition font-bold cursor-pointer"
+            >
               <div className="flex items-center gap-2.5">
                 <MessageSquare className="size-4 text-indigo-400" />
                 <span>الرسائل والمحادثات</span>
@@ -187,7 +213,7 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
               <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-indigo-950 text-indigo-300 border border-indigo-800/40">
                 2 جديدة
               </span>
-            </div>
+            </Link>
 
             {/* الأسعار والشحن (منسدلة) */}
             <div>
@@ -201,6 +227,16 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
                 </div>
                 {isPricesOpen ? <ChevronUp className="size-3.5 opacity-60" /> : <ChevronDown className="size-3.5 opacity-60" />}
               </button>
+              {isPricesOpen && (
+                <div className="pr-7 pl-2 py-1 space-y-1 text-[11px] font-semibold text-slate-300">
+                  <div onClick={() => handleLinkClick("/prices")} className="px-2.5 py-1 rounded-lg hover:bg-[#0B1E36] hover:text-white transition cursor-pointer">
+                    • حاسبة أجور الشحن الدولي
+                  </div>
+                  <div className="px-2.5 py-1 rounded-lg hover:bg-[#0B1E36] hover:text-white transition cursor-pointer">
+                    • أسعار التوصيل للمحافظات
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* المتجر الإلكتروني (منسدلة) */}
@@ -215,6 +251,16 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
                 </div>
                 {isStoreOpen ? <ChevronUp className="size-3.5 opacity-60" /> : <ChevronDown className="size-3.5 opacity-60" />}
               </button>
+              {isStoreOpen && (
+                <div className="pr-7 pl-2 py-1 space-y-1 text-[11px] font-semibold text-slate-300">
+                  <div onClick={() => handleLinkClick("/")} className="px-2.5 py-1 rounded-lg hover:bg-[#0B1E36] hover:text-white transition cursor-pointer">
+                    • المنتجات المميزة والشائعة
+                  </div>
+                  <div onClick={() => handleLinkClick("/new-order")} className="px-2.5 py-1 rounded-lg hover:bg-[#0B1E36] hover:text-white transition cursor-pointer">
+                    • استيراد منتج من رابط خارجي
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -230,6 +276,7 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
             {/* النظام المالي والمحاسبي المتكامل */}
             <Link
               to="/accounts"
+              onClick={() => handleLinkClick("/accounts")}
               className="flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:bg-[#0B1E36] hover:text-white transition font-bold"
             >
               <div className="flex items-center gap-2.5">
@@ -242,7 +289,10 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
             </Link>
 
             {/* الخزنة والمحافظ النقدية */}
-            <div className="flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:bg-[#0B1E36] hover:text-white transition font-bold cursor-pointer">
+            <div
+              onClick={() => handleLinkClick("/accounts")}
+              className="flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:bg-[#0B1E36] hover:text-white transition font-bold cursor-pointer"
+            >
               <div className="flex items-center gap-2.5">
                 <Wallet className="size-4 text-amber-400" />
                 <span>الخزنة والمحافظ النقدية (6 حسابات)</span>
@@ -253,7 +303,10 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
             </div>
 
             {/* السندات المالية */}
-            <div className="flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:bg-[#0B1E36] hover:text-white transition font-bold cursor-pointer">
+            <div
+              onClick={() => handleLinkClick("/accounts")}
+              className="flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:bg-[#0B1E36] hover:text-white transition font-bold cursor-pointer"
+            >
               <div className="flex items-center gap-2.5">
                 <Receipt className="size-4 text-emerald-400" />
                 <span>السندات المالية (قبض وصرف)</span>
@@ -263,7 +316,7 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
               </span>
             </div>
 
-            {/* الحسابات والدليل المالي (مع قائمة فرعية مفتوحة كما في الصورة) */}
+            {/* الحسابات والدليل المالي */}
             <div>
               <button
                 onClick={() => setIsAccountsTreeOpen(!isAccountsTreeOpen)}
@@ -281,17 +334,29 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
                 </div>
               </button>
 
-              {/* القائمة الفرعية */}
+              {/* القائمة الفرعية المفتوحة كما في الصورة */}
               {isAccountsTreeOpen && (
                 <div className="pr-7 pl-2 py-1 space-y-1 text-[11px] font-semibold text-slate-300">
-                  <div className="px-2.5 py-1.5 rounded-lg bg-[#271311] border border-amber-900/60 text-amber-300 font-bold flex items-center justify-between">
+                  <div
+                    onClick={() => {
+                      onClose();
+                      if (onOpenAccountsTree) onOpenAccountsTree();
+                    }}
+                    className="px-2.5 py-1.5 rounded-lg bg-[#271311] border border-amber-900/60 text-amber-300 font-bold flex items-center justify-between cursor-pointer hover:bg-[#341a18] transition"
+                  >
                     <span>• شجرة الحسابات والعملاء [70]</span>
                     <span className="text-amber-400">⚡</span>
                   </div>
-                  <div className="px-2.5 py-1 rounded-lg hover:bg-[#0B1E36] hover:text-white transition cursor-pointer">
+                  <div
+                    onClick={() => handleLinkClick("/accounts")}
+                    className="px-2.5 py-1 rounded-lg hover:bg-[#0B1E36] hover:text-white transition cursor-pointer"
+                  >
                     • كشوفات الحسابات بالعملات
                   </div>
-                  <div className="px-2.5 py-1 rounded-lg hover:bg-[#0B1E36] hover:text-white transition cursor-pointer">
+                  <div
+                    onClick={() => handleLinkClick("/accounts")}
+                    className="px-2.5 py-1 rounded-lg hover:bg-[#0B1E36] hover:text-white transition cursor-pointer"
+                  >
                     • قيود اليومية المزدوجة
                   </div>
                 </div>
@@ -322,6 +387,7 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
             {/* لوحة عمليات الشحن والتوزيع */}
             <Link
               to="/admin"
+              onClick={() => handleLinkClick("/admin")}
               className="flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:bg-[#0B1E36] hover:text-white transition font-bold"
             >
               <div className="flex items-center gap-2.5">
@@ -334,7 +400,13 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
             </Link>
 
             {/* البيانات والمدخلات السريعة */}
-            <div className="flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:bg-[#0B1E36] hover:text-white transition font-bold cursor-pointer">
+            <div
+              onClick={() => {
+                onClose();
+                if (onOpenQuickScan) onOpenQuickScan();
+              }}
+              className="flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:bg-[#0B1E36] hover:text-white transition font-bold cursor-pointer"
+            >
               <div className="flex items-center gap-2.5">
                 <Database className="size-4 text-sky-300" />
                 <span>البيانات والمدخلات السريعة</span>
@@ -356,6 +428,16 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
                 </div>
                 {isUsersOpen ? <ChevronUp className="size-3.5 opacity-60" /> : <ChevronDown className="size-3.5 opacity-60" />}
               </button>
+              {isUsersOpen && (
+                <div className="pr-7 pl-2 py-1 space-y-1 text-[11px] font-semibold text-slate-300">
+                  <div onClick={() => handleLinkClick("/admin-clients")} className="px-2.5 py-1 rounded-lg hover:bg-[#0B1E36] hover:text-white transition cursor-pointer">
+                    • إدارة بيانات العملاء
+                  </div>
+                  <div onClick={() => handleLinkClick("/customers")} className="px-2.5 py-1 rounded-lg hover:bg-[#0B1E36] hover:text-white transition cursor-pointer">
+                    • دليل الحسابات وأرصدة العملاء
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* الموارد البشرية (الموظفين) */}
@@ -370,6 +452,16 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
                 </div>
                 {isHrOpen ? <ChevronUp className="size-3.5 opacity-60" /> : <ChevronDown className="size-3.5 opacity-60" />}
               </button>
+              {isHrOpen && (
+                <div className="pr-7 pl-2 py-1 space-y-1 text-[11px] font-semibold text-slate-300">
+                  <div className="px-2.5 py-1 rounded-lg hover:bg-[#0B1E36] hover:text-white transition cursor-pointer">
+                    • طاقم العمل وتوزيع المهام
+                  </div>
+                  <div className="px-2.5 py-1 rounded-lg hover:bg-[#0B1E36] hover:text-white transition cursor-pointer">
+                    • صلاحيات الوصول والأدوار
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* قسم التاجر والشركاء */}
@@ -406,6 +498,16 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
                 </div>
                 {isReportsOpen ? <ChevronUp className="size-3.5 opacity-60" /> : <ChevronDown className="size-3.5 opacity-60" />}
               </button>
+              {isReportsOpen && (
+                <div className="pr-7 pl-2 py-1 space-y-1 text-[11px] font-semibold text-slate-300">
+                  <div className="px-2.5 py-1 rounded-lg hover:bg-[#0B1E36] hover:text-white transition cursor-pointer">
+                    • كشف الإيرادات والتحصيل اليومي
+                  </div>
+                  <div className="px-2.5 py-1 rounded-lg hover:bg-[#0B1E36] hover:text-white transition cursor-pointer">
+                    • تقارير الشحنات المسلمة والراجعة
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
