@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
+const db = supabase as any;
 
 export type MenuItem = {
   id: string;
@@ -16,13 +17,13 @@ export function useSidebarMenu(section: string) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase
+    db
      .from("sidebar_menu")
      .select("*")
      .eq("section", section)
      .eq("is_active", true)
      .order("sort_order")
-     .then(({ data }) => {
+     .then(({ data }: any) => {
         if (data) setItems(data as MenuItem[]);
         setLoading(false);
       });

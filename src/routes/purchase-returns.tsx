@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from "react"
 import { supabase } from "@/integrations/supabase/client"
+const db = supabase as any;
 
 export const Route = createFileRoute('/purchase-returns')({
   component: PurchaseReturnsComponent,
@@ -15,25 +16,25 @@ function PurchaseReturnsComponent() {
   const [items, setItems] = useState([{ product_id: "", quantity: 1, unit_price: 0 }])
 
   const load = async () => {
-    const { data } = await supabase.from("purchase_returns").select("*, purchase_invoices(invoice_number)").order("created_at", { ascending: false })
+    const { data } = await db.from("purchase_returns").select("*, purchase_invoices(invoice_number)").order("created_at", { ascending: false })
     setReturns(data || [])
-    const inv = await supabase.from("purchase_invoices").select("id, invoice_number")
+    const inv = await db.from("purchase_invoices").select("id, invoice_number")
     setInvoices(inv.data || [])
-    const prod = await supabase.from("products").select("id, name, purchase_price")
+    const prod = await db.from("products").select("id, name, purchase_price")
     setProducts(prod.data || [])
   }
   useEffect(() => { load() }, [])
 
   const submit = async () => {
     const total = items.reduce((s, i) => s + i.quantity * i.unit_price, 0)
-    const { data: ret, error } = await supabase.from("purchase_returns").insert({
+    const { data: ret, error } = await db.from("purchase_returns").insert({
       invoice_id: invoiceId,
       return_number: `PR-${Date.now()}`,
       reason, total_amount: total, status: "completed"
     }).select().single()
     if (error) return alert(error.message)
     for (const it of items) {
-      await supabase.from("purchase_return_items").insert({
+      await db.from("purchase_return_items").insert({
         return_id: ret.id, product_id: it.product_id,
         quantity: it.quantity, unit_price: it.unit_price,
         total_price: it.quantity * it.unit_price
@@ -56,13 +57,13 @@ function PurchaseReturnsComponent() {
           <div key={idx} className="flex gap-2">
             <select value={it.product_id} onChange={e=>{
               const p = products.find(x=>x.id===e.target.value)
-              const c=[...items]; c[idx]={...c[idx], product_id:e.target.value, unit_price:p?.purchase_price||0}; setItems(c)
+              const c=[...items]; c[idx]={...c[idx]!, product_id:e.target.value, unit_price:p?.purchase_price||0}; setItems(c)
             }} className="border p-2 rounded flex-1">
               <option value="">منتج</option>
               {products.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
-            <input type="number" value={it.quantity} onChange={e=>{const c=[...items]; c[idx].quantity=+e.target.value; setItems(c)}} className="border p-2 rounded w-20" />
-            <input type="number" value={it.unit_price} onChange={e=>{const c=[...items]; c[idx].unit_price=+e.target.value; setItems(c)}} className="border p-2 rounded w-28" />
+            <input type="number" value={it.quantity} onChange={e=>{const c=[...items]; c[idx]!.quantity=+e.target.value; setItems(c)}} className="border p-2 rounded w-20" />
+            <input type="number" value={it.unit_price} onChange={e=>{const c=[...items]; c[idx]!.unit_price=+e.target.value; setItems(c)}} className="border p-2 rounded w-28" />
           </div>
         ))}
         <div className="flex gap-2">

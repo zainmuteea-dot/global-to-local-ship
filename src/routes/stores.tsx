@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/integrations/supabase/client'
+const db = supabase as any;
 
 export const Route = createFileRoute('/stores')({
   component: StoresPage,
@@ -13,7 +14,7 @@ function StoresPage() {
   const [manager, setManager] = useState('')
 
   const fetchStores = async () => {
-    const { data } = await supabase.from('stores').select('*').order('created_at', { ascending: false })
+    const { data } = await db.from('stores').select('*').order('created_at', { ascending: false })
     if (data) setStores(data)
   }
 
@@ -21,7 +22,7 @@ function StoresPage() {
 
   const addStore = async () => {
     if (!name) return alert('ادخل اسم المخزن')
-    await supabase.from('stores').insert({ name, location })
+    await db.from('stores').insert({ name, location })
     setName(''); setLocation(''); setManager('')
     fetchStores()
   }

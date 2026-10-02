@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/integrations/supabase/client'
+const db = supabase as any;
 
 export const Route = createFileRoute('/inventory')({
   component: InventoryPage,
@@ -9,7 +10,7 @@ export const Route = createFileRoute('/inventory')({
 function InventoryPage() {
   const [products, setProducts] = useState<any[]>([])
   useEffect(()=>{
-    supabase.from('products').select('*').order('name').then(({data})=>{ if(data) setProducts(data) })
+    db.from('products').select('*').order('name').then(({data}: any)=>{ if(data) setProducts(data) })
   },[])
   return (
     <div dir="rtl" className="p-6">

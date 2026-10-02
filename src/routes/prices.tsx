@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
+const db = supabase as any;
 
 export const Route = createFileRoute("/prices")({
   component: PricesPage,
@@ -24,7 +25,7 @@ function PricesPage() {
 
   const fetchPrices = async () => {
     setLoading(true);
-    const { data, error } = await supabase.from("prices").select("*").order("created_at", { ascending: false });
+    const { data, error } = await db.from("prices").select("*").order("created_at", { ascending: false });
     if (!error && data) setPrices(data);
     setLoading(false);
   };
@@ -33,7 +34,7 @@ function PricesPage() {
 
   const addPrice = async () => {
     if (!serviceName.trim() ||!price) return;
-    const { error } = await supabase.from("prices").insert({
+    const { error } = await db.from("prices").insert({
       service_name: serviceName.trim(),
       price: parseFloat(price),
       unit: unit.trim() || "ر.س",
@@ -47,7 +48,7 @@ function PricesPage() {
 
   const deletePrice = async (id: string) => {
     if (!confirm("حذف هذا السعر؟")) return;
-    await supabase.from("prices").delete().eq("id", id);
+    await db.from("prices").delete().eq("id", id);
     fetchPrices();
   };
 

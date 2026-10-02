@@ -4,7 +4,7 @@ import { supabase } from "../lib/supabase";
 
 export const Route = createFileRoute("/pay")({
   validateSearch: (search: Record<string, unknown>) => ({
-    order: (search.order as string) || "",
+    order: (search["order"] as string) || "",
   }),
   component: Pay,
 });
@@ -79,7 +79,7 @@ function Pay() {
       if (data) {
         setOrderNo(data.tracking_code);
         const match = data.notes?.match(/السعر التقريبي:\s*([\d.,]+)/);
-        if (match) setTotal(match[1]);
+        if (match && match[1]) setTotal(match[1]);
       }
     };
     fetchOrder();

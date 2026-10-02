@@ -114,7 +114,7 @@ export function TrackPage() {
           }
 
           // 2. محاولة جلبه من بيانات الميتاداتا
-          const metaPhone = session.user.user_metadata?.phone;
+          const metaPhone = session.user.user_metadata?.["phone"];
           if (metaPhone) {
             setPhone(metaPhone);
             return;

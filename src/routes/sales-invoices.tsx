@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from "react"
 import { supabase } from "@/integrations/supabase/client"
+const db = supabase as any;
 export const Route = createFileRoute('/sales-invoices')({
   component: SalesPage,
 })
@@ -14,11 +15,11 @@ function SalesPage() {
   const [qty, setQty] = useState('1')
 
   const fetchData = async () => {
-    const { data: p } = await supabase.from('products').select('*')
+    const { data: p } = await db.from('products').select('*')
     if(p) setProducts(p)
-    const { data: c } = await supabase.from('customers').select('*')
+    const { data: c } = await db.from('customers').select('*')
     if(c) setCustomers(c)
-    const { data: inv } = await supabase.from('sales_invoices').select('*').order('created_at',{ascending:false}).limit(20)
+    const { data: inv } = await db.from('sales_invoices').select('*').order('created_at',{ascending:false}).limit(20)
     if(inv) setInvoices(inv)
   }
   useEffect(()=>{fetchData()},[])
@@ -27,7 +28,7 @@ function SalesPage() {
     if(!productId) return alert('اختر المنتج')
     const prod = products.find(x=>x.id===productId)
     const total = (prod?.price||0) * Number(qty)
-    await supabase.from('sales_invoices').insert({
+    await db.from('sales_invoices').insert({
       customer_id: customerId||null,
       total,
       items: [{ product_id: productId, qty: Number(qty), price: prod?.price }]

@@ -12,7 +12,7 @@ function AccountSuccessPage() {
   const [userName, setUserName] = useState("عزيزنا العميل");
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      const n = session?.user?.user_metadata?.full_name || sessionStorage.getItem("sc_name");
+      const n = session?.user?.user_metadata?.["full_name"] || sessionStorage.getItem("sc_name");
       if (n) setUserName(n);
     });
     const t = setTimeout(() => navigate({ to: "/my-account" }), 3500);

@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+const db = supabase as any;
 
 export const Route = createFileRoute("/admin-steps")({
   component: StepsAdmin,
@@ -25,7 +26,7 @@ function StepsAdmin() {
 
   const load = async () => {
     setLoading(true);
-    const { data } = await supabase.from("site_steps").select("*").order("sort_order");
+    const { data } = await db.from("site_steps").select("*").order("sort_order");
     if (data) setRows(data as StepRow[]);
     setLoading(false);
   };
@@ -34,18 +35,18 @@ function StepsAdmin() {
 
   const add = async () => {
     if (!form.title) return alert("أدخل العنوان");
-    const { error } = await supabase.from("site_steps").insert([{ ...form, is_active: true }]);
+    const { error } = await db.from("site_steps").insert([{ ...form, is_active: true }]);
     if (!error) { setForm({ title: "", description: "", icon_name: "Link2", link_to: "/new-order", sort_order: 1 }); load(); }
   };
 
   const toggle = async (r: StepRow) => {
-    await supabase.from("site_steps").update({ is_active: !r.is_active }).eq("id", r.id);
+    await db.from("site_steps").update({ is_active: !r.is_active }).eq("id", r.id);
     load();
   };
 
   const del = async (id: string) => {
     if (!confirm("حذف هذه الخطوة؟")) return;
-    await supabase.from("site_steps").delete().eq("id", id);
+    await db.from("site_steps").delete().eq("id", id);
     load();
   };
 

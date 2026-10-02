@@ -350,8 +350,8 @@ export function HomePage() {
     supabase.auth.getUser().then(({ data }) => {
       if (data?.user) {
         setUser(data.user);
-        if (data.user.user_metadata?.full_name) {
-          setCustomerName(data.user.user_metadata.full_name);
+        if (data.user.user_metadata?.["full_name"]) {
+          setCustomerName(data.user.user_metadata["full_name"]);
         }
       }
     });
