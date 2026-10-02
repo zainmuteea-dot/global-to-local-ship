@@ -57,13 +57,13 @@ function PurchaseReturnsComponent() {
           <div key={idx} className="flex gap-2">
             <select value={it.product_id} onChange={e=>{
               const p = products.find(x=>x.id===e.target.value)
-              const c=[...items]; c[idx]={...c[idx], product_id:e.target.value, unit_price:p?.purchase_price||0}; setItems(c)
+              const c=[...items]; c[idx]={...c[idx]!, product_id:e.target.value, unit_price:p?.purchase_price||0}; setItems(c)
             }} className="border p-2 rounded flex-1">
               <option value="">منتج</option>
               {products.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
-            <input type="number" value={it.quantity} onChange={e=>{const c=[...items]; c[idx].quantity=+e.target.value; setItems(c)}} className="border p-2 rounded w-20" />
-            <input type="number" value={it.unit_price} onChange={e=>{const c=[...items]; c[idx].unit_price=+e.target.value; setItems(c)}} className="border p-2 rounded w-28" />
+            <input type="number" value={it.quantity} onChange={e=>{const c=[...items]; c[idx]!.quantity=+e.target.value; setItems(c)}} className="border p-2 rounded w-20" />
+            <input type="number" value={it.unit_price} onChange={e=>{const c=[...items]; c[idx]!.unit_price=+e.target.value; setItems(c)}} className="border p-2 rounded w-28" />
           </div>
         ))}
         <div className="flex gap-2">
