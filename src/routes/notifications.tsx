@@ -11,7 +11,7 @@ export const Route = createFileRoute("/notifications")({
 
 type OrderNotif = {
   id: string; tracking_code: string; customer_name: string;
-  phone: string; notes: string; status: string; created_at: string; read?: boolean;
+  phone: string; notes: string | null; status: string; created_at: string; read?: boolean;
 };
 
 function NotificationsPage() {
@@ -80,7 +80,7 @@ function NotificationsPage() {
         </div>
       </div>
 
-      {orders.length===0? <EmptyState title="لا توجد طلبات" desc="أي طلب جديد من عميل سيظهر هنا فوراً مع صوت وإشعار"/> : (
+      {orders.length===0? <EmptyState title="لا توجد طلبات" text="أي طلب جديد من عميل سيظهر هنا فوراً مع صوت وإشعار"/> : (
         <div className="space-y-3">
           {orders.map(o=>{
             const clean=(o.phone||"").replace(/\D/g,"");

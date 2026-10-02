@@ -52,7 +52,7 @@ function AddressesPage() {
 
   const save = async () => {
     const p = schema.safeParse(form);
-    if (!p.success) return setErr(p.error.issues[0].message);
+    if (!p.success) return setErr(p.error.issues[0]?.message ?? "تحقق من البيانات");
     if (!user) return;
     const { error } = await supabase.from("addresses").insert({
       user_id: user.id, label: p.data.label, city: p.data.city, details: p.data.details,
