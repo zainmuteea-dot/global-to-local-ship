@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 export const Route = createFileRoute('/new-order')({
   component: NewOrderPage,
@@ -89,6 +89,7 @@ const CSS = `
 .no-foot .f{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;color:#5a7294}
 .no-foot .f svg{color:var(--blue-500)}
 .no-foot .f svg{width:15px;height:15px}
+.no-warn{display:flex;align-items:center;gap:8px;margin-top:12px;background:#fff6e9;border:1.4px solid #f3d9a8;color:#9a5b05;font-size:12.5px;font-weight:700;padding:10px 13px;border-radius:12px}
 .no-foot .f:nth-child(2) svg{color:var(--orange-500)}
 @media(max-width:520px){.no-brand h1{font-size:16px}.no-price{flex-direction:column}.no-price select{flex:1}}
 @media(max-width:360px){.no-badge{width:44px;height:44px}.no-badge svg{width:28px;height:28px}.no-brand h1{font-size:14px}}
@@ -123,27 +124,109 @@ const Logo = () => (
   </svg>
 )
 
+/* ============ المتاجر العالمية — كشف تلقائي من الرابط ============ */
+type Store = { key: string; label: string; test: RegExp }
+const STORES: Store[] = [
+  { key: 'shein', label: 'SHEIN', test: /shein\./i },
+  { key: 'amazon', label: 'Amazon', test: /amazon\.|amzn\.|a\.co\//i },
+  { key: 'aliexpress', label: 'AliExpress', test: /aliexpress\./i },
+  { key: 'alibaba', label: 'Alibaba', test: /alibaba\./i },
+  { key: 'temu', label: 'Temu', test: /temu\./i },
+  { key: 'noon', label: 'Noon', test: /noon\./i },
+  { key: 'ebay', label: 'eBay', test: /ebay\./i },
+  { key: 'namshi', label: 'Namshi', test: /namshi\./i },
+  { key: 'trendyol', label: 'Trendyol', test: /trendyol\./i },
+  { key: 'walmart', label: 'Walmart', test: /walmart\./i },
+  { key: 'taobao', label: 'Taobao', test: /taobao\.|tmall\./i },
+]
+function detectStore(url: string): Store | null {
+  const u = url.trim()
+  if (!u) return null
+  return STORES.find((s) => s.test.test(u)) ?? null
+}
+
+/* ============ Supabase (REST — بدون مكتبات إضافية) ============ */
+// اضبط المتغيرين في .env (Vite): VITE_SUPABASE_URL و VITE_SUPABASE_ANON_KEY
+const SB_URL = (import.meta as any).env?.VITE_SUPABASE_URL as string | undefined
+const SB_KEY = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY as string | undefined
+
+async function sbSelect<T = any>(query: string, signal?: AbortSignal): Promise<T[]> {
+  if (!SB_URL || !SB_KEY) throw new Error('Supabase env غير مضبوط')
+  const res = await fetch(`${SB_URL}/rest/v1/${query}`, {
+    headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, Accept: 'application/json' },
+    signal,
+  })
+  if (!res.ok) throw new Error(`Supabase ${res.status}`)
+  return res.json()
+}
+
+type Profile = { full_name?: string; phone?: string }
+// يجلب بيانات العميل (الاسم والرقم). عدّل اسم الجدول/الأعمدة حسب قاعدتك
+async function fetchProfile(signal?: AbortSignal): Promise<Profile | null> {
+  const rows = await sbSelect<Profile>('profiles?select=full_name,phone&limit=1', signal)
+  return rows[0] ?? null
+}
+// يجلب سعر المنتج بحسب الرابط (جدول product_prices: url, price)
+async function fetchPrice(url: string, signal?: AbortSignal): Promise<string | null> {
+  const rows = await sbSelect<{ price: number }>(
+    `product_prices?select=price&url=eq.${encodeURIComponent(url)}&limit=1`,
+    signal,
+  )
+  return rows[0]?.price != null ? String(rows[0].price) : null
+}
+
 /* ===================== Component ===================== */
 const DUP_OPTS = ['نعم', 'لا', 'غير متأكد'] as const
 
 function NewOrderPage() {
-  const [url, setUrl] = useState('https://ar.shein.com/Women-Plus-Clothing-c-1888.html')
+  const [url, setUrl] = useState('')
   const [address, setAddress] = useState('')
-  const [name, setName] = useState('zain muteea')
-  const [phone, setPhone] = useState('772399744')
-  const [price, setPrice] = useState('89')
+  const [name, setName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [price, setPrice] = useState('')
   const [currency, setCurrency] = useState('ر.س سعودي')
   const [notes, setNotes] = useState('')
   const [dup, setDup] = useState<(typeof DUP_OPTS)[number]>('لا')
   const [status, setStatus] = useState<'idle' | 'sending' | 'done'>('idle')
+  const [priceLoading, setPriceLoading] = useState(false)
+  const [sbError, setSbError] = useState('')
 
-  const isShein = useMemo(() => /shein\./i.test(url), [url])
+  const store = useMemo(() => detectStore(url), [url])
+
+  // (1) عند فتح الصفحة: تعبئة الاسم والرقم تلقائياً من Supabase (قابلة للتعديل يدوياً)
+  useEffect(() => {
+    const ac = new AbortController()
+    fetchProfile(ac.signal)
+      .then((p) => {
+        if (!p) return
+        if (p.full_name) setName((v) => v || p.full_name!)
+        if (p.phone) setPhone((v) => v || p.phone!)
+      })
+      .catch((e) => {
+        if (e?.name !== 'AbortError') setSbError('تعذّر جلب بيانات العميل — يمكنك إدخالها يدوياً')
+      })
+    return () => ac.abort()
+  }, [])
+
+  // (2) عند التعرف على متجر من الرابط: جلب السعر تلقائياً من Supabase
+  useEffect(() => {
+    if (!store || !url) return
+    const ac = new AbortController()
+    const t = setTimeout(() => {
+      setPriceLoading(true)
+      fetchPrice(url, ac.signal)
+        .then((p) => { if (p) setPrice(p) })
+        .catch((e) => { if (e?.name !== 'AbortError') setSbError('تعذّر جلب السعر — أدخله يدوياً') })
+        .finally(() => setPriceLoading(false))
+    }, 500) // debounce
+    return () => { clearTimeout(t); ac.abort() }
+  }, [url, store])
 
   const submit = () => {
     if (status === 'sending') return
     setStatus('sending')
-    // TODO: استبدل بنداء API الفعلي (Serverless على Vercel)
-    const payload = { url, address, name, phone, price, currency, notes, duplicates: dup }
+    // TODO: استبدل بنداء API الفعلي (Serverless / Supabase insert)
+    const payload = { url, store: store?.key ?? null, address, name, phone, price, currency, notes, duplicates: dup }
     console.log('order payload', payload)
     setTimeout(() => setStatus('done'), 900)
   }
@@ -163,6 +246,13 @@ function NewOrderPage() {
           <button className="no-arrow" type="button" title="الرجوع"><Arrow /></button>
         </header>
 
+        {sbError && (
+          <div className="no-warn">
+            <Flash />
+            <span>{sbError}</span>
+          </div>
+        )}
+
         {/* 1 - تفاصيل السلة */}
         <section className="no-card">
           <div className="no-head">
@@ -170,17 +260,17 @@ function NewOrderPage() {
             <div className="no-ico"><Cart /></div>
             <div className="no-title">تفاصيل السلة</div>
           </div>
-          <span className="no-pill">SHEIN</span>
+          {store && <span className="no-pill">{store.label}</span>}
           <div className="no-field">
             <label className="no-lbl">رابط السلة / المنتج <span className="no-req">*</span></label>
             <div className="no-iw">
               <Link />
-              <input className="has-ic" type="text" value={url} onChange={(e) => setUrl(e.target.value)} />
+              <input className="has-ic" type="text" value={url} onChange={(e) => setUrl(e.target.value)} dir="ltr" style={{ textAlign: 'right' }} placeholder="الصق رابط المنتج من أي متجر عالمي (SHEIN، Amazon، AliExpress...)" />
             </div>
-            {isShein && (
+            {store && (
               <div className="no-ok">
                 <Check s={18} />
-                <span>تم التعرف على سلة متجر SHEIN بنجاح</span>
+                <span>تم التعرف على متجر {store.label} بنجاح</span>
                 <Flash />
               </div>
             )}
@@ -211,14 +301,14 @@ function NewOrderPage() {
             <label className="no-lbl">اسم المستلم الكريم <span className="no-req">*</span></label>
             <div className="no-iw">
               <User />
-              <input className="has-ic" type="text" value={name} onChange={(e) => setName(e.target.value)} />
+              <input className="has-ic" type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="اسم المستلم" />
             </div>
           </div>
           <div className="no-field">
             <label className="no-lbl">رقم الهاتف / الواتساب <span className="no-req">*</span></label>
             <div className="no-iw">
               <Phone />
-              <input className="has-ic" type="tel" dir="ltr" style={{ textAlign: 'right' }} value={phone} onChange={(e) => setPhone(e.target.value)} />
+              <input className="has-ic" type="tel" dir="ltr" style={{ textAlign: 'right' }} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="7XXXXXXXX" />
             </div>
           </div>
         </section>
@@ -232,7 +322,7 @@ function NewOrderPage() {
           </div>
           <div className="no-price">
             <div className="no-iw">
-              <input type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0.00" />
+              <input type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder={priceLoading ? 'جارٍ جلب السعر...' : '0.00'} />
             </div>
             <select value={currency} onChange={(e) => setCurrency(e.target.value)}>
               <option>ر.س سعودي</option>
