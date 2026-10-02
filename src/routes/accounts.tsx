@@ -181,8 +181,8 @@ export function AccountsPage() {
     if (!input) return;
     const match = input.trim().match(/^([\d.,]+)\s*(USD|SAR|YER)?$/i);
     if (!match) return alert("صيغة غير صحيحة. مثال: 500 USD");
-    const amount = Number(match[1].replace(/,/g, ""));
-    const currency = ((match[2] || "USD").toUpperCase() as Currency) || "USD";
+    const amount = Number((match[1] ?? "0").replace(/,/g, ""));
+    const currency = ((match[2] ?? "USD").toUpperCase() as Currency) || "USD";
     if (!amount || amount <= 0) return alert("أدخل مبلغاً صحيحاً");
 
     const nextFunds = funds.map((f) =>
