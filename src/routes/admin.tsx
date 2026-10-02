@@ -406,7 +406,13 @@ function AdminOperationsDashboard() {
         </div>
       </div>
 
-      <AdminSidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} onOpenAccountsTree={() => setIsAccountsTreeOpen(true)} navigateTo={navigateTo} />
+     <AdminSidebar
+  isOpen={isSidebarOpen}
+  onClose={() => setIsSidebarOpen(false)}
+  onOpenAccountsTree={() => setIsAccountsTreeOpen(true)}
+  onOpenQuickScan={() => setIsQuickScanOpen(true)}
+  navigateTo={navigateTo}
+/>
       {isAccountsTreeOpen && <AccountsTreeModal onClose={() => setIsAccountsTreeOpen(false)} />}
       {isAddModalOpen && (
         <AddShipmentModal
