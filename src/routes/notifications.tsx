@@ -80,7 +80,7 @@ function NotificationsPage() {
         </div>
       </div>
 
-      {orders.length===0? <EmptyState title="لا توجد طلبات" text="أي طلب جديد من عميل سيظهر هنا فوراً مع صوت وإشعار"/> : (
+      {orders.length===0? <EmptyState icon={<Bell className="size-8 text-amber-300"/>} title="لا توجد طلبات" text="أي طلب جديد من عميل سيظهر هنا فوراً مع صوت وإشعار"/> : (
         <div className="space-y-3">
           {orders.map(o=>{
             const clean=(o.phone||"").replace(/\D/g,"");
