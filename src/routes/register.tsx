@@ -48,7 +48,7 @@ function RegisterPage() {
         <div className="mb-8 flex items-center justify-between">
           <span className="font-display text-3xl font-black text-cocoa">{BRAND}</span>
           <button
-            onClick={() => navigate({ to: "/verify" })}
+            onClick={() => navigate({ to: "/login" })}
             className="grid size-10 place-items-center rounded-full bg-card text-cocoa ring-1 ring-border"
             aria-label="رجوع"
           >
