@@ -26,7 +26,6 @@ import { Route as InsuranceAmountsRouteImport } from './routes/insurance-amounts
 import { Route as InventoryRouteImport } from './routes/inventory'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MerchantReportsRouteImport } from './routes/merchant-reports'
-import { Route as MyAccountRouteImport } from './routes/my-account'
 import { Route as NewOrderRouteImport } from './routes/new-order'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as PayRouteImport } from './routes/pay'
@@ -133,11 +132,6 @@ const LoginRoute = LoginRouteImport.update({
 const MerchantReportsRoute = MerchantReportsRouteImport.update({
   id: '/merchant-reports',
   path: '/merchant-reports',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MyAccountRoute = MyAccountRouteImport.update({
-  id: '/my-account',
-  path: '/my-account',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NewOrderRoute = NewOrderRouteImport.update({
@@ -269,7 +263,6 @@ export interface FileRoutesByFullPath {
   '/inventory': typeof InventoryRoute
   '/login': typeof LoginRoute
   '/merchant-reports': typeof MerchantReportsRoute
-  '/my-account': typeof MyAccountRoute
   '/new-order': typeof NewOrderRoute
   '/notifications': typeof NotificationsRoute
   '/pay': typeof PayRoute
@@ -311,7 +304,6 @@ export interface FileRoutesByTo {
   '/inventory': typeof InventoryRoute
   '/login': typeof LoginRoute
   '/merchant-reports': typeof MerchantReportsRoute
-  '/my-account': typeof MyAccountRoute
   '/new-order': typeof NewOrderRoute
   '/notifications': typeof NotificationsRoute
   '/pay': typeof PayRoute
@@ -354,7 +346,6 @@ export interface FileRoutesById {
   '/inventory': typeof InventoryRoute
   '/login': typeof LoginRoute
   '/merchant-reports': typeof MerchantReportsRoute
-  '/my-account': typeof MyAccountRoute
   '/new-order': typeof NewOrderRoute
   '/notifications': typeof NotificationsRoute
   '/pay': typeof PayRoute
@@ -398,7 +389,6 @@ export interface FileRouteTypes {
     | '/inventory'
     | '/login'
     | '/merchant-reports'
-    | '/my-account'
     | '/new-order'
     | '/notifications'
     | '/pay'
@@ -440,7 +430,6 @@ export interface FileRouteTypes {
     | '/inventory'
     | '/login'
     | '/merchant-reports'
-    | '/my-account'
     | '/new-order'
     | '/notifications'
     | '/pay'
@@ -482,7 +471,6 @@ export interface FileRouteTypes {
     | '/inventory'
     | '/login'
     | '/merchant-reports'
-    | '/my-account'
     | '/new-order'
     | '/notifications'
     | '/pay'
@@ -525,7 +513,6 @@ export interface RootRouteChildren {
   InventoryRoute: typeof InventoryRoute
   LoginRoute: typeof LoginRoute
   MerchantReportsRoute: typeof MerchantReportsRoute
-  MyAccountRoute: typeof MyAccountRoute
   NewOrderRoute: typeof NewOrderRoute
   NotificationsRoute: typeof NotificationsRoute
   PayRoute: typeof PayRoute
@@ -669,13 +656,6 @@ declare module '@tanstack/react-router' {
       path: '/merchant-reports'
       fullPath: '/merchant-reports'
       preLoaderRoute: typeof MerchantReportsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/my-account': {
-      id: '/my-account'
-      path: '/my-account'
-      fullPath: '/my-account'
-      preLoaderRoute: typeof MyAccountRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/new-order': {
@@ -853,7 +833,6 @@ const rootRouteChildren: RootRouteChildren = {
   InventoryRoute: InventoryRoute,
   LoginRoute: LoginRoute,
   MerchantReportsRoute: MerchantReportsRoute,
-  MyAccountRoute: MyAccountRoute,
   NewOrderRoute: NewOrderRoute,
   NotificationsRoute: NotificationsRoute,
   PayRoute: PayRoute,
