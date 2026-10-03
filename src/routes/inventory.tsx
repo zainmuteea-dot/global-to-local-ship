@@ -1,53 +1,408 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
-import { ArrowRight, Search, Plus, Boxes, Warehouse, MapPin, QrCode, Printer, CheckCircle2, Clock, AlertTriangle, Package } from "lucide-react";
-export const Route = createFileRoute('/inventory')({ component: InventoryPage });
-interface InventoryItem { id: string; trackingCode: string; barcode: string; clientName: string; clientPhone: string; warehouse: "الصين (غوانزو)" | "تركيا (إسطنبول)" | "صنعاء (حدة)" | "عدن (المنصورة)"; shelfLocation: string; weightKg: number; piecesCount: number; arrivalDate: string; daysInWarehouse: number; status: "جاهز للتسليم" | "قيد الفرز والوزن" | "معاد تغليفه" | "تم التسليم للعميل"; }
+import {
+  ArrowRight, Search, Plus, Boxes, Warehouse,
+  MapPin, QrCode, Printer, CheckCircle2, Clock,
+  AlertTriangle, Package
+} from "lucide-react";
+
+export const Route = createFileRoute('/inventory')({
+  component: InventoryPage,
+});
+
+interface InventoryItem {
+  id: string;
+  trackingCode: string;
+  barcode: string;
+  clientName: string;
+  clientPhone: string;
+  warehouse: "الصين (غوانزو)" | "تركيا (إسطنبول)" | "صنعاء (حدة)" | "عدن (المنصورة)";
+  shelfLocation: string;
+  weightKg: number;
+  piecesCount: number;
+  arrivalDate: string;
+  daysInWarehouse: number;
+  status: "جاهز للتسليم" | "قيد الفرز والوزن" | "معاد تغليفه" | "تم التسليم للعميل";
+}
+
 const INITIAL_ITEMS: InventoryItem[] = [
-{ id: "INV-101", trackingCode: "SQ-800816", barcode: "629104882001", clientName: "محمد عبد الله الأصبحي", clientPhone: "777123456", warehouse: "صنعاء (حدة)", shelfLocation: "المنطقة B - رف 04", weightKg: 2.8, piecesCount: 3, arrivalDate: "2026-04-01", daysInWarehouse: 2, status: "جاهز للتسليم" },
-{ id: "INV-102", trackingCode: "SQ-800922", barcode: "629104882002", clientName: "سارة خالد القاسمي", clientPhone: "733987654", warehouse: "عدن (المنصورة)", shelfLocation: "المنطقة A - رف 11", weightKg: 1.2, piecesCount: 1, arrivalDate: "2026-03-25", daysInWarehouse: 9, status: "جاهز للتسليم" },
-{ id: "INV-103", trackingCode: "SQ-801044", barcode: "629104882003", clientName: "مؤسسة الأفق للتجارة", clientPhone: "711554433", warehouse: "الصين (غوانزو)", shelfLocation: "مستودع التجميع C", weightKg: 44.5, piecesCount: 12, arrivalDate: "2026-04-02", daysInWarehouse: 1, status: "قيد الفرز والوزن" },
-{ id: "INV-104", trackingCode: "SQ-800755", barcode: "629104882004", clientName: "عمار يحيى الوادعي", clientPhone: "771889900", warehouse: "صنعاء (حدة)", shelfLocation: "المنطقة B - رف 08", weightKg: 0.9, piecesCount: 1, arrivalDate: "2026-03-18", daysInWarehouse: 16, status: "جاهز للتسليم" },
-{ id: "INV-105", trackingCode: "SQ-801120", barcode: "629104882005", clientName: "فاطمة أحمد الحاشدي", clientPhone: "770112233", warehouse: "تركيا (إسطنبول)", shelfLocation: "مستودع إسطنبول T1", weightKg: 3.4, piecesCount: 2, arrivalDate: "2026-04-01", daysInWarehouse: 2, status: "معاد تغليفه" }
+  {
+    id: "INV-101",
+    trackingCode: "SQ-800816",
+    barcode: "629104882001",
+    clientName: "محمد عبد الله الأصبحي",
+    clientPhone: "777123456",
+    warehouse: "صنعاء (حدة)",
+    shelfLocation: "المنطقة B - رف 04",
+    weightKg: 2.8,
+    piecesCount: 3,
+    arrivalDate: "2026-04-01",
+    daysInWarehouse: 2,
+    status: "جاهز للتسليم"
+  },
+  {
+    id: "INV-102",
+    trackingCode: "SQ-800922",
+    barcode: "629104882002",
+    clientName: "سارة خالد القاسمي",
+    clientPhone: "733987654",
+    warehouse: "عدن (المنصورة)",
+    shelfLocation: "المنطقة A - رف 11",
+    weightKg: 1.2,
+    piecesCount: 1,
+    arrivalDate: "2026-03-25",
+    daysInWarehouse: 9,
+    status: "جاهز للتسليم"
+  },
+  {
+    id: "INV-103",
+    trackingCode: "SQ-801044",
+    barcode: "629104882003",
+    clientName: "مؤسسة الأفق للتجارة",
+    clientPhone: "711554433",
+    warehouse: "الصين (غوانزو)",
+    shelfLocation: "مستودع التجميع C",
+    weightKg: 44.5,
+    piecesCount: 12,
+    arrivalDate: "2026-04-02",
+    daysInWarehouse: 1,
+    status: "قيد الفرز والوزن"
+  },
+  {
+    id: "INV-104",
+    trackingCode: "SQ-800755",
+    barcode: "629104882004",
+    clientName: "عمار يحيى الوادعي",
+    clientPhone: "771889900",
+    warehouse: "صنعاء (حدة)",
+    shelfLocation: "المنطقة B - رف 08",
+    weightKg: 0.9,
+    piecesCount: 1,
+    arrivalDate: "2026-03-18",
+    daysInWarehouse: 16,
+    status: "جاهز للتسليم"
+  },
+  {
+    id: "INV-105",
+    trackingCode: "SQ-801120",
+    barcode: "629104882005",
+    clientName: "فاطمة أحمد الحاشدي",
+    clientPhone: "770112233",
+    warehouse: "تركيا (إسطنبول)",
+    shelfLocation: "مستودع إسطنبول T1",
+    weightKg: 3.4,
+    piecesCount: 2,
+    arrivalDate: "2026-04-01",
+    daysInWarehouse: 2,
+    status: "معاد تغليفه"
+  }
 ];
+
 export default function InventoryPage() {
-const navigate = useNavigate();
-const [items, setItems] = useState<InventoryItem[]>(INITIAL_ITEMS);
-const [search, setSearch] = useState("");
-const [selectedWarehouse, setSelectedWarehouse] = useState<string>("الكل");
-const [selectedStatus, setSelectedStatus] = useState<string>("الكل");
-const [showAddModal, setShowAddModal] = useState(false);
-const [newItem, setNewItem] = useState({ trackingCode: "", barcode: "", clientName: "", clientPhone: "", warehouse: "صنعاء (حدة)" as InventoryItem["warehouse"], shelfLocation: "", weightKg: "", piecesCount: "1" });
-const filteredItems = useMemo(() => { const s = search?? ""; return items.filter(item => { const matchSearch = item.trackingCode.toLowerCase().includes(s.toLowerCase()) || item.barcode.includes(s) || item.clientName.includes(s) || item.clientPhone.includes(s) || item.shelfLocation.includes(s); const matchWarehouse = selectedWarehouse === "الكل" || item.warehouse === selectedWarehouse; const matchStatus = selectedStatus === "الكل" || item.status === selectedStatus; return matchSearch && matchWarehouse && matchStatus; }); }, [items, search, selectedWarehouse, selectedStatus]);
-const stats = useMemo(() => { const totalParcels = items.length; const readyForPickup = items.filter(i => i.status === "جاهز للتسليم").length; const inProcessing = items.filter(i => i.status === "قيد الفرز والوزن" || i.status === "معاد تغليفه").length; const delayed = items.filter(i => i.daysInWarehouse >= 14 && i.status!== "تم التسليم للعميل").length; const totalWeight = items.reduce((sum, i) => sum + i.weightKg, 0); return { totalParcels, readyForPickup, inProcessing, delayed, totalWeight }; }, [items]);
-const handleDeliver = (id: string) => { setItems(prev => prev.map(item => item.id === id? {...item, status: "تم التسليم للعميل" } : item)); };
-const handleAddItem = (e: React.FormEvent) => { e.preventDefault(); if (!newItem.trackingCode ||!newItem.clientName) return; const item: InventoryItem = { id: `INV-${Date.now().toString().slice(-4)}`, trackingCode: newItem.trackingCode.toUpperCase(), barcode: newItem.barcode || `6291${Math.floor(10000000 + Math.random() * 90000000)}`, clientName: newItem.clientName, clientPhone: newItem.clientPhone, warehouse: newItem.warehouse, shelfLocation: newItem.shelfLocation || "منطقة الاستقبال العام", weightKg: Number(newItem.weightKg) || 1.0, piecesCount: Number(newItem.piecesCount) || 1, arrivalDate: new Date().toISOString().split("T")[0]?? "", daysInWarehouse: 0, status: "قيد الفرز والوزن" }; setItems([item,...items]); setShowAddModal(false); setNewItem({ trackingCode: "", barcode: "", clientName: "", clientPhone: "", warehouse: "صنعاء (حدة)", shelfLocation: "", weightKg: "", piecesCount: "1" }); };
-return (
-<div dir="rtl" className="min-h-screen bg-gradient-to-br from-[#F0F7FF] via-[#F8FAFC] to-[#FFF9F5] p-4 md:p-8 font-['Cairo',sans-serif]">
-<div className="max-w-7xl mx-auto space-y-6">
-<div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl shadow-sm border border-sky-100">
-<div className="flex items-center gap-3">
-<button onClick={() => navigate({ to: "/admin" })} className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition"><ArrowRight className="w-5 h-5" /></button>
-<div><h1 className="text-xl md:text-2xl font-black text-[#0F4C81] flex items-center gap-2"><Boxes className="w-6 h-6 text-[#F97316]" />إدارة المخزون والمستودعات</h1><p className="text-xs md:text-sm text-slate-500 font-medium">متابعة الطرود في مستودعات الصين، تركيا، ونقاط التوزيع في اليمن</p></div>
-</div>
-<div className="flex items-center gap-2"><button onClick={() => setShowAddModal(true)} className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#0F4C81] hover:bg-[#0c3c66] text-white font-bold text-sm shadow-md transition"><Plus className="w-4 h-4" />إيداع طرد جديد</button></div>
-</div>
-<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-<div className="bg-white p-4 md:p-5 rounded-2xl border border-sky-100 shadow-sm"><div className="flex items-center justify-between text-sky-600 mb-2"><span className="text-xs font-bold">إجمالي الطرود بالمخازن</span><Boxes className="w-5 h-5 bg-sky-50 p-1 rounded-lg" /></div><div className="text-2xl font-black text-slate-900">{stats.totalParcels} طرد</div><p className="text-[11px] text-slate-400 mt-1">الوزن الإجمالي: {stats.totalWeight.toFixed(1)} كجم</p></div>
-<div className="bg-white p-4 md:p-5 rounded-2xl border border-emerald-100 shadow-sm"><div className="flex items-center justify-between text-emerald-600 mb-2"><span className="text-xs font-bold">جاهزة للاستلام والتسليم</span><CheckCircle2 className="w-5 h-5 bg-emerald-50 p-1 rounded-lg" /></div><div className="text-2xl font-black text-emerald-700">{stats.readyForPickup} طرد</div><p className="text-[11px] text-slate-400 mt-1">في فروع صنعاء وعدن</p></div>
-<div className="bg-white p-4 md:p-5 rounded-2xl border border-amber-100 shadow-sm"><div className="flex items-center justify-between text-amber-600 mb-2"><span className="text-xs font-bold">قيد الفرز والوزن</span><Clock className="w-5 h-5 bg-amber-50 p-1 rounded-lg" /></div><div className="text-2xl font-black text-amber-600">{stats.inProcessing} طرد</div><p className="text-[11px] text-slate-400 mt-1">تجهيز للشحن الخارجي</p></div>
-<div className="bg-white p-4 md:p-5 rounded-2xl border border-rose-100 shadow-sm"><div className="flex items-center justify-between text-rose-600 mb-2"><span className="text-xs font-bold">طرود راكدة (+14 يوم)</span><AlertTriangle className="w-5 h-5 bg-rose-50 p-1 rounded-lg" /></div><div className="text-2xl font-black text-rose-600">{stats.delayed} طرد</div><p className="text-[11px] text-slate-400 mt-1">بحاجة للتواصل مع العميل</p></div>
-</div>
-<div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-<div className="flex flex-wrap items-center gap-2 border-b border-slate-100 pb-3"><span className="text-xs font-bold text-slate-500 ml-2">المستودع:</span>{["الكل", "الصين (غوانزو)", "تركيا (إسطنبول)", "صنعاء (حدة)", "عدن (المنصورة)"].map((wh) => (<button key={wh} onClick={() => setSelectedWarehouse(wh)} className={`text-xs font-bold px-3 py-1.5 rounded-xl transition ${selectedWarehouse === wh? "bg-[#0F4C81] text-white shadow-sm" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>{wh}</button>))}</div>
-<div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-<div className="md:col-span-2 relative"><Search className="w-5 h-5 text-slate-400 absolute right-4 top-1/2 -translate-y-1/2" /><input type="text" placeholder="ابحث برقم التتبع، الباركود، اسم العميل، الهاتف، أو الرف..." value={search?? ""} onChange={(e) => setSearch(e.target.value)} className="w-full h-11 pr-12 pl-4 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-[#0F4C81] outline-none text-xs md:text-sm font-medium transition" /></div>
-<div><select value={selectedStatus?? "الكل"} onChange={(e) => setSelectedStatus(e.target.value)} className="w-full h-11 px-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-[#0F4C81] outline-none text-xs font-bold text-slate-700"><option value="الكل">جميع الحالات</option><option value="جاهز للتسليم">جاهز للتسليم</option><option value="قيد الفرز والوزن">قيد الفرز والوزن</option><option value="معاد تغليفه">معاد تغليفه</option><option value="تم التسليم للعميل">تم التسليم للعميل</option></select></div>
-</div>
-</div>
-<div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden"><div className="overflow-x-auto"><table className="w-full text-right text-xs md:text-sm"><thead className="bg-[#0F4C81]/5 text-[#0F4C81] text-xs font-bold border-b border-sky-100"><tr><th className="py-3 px-4">رقم الطرد والتتبع</th><th className="py-3 px-4">صاحب الشحنة</th><th className="py-3 px-4">المستودع والموقع (الرف)</th><th className="py-3 px-4 text-center">الوزن / القطع</th><th className="py-3 px-4 text-center">المدة بالمخزن</th><th className="py-3 px-4 text-center">الحالة</th><th className="py-3 px-4 text-center">الإجراءات</th></tr></thead><tbody className="divide-y divide-slate-100 font-medium">{filteredItems.map((item) => (<tr key={item.id} className="hover:bg-slate-50/80 transition"><td className="py-3.5 px-4"><div className="font-mono font-bold text-[#0F4C81] flex items-center gap-1.5"><QrCode className="w-4 h-4 text-[#F97316]" />{item.trackingCode}</div><div className="text-[11px] font-mono text-slate-400 mt-0.5">باركود: {item.barcode}</div></td><td className="py-3.5 px-4"><div className="font-bold text-slate-900">{item.clientName}</div><div className="text-[11px] text-slate-400 font-mono">{item.clientPhone}</div></td><td className="py-3.5 px-4"><div className="font-bold text-slate-800 flex items-center gap-1"><Warehouse className="w-3.5 h-3.5 text-sky-600" />{item.warehouse}</div><div className="text-[11px] text-amber-700 font-medium mt-0.5 flex items-center gap-1"><MapPin className="w-3 h-3" />{item.shelfLocation}</div></td><td className="py-3.5 px-4 text-center"><span className="font-bold text-slate-900">{item.weightKg} كجم</span><span className="block text-[11px] text-slate-400">({item.piecesCount} قطع)</span></td><td className="py-3.5 px-4 text-center"><span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold ${item.daysInWarehouse >= 14? "bg-rose-100 text-rose-700" : "bg-slate-100 text-slate-700"}`}>{item.daysInWarehouse} يوم</span></td><td className="py-3.5 px-4 text-center"><span className={`text-[11px] px-2.5 py-1 rounded-full font-bold ${item.status === 'جاهز للتسليم'? 'bg-emerald-100 text-emerald-800' : item.status === 'تم التسليم للعميل'? 'bg-slate-100 text-slate-500 line-through' : 'bg-amber-100 text-amber-800'}`}>{item.status}</span></td><td className="py-3.5 px-4 text-center"><div className="flex items-center justify-center gap-1.5">{item.status === "جاهز للتسليم" && (<button onClick={() => handleDeliver(item.id)} title="تسليم للعميل" className="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition">تسليم</button>)}<button onClick={() => window.print()} title="طباعة ملصق الباركود" className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition"><Printer className="w-3.5 h-3.5" /></button></div></td></tr>))}</tbody></table></div></div>
-{showAddModal && (<div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"><div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl border border-slate-100 space-y-4"><div className="flex items-center justify-between pb-3 border-b border-slate-100"><h3 className="font-black text-lg text-[#0F4C81] flex items-center gap-2"><Package className="w-5 h-5 text-[#F97316]" />إيداع طرد جديد في المستودع</h3><button onClick={() => setShowAddModal(false)} className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 font-bold">✕</button></div><form onSubmit={handleAddItem} className="space-y-3"><div className="grid grid-cols-2 gap-3"><div><label className="text-xs font-bold text-slate-600 block mb-1">رقم التتبع / الشحنة</label><input required placeholder="SQ-801..." value={newItem.trackingCode?? ""} onChange={e => setNewItem({...newItem, trackingCode: e.target.value})} className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-mono outline-none focus:border-[#0F4C81]" /></div><div><label className="text-xs font-bold text-slate-600 block mb-1">الباركود (اختياري)</label><input placeholder="تلقائي إذا ترك فارغاً" value={newItem.barcode?? ""} onChange={e => setNewItem({...newItem, barcode: e.target.value})} className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-mono outline-none focus:border-[#0F4C81]" /></div></div><div className="grid grid-cols-2 gap-3"><div><label className="text-xs font-bold text-slate-600 block mb-1">اسم العميل</label><input required placeholder="محمد عبد الله..." value={newItem.clientName?? ""} onChange={e => setNewItem({...newItem, clientName: e.target.value})} className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs outline-none focus:border-[#0F4C81]" /></div><div><label className="text-xs font-bold text-slate-600 block mb-1">رقم الهاتف</label><input placeholder="77..." value={newItem.clientPhone?? ""} onChange={e => setNewItem({...newItem, clientPhone: e.target.value})} className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-mono outline-none focus:border-[#0F4C81]" /></div></div><div className="grid grid-cols-2 gap-3"><div><label className="text-xs font-bold text-slate-600 block mb-1">المستودع</label><select value={newItem.warehouse?? "صنعاء (حدة)"} onChange={e => setNewItem({...newItem, warehouse: e.target.value as any})} className="w-full h-10 px-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 outline-none"><option value="صنعاء (حدة)">صنعاء (حدة)</option><option value="عدن (المنصورة)">عدن (المنصورة)</option><option value="الصين (غوانزو)">الصين (غوانزو)</option><option value="تركيا (إسطنبول)">تركيا (إسطنبول)</option></select></div><div><label className="text-xs font-bold text-slate-600 block mb-1">موقع الرف / الزون</label><input placeholder="مثال: رف B-04" value={newItem.shelfLocation?? ""} onChange={e => setNewItem({...newItem, shelfLocation: e.target.value})} className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs outline-none focus:border-[#0F4C81]" /></div></div><div className="grid grid-cols-2 gap-3"><div><label className="text-xs font-bold text-slate-600 block mb-1">الوزن (كجم)</label><input type="number" step="0.1" placeholder="1.5" value={newItem.weightKg?? ""} onChange={e => setNewItem({...newItem, weightKg: e.target.value})} className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-mono outline-none focus:border-[#0F4C81]" /></div><div><label className="text-xs font-bold text-slate-600 block mb-1">عدد القطع / الكراتين</label><input type="number" placeholder="1" value={newItem.piecesCount?? ""} onChange={e => setNewItem({...newItem, piecesCount: e.target.value})} className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-mono outline-none focus:border-[#0F4C81]" /></div></div><div className="pt-3 flex gap-2"><button type="submit" className="flex-1 h-11 rounded-xl bg-[#0F4C81] hover:bg-[#0c3c66] text-white font-bold text-sm shadow-md transition">حفظ وإيداع الطرد</button><button type="button" onClick={() => setShowAddModal(false)} className="px-4 h-11 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-sm transition">إلغاء</button></div></form></div></div>)}
-</div>
-</div>
-);
+  const navigate = useNavigate();
+  const [items, setItems] = useState<InventoryItem[]>(INITIAL_ITEMS);
+  const [search, setSearch] = useState("");
+  const [selectedWarehouse, setSelectedWarehouse] = useState<string>("الكل");
+  const [selectedStatus, setSelectedStatus] = useState<string>("الكل");
+  const [showAddModal, setShowAddModal] = useState(false);
+
+  const [newItem, setNewItem] = useState({
+    trackingCode: "",
+    barcode: "",
+    clientName: "",
+    clientPhone: "",
+    warehouse: "صنعاء (حدة)" as InventoryItem["warehouse"],
+    shelfLocation: "",
+    weightKg: "",
+    piecesCount: "1",
+  });
+
+  const filteredItems = useMemo(() => {
+    const s = search?? "";
+    return items.filter(item => {
+      const matchSearch =
+        item.trackingCode.toLowerCase().includes(s.toLowerCase()) ||
+        item.barcode.includes(s) ||
+        item.clientName.includes(s) ||
+        item.clientPhone.includes(s) ||
+        item.shelfLocation.includes(s);
+      const matchWarehouse = selectedWarehouse === "الكل" || item.warehouse === selectedWarehouse;
+      const matchStatus = selectedStatus === "الكل" || item.status === selectedStatus;
+      return matchSearch && matchWarehouse && matchStatus;
+    });
+  }, [items, search, selectedWarehouse, selectedStatus]);
+
+  const stats = useMemo(() => {
+    const totalParcels = items.length;
+    const readyForPickup = items.filter(i => i.status === "جاهز للتسليم").length;
+    const inProcessing = items.filter(i => i.status === "قيد الفرز والوزن" || i.status === "معاد تغليفه").length;
+    const delayed = items.filter(i => i.daysInWarehouse >= 14 && i.status!== "تم التسليم للعميل").length;
+    const totalWeight = items.reduce((sum, i) => sum + i.weightKg, 0);
+    return { totalParcels, readyForPickup, inProcessing, delayed, totalWeight };
+  }, [items]);
+
+  const handleDeliver = (id: string) => {
+    setItems(prev => prev.map(item =>
+      item.id === id? {...item, status: "تم التسليم للعميل" } : item
+    ));
+  };
+
+  const handleAddItem = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newItem.trackingCode ||!newItem.clientName) return;
+    const item: InventoryItem = {
+      id: `INV-${Date.now().toString().slice(-4)}`,
+      trackingCode: newItem.trackingCode.toUpperCase(),
+      barcode: newItem.barcode || `6291${Math.floor(10000000 + Math.random() * 90000000)}`,
+      clientName: newItem.clientName,
+      clientPhone: newItem.clientPhone,
+      warehouse: newItem.warehouse,
+      shelfLocation: newItem.shelfLocation || "منطقة الاستقبال العام",
+      weightKg: Number(newItem.weightKg) || 1.0,
+      piecesCount: Number(newItem.piecesCount) || 1,
+      arrivalDate: new Date().toISOString().split("T")[0]?? "",
+      daysInWarehouse: 0,
+      status: "قيد الفرز والوزن"
+    };
+    setItems([item,...items]);
+    setShowAddModal(false);
+    setNewItem({
+      trackingCode: "",
+      barcode: "",
+      clientName: "",
+      clientPhone: "",
+      warehouse: "صنعاء (حدة)",
+      shelfLocation: "",
+      weightKg: "",
+      piecesCount: "1",
+    });
+  };
+
+  return (
+    <div dir="rtl" className="min-h-screen bg-gradient-to-br from-[#F0F7FF] via-[#F8FAFC] to-[#FFF9F5] p-4 md:p-8 font-['Cairo',sans-serif]">
+      <div className="max-w-7xl mx-auto space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl shadow-sm border border-sky-100">
+          <div className="flex items-center gap-3">
+            <button onClick={() => navigate({ to: "/admin" })} className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition">
+              <ArrowRight className="w-5 h-5" />
+            </button>
+            <div>
+              <h1 className="text-xl md:text-2xl font-black text-[#0F4C81] flex items-center gap-2">
+                <Boxes className="w-6 h-6 text-[#F97316]" />
+                إدارة المخزون والمستودعات
+              </h1>
+              <p className="text-xs md:text-sm text-slate-500 font-medium">متابعة الطرود في مستودعات الصين، تركيا، ونقاط التوزيع في اليمن</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setShowAddModal(true)} className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#0F4C81] hover:bg-[#0c3c66] text-white font-bold text-sm shadow-md transition">
+              <Plus className="w-4 h-4" />
+              إيداع طرد جديد
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white p-4 md:p-5 rounded-2xl border border-sky-100 shadow-sm">
+            <div className="flex items-center justify-between text-sky-600 mb-2">
+              <span className="text-xs font-bold">إجمالي الطرود بالمخازن</span>
+              <Boxes className="w-5 h-5 bg-sky-50 p-1 rounded-lg" />
+            </div>
+            <div className="text-2xl font-black text-slate-900">{stats.totalParcels} طرد</div>
+            <p className="text-[11px] text-slate-400 mt-1">الوزن الإجمالي: {stats.totalWeight.toFixed(1)} كجم</p>
+          </div>
+          <div className="bg-white p-4 md:p-5 rounded-2xl border border-emerald-100 shadow-sm">
+            <div className="flex items-center justify-between text-emerald-600 mb-2">
+              <span className="text-xs font-bold">جاهزة للاستلام والتسليم</span>
+              <CheckCircle2 className="w-5 h-5 bg-emerald-50 p-1 rounded-lg" />
+            </div>
+            <div className="text-2xl font-black text-emerald-700">{stats.readyForPickup} طرد</div>
+            <p className="text-[11px] text-slate-400 mt-1">في فروع صنعاء وعدن</p>
+          </div>
+          <div className="bg-white p-4 md:p-5 rounded-2xl border border-amber-100 shadow-sm">
+            <div className="flex items-center justify-between text-amber-600 mb-2">
+              <span className="text-xs font-bold">قيد الفرز والوزن</span>
+              <Clock className="w-5 h-5 bg-amber-50 p-1 rounded-lg" />
+            </div>
+            <div className="text-2xl font-black text-amber-600">{stats.inProcessing} طرد</div>
+            <p className="text-[11px] text-slate-400 mt-1">تجهيز للشحن الخارجي</p>
+          </div>
+          <div className="bg-white p-4 md:p-5 rounded-2xl border border-rose-100 shadow-sm">
+            <div className="flex items-center justify-between text-rose-600 mb-2">
+              <span className="text-xs font-bold">طرود راكدة (+14 يوم)</span>
+              <AlertTriangle className="w-5 h-5 bg-rose-50 p-1 rounded-lg" />
+            </div>
+            <div className="text-2xl font-black text-rose-600">{stats.delayed} طرد</div>
+            <p className="text-[11px] text-slate-400 mt-1">بحاجة للتواصل مع العميل</p>
+          </div>
+        </div>
+
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+          <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 pb-3">
+            <span className="text-xs font-bold text-slate-500 ml-2">المستودع:</span>
+            {["الكل", "الصين (غوانزو)", "تركيا (إسطنبول)", "صنعاء (حدة)", "عدن (المنصورة)"].map((wh) => (
+              <button key={wh} onClick={() => setSelectedWarehouse(wh)} className={`text-xs font-bold px-3 py-1.5 rounded-xl transition ${selectedWarehouse === wh? "bg-[#0F4C81] text-white shadow-sm" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
+                {wh}
+              </button>
+            ))}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="md:col-span-2 relative">
+              <Search className="w-5 h-5 text-slate-400 absolute right-4 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="ابحث برقم التتبع، الباركود، اسم العميل، الهاتف، أو الرف..."
+                value={search?? ""}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full h-11 pr-12 pl-4 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-[#0F4C81] outline-none text-xs md:text-sm font-medium transition"
+              />
+            </div>
+            <div>
+              <select value={selectedStatus?? "الكل"} onChange={(e) => setSelectedStatus(e.target.value)} className="w-full h-11 px-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-[#0F4C81] outline-none text-xs font-bold text-slate-700">
+                <option value="الكل">جميع الحالات</option>
+                <option value="جاهز للتسليم">جاهز للتسليم</option>
+                <option value="قيد الفرز والوزن">قيد الفرز والوزن</option>
+                <option value="معاد تغليفه">معاد تغليفه</option>
+                <option value="تم التسليم للعميل">تم التسليم للعميل</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-right text-xs md:text-sm">
+              <thead className="bg-[#0F4C81]/5 text-[#0F4C81] text-xs font-bold border-b border-sky-100">
+                <tr>
+                  <th className="py-3 px-4">رقم الطرد والتتبع</th>
+                  <th className="py-3 px-4">صاحب الشحنة</th>
+                  <th className="py-3 px-4">المستودع والموقع (الرف)</th>
+                  <th className="py-3 px-4 text-center">الوزن / القطع</th>
+                  <th className="py-3 px-4 text-center">المدة بالمخزن</th>
+                  <th className="py-3 px-4 text-center">الحالة</th>
+                  <th className="py-3 px-4 text-center">الإجراءات</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-medium">
+                {filteredItems.map((item) => (
+                  <tr key={item.id} className="hover:bg-slate-50/80 transition">
+                    <td className="py-3.5 px-4">
+                      <div className="font-mono font-bold text-[#0F4C81] flex items-center gap-1.5">
+                        <QrCode className="w-4 h-4 text-[#F97316]" />
+                        {item.trackingCode}
+                      </div>
+                      <div className="text-[11px] font-mono text-slate-400 mt-0.5">باركود: {item.barcode}</div>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <div className="font-bold text-slate-900">{item.clientName}</div>
+                      <div className="text-[11px] text-slate-400 font-mono">{item.clientPhone}</div>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <div className="font-bold text-slate-800 flex items-center gap-1">
+                        <Warehouse className="w-3.5 h-3.5 text-sky-600" />
+                        {item.warehouse}
+                      </div>
+                      <div className="text-[11px] text-amber-700 font-medium mt-0.5 flex items-center gap-1">
+                        <MapPin className="w-3 h-3" />
+                        {item.shelfLocation}
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4 text-center">
+                      <span className="font-bold text-slate-900">{item.weightKg} كجم</span>
+                      <span className="block text-[11px] text-slate-400">({item.piecesCount} قطع)</span>
+                    </td>
+                    <td className="py-3.5 px-4 text-center">
+                      <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold ${item.daysInWarehouse >= 14? "bg-rose-100 text-rose-700" : "bg-slate-100 text-slate-700"}`}>
+                        {item.daysInWarehouse} يوم
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-center">
+                      <span className={`text-[11px] px-2.5 py-1 rounded-full font-bold ${item.status === 'جاهز للتسليم'? 'bg-emerald-100 text-emerald-800' : item.status === 'تم التسليم للعميل'? 'bg-slate-100 text-slate-500 line-through' : 'bg-amber-100 text-amber-800'}`}>
+                        {item.status}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-center">
+                      <div className="flex items-center justify-center gap-1.5">
+                        {item.status === "جاهز للتسليم" && (
+                          <button onClick={() => handleDeliver(item.id)} className="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition">تسليم</button>
+                        )}
+                        <button onClick={() => window.print()} className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition">
+                          <Printer className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {showAddModal && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl border border-slate-100 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <h3 className="font-black text-lg text-[#0F4C81] flex items-center gap-2">
+                  <Package className="w-5 h-5 text-[#F97316]" />
+                  إيداع طرد جديد في المستودع
+                </h3>
+                <button onClick={() => setShowAddModal(false)} className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 font-bold">✕</button>
+              </div>
+              <form onSubmit={handleAddItem} className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-bold text-slate-600 block mb-1">رقم التتبع / الشحنة</label>
+                    <input required placeholder="SQ-801..." value={newItem.trackingCode?? ""} onChange={e => setNewItem({...newItem, trackingCode: e.target.value})} className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-mono outline-none focus:border-[#0F4C81]" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-600 block mb-1">الباركود (اختياري)</label>
+                    <input placeholder="تلقائي إذا ترك فارغاً" value={newItem.barcode?? ""} onChange={e => setNewItem({...newItem, barcode: e.target.value})} className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-mono outline-none focus:border-[#0F4C81]" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-bold text-slate-600 block mb-1">اسم العميل</label>
+                    <input required placeholder="محمد عبد الله..." value={newItem.clientName?? ""} onChange={e => setNewItem({...newItem, clientName: e.target.value})} className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs outline-none focus:border-[#0F4C81]" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-600 block mb-1">رقم الهاتف</label>
+                    <input placeholder="77..." value={newItem.clientPhone?? ""} onChange={e => setNewItem({...newItem, clientPhone: e.target.value})} className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-mono outline-none focus:border-[#0F4C81]" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-bold text-slate-600 block mb-1">المستودع</label>
+                    <select value={newItem.warehouse?? "صنعاء (حدة)"} onChange={e => setNewItem({...newItem, warehouse: e.target.value as any})} className="w-full h-10 px-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 outline-none">
+                      <option value="صنعاء (حدة)">صنعاء (حدة)</option>
+                      <option value="عدن (المنصورة)">عدن (المنصورة)</option>
+                      <option value="الصين (غوانزو)">الصين (غوانزو)</option>
+                      <option value="تركيا (إسطنبول)">تركيا (إسطنبول)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-600 block mb-1">موقع الرف / الزون</label>
+                    <input placeholder="مثال: رف B-04" value={newItem.shelfLocation?? ""} onChange={e => setNewItem({...newItem, shelfLocation: e.target.value})} className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs outline-none focus:border-[#0F4C81]" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-bold text-slate-600 block mb-1">الوزن (كجم)</label>
+                    <input type="number" step="0.1" placeholder="1.5" value={newItem.weightKg?? ""} onChange={e => setNewItem({...newItem, weightKg: e.target.value})} className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-mono outline-none focus:border-[#0F4C81]" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-600 block mb-1">عدد القطع / الكراتين</label>
+                    <input type="number" placeholder="1" value={newItem.piecesCount?? ""} onChange={e => setNewItem({...newItem, piecesCount: e.target.value})} className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-mono outline-none focus:border-[#0F4C81]" />
+                  </div>
+                </div>
+                <div className="pt-3 flex gap-2">
+                  <button type="submit" className="flex-1 h-11 rounded-xl bg-[#0F4C81] hover:bg-[#0c3c66] text-white font-bold text-sm shadow-md transition">حفظ وإيداع الطرد</button>
+                  <button type="button" onClick={() => setShowAddModal(false)} className="px-4 h-11 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-sm transition">إلغاء</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
