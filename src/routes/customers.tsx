@@ -28,7 +28,7 @@ function CustomersPage() {
       .select('*')
       .order('created_at', { ascending: false })
     
-    if (data) setCustomers(data as Customer[])
+    const customers = (data as unknown) as Customer[];
     setLoading(false)
   }
 
