@@ -37,6 +37,20 @@ export function TrackPage() {
   const [order, setOrder] = useState<any | null>(null);
   const [notif, setNotif] = useState("");
 
+  const playSound = () => {
+    try {
+      const Ctx = window.AudioContext || (window as any).webkitAudioContext;
+      const ctx = new Ctx();
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type = "sine"; o.frequency.value = 880;
+      g.gain.setValueAtTime(0.25, ctx.currentTime);
+      o.start(); o.stop(ctx.currentTime + 0.5);
+      setTimeout(()=>ctx.close(), 600);
+    } catch {}
+  };
+
   useEffect(() => {
     const autoFillPhone = async () => {
       try {
@@ -52,19 +66,18 @@ export function TrackPage() {
     autoFillPhone();
   }, []);
 
-  // الإشعار الفوري - داخل المكون
   useEffect(() => {
     if (!order?.trackingCode) return;
     const channel = supabase.channel(`order-${order.trackingCode}`)
-     .on("postgres_changes", { event: "UPDATE", schema: "public", table: "orders" },
+    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "orders" },
         (payload: any) => {
           const newStatus = payload.new?.status;
           if (!newStatus) return;
           setOrder((prev: any) => prev? {...prev, status: newStatus } : prev);
           setNotif(`🚀 تحديث جديد: تم نقل شحنتك إلى مرحلة جديدة`);
-          setTimeout(() => setNotif(""), 6000);
+          playSound();
         })
-     .subscribe();
+    .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [order?.trackingCode]);
 
@@ -76,7 +89,7 @@ export function TrackPage() {
     setLoading(true); setError(""); setOrder(null);
     try {
       const { data, error: qErr } = await supabase.from("orders").select("*")
-       .or(`tracking_code.ilike.%${cleanCode}%,order_number.ilike.%${cleanCode}%,intl_tracking_number.ilike.%${cleanCode}%`);
+      .or(`tracking_code.ilike.%${cleanCode}%,order_number.ilike.%${cleanCode}%,intl_tracking_number.ilike.%${cleanCode}%`);
       if (qErr) throw qErr;
       if (!data || data.length === 0) { setError("لم يتم العثور على شحنة"); return; }
       const match = data[0];
@@ -97,10 +110,14 @@ export function TrackPage() {
   return (
     <div dir="rtl" className="min-h-screen bg-gradient-to-b from-[#F0F7FF] to-[#FFF7ED] px-4 pb-14 pt-5 font-sans text-[#0A2540]">
       {notif && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-[#0F4C81] text-white px-4 py-3 rounded-2xl shadow-xl font-black text-sm animate-bounce border-2 border-white">
-          <span className="w-8 h-8 grid place-items-center bg-[#FF7A00] rounded-xl">✓</span>
-          <span>{notif}</span>
-        </div>
+        <button
+          onClick={() => { playSound(); setNotif(""); }}
+          className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-gradient-to-r from-[#0F4C81] to-[#0284C7] text-white px-5 py-3 rounded-2xl shadow-2xl font-black text-sm border-2 border-white cursor-pointer animate-bounce active:scale-95 transition"
+        >
+          <span className="w-10 h-10 grid place-items-center bg-[#FF7A00] rounded-xl text-xl shrink-0">🔔</span>
+          <span className="flex-1 text-right">{notif}</span>
+          <span className="text-[11px] opacity-70 whitespace-nowrap">اضغط للإغلاق ✕</span>
+        </button>
       )}
       <main className="mx-auto w-full max-w-md">
         <header className="flex items-center justify-between pb-3">
