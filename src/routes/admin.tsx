@@ -411,7 +411,7 @@ function AdminOperationsDashboard() {
   onClose={() => setIsSidebarOpen(false)}
   onOpenAccountsTree={() => setIsAccountsTreeOpen(true)}
   onOpenQuickScan={() => setIsQuickScanOpen(true)}
-  navigateTo={navigateTo}
+  
 />
       {isAccountsTreeOpen && <AccountsTreeModal onClose={() => setIsAccountsTreeOpen(false)} />}
       {isAddModalOpen && (
