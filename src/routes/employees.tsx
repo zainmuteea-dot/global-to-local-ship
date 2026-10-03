@@ -100,7 +100,7 @@ function EmployeesPage() {
   const [employees, setEmployees] = useState<EmployeeItem[]>(() => {
     try {
       const saved = localStorage.getItem("alsouk_staff_list_v1");
-      return saved ? JSON.parse(saved) : INITIAL_EMPLOYEES;
+      return saved? JSON.parse(saved) : INITIAL_EMPLOYEES;
     } catch {
       return INITIAL_EMPLOYEES;
     }
@@ -125,7 +125,6 @@ function EmployeesPage() {
     salary: "",
   });
 
-  // حفظ في التخزين المحلي
   const saveEmployees = (updated: EmployeeItem[]) => {
     setEmployees(updated);
     try {
@@ -133,19 +132,17 @@ function EmployeesPage() {
     } catch {}
   };
 
-  // تصفية الموظفين
   const filteredList = useMemo(() => {
     return employees.filter((emp) => {
       const matchSearch =
-        emp.name.toLowerCase().includes(search.toLowerCase()) ||
-        emp.phone.includes(search) ||
-        emp.branch.toLowerCase().includes(search.toLowerCase());
+        emp.name.toLowerCase().includes((search?? "").toLowerCase()) ||
+        emp.phone.includes(search?? "") ||
+        emp.branch.toLowerCase().includes((search?? "").toLowerCase());
       const matchRole = roleFilter === "all" || emp.role === roleFilter;
       return matchSearch && matchRole;
     });
   }, [employees, search, roleFilter]);
 
-  // إحصائيات
   const totalCount = employees.length;
   const activeCount = employees.filter((e) => e.status === "active").length;
   const opsCount = employees.filter((e) => e.role === "orders_manager" || e.role === "driver").length;
@@ -170,34 +167,32 @@ function EmployeesPage() {
       phone: emp.phone,
       role: emp.role,
       branch: emp.branch,
-      salary: emp.salary ? String(emp.salary) : "",
+      salary: emp.salary? String(emp.salary) : "",
     });
     setIsModalOpen(true);
   };
 
   const handleSave = () => {
-    if (!form.name.trim() || !form.phone.trim()) {
+    if (!form.name.trim() ||!form.phone.trim()) {
       alert("يرجى إدخال اسم الموظف ورقم هاتفه.");
       return;
     }
 
     if (editingEmp) {
-      // تعديل
       const updated = employees.map((e) =>
         e.id === editingEmp.id
-          ? {
-              ...e,
+         ? {
+             ...e,
               name: form.name.trim(),
               phone: form.phone.trim(),
               role: form.role,
               branch: form.branch,
-              salary: form.salary ? Number(form.salary) : undefined,
+              salary: Number(form.salary) || 0,
             }
           : e
       );
       saveEmployees(updated);
     } else {
-      // إضافة جديد
       const newStaff: EmployeeItem = {
         id: `EMP-${Math.floor(100 + Math.random() * 900)}`,
         name: form.name.trim(),
@@ -205,10 +200,10 @@ function EmployeesPage() {
         role: form.role,
         branch: form.branch,
         status: "active",
-        salary: form.salary ? Number(form.salary) : undefined,
-        joinDate: new Date().toISOString().split("T")[0],
+        salary: Number(form.salary) || 0,
+        joinDate: new Date().toISOString().split("T")[0]?? "",
       };
-      saveEmployees([newStaff, ...employees]);
+      saveEmployees([newStaff,...employees]);
     }
 
     setIsModalOpen(false);
@@ -216,14 +211,12 @@ function EmployeesPage() {
 
   const handleDelete = (id: string, name: string) => {
     if (confirm(`هل أنت متأكد من حذف الموظف (${name}) من النظام؟`)) {
-      saveEmployees(employees.filter((e) => e.id !== id));
+      saveEmployees(employees.filter((e) => e.id!== id));
     }
   };
 
   return (
     <div dir="rtl" className="min-h-screen bg-gradient-to-b from-[#F0F7FF] via-[#F8FAFC] to-[#FFF9F5] text-slate-800 font-sans pb-16">
-      
-      {/* 1. الشريط العلوي */}
       <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-sky-100 shadow-xs">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -243,7 +236,6 @@ function EmployeesPage() {
               <p className="text-[11px] font-semibold text-slate-500">طاقم العمل وتوزيع المهام والأدوار</p>
             </div>
           </div>
-
           <button
             onClick={handleOpenAdd}
             className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#EA580C] to-[#F97316] text-white text-xs font-black shadow-sm hover:shadow-orange-500/20 transition flex items-center gap-1.5 cursor-pointer"
@@ -253,10 +245,7 @@ function EmployeesPage() {
           </button>
         </div>
       </header>
-
       <main className="max-w-6xl mx-auto px-4 mt-6 space-y-6">
-        
-        {/* 2. بطاقات KPI للإحصائيات */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs flex items-center justify-between">
             <div>
@@ -267,7 +256,6 @@ function EmployeesPage() {
               <Users className="size-5" />
             </div>
           </div>
-
           <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs flex items-center justify-between">
             <div>
               <div className="text-[11px] font-bold text-slate-500">موظفون نشطون الآن</div>
@@ -277,7 +265,6 @@ function EmployeesPage() {
               <CheckCircle2 className="size-5" />
             </div>
           </div>
-
           <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs flex items-center justify-between">
             <div>
               <div className="text-[11px] font-bold text-slate-500">العمليات والمناديب</div>
@@ -287,7 +274,6 @@ function EmployeesPage() {
               <Truck className="size-5" />
             </div>
           </div>
-
           <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs flex items-center justify-between">
             <div>
               <div className="text-[11px] font-bold text-slate-500">الإدارة والمالية</div>
@@ -298,25 +284,22 @@ function EmployeesPage() {
             </div>
           </div>
         </div>
-
-        {/* 3. شريط البحث والفلترة */}
         <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="relative w-full sm:w-80">
             <Search className="size-4 text-slate-400 absolute right-3 top-3" />
             <input
               type="text"
               placeholder="بحث بالاسم، رقم الهاتف، أو الفرع..."
-              value={search}
+              value={search?? ""}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full h-10 pr-9 pl-3 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold focus:bg-white focus:border-[#0F4C81] outline-none"
             />
           </div>
-
           <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0 text-xs font-bold">
             <button
               onClick={() => setRoleFilter("all")}
               className={`px-3 py-1.5 rounded-xl transition cursor-pointer whitespace-nowrap ${
-                roleFilter === "all" ? "bg-[#0F4C81] text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                roleFilter === "all"? "bg-[#0F4C81] text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
               الكل ({employees.length})
@@ -324,7 +307,7 @@ function EmployeesPage() {
             <button
               onClick={() => setRoleFilter("admin")}
               className={`px-3 py-1.5 rounded-xl transition cursor-pointer whitespace-nowrap ${
-                roleFilter === "admin" ? "bg-rose-600 text-white" : "bg-rose-50 text-rose-700 hover:bg-rose-100"
+                roleFilter === "admin"? "bg-rose-600 text-white" : "bg-rose-50 text-rose-700 hover:bg-rose-100"
               }`}
             >
               مشرفين
@@ -332,7 +315,7 @@ function EmployeesPage() {
             <button
               onClick={() => setRoleFilter("finance")}
               className={`px-3 py-1.5 rounded-xl transition cursor-pointer whitespace-nowrap ${
-                roleFilter === "finance" ? "bg-emerald-600 text-white" : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                roleFilter === "finance"? "bg-emerald-600 text-white" : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
               }`}
             >
               مالية
@@ -340,7 +323,7 @@ function EmployeesPage() {
             <button
               onClick={() => setRoleFilter("orders_manager")}
               className={`px-3 py-1.5 rounded-xl transition cursor-pointer whitespace-nowrap ${
-                roleFilter === "orders_manager" ? "bg-sky-600 text-white" : "bg-sky-50 text-sky-700 hover:bg-sky-100"
+                roleFilter === "orders_manager"? "bg-sky-600 text-white" : "bg-sky-50 text-sky-700 hover:bg-sky-100"
               }`}
             >
               عمليات
@@ -348,15 +331,13 @@ function EmployeesPage() {
             <button
               onClick={() => setRoleFilter("driver")}
               className={`px-3 py-1.5 rounded-xl transition cursor-pointer whitespace-nowrap ${
-                roleFilter === "driver" ? "bg-amber-600 text-white" : "bg-amber-50 text-amber-700 hover:bg-amber-100"
+                roleFilter === "driver"? "bg-amber-600 text-white" : "bg-amber-50 text-amber-700 hover:bg-amber-100"
               }`}
             >
               مناديب
             </button>
           </div>
         </div>
-
-        {/* 4. جدول الموظفين */}
         <section className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-right text-xs">
@@ -386,29 +367,24 @@ function EmployeesPage() {
                           </div>
                         </div>
                       </td>
-
                       <td className="py-3.5 px-4">
                         <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-black border ${roleStyle.bg} ${roleStyle.color} ${roleStyle.border}`}>
                           <BadgeCheck className="size-3" />
                           {roleStyle.title}
                         </span>
                       </td>
-
                       <td className="py-3.5 px-4 text-slate-600 font-medium">
                         {emp.branch}
                       </td>
-
                       <td className="py-3.5 px-4 font-mono font-bold text-slate-700">
                         {emp.phone}
                       </td>
-
                       <td className="py-3.5 px-4">
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                           <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
                           نشط
                         </span>
                       </td>
-
                       <td className="py-3.5 px-4 text-center">
                         <div className="flex items-center justify-center gap-1.5">
                           <a
@@ -443,17 +419,14 @@ function EmployeesPage() {
             </table>
           </div>
         </section>
-
       </main>
-
-      {/* 5. نافذة منبثقة لإضافة أو تعديل موظف */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs grid place-items-center p-4">
           <div className="bg-white rounded-3xl w-full max-w-md p-6 border border-slate-200 shadow-2xl space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
                 <UserCog className="size-5 text-[#EA580C]" />
-                {editingEmp ? "تعديل بيانات وصلاحية موظف" : "إضافة موظف جديد إلى الطاقم"}
+                {editingEmp? "تعديل بيانات وصلاحية موظف" : "إضافة موظف جديد إلى الطاقم"}
               </h3>
               <button
                 onClick={() => setIsModalOpen(false)}
@@ -462,35 +435,32 @@ function EmployeesPage() {
                 <X className="size-4" />
               </button>
             </div>
-
             <div className="space-y-3 text-xs">
               <div>
                 <label className="block font-bold text-slate-700 mb-1">اسم الموظف الرباعي:</label>
                 <input
                   type="text"
                   placeholder="مثال: محمد عبدالله الشامي"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  value={form.name?? ""}
+                  onChange={(e) => setForm({...form, name: e.target.value })}
                   className="w-full h-10 px-3 rounded-xl border border-slate-300 text-xs font-semibold outline-none focus:border-[#0F4C81]"
                 />
               </div>
-
               <div>
                 <label className="block font-bold text-slate-700 mb-1">رقم الهاتف / الواتساب:</label>
                 <input
                   type="tel"
                   placeholder="770000000"
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  value={form.phone?? ""}
+                  onChange={(e) => setForm({...form, phone: e.target.value })}
                   className="w-full h-10 px-3 rounded-xl border border-slate-300 font-mono text-xs font-bold outline-none focus:border-[#0F4C81]"
                 />
               </div>
-
               <div>
                 <label className="block font-bold text-slate-700 mb-1">الدور الوظيفي والصلاحيات:</label>
                 <select
                   value={form.role}
-                  onChange={(e) => setForm({ ...form, role: e.target.value as StaffRole })}
+                  onChange={(e) => setForm({...form, role: e.target.value as StaffRole })}
                   className="w-full h-10 px-3 rounded-xl border border-slate-300 font-bold text-xs outline-none bg-white focus:border-[#0F4C81]"
                 >
                   <option value="admin">مشرف عام (كامل الصلاحيات والإعدادات)</option>
@@ -500,30 +470,27 @@ function EmployeesPage() {
                   <option value="driver">مندوب توصيل ميداني (تسليم الطرود)</option>
                 </select>
               </div>
-
               <div>
                 <label className="block font-bold text-slate-700 mb-1">الفرع أو القسم:</label>
                 <input
                   type="text"
                   placeholder="مثال: مستودع الفرز - صنعاء أو فرع عدن"
-                  value={form.branch}
-                  onChange={(e) => setForm({ ...form, branch: e.target.value })}
+                  value={form.branch?? ""}
+                  onChange={(e) => setForm({...form, branch: e.target.value })}
                   className="w-full h-10 px-3 rounded-xl border border-slate-300 text-xs outline-none focus:border-[#0F4C81]"
                 />
               </div>
-
               <div>
                 <label className="block font-bold text-slate-700 mb-1">الراتب الشهري التقديري ($):</label>
                 <input
                   type="number"
                   placeholder="مثال: 600"
-                  value={form.salary}
-                  onChange={(e) => setForm({ ...form, salary: e.target.value })}
+                  value={form.salary?? ""}
+                  onChange={(e) => setForm({...form, salary: e.target.value })}
                   className="w-full h-10 px-3 rounded-xl border border-slate-300 font-mono text-xs font-bold outline-none focus:border-[#0F4C81]"
                 />
               </div>
             </div>
-
             <div className="pt-2 flex items-center justify-end gap-2">
               <button
                 type="button"
@@ -537,13 +504,12 @@ function EmployeesPage() {
                 onClick={handleSave}
                 className="px-5 py-2 rounded-xl text-white bg-gradient-to-r from-[#0F4C81] to-[#0284C7] text-xs font-black transition shadow-sm cursor-pointer"
               >
-                {editingEmp ? "حفظ التعديلات" : "إضافة الموظف فوراً"}
+                {editingEmp? "حفظ التعديلات" : "إضافة الموظف فوراً"}
               </button>
             </div>
           </div>
         </div>
       )}
-
     </div>
   );
 }
