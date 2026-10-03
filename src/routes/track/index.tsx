@@ -326,7 +326,23 @@ export function TrackRouteComponent() {
       setIsDismissingNotif(false);
     }, 280);
   };
-
+  // 🔔 Realtime: إشعار فوري عند تحديث الأدمن
+  useEffect(() => {
+    if (!order?.id) return;
+    const channel = supabase
+      .channel(`order-${order.id}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders', filter: `id=eq.${order.id}` },
+      (payload: any) => {
+        const newStatus = payload.new?.status as OrderStatus;
+        if (!newStatus) return;
+        const step = trackingSteps.find(s => s.targetStatus === newStatus);
+        setOrder(prev => prev ? { ...prev, status: newStatus } : prev);
+        playPhoneRingSound();
+        setPinnedNotification({ show: true, stageTitle: step?.title || newStatus, orderNumber: order.orderNumber });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [order?.id]);
   const isStepActive = (step: typeof trackingSteps[0], currentStatus?: OrderStatus) => {
     if (!currentStatus) return false;
     return step.activeStatuses.includes(currentStatus);
