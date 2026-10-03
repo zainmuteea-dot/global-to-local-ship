@@ -48,7 +48,7 @@ function PricesPage() {
   const navigate = useNavigate();
 
   // حالة الحاسبة
-  const [selectedRoute, setSelectedRoute] = useState(INTERNATIONAL_RATES[0].id);
+  const [selectedRoute, setSelectedRoute] = useState(INTERNATIONAL_RATES[0]!.id);
   const [weight, setWeight] = useState<number>(1);
   const [declaredValue, setDeclaredValue] = useState<number>(50); // قيمة المنتج بالدولار
 
@@ -58,7 +58,7 @@ function PricesPage() {
   const [showAddCity, setShowAddCity] = useState(false);
 
   // حساب التكاليف
-  const activeRoute = INTERNATIONAL_RATES.find((r) => r.id === selectedRoute) || INTERNATIONAL_RATES[0];
+  const activeRoute = INTERNATIONAL_RATES.find((r) => r.id === selectedRoute)?? INTERNATIONAL_RATES[0]!;
   const effectiveWeight = Math.max(weight, activeRoute.minKg);
   const shippingCost = effectiveWeight * activeRoute.ratePerKg;
   const customsEstimated = Number((declaredValue * 0.05).toFixed(1)); // تقدير 5% جمارك ورسوم
