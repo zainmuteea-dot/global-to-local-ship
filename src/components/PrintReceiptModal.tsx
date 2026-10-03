@@ -1,6 +1,14 @@
 // src/components/admin/PrintReceiptModal.tsx
 import { Printer, X, ShieldCheck } from "lucide-react";
-import type { OrderItem } from "./types";
+
+export interface OrderItem {
+  orderNumber?: string;
+  customerName?: string | null;
+  customerPhone?: string | null;
+  customerCity?: string | null;
+  productTitle?: string | null;
+  originalPrice?: string | number | null;
+}
 
 interface PrintReceiptModalProps {
   order: OrderItem;
@@ -20,7 +28,7 @@ export function PrintReceiptModal({ order, onClose }: PrintReceiptModalProps) {
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
       {/* الحاوية الرئيسية للنافذة */}
       <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden my-4">
-        
+
         {/* شريط الإجراءات العلوي (يختفي عند الطباعة الورقية) */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/70 print:hidden">
           <button
@@ -49,7 +57,7 @@ export function PrintReceiptModal({ order, onClose }: PrintReceiptModalProps) {
 
         {/* جسم السند الرسمي القابل للطباعة */}
         <div dir="rtl" className="p-6 sm:p-8 space-y-6 text-slate-900 font-sans print:p-0">
-          
+
           {/* 1. الترويسة العليا: الشعار والباركود */}
           <div className="flex items-start justify-between border-b border-slate-300 pb-5">
             {/* جهة اليمين: الهوية والبيانات الرسمية */}
@@ -79,7 +87,6 @@ export function PrintReceiptModal({ order, onClose }: PrintReceiptModalProps) {
                 سند قبض رسمي معتمد
               </div>
               <div className="border border-slate-300 rounded-b-xl p-3 bg-white text-center shadow-xs">
-                {/* تمثيل الباركود بخطوط SVG حقيقية */}
                 <svg className="w-44 h-12" viewBox="0 0 160 40">
                   <rect x="5" y="0" width="3" height="40" fill="#000" />
                   <rect x="11" y="0" width="2" height="40" fill="#000" />
@@ -116,16 +123,37 @@ export function PrintReceiptModal({ order, onClose }: PrintReceiptModalProps) {
           {/* 2. شبكة بيانات العميل والأكواد */}
           <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/50 flex flex-wrap justify-between text-xs gap-4">
             <div className="space-y-1.5 min-w-[200px]">
-              <div><span className="text-slate-500">اسم العميل:</span> <strong className="text-slate-900">{order.customerName || "zain muteea"}</strong></div>
-              <div><span className="text-slate-500">رقم الجوال:</span> <strong className="text-slate-900 font-mono" dir="ltr">{order.customerPhone || "772399744"}</strong></div>
-              <div><span className="text-slate-500">المدينة والعنوان:</span> <strong className="text-slate-900">{order.customerCity || "صنعاء"}</strong></div>
+              <div>
+                <span className="text-slate-500">اسم العميل:</span>{" "}
+                <strong className="text-slate-900">{order.customerName || "zain muteea"}</strong>
+              </div>
+              <div>
+                <span className="text-slate-500">رقم الجوال:</span>{" "}
+                <strong className="text-slate-900 font-mono" dir="ltr">{order.customerPhone || "772399744"}</strong>
+              </div>
+              <div>
+                <span className="text-slate-500">المدينة والعنوان:</span>{" "}
+                <strong className="text-slate-900">{order.customerCity || "صنعاء"}</strong>
+              </div>
             </div>
 
             <div className="space-y-1.5 min-w-[180px] text-left font-mono">
-              <div><span className="text-slate-500 font-sans">Order Code:</span> <strong className="text-purple-700">{orderCode}</strong></div>
-              <div><span className="text-slate-500 font-sans">Receipt No:</span> <strong className="text-slate-800">{receiptNo}</strong></div>
-              <div><span className="text-slate-500 font-sans">Intl Tracking:</span> <strong className="text-slate-800">{orderCode}</strong></div>
-              <div><span className="text-slate-500 font-sans">Date:</span> <span className="font-sans text-slate-700">{currentDate}</span></div>
+              <div>
+                <span className="text-slate-500 font-sans">Order Code:</span>{" "}
+                <strong className="text-purple-700">{orderCode}</strong>
+              </div>
+              <div>
+                <span className="text-slate-500 font-sans">Receipt No:</span>{" "}
+                <strong className="text-slate-800">{receiptNo}</strong>
+              </div>
+              <div>
+                <span className="text-slate-500 font-sans">Intl Tracking:</span>{" "}
+                <strong className="text-slate-800">{orderCode}</strong>
+              </div>
+              <div>
+                <span className="text-slate-500 font-sans">Date:</span>{" "}
+                <span className="font-sans text-slate-700">{currentDate}</span>
+              </div>
             </div>
           </div>
 
@@ -168,7 +196,6 @@ export function PrintReceiptModal({ order, onClose }: PrintReceiptModalProps) {
 
           {/* 4. تفاصيل المبالغ وحالة السداد */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
-            {/* تفاصيل السداد (يمين) */}
             <div className="border border-slate-200 rounded-2xl p-4 bg-white space-y-3">
               <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-purple-600"></span>
@@ -186,7 +213,6 @@ export function PrintReceiptModal({ order, onClose }: PrintReceiptModalProps) {
               </div>
             </div>
 
-            {/* الحسابات المالية (يسار) */}
             <div className="border border-slate-200 rounded-2xl p-4 bg-white space-y-2 text-xs">
               <div className="flex justify-between text-slate-600">
                 <span>قيمة المشتريات:</span>
@@ -216,13 +242,10 @@ export function PrintReceiptModal({ order, onClose }: PrintReceiptModalProps) {
           {/* 5. التواقيع والختم الرسمي الدائري */}
           <div className="pt-4 border-t border-dashed border-slate-300">
             <div className="grid grid-cols-3 items-center text-center">
-              {/* توقيع المستلم */}
               <div className="space-y-6">
                 <div className="text-xs font-bold text-slate-700">توقيع المستلم / العميل</div>
                 <div className="text-slate-300 font-mono tracking-widest text-xs">..............................</div>
               </div>
-
-              {/* الختم الدائري الرسمي المعتمد */}
               <div className="flex justify-center">
                 <div className="w-28 h-28 rounded-full border-2 border-purple-600 p-1 flex items-center justify-center text-purple-700 text-center select-none rotate-[-6deg] shadow-xs">
                   <div className="w-full h-full rounded-full border border-dashed border-purple-400 flex flex-col items-center justify-center p-1 leading-tight">
@@ -233,8 +256,6 @@ export function PrintReceiptModal({ order, onClose }: PrintReceiptModalProps) {
                   </div>
                 </div>
               </div>
-
-              {/* توقيع الإدارة */}
               <div className="space-y-6">
                 <div className="text-xs font-bold text-slate-700">توقيع أمين الصندوق / الإدارة</div>
                 <div className="text-xs font-black text-slate-900 border-b border-slate-400 pb-1 mx-4">
