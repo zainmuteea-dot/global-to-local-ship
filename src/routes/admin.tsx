@@ -3,6 +3,8 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Calendar,
   CheckCircle2,
+  Bell,
+  Send,
   Clock,
   Copy,
   Check,
@@ -22,6 +24,7 @@ import {
   Zap,
 } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
 import { EmbeddedLogo } from "@/components/admin/Logo";
 import { AccountsTreeModal } from "@/components/admin/AccountsTreeModal";
 import { AdminSidebar } from "@/components/AdminSidebar";
@@ -36,6 +39,58 @@ const SUPABASE_ANON_KEY = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY;
 let supabaseClientInstance: any = null;
 if (SUPABASE_URL && SUPABASE_ANON_KEY) {
   try { supabaseClientInstance = createClient(SUPABASE_URL, SUPABASE_ANON_KEY); } catch {}
+}
+
+function AdminNotificationComposer() {
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [kind, setKind] = useState('shipment');
+  const [href, setHref] = useState('/track');
+  const [sending, setSending] = useState(false);
+  const [message, setMessage] = useState('');
+
+  const sendNotification = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!title.trim() || !body.trim()) return;
+    setSending(true);
+    setMessage('');
+    const { error } = await supabase.from('notifications').insert({
+      title: title.trim(),
+      body: body.trim(),
+      kind,
+      href: href || null,
+      is_active: true,
+    });
+    setSending(false);
+    if (error) {
+      setMessage('تعذر إرسال الإشعار. تأكد من صلاحية حساب الإدارة.');
+      return;
+    }
+    setTitle('');
+    setBody('');
+    setMessage('تم إرسال الإشعار للعملاء فوراً.');
+  };
+
+  return (
+    <section className="rounded-2xl border border-orange-200 bg-white p-4 shadow-sm" dir="rtl">
+      <div className="mb-3 flex items-center gap-2">
+        <span className="grid size-9 place-items-center rounded-xl bg-orange-100 text-orange-700"><Bell className="size-4" /></span>
+        <div><h2 className="text-sm font-black text-[#0A2540]">إرسال إشعار للعملاء</h2><p className="text-[11px] text-slate-500">سيظهر في الجرس والشريط العلوي عند الإرسال فقط.</p></div>
+      </div>
+      <form onSubmit={sendNotification} className="grid gap-2.5 lg:grid-cols-[1.1fr_1.5fr_180px_150px_auto]">
+        <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="عنوان الإشعار" required maxLength={120} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-[#0A2540] outline-none focus:border-orange-400" />
+        <input value={body} onChange={(event) => setBody(event.target.value)} placeholder="نص الإشعار" required maxLength={300} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-[#0A2540] outline-none focus:border-orange-400" />
+        <select value={kind} onChange={(event) => setKind(event.target.value)} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-bold text-[#0A2540] outline-none">
+          <option value="shipment">تحديث شحنة</option><option value="purchase">تأكيد شراء</option><option value="offer">عرض</option><option value="support">خدمة العملاء</option><option value="system">عام</option>
+        </select>
+        <select value={href} onChange={(event) => setHref(event.target.value)} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-bold text-[#0A2540] outline-none">
+          <option value="/track">تتبع الشحنة</option><option value="/my-account">الحساب</option><option value="/new-order">طلب جديد</option><option value="/notifications">كل الإشعارات</option>
+        </select>
+        <button disabled={sending} className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-orange-500 px-4 py-2.5 text-xs font-black text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"><Send className="size-3.5" />{sending ? 'جارٍ الإرسال' : 'إرسال'}</button>
+      </form>
+      {message && <p className={`mt-2 text-[11px] font-bold ${message.startsWith('تم') ? 'text-emerald-600' : 'text-rose-600'}`}>{message}</p>}
+    </section>
+  );
 }
 
 function AdminOperationsDashboard() {
@@ -213,6 +268,8 @@ function AdminOperationsDashboard() {
             </button>
           </div>
         </header>
+
+        <AdminNotificationComposer />
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
