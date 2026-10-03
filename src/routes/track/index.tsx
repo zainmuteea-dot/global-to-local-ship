@@ -576,3 +576,30 @@ export function TrackPage() {
     </div>
   );
 }
+// إشعار فوري عند تحديث الإدارة لمرحلة الشحنة
+const [notif, setNotif] = useState("");
+
+useEffect(() => {
+  if (!order) return;
+
+  const channel = supabase
+    .channel(`order-${order.trackingCode}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "UPDATE",
+        schema: "public",
+        table: "orders",
+        filter: `tracking_code=eq.${order.trackingCode}`,
+      },
+      (payload: any) => {
+        const newStatus = payload.new.status;
+        setOrder((prev: any) => prev ? { ...prev, status: newStatus } : prev);
+        setNotif(`🚀 تحديث جديد: تم نقل شحنتك إلى مرحلة (${newStatus})`);
+        setTimeout(() => setNotif(""), 6000);
+      }
+    )
+    .subscribe();
+
+  return () => { supabase.removeChannel(channel); };
+}, [order?.trackingCode]);
