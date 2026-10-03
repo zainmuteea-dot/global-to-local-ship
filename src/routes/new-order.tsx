@@ -178,7 +178,7 @@ async function sbSelect<T = any>(query: string, signal?: AbortSignal): Promise<T
   if (!SB_URL || !SB_KEY) throw new Error('Supabase env غير مضبوط')
   const res = await fetch(`${SB_URL}/rest/v1/${query}`, {
     headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, Accept: 'application/json' },
-    signal,
+    signal: signal ?? null,
   })
   if (!res.ok) throw new Error(`Supabase ${res.status}`)
   return res.json()
