@@ -541,7 +541,7 @@ export function HomePage() {
 
       {showNotificationToast && activeNotification && (
         <div className="fixed left-4 right-4 top-16 z-30 mx-auto flex max-w-md items-center gap-3 rounded-2xl border border-orange-200 bg-white p-3 text-right shadow-2xl animate-in slide-in-from-top-3">
-          {(() => { const Icon = notificationIcon(activeNotification.kind); return <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${notificationTone[activeNotification.kind] ?? notificationTone.system}`}><Icon className="size-5" /></span>; })()}
+          {(() => { const Icon = notificationIcon(activeNotification.kind); return <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${notificationTone[activeNotification.kind] ?? notificationTone['system']}`}><Icon className="size-5" /></span>; })()}
           <div className="min-w-0 flex-1"><p className="truncate text-xs font-black text-[#0A2540]">{activeNotification.title}</p><p className="mt-0.5 truncate text-[10px] text-slate-500">{activeNotification.body}</p></div>
           {activeNotification.href && <a href={activeNotification.href} onClick={() => void markNotificationRead(activeNotification.id)} className="shrink-0 rounded-xl bg-orange-500 px-2.5 py-2 text-[10px] font-black text-white">تتبع</a>}
           <button onClick={() => setShowNotificationToast(false)} aria-label="إغلاق التنبيه"><X className="size-4 text-slate-400" /></button>
