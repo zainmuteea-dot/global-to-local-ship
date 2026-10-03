@@ -1,65 +1,597 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { useEffect, useState } from "react"
-import { supabase } from "@/integrations/supabase/client"
-const db = supabase as any;
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useState, useMemo } from "react";
+import { 
+  ArrowRight, Search, Plus, Receipt, Printer, 
+  Share2, CheckCircle2, Clock, DollarSign, Wallet, 
+  TrendingUp, FileText, User, Phone, Package, Store
+} from "lucide-react";
+
 export const Route = createFileRoute('/sales-invoices')({
-  component: SalesPage,
-})
+  component: SalesInvoicesPage,
+});
 
-function SalesPage() {
-  const [products, setProducts] = useState<any[]>([])
-  const [customers, setCustomers] = useState<any[]>([])
-  const [invoices, setInvoices] = useState<any[]>([])
-  const [customerId, setCustomerId] = useState('')
-  const [productId, setProductId] = useState('')
-  const [qty, setQty] = useState('1')
+interface SalesInvoice {
+  id: string;
+  invoiceNo: string;
+  date: string;
+  clientName: string;
+  clientPhone: string;
+  city: string;
+  trackingCode: string;
+  storeSource: "SHEIN" | "AliExpress" | "Trendyol" | "Amazon" | "Alibaba";
+  productCost: number;       // تكلفة المنتجات $
+  shippingCost: number;      // أجور الشحن الدولي $
+  customsFee: number;        // رسوم الجمارك $
+  commissionFee: number;     // عمولة الوساطة $
+  localDeliveryFee: number;  // التوصيل الداخلي بالريال اليمني
+  totalUSD: number;          // الإجمالي بالدولار
+  exchangeRateYER: number;   // سعر صرف الدولار
+  totalYER: number;          // الإجمالي بالريال اليمني
+  paymentType: "مدفوع مقدماً" | "دفع عند الاستلام (COD)" | "سداد جزئي";
+  status: "مسدد بالكامل" | "بانتظار التحصيل عند التسليم" | "قيد المراجعة";
+}
 
-  const fetchData = async () => {
-    const { data: p } = await db.from('products').select('*')
-    if(p) setProducts(p)
-    const { data: c } = await db.from('customers').select('*')
-    if(c) setCustomers(c)
-    const { data: inv } = await db.from('sales_invoices').select('*').order('created_at',{ascending:false}).limit(20)
-    if(inv) setInvoices(inv)
+const INITIAL_SALES: SalesInvoice[] = [
+  {
+    id: "SINV-01",
+    invoiceNo: "INV-2026-0101",
+    date: "2026-04-02",
+    clientName: "محمد عبد الله الأصبحي",
+    clientPhone: "777123456",
+    city: "صنعاء - حدة",
+    trackingCode: "SQ-800816",
+    storeSource: "SHEIN",
+    productCost: 145.5,
+    shippingCost: 32.0,
+    customsFee: 15.0,
+    commissionFee: 18.0,
+    localDeliveryFee: 3000,
+    totalUSD: 210.5,
+    exchangeRateYER: 1610,
+    totalYER: 341905,
+    paymentType: "دفع عند الاستلام (COD)",
+    status: "بانتظار التحصيل عند التسليم"
+  },
+  {
+    id: "SINV-02",
+    invoiceNo: "INV-2026-0102",
+    date: "2026-04-01",
+    clientName: "سارة خالد القاسمي",
+    clientPhone: "733987654",
+    city: "عدن - المنصورة",
+    trackingCode: "SQ-800955",
+    storeSource: "Trendyol",
+    productCost: 48.0,
+    shippingCost: 14.0,
+    customsFee: 8.0,
+    commissionFee: 10.0,
+    localDeliveryFee: 4000,
+    totalUSD: 80.0,
+    exchangeRateYER: 1610,
+    totalYER: 132800,
+    paymentType: "مدفوع مقدماً",
+    status: "مسدد بالكامل"
+  },
+  {
+    id: "SINV-03",
+    invoiceNo: "INV-2026-0103",
+    date: "2026-03-31",
+    clientName: "مؤسسة الأفق للتجارة",
+    clientPhone: "711554433",
+    city: "تعز - الحوبان",
+    trackingCode: "SQ-801044",
+    storeSource: "Alibaba",
+    productCost: 1650.0,
+    shippingCost: 190.0,
+    customsFee: 85.0,
+    commissionFee: 120.0,
+    localDeliveryFee: 10000,
+    totalUSD: 2045.0,
+    exchangeRateYER: 1610,
+    totalYER: 3302450,
+    paymentType: "سداد جزئي",
+    status: "بانتظار التحصيل عند التسليم"
+  },
+  {
+    id: "SINV-04",
+    invoiceNo: "INV-2026-0104",
+    date: "2026-03-29",
+    clientName: "عمار يحيى الوادعي",
+    clientPhone: "771889900",
+    city: "صنعاء - السنينة",
+    trackingCode: "SQ-800755",
+    storeSource: "AliExpress",
+    productCost: 32.8,
+    shippingCost: 12.0,
+    customsFee: 5.0,
+    commissionFee: 8.0,
+    localDeliveryFee: 2500,
+    totalUSD: 57.8,
+    exchangeRateYER: 1610,
+    totalYER: 95558,
+    paymentType: "مدفوع مقدماً",
+    status: "مسدد بالكامل"
   }
-  useEffect(()=>{fetchData()},[])
+];
 
-  const createInvoice = async () => {
-    if(!productId) return alert('اختر المنتج')
-    const prod = products.find(x=>x.id===productId)
-    const total = (prod?.price||0) * Number(qty)
-    await db.from('sales_invoices').insert({
-      customer_id: customerId||null,
-      total,
-      items: [{ product_id: productId, qty: Number(qty), price: prod?.price }]
-    })
-    setProductId(''); setQty('1'); fetchData()
-    alert('تم حفظ الفاتورة')
-  }
+export default function SalesInvoicesPage() {
+  const navigate = useNavigate();
+  const [invoices, setInvoices] = useState<SalesInvoice[]>(INITIAL_SALES);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("الكل");
+  const [showAddModal, setShowAddModal] = useState(false);
+
+  // نموذج إضافة فاتورة جديدة
+  const [formData, setFormData] = useState({
+    clientName: "",
+    clientPhone: "",
+    city: "صنعاء",
+    trackingCode: "",
+    storeSource: "SHEIN" as SalesInvoice["storeSource"],
+    productCost: "",
+    shippingCost: "",
+    customsFee: "",
+    commissionFee: "10",
+    localDeliveryFee: "3000",
+    exchangeRateYER: "1610",
+    paymentType: "دفع عند الاستلام (COD)" as SalesInvoice["paymentType"]
+  });
+
+  // الفلترة
+  const filteredInvoices = useMemo(() => {
+    return invoices.filter(inv => {
+      const matchSearch = 
+        inv.invoiceNo.toLowerCase().includes(search.toLowerCase()) ||
+        inv.trackingCode.toLowerCase().includes(search.toLowerCase()) ||
+        inv.clientName.includes(search) ||
+        inv.clientPhone.includes(search) ||
+        inv.city.includes(search);
+
+      const matchStatus = statusFilter === "الكل" || inv.status === statusFilter;
+      return matchSearch && matchStatus;
+    });
+  }, [invoices, search, statusFilter]);
+
+  // إحصائيات مالية
+  const stats = useMemo(() => {
+    const totalSalesUSD = invoices.reduce((s, i) => s + i.totalUSD, 0);
+    const pendingCOD_USD = invoices.filter(i => i.status === "بانتظار التحصيل عند التسليم").reduce((s, i) => s + i.totalUSD, 0);
+    const paidUSD = invoices.filter(i => i.status === "مسدد بالكامل").reduce((s, i) => s + i.totalUSD, 0);
+    const totalCommissionsUSD = invoices.reduce((s, i) => s + i.commissionFee, 0);
+
+    return { totalSalesUSD, pendingCOD_USD, paidUSD, totalCommissionsUSD };
+  }, [invoices]);
+
+  // إرسال الفاتورة عبر واتساب
+  const shareWhatsApp = (inv: SalesInvoice) => {
+    const text = `مرحباً أخي الكريم ${inv.clientName}،\nفاتورة طلبك رقم: *${inv.invoiceNo}*\nكود الشحنة: *${inv.trackingCode}*\nالمصدر: *${inv.storeSource}*\n------------------\n- قيمة السلع: $${inv.productCost}\n- الشحن الدولي: $${inv.shippingCost}\n- الجمارك والرسوم: $${inv.customsFee}\n- عمولة الوسيط: $${inv.commissionFee}\n- توصيل داخلي: ${inv.localDeliveryFee.toLocaleString()} ر.ي\n------------------\n*الإجمالي المطلوب: $${inv.totalUSD}* (ما يعادل: ${inv.totalYER.toLocaleString()} ر.ي)\nحالة الدفع: *${inv.paymentType}*\n\nشكراً لاختيارك السوق الشامل!`;
+    const cleanPhone = inv.clientPhone.startsWith("967") ? inv.clientPhone : `967${inv.clientPhone.replace(/^0+/, "")}`;
+    window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`, "_blank");
+  };
+
+  // حفظ الفاتورة
+  const handleSaveInvoice = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.clientName || !formData.productCost) return;
+
+    const pCost = Number(formData.productCost) || 0;
+    const sCost = Number(formData.shippingCost) || 0;
+    const cFee = Number(formData.customsFee) || 0;
+    const commFee = Number(formData.commissionFee) || 0;
+    const delFee = Number(formData.localDeliveryFee) || 0;
+    const rate = Number(formData.exchangeRateYER) || 1610;
+
+    const totalUSD = pCost + sCost + cFee + commFee;
+    const totalYER = Math.round(totalUSD * rate + delFee);
+
+    const newInv: SalesInvoice = {
+      id: `SINV-${Date.now().toString().slice(-4)}`,
+      invoiceNo: `INV-2026-0${invoices.length + 105}`,
+      date: new Date().toISOString().split("T")[0],
+      clientName: formData.clientName,
+      clientPhone: formData.clientPhone,
+      city: formData.city,
+      trackingCode: formData.trackingCode || `SQ-${Math.floor(800000 + Math.random() * 90000)}`,
+      storeSource: formData.storeSource,
+      productCost: pCost,
+      shippingCost: sCost,
+      customsFee: cFee,
+      commissionFee: commFee,
+      localDeliveryFee: delFee,
+      totalUSD,
+      exchangeRateYER: rate,
+      totalYER,
+      paymentType: formData.paymentType,
+      status: formData.paymentType === "مدفوع مقدماً" ? "مسدد بالكامل" : "بانتظار التحصيل عند التسليم"
+    };
+
+    setInvoices([newInv, ...invoices]);
+    setShowAddModal(false);
+  };
 
   return (
-    <div dir="rtl" className="p-6">
-      <h1 className="text-2xl font-bold mb-4">فواتير المبيعات</h1>
-      <div className="bg-white p-4 rounded shadow mb-4 flex gap-2 flex-wrap">
-        <select value={customerId} onChange={e=>setCustomerId(e.target.value)} className="border p-2 rounded">
-          <option value="">عميل نقدي</option>
-          {customers.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
-        <select value={productId} onChange={e=>setProductId(e.target.value)} className="border p-2 rounded">
-          <option value="">اختر المنتج</option>
-          {products.map(p=><option key={p.id} value={p.id}>{p.name} - {p.price}</option>)}
-        </select>
-        <input value={qty} onChange={e=>setQty(e.target.value)} type="number" placeholder="الكمية" className="border p-2 rounded w-24" />
-        <button onClick={createInvoice} className="bg-green-700 text-white px-4 py-2 rounded">حفظ فاتورة</button>
-      </div>
-      <div className="grid gap-2">
-        {invoices.map(inv=>(
-          <div key={inv.id} className="bg-white p-3 rounded shadow flex justify-between">
-            <span>{new Date(inv.created_at).toLocaleString('ar')}</span>
-            <span className="font-bold">{inv.total}</span>
+    <div dir="rtl" className="min-h-screen bg-gradient-to-br from-[#F0F7FF] via-[#F8FAFC] to-[#FFF9F5] p-4 md:p-8 font-['Cairo',sans-serif]">
+      <div className="max-w-7xl mx-auto space-y-6">
+
+        {/* ترويسة الصفحة وأزرار الإجراءات */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl shadow-sm border border-sky-100">
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => navigate({ to: "/admin" })}
+              className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition"
+            >
+              <ArrowRight className="w-5 h-5" />
+            </button>
+            <div>
+              <h1 className="text-xl md:text-2xl font-black text-[#0F4C81] flex items-center gap-2">
+                <Receipt className="w-6 h-6 text-[#F97316]" />
+                فواتير مبيعات وخدمات الوساطة
+              </h1>
+              <p className="text-xs md:text-sm text-slate-500 font-medium">إصدار ومتابعة فواتير الشراء والشحن والعمولات للعملاء</p>
+            </div>
           </div>
-        ))}
+
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setShowAddModal(true)}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#0F4C81] hover:bg-[#0c3c66] text-white font-bold text-sm shadow-md transition"
+            >
+              <Plus className="w-4 h-4" />
+              إصدار فاتورة جديدة
+            </button>
+            <button 
+              onClick={() => window.print()}
+              className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
+              title="طباعة"
+            >
+              <Printer className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* بطاقات المؤشرات المالية (KPIs) */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white p-5 rounded-2xl border border-sky-100 shadow-sm">
+            <div className="flex items-center justify-between text-[#0F4C81] mb-2">
+              <span className="text-xs font-bold">إجمالي المبيعات والخدمات</span>
+              <DollarSign className="w-5 h-5 bg-sky-50 p-1 rounded-lg" />
+            </div>
+            <div className="text-2xl font-black text-slate-900">${stats.totalSalesUSD.toLocaleString()}</div>
+            <p className="text-[11px] text-slate-400 mt-1">{invoices.length} فواتير صادرة</p>
+          </div>
+
+          <div className="bg-white p-5 rounded-2xl border border-amber-100 shadow-sm">
+            <div className="flex items-center justify-between text-amber-600 mb-2">
+              <span className="text-xs font-bold">مطلوب تحصيلها عند التسليم (COD)</span>
+              <Clock className="w-5 h-5 bg-amber-50 p-1 rounded-lg" />
+            </div>
+            <div className="text-2xl font-black text-amber-600">${stats.pendingCOD_USD.toLocaleString()}</div>
+            <p className="text-[11px] text-slate-400 mt-1">مع سائقي التوصيل والنقاط</p>
+          </div>
+
+          <div className="bg-white p-5 rounded-2xl border border-emerald-100 shadow-sm">
+            <div className="flex items-center justify-between text-emerald-600 mb-2">
+              <span className="text-xs font-bold">مسدد ومحصل في الصناديق</span>
+              <CheckCircle2 className="w-5 h-5 bg-emerald-50 p-1 rounded-lg" />
+            </div>
+            <div className="text-2xl font-black text-emerald-700">${stats.paidUSD.toLocaleString()}</div>
+            <p className="text-[11px] text-slate-400 mt-1">مدفوعات مؤكدة</p>
+          </div>
+
+          <div className="bg-white p-5 rounded-2xl border border-orange-100 shadow-sm">
+            <div className="flex items-center justify-between text-[#F97316] mb-2">
+              <span className="text-xs font-bold">صافي عمولات الوساطة</span>
+              <TrendingUp className="w-5 h-5 bg-orange-50 p-1 rounded-lg" />
+            </div>
+            <div className="text-2xl font-black text-[#F97316]">${stats.totalCommissionsUSD.toLocaleString()}</div>
+            <p className="text-[11px] text-slate-400 mt-1">أرباح الوساطة المقدرة</p>
+          </div>
+        </div>
+
+        {/* شريط البحث والفلترة */}
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-3">
+          <div className="flex-1 relative">
+            <Search className="w-5 h-5 text-slate-400 absolute right-4 top-1/2 -translate-y-1/2" />
+            <input 
+              type="text"
+              placeholder="ابحث برقم الفاتورة، كود الشحنة (SQ-...)، اسم العميل، الهاتف، أو المدينة..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full h-11 pr-12 pl-4 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-[#0F4C81] outline-none text-xs md:text-sm font-medium transition"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-500 whitespace-nowrap">الحالة:</span>
+            {["الكل", "مسدد بالكامل", "بانتظار التحصيل عند التسليم"].map((st) => (
+              <button
+                key={st}
+                onClick={() => setStatusFilter(st)}
+                className={`text-xs font-bold px-3 py-2 rounded-xl transition ${
+                  statusFilter === st 
+                    ? "bg-[#0F4C81] text-white shadow-sm" 
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+              >
+                {st}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* جدول فواتير المبيعات */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-right text-xs md:text-sm">
+              <thead className="bg-[#0F4C81]/5 text-[#0F4C81] text-xs font-bold border-b border-sky-100">
+                <tr>
+                  <th className="py-3 px-4">رقم الفاتورة</th>
+                  <th className="py-3 px-4">العميل والتواصل</th>
+                  <th className="py-3 px-4">الشحنة والمصدر</th>
+                  <th className="py-3 px-4 text-center">تفصيل التكلفة ($)</th>
+                  <th className="py-3 px-4 text-center">الإجمالي ($ / ر.ي)</th>
+                  <th className="py-3 px-4 text-center">طريقة الدفع والحالة</th>
+                  <th className="py-3 px-4 text-center">الإجراءات</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-medium">
+                {filteredInvoices.map((inv) => (
+                  <tr key={inv.id} className="hover:bg-slate-50/80 transition">
+                    <td className="py-3.5 px-4">
+                      <div className="font-mono font-bold text-[#0F4C81]">{inv.invoiceNo}</div>
+                      <div className="text-[11px] text-slate-400 mt-0.5">{inv.date}</div>
+                    </td>
+
+                    <td className="py-3.5 px-4">
+                      <div className="font-bold text-slate-900">{inv.clientName}</div>
+                      <div className="text-[11px] text-slate-500 font-mono flex items-center gap-1 mt-0.5">
+                        <Phone className="w-3 h-3 text-slate-400" />
+                        {inv.clientPhone} • {inv.city}
+                      </div>
+                    </td>
+
+                    <td className="py-3.5 px-4">
+                      <div className="font-mono font-bold text-[#0F4C81] bg-sky-50 px-2 py-0.5 rounded inline-block text-xs">
+                        {inv.trackingCode}
+                      </div>
+                      <div className="text-[11px] text-[#F97316] font-bold mt-1 flex items-center gap-1">
+                        <Store className="w-3 h-3" />
+                        {inv.storeSource}
+                      </div>
+                    </td>
+
+                    <td className="py-3.5 px-4 text-center text-[11px] text-slate-600">
+                      <div>سلع: ${inv.productCost}</div>
+                      <div>شحن: ${inv.shippingCost} | جمارك: ${inv.customsFee}</div>
+                      <div className="text-[#F97316] font-bold">عمولة: ${inv.commissionFee}</div>
+                    </td>
+
+                    <td className="py-3.5 px-4 text-center">
+                      <div className="font-black text-slate-900 text-sm">${inv.totalUSD}</div>
+                      <div className="text-[11px] font-bold text-emerald-700 mt-0.5">
+                        {inv.totalYER.toLocaleString()} ر.ي
+                      </div>
+                    </td>
+
+                    <td className="py-3.5 px-4 text-center">
+                      <div className="text-[11px] font-bold text-slate-700 mb-1">{inv.paymentType}</div>
+                      <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-bold ${
+                        inv.status === 'مسدد بالكامل'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : 'bg-amber-100 text-amber-800'
+                      }`}>
+                        {inv.status}
+                      </span>
+                    </td>
+
+                    <td className="py-3.5 px-4 text-center">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <button
+                          onClick={() => shareWhatsApp(inv)}
+                          title="مشاركة الفاتورة بالواتساب"
+                          className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition"
+                        >
+                          <Share2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => window.print()}
+                          title="طباعة الفاتورة"
+                          className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
+                        >
+                          <Printer className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* نافذة إنشاء فاتورة مبيعات جديدة */}
+        {showAddModal && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl p-6 max-w-xl w-full shadow-2xl border border-slate-100 space-y-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <h3 className="font-black text-lg text-[#0F4C81] flex items-center gap-2">
+                  <Receipt className="w-5 h-5 text-[#F97316]" />
+                  إصدار فاتورة مبيعات جديدة للعميل
+                </h3>
+                <button 
+                  onClick={() => setShowAddModal(false)}
+                  className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveInvoice} className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-bold text-slate-600 block mb-1">اسم العميل</label>
+                    <input 
+                      required
+                      placeholder="محمد عبد الله..."
+                      value={formData.clientName}
+                      onChange={e => setFormData({...formData, clientName: e.target.value})}
+                      className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs outline-none focus:border-[#0F4C81]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-600 block mb-1">رقم الهاتف</label>
+                    <input 
+                      required
+                      placeholder="77..."
+                      value={formData.clientPhone}
+                      onChange={e => setFormData({...formData, clientPhone: e.target.value})}
+                      className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-mono outline-none focus:border-[#0F4C81]"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-xs font-bold text-slate-600 block mb-1">المدينة / الفرع</label>
+                    <input 
+                      value={formData.city}
+                      onChange={e => setFormData({...formData, city: e.target.value})}
+                      className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs outline-none focus:border-[#0F4C81]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-600 block mb-1">كود الشحنة (اختياري)</label>
+                    <input 
+                      placeholder="SQ-800..."
+                      value={formData.trackingCode}
+                      onChange={e => setFormData({...formData, trackingCode: e.target.value})}
+                      className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-mono outline-none focus:border-[#0F4C81]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-600 block mb-1">المتجر المصدر</label>
+                    <select
+                      value={formData.storeSource}
+                      onChange={e => setFormData({...formData, storeSource: e.target.value as any})}
+                      className="w-full h-10 px-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 outline-none"
+                    >
+                      <option value="SHEIN">SHEIN</option>
+                      <option value="AliExpress">AliExpress</option>
+                      <option value="Trendyol">Trendyol</option>
+                      <option value="Amazon">Amazon</option>
+                      <option value="Alibaba">Alibaba</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* تفصيل التكاليف */}
+                <div className="bg-sky-50/60 p-3 rounded-2xl border border-sky-100 space-y-3">
+                  <h4 className="text-xs font-black text-[#0F4C81]">تفصيل بنود التكلفة والعمولة:</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-600 block mb-1">قيمة السلع ($)</label>
+                      <input 
+                        required
+                        type="number"
+                        step="0.1"
+                        placeholder="100"
+                        value={formData.productCost}
+                        onChange={e => setFormData({...formData, productCost: e.target.value})}
+                        className="w-full h-9 px-2 rounded-lg border border-slate-200 text-xs font-mono bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-600 block mb-1">الشحن الدولي ($)</label>
+                      <input 
+                        type="number"
+                        step="0.1"
+                        placeholder="25"
+                        value={formData.shippingCost}
+                        onChange={e => setFormData({...formData, shippingCost: e.target.value})}
+                        className="w-full h-9 px-2 rounded-lg border border-slate-200 text-xs font-mono bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-600 block mb-1">الجمارك والرسوم ($)</label>
+                      <input 
+                        type="number"
+                        step="0.1"
+                        placeholder="10"
+                        value={formData.customsFee}
+                        onChange={e => setFormData({...formData, customsFee: e.target.value})}
+                        className="w-full h-9 px-2 rounded-lg border border-slate-200 text-xs font-mono bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-600 block mb-1">عمولة الوسيط ($)</label>
+                      <input 
+                        type="number"
+                        step="0.1"
+                        value={formData.commissionFee}
+                        onChange={e => setFormData({...formData, commissionFee: e.target.value})}
+                        className="w-full h-9 px-2 rounded-lg border border-slate-200 text-xs font-mono bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-600 block mb-1">توصيل داخلي (ر.ي)</label>
+                      <input 
+                        type="number"
+                        value={formData.localDeliveryFee}
+                        onChange={e => setFormData({...formData, localDeliveryFee: e.target.value})}
+                        className="w-full h-9 px-2 rounded-lg border border-slate-200 text-xs font-mono bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-600 block mb-1">سعر الصرف (ر.ي/$)</label>
+                      <input 
+                        type="number"
+                        value={formData.exchangeRateYER}
+                        onChange={e => setFormData({...formData, exchangeRateYER: e.target.value})}
+                        className="w-full h-9 px-2 rounded-lg border border-slate-200 text-xs font-mono bg-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-bold text-slate-600 block mb-1">طريقة الدفع</label>
+                    <select
+                      value={formData.paymentType}
+                      onChange={e => setFormData({...formData, paymentType: e.target.value as any})}
+                      className="w-full h-10 px-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 outline-none"
+                    >
+                      <option value="دفع عند الاستلام (COD)">دفع عند الاستلام (COD)</option>
+                      <option value="مدفوع مقدماً">مدفوع مقدماً</option>
+                      <option value="سداد جزئي">سداد جزئي</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="pt-3 flex gap-2">
+                  <button
+                    type="submit"
+                    className="flex-1 h-11 rounded-xl bg-[#0F4C81] hover:bg-[#0c3c66] text-white font-bold text-sm shadow-md transition"
+                  >
+                    حفظ وإصدار الفاتورة
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddModal(false)}
+                    className="px-4 h-11 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-sm transition"
+                  >
+                    إلغاء
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
-  )
+  );
 }
