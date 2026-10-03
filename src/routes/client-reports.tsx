@@ -1,8 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
-import { 
-  ArrowRight, Search, Printer, Share2, Calendar, 
-  FileText, ArrowDownLeft, ArrowUpRight, DollarSign, 
+import {
+  ArrowRight, Search, Printer, Share2, Calendar,
+  FileText, ArrowDownLeft, ArrowUpRight, DollarSign,
   TrendingUp, Wallet, CheckCircle2, Clock, AlertCircle,
   Phone, User, Package
 } from "lucide-react";
@@ -18,8 +18,8 @@ interface Transaction {
   refNo: string;
   type: "شراء وتوريد" | "سند قبض" | "شحن وتخليص" | "عمولة وسيط" | "استرداد";
   description: string;
-  debit: number;   // مدين (مستحق على العميل)
-  credit: number;  // دائن (مدفوع من العميل)
+  debit: number; // مدين (مستحق على العميل)
+  credit: number; // دائن (مدفوع من العميل)
   currency: "USD" | "SAR" | "YER";
   status: "مكتمل" | "معلق" | "قيد المراجعة";
 }
@@ -92,42 +92,47 @@ export default function ClientReportsPage() {
   const [dateFilter, setDateFilter] = useState("all");
 
   const selectedClient = useMemo(() => {
-    return INITIAL_CLIENTS.find(c => c.id === selectedClientId) || INITIAL_CLIENTS[0];
+    return INITIAL_CLIENTS.find(c => c.id === selectedClientId);
   }, [selectedClientId]);
+
+  const activeClient = selectedClient?? INITIAL_CLIENTS[0]!;
+  if (!activeClient) {
+    return <div className="p-8 text-center">لا يوجد عملاء لعرض التقرير</div>;
+  }
 
   // تصفية العملاء في شريط البحث
   const filteredClients = useMemo(() => {
     if (!search.trim()) return INITIAL_CLIENTS;
-    return INITIAL_CLIENTS.filter(c => 
-      c.name.includes(search) || 
-      c.phone.includes(search) || 
+    return INITIAL_CLIENTS.filter(c =>
+      c.name.includes(search) ||
+      c.phone.includes(search) ||
       c.id.toLowerCase().includes(search.toLowerCase())
     );
   }, [search]);
 
   // حساب المجاميع المالية للعميل المحدد
   const totals = useMemo(() => {
-    const totalDebit = selectedClient.transactions.reduce((sum, t) => sum + t.debit, 0);
-    const totalCredit = selectedClient.transactions.reduce((sum, t) => sum + t.credit, 0);
+    const totalDebit = activeClient.transactions.reduce((sum, t) => sum + t.debit, 0);
+    const totalCredit = activeClient.transactions.reduce((sum, t) => sum + t.credit, 0);
     const netBalance = totalDebit - totalCredit;
     return { totalDebit, totalCredit, netBalance };
-  }, [selectedClient]);
+  }, [activeClient]);
 
   // إرسال كشف الحساب عبر الواتساب للعميل
   const handleWhatsAppShare = () => {
-    const text = `السلام عليكم أخي/أختي ${selectedClient.name}،\nكشف حسابك لدى *السوق الشامل*:\n- إجمالي العمليات: ${totals.totalDebit} $\n- إجمالي المدفوع: ${totals.totalCredit} $\n- المتبقي الواجب سداده: ${totals.netBalance} $\n\nشكراً لتعاملك معنا!`;
-    const cleanPhone = selectedClient.phone.startsWith("967") ? selectedClient.phone : `967${selectedClient.phone.replace(/^0+/, "")}`;
+    const text = `السلام عليكم أخي/أختي ${activeClient.name}،\nكشف حسابك لدى *السوق الشامل*:\n- إجمالي العمليات: ${totals.totalDebit} $\n- إجمالي المدفوع: ${totals.totalCredit} $\n- المتبقي الواجب سداده: ${totals.netBalance} $\n\nشكراً لتعاملك معنا!`;
+    const cleanPhone = activeClient.phone.startsWith("967")? activeClient.phone : `967${activeClient.phone.replace(/^0+/, "")}`;
     window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`, "_blank");
   };
 
   return (
     <div dir="rtl" className="min-h-screen bg-gradient-to-br from-[#F0F7FF] via-[#F8FAFC] to-[#FFF9F5] p-4 md:p-8 font-['Cairo',sans-serif]">
       <div className="max-w-6xl mx-auto space-y-6">
-        
+
         {/* الترويسة وأزرار الرجوع والطباعة */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl shadow-sm border border-sky-100">
           <div className="flex items-center gap-3">
-            <button 
+            <button
               onClick={() => navigate({ to: "/admin" })}
               className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition"
             >
@@ -143,14 +148,14 @@ export default function ClientReportsPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <button 
+            <button
               onClick={handleWhatsAppShare}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-sm transition"
             >
               <Share2 className="w-4 h-4" />
               مشاركة بالواتساب
             </button>
-            <button 
+            <button
               onClick={() => window.print()}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0F4C81] hover:bg-[#0c3c66] text-white font-bold text-sm shadow-sm transition"
             >
@@ -164,7 +169,7 @@ export default function ClientReportsPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="md:col-span-2 relative">
             <Search className="w-5 h-5 text-slate-400 absolute right-4 top-1/2 -translate-y-1/2" />
-            <input 
+            <input
               type="text"
               placeholder="ابحث باسم العميل أو رقم الهاتف أو كود العميل..."
               value={search}
@@ -192,19 +197,19 @@ export default function ClientReportsPage() {
         <div className="bg-white p-5 rounded-2xl border border-sky-100 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-[#0F4C81] to-sky-600 text-white flex items-center justify-center font-black text-xl shadow-md">
-              {selectedClient.name.charAt(0)}
+              {activeClient.name.charAt(0)}
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-black text-slate-900">{selectedClient.name}</h2>
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-sky-100 text-[#0F4C81] font-bold">{selectedClient.id}</span>
+                <h2 className="text-lg font-black text-slate-900">{activeClient.name}</h2>
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-sky-100 text-[#0F4C81] font-bold">{activeClient.id}</span>
               </div>
               <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 mt-1 font-medium">
-                <span className="flex items-center gap-1"><Phone className="w-3.5 h-3.5" /> {selectedClient.phone}</span>
+                <span className="flex items-center gap-1"><Phone className="w-3.5 h-3.5" /> {activeClient.phone}</span>
                 <span>•</span>
-                <span>{selectedClient.city}</span>
+                <span>{activeClient.city}</span>
                 <span>•</span>
-                <span>عميل منذ: {selectedClient.joinDate}</span>
+                <span>عميل منذ: {activeClient.joinDate}</span>
               </div>
             </div>
           </div>
@@ -212,7 +217,7 @@ export default function ClientReportsPage() {
           <div className="flex items-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-100 text-xs">
             <Package className="w-4 h-4 text-[#F97316]" />
             <span className="text-slate-600">إجمالي الشحنات:</span>
-            <span className="font-black text-slate-900">{selectedClient.totalOrders} شحنة</span>
+            <span className="font-black text-slate-900">{activeClient.totalOrders} شحنة</span>
           </div>
         </div>
 
@@ -236,16 +241,16 @@ export default function ClientReportsPage() {
             <p className="text-[11px] text-slate-400 mt-1">سندات القبض والدفعات المستلمة</p>
           </div>
 
-          <div className={`p-5 rounded-2xl border shadow-sm ${totals.netBalance > 0 ? 'bg-amber-50/50 border-amber-200' : 'bg-emerald-50/50 border-emerald-200'}`}>
+          <div className={`p-5 rounded-2xl border shadow-sm ${totals.netBalance > 0? 'bg-amber-50/50 border-amber-200' : 'bg-emerald-50/50 border-emerald-200'}`}>
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-bold text-slate-700">الرصيد المتبقي (مستحق السداد)</span>
               <Wallet className="w-5 h-5 text-[#F97316]" />
             </div>
-            <div className={`text-2xl font-black ${totals.netBalance > 0 ? 'text-[#F97316]' : 'text-emerald-700'}`}>
+            <div className={`text-2xl font-black ${totals.netBalance > 0? 'text-[#F97316]' : 'text-emerald-700'}`}>
               ${totals.netBalance.toLocaleString()}
             </div>
             <p className="text-[11px] text-slate-500 mt-1">
-              {totals.netBalance > 0 ? "يستحق التحصيل من العميل عند التسليم" : "الحساب مسدد بالكامل ولا توجد ذمم"}
+              {totals.netBalance > 0? "يستحق التحصيل من العميل عند التسليم" : "الحساب مسدد بالكامل ولا توجد ذمم"}
             </p>
           </div>
         </div>
@@ -258,7 +263,7 @@ export default function ClientReportsPage() {
               كشف الحساب التفصيلي للعمليات
             </h3>
             <span className="text-xs text-slate-500 font-bold">
-              {selectedClient.transactions.length} حركات مسجلة
+              {activeClient.transactions.length} حركات مسجلة
             </span>
           </div>
 
@@ -276,7 +281,7 @@ export default function ClientReportsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">
-                {selectedClient.transactions.map((tx) => (
+                {activeClient.transactions.map((tx) => (
                   <tr key={tx.id} className="hover:bg-slate-50/80 transition">
                     <td className="py-3.5 px-4 text-xs text-slate-600">{tx.date}</td>
                     <td className="py-3.5 px-4">
@@ -286,17 +291,17 @@ export default function ClientReportsPage() {
                     </td>
                     <td className="py-3.5 px-4">
                       <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
-                        tx.type === 'سند قبض' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
+                        tx.type === 'سند قبض'? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
                       }`}>
                         {tx.type}
                       </span>
                     </td>
                     <td className="py-3.5 px-4 text-slate-700 text-xs md:text-sm">{tx.description}</td>
                     <td className="py-3.5 px-4 text-center font-bold text-rose-600">
-                      {tx.debit > 0 ? `$${tx.debit}` : "-"}
+                      {tx.debit > 0? `$${tx.debit}` : "-"}
                     </td>
                     <td className="py-3.5 px-4 text-center font-bold text-emerald-600">
-                      {tx.credit > 0 ? `$${tx.credit}` : "-"}
+                      {tx.credit > 0? `$${tx.credit}` : "-"}
                     </td>
                     <td className="py-3.5 px-4 text-center">
                       <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
