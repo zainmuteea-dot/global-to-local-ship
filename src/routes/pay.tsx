@@ -200,12 +200,14 @@ const fmt = (n: number) => n.toLocaleString('en-US')
 const SB_URL = (import.meta as any).env?.VITE_SUPABASE_URL as string | undefined
 const SB_KEY = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY as string | undefined
 
+// التعديل:
 async function sbSelect<T = any>(query: string, signal?: AbortSignal): Promise<T[]> {
   if (!SB_URL || !SB_KEY) throw new Error('Supabase env غير مضبوط')
   const res = await fetch(`${SB_URL}/rest/v1/${query}`, {
     headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, Accept: 'application/json' },
-    signal,
+    ...(signal ? { signal } : {}),
   })
+
   if (!res.ok) throw new Error(`Supabase ${res.status}`)
   return res.json()
 }
