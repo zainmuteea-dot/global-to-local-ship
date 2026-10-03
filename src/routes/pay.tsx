@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 
 export const Route = createFileRoute('/pay')({
   component: PayPage,
-  validateSearch: (s: Record<string, unknown>) => ({ order: (s.order as string) || '' }),
+  validateSearch: (s: Record<string, unknown>) => ({ order: typeof s['order'] === 'string' ? (s['order'] as string) : '' })
 })
 
 /* ===================== Styles ===================== */
