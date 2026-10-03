@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useLocation } from "@tanstack/react-router";
+import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import {
   X,
   Home,
@@ -54,6 +54,7 @@ export function AdminSidebar({
 
   const location = useLocation();
   const currentPath = location.pathname;
+  const navigate = useNavigate();
 
   if (!isOpen) return null;
 
@@ -61,8 +62,21 @@ export function AdminSidebar({
     onClose();
     if (navigateTo) {
       navigateTo(path);
+    } else {
+      navigate({ to: path });
     }
   };
+
+  const SubLink = ({ path, label }: { path: string; label: string }) => (
+    <div
+      onClick={() => handleLinkClick(path)}
+      className={`px-2.5 py-1 rounded-lg hover:bg-[#0B1E36] hover:text-white transition cursor-pointer ${
+        currentPath === path ? "bg-[#0B1E36] text-white" : ""
+      }`}
+    >
+      • {label}
+    </div>
+  );
 
   return (
     <>
@@ -229,12 +243,8 @@ export function AdminSidebar({
               </button>
               {isPricesOpen && (
                 <div className="pr-7 pl-2 py-1 space-y-1 text-[11px] font-semibold text-slate-300">
-                  <div onClick={() => handleLinkClick("/prices")} className="px-2.5 py-1 rounded-lg hover:bg-[#0B1E36] hover:text-white transition cursor-pointer">
-                    • حاسبة أجور الشحن الدولي
-                  </div>
-                  <div className="px-2.5 py-1 rounded-lg hover:bg-[#0B1E36] hover:text-white transition cursor-pointer">
-                    • أسعار التوصيل للمحافظات
-                  </div>
+                  <SubLink path="/prices" label="حاسبة أجور الشحن الدولي" />
+                  <SubLink path="/prices" label="أسعار التوصيل للمحافظات" />
                 </div>
               )}
             </div>
@@ -364,7 +374,10 @@ export function AdminSidebar({
             </div>
 
             {/* العمولات الآلية والأرباح */}
-            <div className="flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:bg-[#0B1E36] hover:text-white transition font-bold cursor-pointer">
+            <div
+              onClick={() => handleLinkClick("/sales-invoices")}
+              className="flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:bg-[#0B1E36] hover:text-white transition font-bold cursor-pointer"
+            >
               <div className="flex items-center gap-2.5">
                 <TrendingUp className="size-4 text-teal-400" />
                 <span>العمولات الآلية والأرباح</span>
@@ -372,6 +385,19 @@ export function AdminSidebar({
               <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-teal-950 text-teal-300 border border-teal-800/40">
                 $10/طلب
               </span>
+            </div>
+          </div>
+
+          {/* ================= قسم الفواتير والمخزون والمرتجعات ================= */}
+          <div className="space-y-1 pt-1 border-t border-slate-800/60">
+            <div className="px-2 py-1 text-[11px] font-black text-sky-400">الفواتير والمخزون والمرتجعات</div>
+            <div className="pr-3 pl-2 space-y-1 text-[11px] font-semibold text-slate-300">
+              <SubLink path="/purchase-invoices" label="فواتير المشتريات والموردين" />
+              <SubLink path="/sales-invoices" label="فواتير المبيعات للعملاء" />
+              <SubLink path="/inventory" label="المخزون والطرود" />
+              <SubLink path="/warehouses" label="المستودعات الدولية والمحلية" />
+              <SubLink path="/purchase-returns" label="المرتجعات ونزاعات المتاجر" />
+              <SubLink path="/sales-returns" label="مرتجعات المبيعات" />
             </div>
           </div>
 
@@ -454,18 +480,17 @@ export function AdminSidebar({
               </button>
               {isHrOpen && (
                 <div className="pr-7 pl-2 py-1 space-y-1 text-[11px] font-semibold text-slate-300">
-                  <div className="px-2.5 py-1 rounded-lg hover:bg-[#0B1E36] hover:text-white transition cursor-pointer">
-                    • طاقم العمل وتوزيع المهام
-                  </div>
-                  <div className="px-2.5 py-1 rounded-lg hover:bg-[#0B1E36] hover:text-white transition cursor-pointer">
-                    • صلاحيات الوصول والأدوار
-                  </div>
+                  <SubLink path="/employees" label="طاقم العمل وتوزيع المهام" />
+                  <SubLink path="/employees" label="صلاحيات الوصول والأدوار" />
                 </div>
               )}
             </div>
 
             {/* قسم التاجر والشركاء */}
-            <div className="flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:bg-[#0B1E36] hover:text-white transition font-bold cursor-pointer">
+            <div
+              onClick={() => handleLinkClick("/merchant-reports")}
+              className="flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:bg-[#0B1E36] hover:text-white transition font-bold cursor-pointer"
+            >
               <div className="flex items-center gap-2.5">
                 <Store className="size-4 text-amber-500" />
                 <span>قسم التاجر والشركاء</span>
@@ -500,12 +525,9 @@ export function AdminSidebar({
               </button>
               {isReportsOpen && (
                 <div className="pr-7 pl-2 py-1 space-y-1 text-[11px] font-semibold text-slate-300">
-                  <div className="px-2.5 py-1 rounded-lg hover:bg-[#0B1E36] hover:text-white transition cursor-pointer">
-                    • كشف الإيرادات والتحصيل اليومي
-                  </div>
-                  <div className="px-2.5 py-1 rounded-lg hover:bg-[#0B1E36] hover:text-white transition cursor-pointer">
-                    • تقارير الشحنات المسلمة والراجعة
-                  </div>
+                  <SubLink path="/client-reports" label="كشوفات العملاء المالية" />
+                  <SubLink path="/client-daily" label="كشف الإيرادات والتحصيل اليومي" />
+                  <SubLink path="/merchant-reports" label="تقارير التجار والجملة" />
                 </div>
               )}
             </div>
