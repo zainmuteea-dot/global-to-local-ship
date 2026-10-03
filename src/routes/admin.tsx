@@ -227,6 +227,29 @@ function AdminOperationsDashboard() {
           </div>
         </div>
 
+        {/* Quick Action Hub */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+          {[
+            { to: "/prices", label: "الأسعار والشحن", icon: "🧮" },
+            { to: "/employees", label: "الموظفين", icon: "👥" },
+            { to: "/merchant-reports", label: "التجار والجملة", icon: "🏪" },
+            { to: "/client-reports", label: "كشوفات العملاء", icon: "📊" },
+            { to: "/inventory", label: "المخزون", icon: "📦" },
+            { to: "/purchase-invoices", label: "فواتير المشتريات", icon: "🧾" },
+            { to: "/sales-invoices", label: "فواتير المبيعات", icon: "💵" },
+            { to: "/purchase-returns", label: "المرتجعات", icon: "↩️" },
+          ].map((s) => (
+            <button
+              key={s.to}
+              onClick={() => navigateTo(s.to)}
+              className="bg-white border border-blue-100 rounded-2xl p-3 flex flex-col items-center gap-1 shadow-sm hover:border-orange-300 hover:shadow-md transition active:scale-95 cursor-pointer"
+            >
+              <span className="text-xl">{s.icon}</span>
+              <span className="text-[11px] font-black text-[#0A2540]">{s.label}</span>
+            </button>
+          ))}
+        </div>
+
         {/* KPI Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
           {[
