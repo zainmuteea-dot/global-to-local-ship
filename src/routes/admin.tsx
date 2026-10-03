@@ -51,7 +51,7 @@ function AdminNotificationComposer() {
 
   const sendNotification = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!title.trim() || !body.trim()) return;
+    if (!title.trim() ||!body.trim()) return;
     setSending(true);
     setMessage('');
     const { error } = await supabase.from('notifications').insert({
@@ -86,9 +86,9 @@ function AdminNotificationComposer() {
         <select value={href} onChange={(event) => setHref(event.target.value)} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-bold text-[#0A2540] outline-none">
           <option value="/track">تتبع الشحنة</option><option value="/my-account">الحساب</option><option value="/new-order">طلب جديد</option><option value="/notifications">كل الإشعارات</option>
         </select>
-        <button disabled={sending} className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-orange-500 px-4 py-2.5 text-xs font-black text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"><Send className="size-3.5" />{sending ? 'جارٍ الإرسال' : 'إرسال'}</button>
+        <button disabled={sending} className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-orange-500 px-4 py-2.5 text-xs font-black text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"><Send className="size-3.5" />{sending? 'جارٍ الإرسال' : 'إرسال'}</button>
       </form>
-      {message && <p className={`mt-2 text-[11px] font-bold ${message.startsWith('تم') ? 'text-emerald-600' : 'text-rose-600'}`}>{message}</p>}
+      {message && <p className={`mt-2 text-[11px] font-bold ${message.startsWith('تم')? 'text-emerald-600' : 'text-rose-600'}`}>{message}</p>}
     </section>
   );
 }
@@ -114,7 +114,7 @@ function AdminOperationsDashboard() {
   const [printingOrder, setPrintingOrder] = useState<OrderItem | null>(null);
 
   const navigateTo = (path: string) => {
-    if (typeof window !== "undefined") window.location.href = path;
+    if (typeof window!== "undefined") window.location.href = path;
   };
 
   useEffect(() => {
@@ -149,13 +149,13 @@ function AdminOperationsDashboard() {
   useEffect(() => { fetchOrders(); }, []);
 
   const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
-    setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, status: newStatus, updatedAt: new Date().toISOString() } : o)));
+    setOrders((prev) => prev.map((o) => (o.id === orderId? {...o, status: newStatus, updatedAt: new Date().toISOString() } : o)));
     if (supabaseClientInstance) { try { await (supabaseClientInstance as any).from("orders").update({ status: newStatus }).eq("id", orderId); } catch {} }
   };
 
   const handleDeleteOrder = async (orderId: string, orderNumber: string) => {
     if (!window.confirm(`هل أنت متأكد من حذف الشحنة (${orderNumber}) نهائياً؟`)) return;
-    setOrders((prev) => prev.filter((o) => o.id !== orderId));
+    setOrders((prev) => prev.filter((o) => o.id!== orderId));
     if (supabaseClientInstance) { try { await (supabaseClientInstance as any).from("orders").delete().eq("id", orderId); } catch {} }
   };
 
@@ -168,7 +168,7 @@ function AdminOperationsDashboard() {
   const handleExportCSV = () => {
     const headers = ["رقم الطلب", "العميل", "الهاتف", "المدينة", "المتجر", "الحالة", "السعر", "رقم التتبع", "التاريخ"];
     const rows = orders.map((o) => [o.orderNumber, `"${o.customerName}"`, o.customerPhone, `"${o.customerCity || "صنعاء"}"`, o.storeName, o.status, o.originalPrice, o.intlTrackingNumber || o.orderNumber, o.createdAt.split("T")[0]]);
-    const csv = "\uFEFF" + [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
+    const csv = "\uFEFF" + [headers.join(","),...rows.map((e) => e.join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -186,8 +186,8 @@ function AdminOperationsDashboard() {
   }, [orders]);
 
   const filteredOrders = useMemo(() => orders.filter((o) => {
-    if (statusFilter !== "all" && o.status !== statusFilter) return false;
-    if (cityFilter !== "all" && o.customerCity !== cityFilter) return false;
+    if (statusFilter!== "all" && o.status!== statusFilter) return false;
+    if (cityFilter!== "all" && o.customerCity!== cityFilter) return false;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       if (!(o.orderNumber.toLowerCase().includes(q) || o.customerName.toLowerCase().includes(q) || o.customerPhone.includes(q))) return false;
@@ -201,13 +201,13 @@ function AdminOperationsDashboard() {
     const shipped = orders.filter((o) => o.status === "shipped" || o.status === "international_ship" || o.status === "warehouse_china").length;
     const delivered = orders.filter((o) => o.status === "delivered").length;
     const cancelled = orders.filter((o) => o.status === "cancelled").length;
-    const totalCOD = orders.filter((o) => o.status !== "cancelled").reduce((sum, o) => sum + (o.originalPrice || 0), 0);
+    const totalCOD = orders.filter((o) => o.status!== "cancelled").reduce((sum, o) => sum + (o.originalPrice || 0), 0);
     return {
       total, pending, shipped, delivered, cancelled, totalCOD,
-      pendingPercent: total > 0 ? Math.round((pending / total) * 100) : 0,
-      shippedPercent: total > 0 ? Math.round((shipped / total) * 100) : 0,
-      deliveredPercent: total > 0 ? Math.round((delivered / total) * 100) : 0,
-      deliverySuccessRate: total > 0 ? Math.round((delivered / (total - pending || 1)) * 100) : 100,
+      pendingPercent: total > 0? Math.round((pending / total) * 100) : 0,
+      shippedPercent: total > 0? Math.round((shipped / total) * 100) : 0,
+      deliveredPercent: total > 0? Math.round((delivered / total) * 100) : 0,
+      deliverySuccessRate: total > 0? Math.round((delivered / (total - pending || 1)) * 100) : 100,
     };
   }, [orders]);
 
@@ -264,7 +264,7 @@ function AdminOperationsDashboard() {
               <PlusCircle className="w-4 h-4" /><span>+ شحنة جديدة</span>
             </button>
             <button onClick={fetchOrders} disabled={loading} className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-700 transition cursor-pointer" title="تحديث">
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-orange-500" : ""}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${loading? "animate-spin text-orange-500" : ""}`} />
             </button>
           </div>
         </header>
@@ -284,7 +284,6 @@ function AdminOperationsDashboard() {
           </div>
         </div>
 
-        {/* Quick Action Hub */}
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
           {[
             { to: "/prices", label: "الأسعار والشحن", icon: "🧮" },
@@ -307,7 +306,6 @@ function AdminOperationsDashboard() {
           ))}
         </div>
 
-        {/* KPI Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
           {[
             { label: "إجمالي الطلبات", value: stats.total, percent: "100%", icon: Package, color: "from-[#0F4C81] to-[#0284C7]", iconColor: "text-orange-300", filter: "all", activeColor: "border-orange-500 ring-orange-200", borderColor: "border-sky-200/90" },
@@ -318,7 +316,7 @@ function AdminOperationsDashboard() {
             const Icon = card.icon;
             const isActive = statusFilter === card.filter;
             return (
-              <div key={card.label} onClick={() => setStatusFilter(card.filter)} className={`rounded-2xl p-3.5 sm:p-5 cursor-pointer transition relative overflow-hidden bg-white shadow-sm ${isActive ? `border-2 ${card.activeColor} shadow-md ring-2` : `border ${card.borderColor} hover:border-orange-400`}`}>
+              <div key={card.label} onClick={() => setStatusFilter(card.filter)} className={`rounded-2xl p-3.5 sm:p-5 cursor-pointer transition relative overflow-hidden bg-white shadow-sm ${isActive? `border-2 ${card.activeColor} shadow-md ring-2` : `border ${card.borderColor} hover:border-orange-400`}`}>
                 <div className="flex items-center justify-between mb-2">
                   <span className="px-2 py-0.5 rounded-full bg-orange-50 border border-orange-200 text-orange-600 text-[10px] sm:text-xs font-bold">{card.percent}</span>
                   <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr ${card.color} text-white flex items-center justify-center shadow-xs`}>
@@ -327,13 +325,12 @@ function AdminOperationsDashboard() {
                 </div>
                 <div className="text-2xl sm:text-3xl font-black text-[#0A2540] font-mono mb-0.5">{card.value}</div>
                 <div className="text-xs sm:text-sm font-black text-slate-800">{card.label}</div>
-                <div className="pt-2 mt-2 border-t border-slate-100 text-[10px] font-bold text-orange-500">{isActive ? "تصفية مفعلة" : "انقر للتصفية"}</div>
+                <div className="pt-2 mt-2 border-t border-slate-100 text-[10px] font-bold text-orange-500">{isActive? "تصفية مفعلة" : "انقر للتصفية"}</div>
               </div>
             );
           })}
         </div>
 
-        {/* Summary strip */}
         <div className="bg-white border border-sky-200/90 rounded-2xl p-3 sm:p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-sm">
           <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs font-bold">
             <div className="flex items-center gap-2">
@@ -355,7 +352,6 @@ function AdminOperationsDashboard() {
           </div>
         </div>
 
-        {/* Filter bar */}
         <div className="bg-white border border-sky-200/90 rounded-2xl p-3 sm:p-3.5 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           <div className="flex items-center gap-1.5 text-xs overflow-x-auto py-1 w-full lg:w-auto">
             <span className="text-slate-600 font-bold ml-1 shrink-0">الحالة:</span>
@@ -365,7 +361,7 @@ function AdminOperationsDashboard() {
               { v: "shipped", label: `شحن (${stats.shipped})`, active: "bg-[#0284C7] text-white" },
               { v: "delivered", label: `تم التوصيل (${stats.delivered})`, active: "bg-emerald-600 text-white" },
             ].map((f) => (
-              <button key={f.v} onClick={() => setStatusFilter(f.v)} className={`px-3 py-1.5 rounded-full transition font-bold cursor-pointer shrink-0 ${statusFilter === f.v ? f.active : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200"}`}>{f.label}</button>
+              <button key={f.v} onClick={() => setStatusFilter(f.v)} className={`px-3 py-1.5 rounded-full transition font-bold cursor-pointer shrink-0 ${statusFilter === f.v? f.active : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200"}`}>{f.label}</button>
             ))}
           </div>
           <div className="flex items-center gap-2">
@@ -376,13 +372,12 @@ function AdminOperationsDashboard() {
               </select>
               <MapPin className="w-3.5 h-3.5 text-orange-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
-            {statusFilter !== "all" && <button onClick={() => setStatusFilter("all")} className="text-xs text-orange-500 hover:underline font-bold">إعادة ضبط</button>}
+            {statusFilter!== "all" && <button onClick={() => setStatusFilter("all")} className="text-xs text-orange-500 hover:underline font-bold">إعادة ضبط</button>}
           </div>
         </div>
 
-        {/* Mobile cards */}
         <div className="block sm:hidden space-y-3">
-          {filteredOrders.length === 0 ? (
+          {filteredOrders.length === 0? (
             <div className="bg-white border border-sky-200/90 rounded-2xl p-8 text-center text-slate-500 text-xs shadow-sm">لا توجد شحنات مطابقة لمعايير البحث.</div>
           ) : filteredOrders.map((ord) => {
             const trackingNo = ord.intlTrackingNumber || ord.orderNumber;
@@ -390,8 +385,8 @@ function AdminOperationsDashboard() {
               <div key={ord.id} className="bg-white border border-sky-200/90 rounded-2xl p-4 shadow-sm space-y-3">
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-mono font-black text-sm text-[#0F4C81] bg-sky-50 px-2.5 py-1 rounded-lg border border-sky-200">{ord.orderNumber}</span>
-                  <select value={ord.status} onChange={(e) => handleStatusChange(ord.id, e.target.value as OrderStatus)} className={`text-[11px] font-black rounded-full px-2.5 py-1 border outline-none cursor-pointer ${ord.status === "delivered" ? "bg-emerald-50 text-emerald-700 border-emerald-300" : ord.status === "shipped" || ord.status === "international_ship" ? "bg-sky-50 text-[#0284C7] border-sky-300" : ord.status === "cancelled" ? "bg-rose-50 text-rose-700 border-rose-300" : "bg-amber-50 text-amber-700 border-amber-300"}`}>
-                    <option value="delivered">تم التوصيل</option><option value="shipped">تم الشحن</option><option value="new">قيد الانتظار</option><option value="cancelled">ملغي</option>
+                  <select value={ord.status} onChange={(e) => handleStatusChange(ord.id, e.target.value as OrderStatus)} className={`text-[11px] font-black rounded-full px-2.5 py-1 border outline-none cursor-pointer ${ord.status === "delivered"? "bg-emerald-50 text-emerald-700 border-emerald-300" : ord.status === "shipped" || ord.status === "international_ship"? "bg-sky-50 text-[#0284C7] border-sky-300" : ord.status === "cancelled"? "bg-rose-50 text-rose-700 border-rose-300" : "bg-amber-50 text-amber-700 border-amber-300"}`}>
+                    <option value="new">استلام الطلب والاعتماد</option><option value="purchased">الشراء من المتجر الدولي</option><option value="international_ship">وصول المستودع الدولي</option><option value="shipped">الشحن الدولي</option><option value="local_warehouse">الوصول لليمن والفرز المحلي</option><option value="out_for_delivery">خروج مع المندوب للتوصيل</option><option value="delivered">تم التسليم بنجاح</option><option value="cancelled">ملغي</option>
                   </select>
                 </div>
                 <div className="text-xs text-slate-800 font-bold leading-relaxed">{ord.productTitle}</div>
@@ -410,7 +405,7 @@ function AdminOperationsDashboard() {
                   <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg bg-sky-50 border border-sky-200 text-[#0F4C81] font-mono text-xs font-bold">
                     <span>{trackingNo}</span>
                     <button onClick={() => copyTracking(trackingNo, ord.id)} className="text-orange-500 hover:text-orange-600 transition">
-                      {copiedTracking === ord.id ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                      {copiedTracking === ord.id? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                     </button>
                   </div>
                   <span className="text-[11px] text-slate-500 font-mono">{ord.createdAt.split("T")[0]}</span>
@@ -424,7 +419,6 @@ function AdminOperationsDashboard() {
           })}
         </div>
 
-        {/* Desktop table */}
         <div className="hidden sm:block bg-white border border-sky-200/90 rounded-2xl overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-right text-xs">
@@ -434,7 +428,7 @@ function AdminOperationsDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-[#0A2540]">
-                {filteredOrders.length === 0 ? (
+                {filteredOrders.length === 0? (
                   <tr><td colSpan={7} className="py-12 text-center text-slate-400">لا توجد شحنات مطابقة.</td></tr>
                 ) : filteredOrders.map((ord) => {
                   const trackingNo = ord.intlTrackingNumber || ord.orderNumber;
@@ -459,13 +453,13 @@ function AdminOperationsDashboard() {
                         <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-50 border border-sky-200 text-[#0F4C81] font-mono text-xs font-bold">
                           <span>{trackingNo}</span>
                           <button onClick={() => copyTracking(trackingNo, ord.id)} className="text-orange-500 hover:text-orange-600 cursor-pointer">
-                            {copiedTracking === ord.id ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                            {copiedTracking === ord.id? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                           </button>
                         </div>
                       </td>
                       <td className="py-4 px-4 text-center">
-                        <select value={ord.status} onChange={(e) => handleStatusChange(ord.id, e.target.value as OrderStatus)} className={`text-xs font-black rounded-full px-3 py-1 border transition cursor-pointer text-center outline-none ${ord.status === "delivered" ? "bg-emerald-50 text-emerald-700 border-emerald-300" : ord.status === "shipped" || ord.status === "international_ship" ? "bg-sky-50 text-[#0284C7] border-sky-300" : ord.status === "cancelled" ? "bg-rose-50 text-rose-700 border-rose-300" : "bg-amber-50 text-amber-700 border-amber-300"}`}>
-                          <option value="delivered">تم التوصيل</option><option value="shipped">تم الشحن</option><option value="new">قيد الانتظار</option><option value="cancelled">ملغي</option>
+                        <select value={ord.status} onChange={(e) => handleStatusChange(ord.id, e.target.value as OrderStatus)} className={`text-xs font-black rounded-full px-3 py-1 border transition cursor-pointer text-center outline-none ${ord.status === "delivered"? "bg-emerald-50 text-emerald-700 border-emerald-300" : ord.status === "shipped" || ord.status === "international_ship"? "bg-sky-50 text-[#0284C7] border-sky-300" : ord.status === "cancelled"? "bg-rose-50 text-rose-700 border-rose-300" : "bg-amber-50 text-amber-700 border-amber-300"}`}>
+                          <option value="new">استلام الطلب والاعتماد</option><option value="purchased">الشراء من المتجر الدولي</option><option value="international_ship">وصول المستودع الدولي</option><option value="shipped">الشحن الدولي</option><option value="local_warehouse">الوصول لليمن والفرز المحلي</option><option value="out_for_delivery">خروج مع المندوب للتوصيل</option><option value="delivered">تم التسليم بنجاح</option><option value="cancelled">ملغي</option>
                         </select>
                       </td>
                       <td className="py-4 px-4 text-slate-500 font-mono text-xs">
@@ -491,12 +485,11 @@ function AdminOperationsDashboard() {
   onClose={() => setIsSidebarOpen(false)}
   onOpenAccountsTree={() => setIsAccountsTreeOpen(true)}
   onOpenQuickScan={() => setIsQuickScanOpen(true)}
-  
 />
       {isAccountsTreeOpen && <AccountsTreeModal onClose={() => setIsAccountsTreeOpen(false)} />}
       {isAddModalOpen && (
         <AddShipmentModal
-          onCreate={(order: OrderItem) => { setOrders((prev) => [order, ...prev]); setIsAddModalOpen(false); }}
+          onCreate={(order: OrderItem) => { setOrders((prev) => [order,...prev]); setIsAddModalOpen(false); }}
           onClose={() => setIsAddModalOpen(false)}
         />
       )}
