@@ -398,7 +398,7 @@ export function HomePage() {
           .eq('is_active', true)
           .order('created_at', { ascending: false })
           .limit(20),
-        (supabase.from('notification_reads') as any).select('notification_id').eq('user_id', user.id),
+        (supabase.from('notification_reads' as never) as any).select('notification_id').eq('user_id', user.id),
       ]);
       if (!alive) return;
       setNotifications((notificationRows ?? []) as HomeNotification[]);
