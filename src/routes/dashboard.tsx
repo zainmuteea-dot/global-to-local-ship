@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Bell, ChevronLeft, ChevronRight, CircleDollarSign, FileText, Hand,
   Link2, Menu, Package, Play, Search, ShieldCheck, ShoppingCart,
@@ -22,8 +22,8 @@ export const Route = createFileRoute('/dashboard')({
 export default function DashboardPage() {
   const navigate = useNavigate();
 
-  // بيانات المستخدم
-  const [userName, setUserName] = useState<string>('عزيزنا العميل');
+  // بيانات المستخدم الحقيقية
+  const [userName, setUserName] = useState<string>('جاري التحميل...');
   const [userPhone, setUserPhone] = useState<string>('');
   const [userId, setUserId] = useState<string | null>(null);
 
@@ -32,7 +32,7 @@ export default function DashboardPage() {
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
 
-  // مؤشرات طلبات العميل الشخصية (بدل مؤشرات الإدارة)
+  // مؤشرات طلبات العميل الشخصية
   const [orderStats, setOrderStats] = useState({
     total: 0,
     inProgress: 0,
@@ -58,7 +58,7 @@ export default function DashboardPage() {
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  // دوران شريط الإشعارات تلقائياً كل 5 ثوانٍ
+  // دوران شريط الإشعارات تلقائياً كل 5.5 ثوانٍ
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTicker((prev) => (prev + 1) % tickerItems.length);
@@ -66,21 +66,46 @@ export default function DashboardPage() {
     return () => clearInterval(timer);
   }, [tickerItems.length]);
 
-  // جلب جلسة العميل وطلباته الخاصة من Supabase
+  // جلب جلسة العميل واسمه الحقيقي وطلباته
   useEffect(() => {
     const loadUserDataAndOrders = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        const metaName = session?.user?.user_metadata?.['full_name'];
-        const phone = session?.user?.phone || sessionStorage.getItem('sc_phone') || '';
-        const localName = sessionStorage.getItem('sc_name') || localStorage.getItem('sc_name') || '';
+        
+        // 1. فحص بيانات الحساب المحفوظة محلياً (alsouk_current_user)
+        let localName = '';
+        let localPhone = '';
+        try {
+          const stored = localStorage.getItem('alsouk_current_user');
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            if (parsed.full_name) localName = parsed.full_name;
+            if (parsed.phone) localPhone = parsed.phone;
+          }
+        } catch {}
 
-        const finalName = metaName || localName || (phone ? `عميل (${phone.slice(-4)})` : 'عزيزنا العميل');
+        // 2. فحص بيانات الجلسة من Supabase
+        const metaName = session?.user?.user_metadata?.['full_name'];
+        const sessionPhone = session?.user?.phone || session?.user?.user_metadata?.['phone'] || '';
+        const phone = sessionPhone || localPhone || sessionStorage.getItem('sc_phone') || localStorage.getItem('sc_phone') || '';
+
+        // 3. فحص جدول profiles إن كان مسجلاً
+        let profileName = '';
+        if (session?.user?.id) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('full_name, phone')
+            .eq('id', session.user.id)
+            .maybeSingle();
+          if (profile?.full_name) profileName = profile.full_name;
+        }
+
+        const finalName = profileName || metaName || localName || (phone ? `عميل (${phone.slice(-4)})` : 'عميلنا العزيز');
         setUserName(finalName);
         setUserPhone(phone);
         if (session?.user?.id) setUserId(session.user.id);
 
-        // جلب طلبات العميل الفعلي فقط لحساب مؤشراته
+        // 4. جلب طلبات هذا العميل فقط لحساب مؤشراته
         let query = supabase.from('orders').select('id, status, customer_name, phone');
         if (session?.user?.id) {
           query = query.eq('user_id', session.user.id);
@@ -90,7 +115,7 @@ export default function DashboardPage() {
 
         const { data: userOrders, error } = await query;
 
-        if (!error && userOrders) {
+        if (!error && userOrders && userOrders.length > 0) {
           const total = userOrders.length;
           const delivered = userOrders.filter(o => o.status === 'تم التسليم' || o.status === 'delivered').length;
           const shipping = userOrders.filter(o => o.status === 'تم الشحن' || o.status === 'شحن دولي' || o.status === 'shipped').length;
@@ -98,18 +123,20 @@ export default function DashboardPage() {
 
           setOrderStats({ total, inProgress, shipping, delivered });
         } else {
-          // قراءة احتياطية من التخزين المحلي إن وجد
+          // قراءة احتياطية من التخزين المحلي
           const raw = localStorage.getItem('alsouk_orders');
           if (raw) {
-            const parsed = JSON.parse(raw);
-            if (Array.isArray(parsed)) {
-              setOrderStats({
-                total: parsed.length,
-                inProgress: parsed.filter((o: any) => o.status !== 'تم التسليم').length,
-                shipping: parsed.filter((o: any) => o.status === 'تم الشحن').length,
-                delivered: parsed.filter((o: any) => o.status === 'تم التسليم').length,
-              });
-            }
+            try {
+              const parsed = JSON.parse(raw);
+              if (Array.isArray(parsed)) {
+                setOrderStats({
+                  total: parsed.length,
+                  inProgress: parsed.filter((o: any) => o.status !== 'تم التسليم').length,
+                  shipping: parsed.filter((o: any) => o.status === 'تم الشحن').length,
+                  delivered: parsed.filter((o: any) => o.status === 'تم التسليم').length,
+                });
+              }
+            } catch {}
           }
         }
       } catch (err) {
@@ -129,6 +156,7 @@ export default function DashboardPage() {
         localStorage.removeItem('sc_user');
         localStorage.removeItem('sc_phone');
         localStorage.removeItem('sc_name');
+        localStorage.removeItem('alsouk_customer_logged_in');
         navigate({ to: '/login' });
       } catch (e) {
         navigate({ to: '/login' });
@@ -158,36 +186,30 @@ export default function DashboardPage() {
   ];
 
   const testimonials = [
-    { name: 'يوسف الحيفي', city: 'صنعاء', text: 'اشتريت لعبتين للأولاد من شي إن، التعامل كان راقي وسريع والتوصيل وصل لباب البيت بدون أي عناء.' },
-    { name: 'أمة الحكيمي', city: 'عدن', text: 'وأخيراً لقينا وسيط شحن رسمي وموثوق يوصل لعدن! خدمة ممتازة وتجاوب فوري عبر الواتساب.' },
-    { name: 'ياسر باشديد', city: 'حضرموت', text: 'التجربة فاقت التوقعات، تتبعت شحنتي خطوة بخطوة والتغليف كان فائق الجودة والحماية.' },
+    { name: 'أحمد القدسي', city: 'صنعاء', text: 'أفضل تجربة شراء من شي إن وصلت الطلبية خلال أسبوعين وسليمة 100%' },
+    { name: 'سارة باوزير', city: 'المكلا', text: 'وفروا علي عناء الدفع الدولي والشحن وصل لباب البيت بأسعار ممتازة جداً' },
+    { name: 'فؤاد الردفاني', city: 'عدن', text: 'تتبع الشحنة دقيق جداً وخدمة العملاء متعاونين وسريعين في الرد' },
   ];
 
   return (
-    <div dir="rtl" lang="ar" className="min-h-screen bg-gradient-to-b from-[#F0F7FF] via-[#F8FAFC] to-[#FFF9F5] text-[#0A2540] font-sans selection:bg-[#0284C7] selection:text-white relative">
+    <div className="min-h-screen bg-gradient-to-b from-[#F0F7FF] via-[#F8FAFC] to-[#FFF9F5] text-slate-800 font-sans pb-24" dir="rtl">
       
-      {/* 🌟 1. الشريط الإخباري العلوي المتحرك */}
-      <div className="bg-[#07192F] text-white text-xs px-3 py-2 border-b border-sky-950 flex items-center justify-between overflow-hidden shadow-xs">
-        <div className="flex items-center gap-2 overflow-hidden flex-1">
-          <span className="bg-[#EA580C] text-white text-[10px] font-black px-2.5 py-0.5 rounded-full flex items-center gap-1 shrink-0 shadow-xs animate-pulse">
-            <span>{tickerItems[currentTicker].tag}</span>
-          </span>
-          <div className="overflow-hidden relative w-full text-right">
-            <span key={currentTicker} className="inline-block font-bold text-slate-200 transition-all duration-500 transform translate-y-0 opacity-100">
-              {tickerItems[currentTicker].text}
+      {/* 🌟 1. شريط الإشعارات العلوي المتحرك */}
+      <div className="bg-[#0A2540] text-slate-200 text-xs py-2 px-4 border-b border-sky-950/30">
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 overflow-hidden flex-1">
+            <span className="shrink-0 bg-[#EA580C] text-white text-[10px] font-black px-2 py-0.5 rounded-full">
+              {tickerItems[currentTicker].tag}
             </span>
+            <Link
+              to={tickerItems[currentTicker].link}
+              className="truncate hover:text-white transition font-medium"
+            >
+              {tickerItems[currentTicker].text}
+            </Link>
           </div>
-        </div>
 
-        <div className="flex items-center gap-2 shrink-0 mr-3">
-          <Link
-            to={tickerItems[currentTicker].link}
-            className="bg-[#EA580C] hover:bg-[#C2410C] text-white font-black text-[11px] px-3 py-1 rounded-lg flex items-center gap-1 transition active:scale-95 shadow-xs"
-          >
-            <Truck className="size-3.5" />
-            <span>تتبع الشحنة</span>
-          </Link>
-          <div className="flex items-center gap-1 text-slate-400">
+          <div className="flex items-center gap-1 shrink-0 text-slate-400">
             <button
               onClick={() => setCurrentTicker((prev) => (prev - 1 + tickerItems.length) % tickerItems.length)}
               className="hover:text-white p-1 rounded-md hover:bg-white/10 transition"
@@ -195,6 +217,7 @@ export default function DashboardPage() {
             >
               <ChevronRight className="size-3.5" />
             </button>
+            <span className="text-[10px] font-mono px-1">{currentTicker + 1}/{tickerItems.length}</span>
             <button
               onClick={() => setCurrentTicker((prev) => (prev + 1) % tickerItems.length)}
               className="hover:text-white p-1 rounded-md hover:bg-white/10 transition"
@@ -206,7 +229,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* 🌟 2. الهيدر الرئيسي مع كبسولة العميل والجرس وزر تسجيل الخروج */}
+      {/* 🌟 2. الهيدر الرئيسي مع كبسولة العميل وزر إدارة حسابي وتسجيل الخروج */}
       <header className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 pt-5 pb-3 relative z-30">
         {/* اليمين: زر القائمة والشعار الرسمي */}
         <div className="flex items-center gap-3">
@@ -222,24 +245,34 @@ export default function DashboardPage() {
           <AlShamelLogo size="md" showText={true} />
         </div>
 
-        {/* اليسار: كبسولة العميل + زر تسجيل الخروج + جرس مراجعة الإشعارات + زر اطلب الآن */}
-        <div className="flex items-center gap-2.5">
+        {/* اليسار: كبسولة العميل + زر إدارة حسابي + زر الخروج + الجرس + زر اطلب الآن */}
+        <div className="flex items-center gap-2 sm:gap-2.5">
           {/* كبسولة العميل متصل (بالنقطة الخضراء النابضة) */}
           <Link
             to="/my-account"
-            className="flex items-center gap-2 bg-white border border-emerald-200/80 hover:border-emerald-400 rounded-full px-3.5 py-1.5 shadow-2xs text-xs font-black transition group"
-            title="إدارة حسابي"
+            className="flex items-center gap-2 bg-white border border-emerald-300 hover:border-emerald-500 rounded-full px-3.5 py-1.5 shadow-xs text-xs font-black transition group"
+            title="عرض ملفي الشخصي"
           >
-            <span className="relative flex size-2.5">
+            <span className="relative flex size-2.5 shrink-0">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex rounded-full size-2.5 bg-emerald-500" />
             </span>
-            <span className="text-slate-800 group-hover:text-[#0F4C81]">{userName}</span>
+            <span className="text-slate-800 group-hover:text-[#0F4C81] max-w-[120px] truncate">{userName}</span>
             <span className="text-slate-300">|</span>
             <span className="text-emerald-600 font-extrabold">متصل</span>
           </Link>
 
-          {/* 🔴 زر تسجيل الخروج (بدل أيقونة الولد) */}
+          {/* 🌟 زر إدارة حسابي المطلوب بشكل واضح ومباشر */}
+          <Link
+            to="/my-account"
+            className="hidden sm:inline-flex items-center gap-1.5 bg-[#0F4C81] hover:bg-[#0A2540] text-white text-xs font-bold px-3.5 py-2 rounded-full shadow-xs transition active:scale-95"
+            title="الانتقال إلى إعدادات الحساب والعناوين"
+          >
+            <User className="size-3.5 text-[#F97316]" />
+            <span>إدارة حسابي</span>
+          </Link>
+
+          {/* 🔴 زر تسجيل الخروج */}
           <button
             onClick={handleSignOut}
             className="grid size-11 place-items-center rounded-2xl bg-white text-rose-600 hover:text-white hover:bg-rose-600 ring-1 ring-rose-200 shadow-xs transition active:scale-95 cursor-pointer group"
@@ -304,11 +337,11 @@ export default function DashboardPage() {
 
                 <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
                   <Link
-                    to="/notifications"
+                    to="/my-account"
                     onClick={() => setIsNotifOpen(false)}
                     className="text-xs font-black text-[#0F4C81] hover:underline"
                   >
-                    عرض كل الإشعارات ←
+                    عرض كل الإشعارات والطلبات ←
                   </Link>
                   <button
                     onClick={() => setIsNotifOpen(false)}
@@ -324,7 +357,7 @@ export default function DashboardPage() {
           {/* زر اطلب الآن البرتقالي */}
           <Link
             to="/new-order"
-            className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[#F97316] via-[#EA580C] to-[#C2410C] hover:from-[#EA580C] hover:to-[#9A3412] px-5 py-2.5 font-black text-xs sm:text-sm text-white shadow-md shadow-orange-500/25 transition-all hover:-translate-y-0.5 active:scale-95"
+            className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[#F97316] via-[#EA580C] to-[#C2410C] hover:from-[#EA580C] hover:to-[#9A3412] px-4 sm:px-5 py-2.5 font-black text-xs sm:text-sm text-white shadow-md shadow-orange-500/25 transition-all hover:-translate-y-0.5 active:scale-95"
           >
             <ShoppingCart className="size-4 text-white" />
             <span>اطلب الآن</span>
@@ -426,7 +459,7 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      {/* 🌟 4. مؤشرات طلبات وشحنات العميل (مربوطة بقاعدة البيانات) */}
+      {/* 🌟 4. مؤشرات طلبات وشحنات العميل الشخصية */}
       <section className="max-w-5xl mx-auto px-4 mb-8">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
@@ -550,7 +583,7 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      {/* 🌟 8. قسم آراء وتجارب العملاء بخمس نجوم */}
+      {/* 🌟 8. قسم آراء وتجارب العملاء */}
       <section className="max-w-5xl mx-auto px-4 mb-14 text-center">
         <h3 className="text-lg font-black text-[#0A2540] mb-5">آراء وتجارب عملائنا الكرام ⭐⭐⭐⭐⭐</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -567,7 +600,7 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      {/* 🌟 القائمة الجانبية المنسدلة (Slide-Over Drawer) عند الضغط على 3 شرطات */}
+      {/* 🌟 القائمة الجانبية المنسدلة (Slide-Over Drawer) */}
       {isSidebarOpen && (
         <div className="fixed inset-0 z-50 flex justify-end bg-black/50 backdrop-blur-xs animate-in fade-in">
           <div className="w-80 max-w-[85vw] bg-white h-full shadow-2xl p-6 flex flex-col justify-between overflow-y-auto animate-in slide-in-from-right">
@@ -643,7 +676,7 @@ export default function DashboardPage() {
               </nav>
             </div>
 
-            {/* زر تسجيل الخروج في أسفل القائمة الجانبية */}
+            {/* زر تسجيل الخروج */}
             <div className="pt-4 border-t border-slate-100">
               <button
                 onClick={handleSignOut}
@@ -657,7 +690,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* 🌟 نافذة الفيديو المنبثقة التوضيحية */}
+      {/* 🌟 نافذة الفيديو التوضيحي المنبثقة */}
       {isVideoModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl relative text-right">
