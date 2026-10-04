@@ -62,37 +62,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTicker((prev) => (prev + 1) % tickerItems.length);
-    }, 5500);
-    return () => clearInterval(timer);
-  }, [tickerItems.length]);
-
-  // جلب جلسة العميل واسمه الحقيقي وطلباته
-  useEffect(() => {
-    const loadUserDataAndOrders = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        // 1. فحص بيانات الحساب المحفوظة محلياً (alsouk_current_user)
-        let localName = '';
-        let localPhone = '';
-        try {
-          const stored = localStorage.getItem('alsouk_current_user');
-          if (stored) {
-            const parsed = JSON.parse(stored);
-            if (parsed.full_name) localName = parsed.full_name;
-            if (parsed.phone) localPhone = parsed.phone;
-          }
-        } catch {}
-
-        // 2. فحص بيانات الجلسة من Supabase
-        const metaName = session?.user?.user_metadata?.['full_name'];
-        const sessionPhone = session?.user?.phone || session?.user?.user_metadata?.['phone'] || '';
-        const phone = sessionPhone || localPhone || sessionStorage.getItem('sc_phone') || localStorage.getItem('sc_phone') || '';
-
-        // 3. فحص جدول profiles إن كان مسجلاً
-        let profileName = '';
-        if (session?.user?.id) {
-          const { data: profile } = await supabase
+    src/routes/dashboard.tsx
             .from('profiles')
             .select('full_name, phone')
             .eq('id', session.user.id)
