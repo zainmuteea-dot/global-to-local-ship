@@ -1,4 +1,35 @@
 import React, { useEffect, useState } from 'react';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
+
+export const Route = createFileRoute('/my-account')({
+  head: () => ({
+    meta: [
+      { title: 'حسابي — السوق الشامل' },
+      { name: 'description', content: 'إدارة حسابك وطلباتك وشحناتك في منصة السوق الشامل للتسوق والشحن الدولي.' },
+      { property: 'og:title', content: 'حسابي — السوق الشامل' },
+      { property: 'og:description', content: 'إدارة حسابك وطلباتك وشحناتك في منصة السوق الشامل.' },
+      { property: 'og:type', content: 'website' },
+      { name: 'twitter:card', content: 'summary' },
+    ],
+  }),
+  component: MyAccountRoute,
+});
+
+function MyAccountRoute() {
+  const navigate = useNavigate();
+  return (
+    <MyAccountPage
+      onNavigateToCreateAccount={() => navigate({ to: '/signup' })}
+      onNavigateToNewOrder={() => navigate({ to: '/new-order' })}
+      onNavigateToTracker={(orderNumber) =>
+        orderNumber
+          ? navigate({ to: '/track/$trackingCode', params: { trackingCode: orderNumber } })
+          : navigate({ to: '/track' })
+      }
+      onNavigateToDashboard={() => navigate({ to: '/dashboard' })}
+    />
+  );
+}
 import { 
   User, 
   ShoppingBag, 
