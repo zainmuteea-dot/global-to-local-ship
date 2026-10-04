@@ -427,8 +427,8 @@ export function HomePage() {
 
   const markNotificationRead = async (notificationId: string) => {
     if (!user || readNotificationIds.has(notificationId)) return;
-    const { error } = await supabase.from('notification_reads').upsert(
-      { notification_id: notificationId, user_id: user.id },
+    const { error } = await supabase.from('notification_reads' as never).upsert(
+      { notification_id: notificationId, user_id: user.id } as never,
       { onConflict: 'notification_id,user_id' },
     );
     if (!error) setReadNotificationIds((current) => new Set(current).add(notificationId));
@@ -437,8 +437,8 @@ export function HomePage() {
   const markAllNotificationsRead = async () => {
     if (!user) return;
     const unread = notifications.filter((notification) => !readNotificationIds.has(notification.id));
-    const { error } = await supabase.from('notification_reads').upsert(
-      unread.map((notification) => ({ notification_id: notification.id, user_id: user.id })),
+    const { error } = await supabase.from('notification_reads' as never).upsert(
+      unread.map((notification) => ({ notification_id: notification.id, user_id: user.id })) as never,
       { onConflict: 'notification_id,user_id' },
     );
     if (!error) setReadNotificationIds(new Set(notifications.map((notification) => notification.id)));
