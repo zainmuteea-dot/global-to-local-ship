@@ -62,13 +62,17 @@ export default function DashboardPage() {
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTicker((prev) => (prev + 1) % tickerItems.length);
-              // جلب بيانات العميل وطلباته
+    }, 5500);
+    return () => clearInterval(timer);
+  }, [tickerItems.length]);
+
+  // جلب جلسة العميل واسمه الحقيقي وطلباته
   useEffect(() => {
     const loadUserDataAndOrders = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         
-        // 1. قراءة بيانات الحساب من التخزين المحلي
+        // 1. فحص بيانات الحساب المحفوظة محلياً (alsouk_current_user)
         let localName = '';
         let localPhone = '';
         try {
@@ -80,12 +84,12 @@ export default function DashboardPage() {
           }
         } catch {}
 
-        // 2. قراءة بيانات الجلسة السحابية
+        // 2. فحص بيانات الجلسة من Supabase
         const metaName = session?.user?.user_metadata?.['full_name'];
         const sessionPhone = session?.user?.phone || session?.user?.user_metadata?.['phone'] || '';
-        const phone = sessionPhone || localPhone || localStorage.getItem('sc_phone') || '772399744';
+        const phone = sessionPhone || localPhone || sessionStorage.getItem('sc_phone') || localStorage.getItem('sc_phone') || '';
 
-        // 3. قراءة الاسم من جدول profiles
+        // 3. فحص جدول profiles إن كان مسجلاً
         let profileName = '';
         if (session?.user?.id) {
           const { data: profile } = await supabase
@@ -96,19 +100,12 @@ export default function DashboardPage() {
           if (profile?.full_name) profileName = profile.full_name;
         }
 
-        // إذا لم يكن مسجلاً، اعتمد اسم العميل zain muteea تلقائياً بدلاً من "عميلنا العزيز"
-        const finalName = profileName || metaName || localName || 'zain muteea';
+        const finalName = profileName || metaName || localName || (phone ? `عميل (${phone.slice(-4)})` : 'عميلنا العزيز');
         setUserName(finalName);
         setUserPhone(phone);
         if (session?.user?.id) setUserId(session.user.id);
 
-        // حفظ الاسم في المتصفح ليبقى ثابتاً
-        localStorage.setItem('alsouk_current_user', JSON.stringify({
-          full_name: finalName,
-          phone: phone
-        }));
-
-        // 4. قراءة طلبات هذا العميل فقط
+        // 4. جلب طلبات هذا العميل فقط لحساب مؤشراته
         let query = supabase.from('orders').select('id, status, customer_name, phone');
         if (session?.user?.id) {
           query = query.eq('user_id', session.user.id);
@@ -117,20 +114,21 @@ export default function DashboardPage() {
         }
 
         const { data: userOrders, error } = await query;
+
         if (!error && userOrders && userOrders.length > 0) {
           const total = userOrders.length;
           const delivered = userOrders.filter(o => o.status === 'تم التسليم' || o.status === 'delivered').length;
           const shipping = userOrders.filter(o => o.status === 'تم الشحن' || o.status === 'شحن دولي' || o.status === 'shipped').length;
           const inProgress = Math.max(0, total - delivered);
-          setOrderStats({ total, inProgress, shipping, delivered });
-        }
-      } catch (err) {
-        console.error('Error loading client dashboard data:', err);
-      }
-    };
 
-    loadUserDataAndOrders();
-  }, []);
+          setOrderStats({ total, inProgress, shipping, delivered });
+        } else {
+          // قراءة احتياطية من التخزين المحلي
+          const raw = localStorage.getItem('alsouk_orders');
+          if (raw) {
+            try {
+              const parsed = JSON.parse(raw);
+              if (Array.isArray(parsed)) {
                 setOrderStats({
                   total: parsed.length,
                   inProgress: parsed.filter((o: any) => o.status !== 'تم التسليم').length,
