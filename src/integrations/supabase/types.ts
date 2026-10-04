@@ -51,59 +51,23 @@ export type Database = {
         Row: {
           body: string | null
           created_at: string
-          href: string | null
           id: string
-          is_active: boolean
-          kind: string
-          sent_at: string | null
-          sent_by: string | null
           title: string
           user_id: string | null
         }
         Insert: {
           body?: string | null
           created_at?: string
-          href?: string | null
           id?: string
-          is_active?: boolean
-          kind?: string
-          sent_at?: string | null
-          sent_by?: string | null
           title: string
           user_id?: string | null
         }
         Update: {
           body?: string | null
           created_at?: string
-          href?: string | null
           id?: string
-          is_active?: boolean
-          kind?: string
-          sent_at?: string | null
-          sent_by?: string | null
           title?: string
           user_id?: string | null
-        }
-        Relationships: []
-      }
-      notification_reads: {
-        Row: {
-          id: string
-          notification_id: string
-          read_at: string
-          user_id: string
-        }
-        Insert: {
-          id?: string
-          notification_id: string
-          read_at?: string
-          user_id?: string
-        }
-        Update: {
-          id?: string
-          notification_id?: string
-          read_at?: string
-          user_id?: string
         }
         Relationships: []
       }
