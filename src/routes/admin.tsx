@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   Calendar,
@@ -506,6 +506,21 @@ export const Route = createFileRoute("/admin")({
       { name: "description", content: "لوحة عمليات الشحن والفرز وإدارة الطلبات والعملاء لمنظومة السوق الشامل." },
     ],
   }),
+  beforeLoad: async ({ location }) => {
+    if (typeof window === "undefined") return;
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) {
+      throw redirect({ to: "/login", search: { redirect: location.pathname } });
+    }
+    const [adminRole, staffRole] = await Promise.all([
+      supabase.rpc("has_role", { _user_id: data.user.id, _role: "admin" }),
+      supabase.rpc("has_role", { _user_id: data.user.id, _role: "staff" }),
+    ]);
+    if (adminRole.error || staffRole.error || !(adminRole.data || staffRole.data)) {
+      await supabase.auth.signOut();
+      throw redirect({ to: "/login" });
+    }
+  },
   component: AdminOperationsDashboard,
 });
 

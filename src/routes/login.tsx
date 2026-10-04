@@ -107,23 +107,20 @@ export function LoginPage() {
           password: password,
         });
 
-        if (error) {
-          // حساب تجريبي للاختبار
-          if (inputVal === "770000000" || inputVal.includes("770000000")) {
-            localStorage.setItem("alsouk_customer_logged_in", "true");
-            localStorage.setItem(
-              "alsouk_current_user",
-              JSON.stringify({
-                full_name: "زين مطيع",
-                phone: "770000000",
-                city: "صنعاء",
-                role: accountType,
-              })
-            );
-            window.location.href = accountType === "staff" ? "/admin" : "/my-account";
+        if (error || !data.user) {
+          throw new Error("بيانات الدخول غير صحيحة، يرجى التأكد من الرقم وكلمة المرور.");
+        }
+
+        if (accountType === "staff") {
+          const [adminRole, staffRole] = await Promise.all([
+            supabase.rpc("has_role", { _user_id: data.user.id, _role: "admin" }),
+            supabase.rpc("has_role", { _user_id: data.user.id, _role: "staff" }),
+          ]);
+          if (adminRole.error || staffRole.error || !(adminRole.data || staffRole.data)) {
+            await supabase.auth.signOut();
+            setErrorMessage("هذا الحساب لا يملك صلاحية دخول الإدارة.");
             return;
           }
-          throw new Error("بيانات الدخول غير صحيحة، يرجى التأكد من الرقم وكلمة المرور.");
         }
 
         localStorage.setItem("alsouk_customer_logged_in", "true");
@@ -160,7 +157,7 @@ export function LoginPage() {
         window.location.href = "/my-account";
       }
     } catch (err: any) {
-      setErrorMessage(err.message || "حدث خطأ أثناء الاتصال.");
+      setErrorMessage(err?.message || "تعذر تسجيل الدخول. تحقق من البيانات وحاول مرة أخرى.");
     } finally {
       setLoading(false);
     }
@@ -200,7 +197,7 @@ export function LoginPage() {
           </button>
           <button
             type="button"
-            onClick={() => { setMode("signup"); setErrorMessage(""); }}
+            onClick={() => { setMode("signup"); setAccountType("customer"); setErrorMessage(""); }}
             className={`flex-1 py-2.5 text-xs font-black rounded-xl transition cursor-pointer ${
               mode === "signup"
                 ? "bg-gradient-to-r from-[#0F4C81] to-[#0284C7] text-white shadow-md"
@@ -334,18 +331,20 @@ export function LoginPage() {
               <span>عميل</span>
             </button>
 
-            <button
-              type="button"
-              onClick={() => setAccountType("staff")}
-              className={`px-4 py-1.5 rounded-full text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                accountType === "staff"
-                  ? "bg-[#0F4C81] text-white shadow-sm ring-2 ring-sky-300/40"
-                  : "bg-white text-slate-700 border border-sky-200 hover:bg-sky-50"
-              }`}
-            >
-              <span className={`size-2 rounded-full ${accountType === "staff" ? "bg-orange-400" : "bg-slate-300"}`} />
-              <span>موظفين</span>
-            </button>
+            {mode === "login" && (
+              <button
+                type="button"
+                onClick={() => setAccountType("staff")}
+                className={`px-4 py-1.5 rounded-full text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                  accountType === "staff"
+                    ? "bg-[#0F4C81] text-white shadow-sm ring-2 ring-sky-300/40"
+                    : "bg-white text-slate-700 border border-sky-200 hover:bg-sky-50"
+                }`}
+              >
+                <span className={`size-2 rounded-full ${accountType === "staff" ? "bg-orange-400" : "bg-slate-300"}`} />
+                <span>موظفين</span>
+              </button>
+            )}
           </div>
         </div>
 
