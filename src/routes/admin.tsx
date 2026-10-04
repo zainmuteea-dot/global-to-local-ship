@@ -54,7 +54,7 @@ function AdminNotificationComposer() {
     if (!title.trim() ||!body.trim()) return;
     setSending(true);
     setMessage('');
-    const { error } = await supabase.from('notifications').insert({
+    const { error } = await (supabase.from('notifications') as any).insert({
       title: title.trim(),
       body: body.trim(),
       kind,

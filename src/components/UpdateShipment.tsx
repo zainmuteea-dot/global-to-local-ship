@@ -168,7 +168,7 @@ export const UpdateShipment: React.FC<UpdateShipmentProps> = ({
       const { data, error } = await query.order('created_at', { ascending: false }).limit(1);
       if (error) throw error;
       if (data && data.length > 0) {
-        const row = data[0];
+        const row = data[0] as any;
         setOrder({
           id: row.id,
           orderNumber: row.order_number || row.tracking_code || 'ORD-001',

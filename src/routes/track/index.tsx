@@ -89,7 +89,7 @@ export function TrackRouteComponent() {
       const { data, error } = await query.order('created_at', { ascending:false }).limit(1);
       if (error) throw error;
       if (data?.length) {
-        const row = data[0];
+        const row = data[0] as any;
         setOrder({ id: row.id, orderNumber: row.order_number || row.tracking_code || 'ORD-001', intlTrackingNumber: row.intl_tracking_number || row.tracking_code, customerName: row.customer_name || 'العميل', customerPhone: row.customer_phone || row.phone || '', customerCity: row.customer_city || 'صنعاء', customerAddress: row.customer_address || '', storeName: row.store_name || 'SHEIN', productUrl: row.product_url || row.product_link, productTitle: row.product_title || 'شحنة متجر عالمي', quantity: row.quantity || 1, totalCostUSD: row.total_cost_usd, totalCostSAR: row.total_cost_sar, totalCostYER: row.total_cost_yer, status: (row.status as OrderStatus) || 'new', createdAt: row.created_at, updatedAt: row.updated_at });
       } else setOrder(null);
     } catch { setOrder(null); } finally { setLoading(false); }
