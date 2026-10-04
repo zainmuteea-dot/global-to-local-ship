@@ -101,8 +101,8 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
         if (parsed.city) setCustomerCity(parsed.city);
         if (parsed.address) setCustomerAddress(parsed.address);
       } else if (user) {
-        if (user.user_metadata?.full_name) setCustomerName(user.user_metadata.full_name);
-        if (user.user_metadata?.phone) setCustomerPhone(user.user_metadata.phone);
+        if (user.user_metadata?.['full_name']) setCustomerName(user.user_metadata['full_name']);
+        if (user.user_metadata?.['phone']) setCustomerPhone(user.user_metadata['phone']);
       }
       setOrders(OrdersService.getLocalOrders());
     } catch (e) {
@@ -140,7 +140,8 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
   };
 
   const handleLogout = async () => {
-    await signOut();
+    const { supabase } = await import('@/integrations/supabase/client');
+    await supabase.auth.signOut();
     if (onNavigateToCreateAccount) {
       onNavigateToCreateAccount();
     } else if (typeof window !== 'undefined') {
