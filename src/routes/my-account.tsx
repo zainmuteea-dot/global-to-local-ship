@@ -76,7 +76,7 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
   onNavigateToTracker,
   onNavigateToDashboard
 }) => {
-  const { session, user, isLoading, signOut } = useSession();
+  const { session, user, loading: isLoading } = useSession(false);
   const [orders, setOrders] = useState<OrderItem[]>([]);
   
   // بيانات الملف الشخصي
