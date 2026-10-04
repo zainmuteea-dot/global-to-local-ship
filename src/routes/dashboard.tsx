@@ -62,7 +62,6 @@ export default function DashboardPage() {
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTicker((prev) => (prev + 1) % tickerItems.length);
-    src/routes/dashboard.tsx
             .from('profiles')
             .select('full_name, phone')
             .eq('id', session.user.id)
