@@ -392,17 +392,17 @@ export function HomePage() {
     let alive = true;
     const loadNotifications = async () => {
       const [{ data: notificationRows }, { data: readRows }] = await Promise.all([
-        supabase
-          .from('notifications')
+        (supabase
+          .from('notifications') as any)
           .select('id,title,body,kind,href,created_at')
           .eq('is_active', true)
           .order('created_at', { ascending: false })
           .limit(20),
-        supabase.from('notification_reads').select('notification_id').eq('user_id', user.id),
+        (supabase.from('notification_reads') as any).select('notification_id').eq('user_id', user.id),
       ]);
       if (!alive) return;
       setNotifications((notificationRows ?? []) as HomeNotification[]);
-      setReadNotificationIds(new Set((readRows ?? []).map((row) => row.notification_id)));
+      setReadNotificationIds(new Set((readRows ?? []).map((row: any) => row.notification_id)));
     };
 
     void loadNotifications();
