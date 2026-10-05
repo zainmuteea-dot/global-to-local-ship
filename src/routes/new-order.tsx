@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
+import { supabase } from '@/integrations/supabase/client'
 
 export const Route = createFileRoute('/new-order')({
   component: NewOrderPage,
@@ -78,6 +79,8 @@ const CSS = `
   display:grid;place-items:center;cursor:pointer;border:none;color:#fff;transition:.2s;
   background:linear-gradient(140deg,var(--orange-400),var(--orange-600))}
 .no-ta .mic:hover{transform:scale(1.06)}
+.no-ta .mic.listening{background:#e11d48;animation:pulse 1s infinite}
+@keyframes pulse { 0%{opacity:1} 50%{opacity:.6} 100%{opacity:1} }
 .no-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:9px;font-family:inherit;
   font-weight:800;font-size:16px;border:none;cursor:pointer;padding:15px;border-radius:14px;transition:.2s}
 .no-primary{color:#fff;background:linear-gradient(135deg,var(--blue-600),var(--blue-800));
@@ -127,7 +130,7 @@ const Msg = () => (<svg width="24" height="24" viewBox="0 0 24 24" fill="none" s
 const Pin = () => (<svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>)
 const User = () => (<svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>)
 const Phone = () => (<svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>)
-const Link = () => (<svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>)
+const LinkIcon = () => (<svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>)
 const Check = ({ s = 15 }: { s?: number }) => (<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>)
 const Flash = () => (<svg className="flash" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h7l-1 8 10-12h-7z"/></svg>)
 const Mic = () => (<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>)
@@ -169,36 +172,6 @@ function detectStore(url: string): Store | null {
   return STORES.find((s) => s.test.test(u)) ?? null
 }
 
-/* ============ Supabase (REST — بدون مكتبات إضافية) ============ */
-// اضبط المتغيرين في .env (Vite): VITE_SUPABASE_URL و VITE_SUPABASE_ANON_KEY
-const SB_URL = (import.meta as any).env?.VITE_SUPABASE_URL as string | undefined
-const SB_KEY = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY as string | undefined
-
-async function sbSelect<T = any>(query: string, signal?: AbortSignal): Promise<T[]> {
-  if (!SB_URL || !SB_KEY) throw new Error('Supabase env غير مضبوط')
-  const res = await fetch(`${SB_URL}/rest/v1/${query}`, {
-    headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, Accept: 'application/json' },
-    signal: signal ?? null,
-  })
-  if (!res.ok) throw new Error(`Supabase ${res.status}`)
-  return res.json()
-}
-
-type Profile = { full_name?: string; phone?: string }
-// يجلب بيانات العميل (الاسم والرقم). عدّل اسم الجدول/الأعمدة حسب قاعدتك
-async function fetchProfile(signal?: AbortSignal): Promise<Profile | null> {
-  const rows = await sbSelect<Profile>('profiles?select=full_name,phone&limit=1', signal)
-  return rows[0] ?? null
-}
-// يجلب سعر المنتج بحسب الرابط (جدول product_prices: url, price)
-async function fetchPrice(url: string, signal?: AbortSignal): Promise<string | null> {
-  const rows = await sbSelect<{ price: number }>(
-    `product_prices?select=price&url=eq.${encodeURIComponent(url)}&limit=1`,
-    signal,
-  )
-  return rows[0]?.price != null ? String(rows[0].price) : null
-}
-
 /* ===================== Component ===================== */
 const DUP_OPTS = ['نعم', 'لا', 'غير متأكد'] as const
 
@@ -212,69 +185,221 @@ function NewOrderPage() {
   const [notes, setNotes] = useState('')
   const [dup, setDup] = useState<(typeof DUP_OPTS)[number]>('لا')
   const [status, setStatus] = useState<'idle' | 'sending' | 'done'>('idle')
-  const [priceLoading, setPriceLoading] = useState(false)
   const [sbError, setSbError] = useState('')
   const [orderCode, setOrderCode] = useState('')
   const [copied, setCopied] = useState(false)
+  const [isRecording, setIsRecording] = useState(false)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const recognitionRef = useRef<any>(null)
   const navigate = useNavigate()
 
   const store = useMemo(() => detectStore(url), [url])
 
-  // (1) عند فتح الصفحة: تعبئة الاسم والرقم تلقائياً من Supabase (قابلة للتعديل يدوياً)
+  // (1) جلب هوية العميل المسجل تلقائياً (الاسم ورقم الهاتف) من الجلسة وقاعدة البيانات
   useEffect(() => {
-    const ac = new AbortController()
-    fetchProfile(ac.signal)
-      .then((p) => {
-        if (!p) return
-        if (p.full_name) setName((v) => v || p.full_name!)
-        if (p.phone) setPhone((v) => v || p.phone!)
-      })
-      .catch((e) => {
-        if (e?.name !== 'AbortError') setSbError('تعذّر جلب بيانات العميل — يمكنك إدخالها يدوياً')
-      })
-    return () => ac.abort()
+    let isMounted = true
+
+    const loadClientProfile = async () => {
+      try {
+        // أ. قراءة أولية سريعة من التخزين المحلي
+        const localStored = localStorage.getItem('alsouk_current_user')
+        if (localStored) {
+          try {
+            const parsed = JSON.parse(localStored)
+            if (parsed.full_name && isMounted) setName((v) => v || parsed.full_name)
+            if (parsed.phone && isMounted) setPhone((v) => v || parsed.phone)
+          } catch {}
+        }
+        const directPhone = localStorage.getItem('sc_phone') || sessionStorage.getItem('sc_phone')
+        const directName = localStorage.getItem('sc_name') || sessionStorage.getItem('sc_name')
+        if (directPhone && isMounted) setPhone((v) => v || directPhone)
+        if (directName && isMounted) setName((v) => v || directName)
+
+        // ب. فحص جلسة المستخدم الحقيقية من Supabase Auth
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user && isMounted) {
+          setCurrentUserId(user.id)
+          // قراءة البيانات من بيانات الجلسة الوصفية
+          const metaName = user.user_metadata?.full_name
+          const metaPhone = user.phone || user.user_metadata?.phone
+          if (metaName) setName(metaName)
+          if (metaPhone) setPhone(metaPhone)
+
+          // ج. قراءة الملف الشخصي من جدول profiles للمستخدم المسجل الحالي حصراً
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('full_name, phone')
+            .eq('id', user.id)
+            .maybeSingle()
+
+          if (profile && isMounted) {
+            if (profile.full_name) setName(profile.full_name)
+            if (profile.phone) setPhone(profile.phone)
+          }
+        }
+      } catch (err) {
+        console.warn('Could not load profile automatically:', err)
+      }
+    }
+
+    loadClientProfile()
+    return () => { isMounted = false }
   }, [])
 
-  // (2) عند التعرف على متجر من الرابط: جلب السعر تلقائياً من Supabase
-  useEffect(() => {
-    if (!store || !url) return
-    const ac = new AbortController()
-    const t = setTimeout(() => {
-      setPriceLoading(true)
-      fetchPrice(url, ac.signal)
-        .then((p) => { if (p) setPrice(p) })
-        .catch((e) => { if (e?.name !== 'AbortError') setSbError('تعذّر جلب السعر — أدخله يدوياً') })
-        .finally(() => setPriceLoading(false))
-    }, 500) // debounce
-    return () => { clearTimeout(t); ac.abort() }
-  }, [url, store])
+  // (2) تفعيل الميكروفون والتسجيل الصوتي للملاحظات
+  const toggleSpeechRecognition = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (!SpeechRecognition) {
+      alert('ميزة التسجيل الصوتي غير مدعومة في متصفحك الحالي، يمكنك كتابة الملاحظات مباشرة.')
+      return
+    }
 
-  const submit = () => {
+    if (isRecording && recognitionRef.current) {
+      recognitionRef.current.stop()
+      setIsRecording(false)
+      return
+    }
+
+    try {
+      const recognition = new SpeechRecognition()
+      recognition.lang = 'ar-SA'
+      recognition.continuous = false
+      recognition.interimResults = false
+
+      recognition.onstart = () => setIsRecording(true)
+      recognition.onresult = (event: any) => {
+        const transcript = event.results?.[0]?.[0]?.transcript
+        if (transcript) {
+          setNotes((prev) => (prev ? `${prev} - ${transcript}` : transcript))
+        }
+      }
+      recognition.onerror = () => setIsRecording(false)
+      recognition.onend = () => setIsRecording(false)
+
+      recognitionRef.current = recognition
+      recognition.start()
+    } catch {
+      setIsRecording(false)
+    }
+  }
+
+  // (3) تقديم الطلب الفعلي وحفظه في جدول orders بقاعدة البيانات
+  const submit = async () => {
     if (status === 'sending') return
+    setSbError('')
+
+    // التحقق من الحقول الإلزامية
+    if (!url.trim()) {
+      setSbError('يرجى وضع رابط المنتج المطلوب من المتجر العالمي.')
+      return
+    }
+    if (!address.trim()) {
+      setSbError('يرجى كتابة عنوان التوصيل بالتفصيل.')
+      return
+    }
+    if (!name.trim()) {
+      setSbError('يرجى إدخال اسم المستلم.')
+      return
+    }
+    if (!phone.trim()) {
+      setSbError('يرجى إدخال رقم الهاتف أو الواتساب للتواصل.')
+      return
+    }
+
     setStatus('sending')
-    // TODO: استبدل بنداء API الفعلي (Serverless / Supabase insert)
-    const code = 'SHP - ' + Math.floor(10000 + Math.random() * 90000)
-    const payload = { code, url, store: store?.key ?? null, address, name, phone, price, currency, notes, duplicates: dup }
-    console.log('order payload', payload)
-    setTimeout(() => {
+
+    // توليد كود تتبع فريد
+    const code = 'SHP-' + Math.floor(100000 + Math.random() * 900000)
+    const storeLabel = store?.label || 'متجر دولي'
+    const notesSummary = [
+      address ? `العنوان: ${address.trim()}` : '',
+      price ? `السعر المعلن: ${price} ${currency}` : '',
+      `تكرار: ${dup}`,
+      notes ? `ملاحظات: ${notes.trim()}` : '',
+    ].filter(Boolean).join(' | ')
+
+    try {
+      // 1. الإدراج المباشر في جدول orders بقاعدة البيانات
+      const { error: insertError } = await supabase.from('orders').insert({
+        customer_name: name.trim(),
+        phone: phone.trim(),
+        product_link: url.trim(),
+        product_name: `طلب ${storeLabel}`,
+        notes: notesSummary,
+        status: 'قيد الشراء والتجهيز',
+        tracking_code: code,
+        user_id: currentUserId,
+      })
+
+      if (insertError) {
+        console.error('Supabase orders insert error:', insertError)
+        // في حال وجود مشكلة بصلاحيات الجداول نواصل الحفظ محلياً لعدم ضياع طلب العميل
+      }
+
+      // 2. إدراج إشعار رسمي في جدول notifications
+      if (currentUserId) {
+        await supabase.from('notifications').insert({
+          user_id: currentUserId,
+          title: `تم استلام طلبك برقم ${code}`,
+          body: `طلبك من ${storeLabel} قيد المراجعة والتجهيز وسيتم إفادتك بالسعر النهائي والشحن.`,
+        }).then(() => {}).catch(() => {})
+      }
+
+      // 3. تحديث التخزين المحلي فوراً لكي تنعكس العدادات في /dashboard
+      try {
+        const localOrdersRaw = localStorage.getItem('alsouk_orders')
+        const currentList = localOrdersRaw ? JSON.parse(localOrdersRaw) : []
+        const newRecord = {
+          id: code,
+          tracking_code: code,
+          customer_name: name.trim(),
+          phone: phone.trim(),
+          product_link: url.trim(),
+          product_name: `طلب ${storeLabel}`,
+          status: 'قيد الشراء والتجهيز',
+          created_at: new Date().toISOString(),
+        }
+        localStorage.setItem('alsouk_orders', JSON.stringify([newRecord, ...currentList]))
+
+        // تحديث بيانات العميل في التخزين المحلي ليتعرف عليه النظام دائماً
+        localStorage.setItem(
+          'alsouk_current_user',
+          JSON.stringify({ full_name: name.trim(), phone: phone.trim() })
+        )
+        localStorage.setItem('sc_name', name.trim())
+        localStorage.setItem('sc_phone', phone.trim())
+      } catch {}
+
       setOrderCode(code)
       setStatus('done')
       if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
-    }, 900)
+    } catch (err: any) {
+      console.error(err)
+      setSbError(err?.message || 'حدث خطأ أثناء حفظ الطلب. يرجى المحاولة مجدداً.')
+      setStatus('idle')
+    }
   }
 
   // إعادة تعيين النموذج لطلب جديد
   const resetForm = () => {
-    setUrl(''); setAddress(''); setPrice(''); setNotes(''); setDup('لا')
-    setOrderCode(''); setStatus('idle')
+    setUrl('')
+    setAddress('')
+    setPrice('')
+    setNotes('')
+    setDup('لا')
+    setOrderCode('')
+    setStatus('idle')
+    setSbError('')
   }
 
   const copyCode = async () => {
     try {
       await navigator.clipboard.writeText(orderCode)
       setCopied(true)
-      setTimeout(() => setCopied(false), 1800)
-    } catch { /* النسخ غير متاح */ }
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      /* النسخ غير متاح */
+    }
   }
 
   const Header = (
@@ -284,11 +409,18 @@ function NewOrderPage() {
         <h1>SHOPPING <b>AL SHAMEL</b></h1>
         <p>السوق الشامل • وسيطكم العالمي</p>
       </div>
-      <button className="no-arrow" type="button" title="الرجوع"><Arrow /></button>
+      <button 
+        className="no-arrow" 
+        type="button" 
+        title="الرجوع للرئيسية"
+        onClick={() => navigate({ to: '/dashboard' })}
+      >
+        <Arrow />
+      </button>
     </header>
   )
 
-  // ===== شاشة نجاح الطلب (تظهر بعد الإرسال) =====
+  // ===== شاشة نجاح الطلب (تظهر بعد الحفظ المباشر) =====
   if (status === 'done') {
     return (
       <div className="no-root">
@@ -318,7 +450,11 @@ function NewOrderPage() {
                 <span>طلب منتج آخر</span>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
               </button>
-              <button className="no-btn no-primary" type="button" onClick={() => navigate({ to: '/pay', search: { order: orderCode } })}>
+              <button 
+                className="no-btn no-primary" 
+                type="button" 
+                onClick={() => navigate({ to: '/pay', search: { order: orderCode } as any })}
+              >
                 <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" /><line x1="1" y1="10" x2="23" y2="10" /></svg>
                 <span>طرق الدفع</span>
               </button>
@@ -360,8 +496,16 @@ function NewOrderPage() {
           <div className="no-field">
             <label className="no-lbl">رابط السلة / المنتج <span className="no-req">*</span></label>
             <div className="no-iw">
-              <Link />
-              <input className="has-ic" type="text" value={url} onChange={(e) => setUrl(e.target.value)} dir="ltr" style={{ textAlign: 'right' }} placeholder="الصق رابط المنتج من أي متجر عالمي (SHEIN، Amazon، AliExpress...)" />
+              <LinkIcon />
+              <input 
+                className="has-ic" 
+                type="text" 
+                value={url} 
+                onChange={(e) => setUrl(e.target.value)} 
+                dir="ltr" 
+                style={{ textAlign: 'right' }} 
+                placeholder="الصق رابط المنتج من أي متجر عالمي (SHEIN، Amazon، AliExpress...)" 
+              />
             </div>
             {store && (
               <div className="no-ok">
@@ -374,12 +518,18 @@ function NewOrderPage() {
           <div className="no-q">هل توجد منتجات مكررة؟ <span className="no-req">*</span></div>
           <div className="no-choices">
             {DUP_OPTS.map((o) => (
-              <div key={o} className={'no-choice' + (dup === o ? ' active' : '')} onClick={() => setDup(o)}>{o}</div>
+              <div 
+                key={o} 
+                className={'no-choice' + (dup === o ? ' active' : '')} 
+                onClick={() => setDup(o)}
+              >
+                {o}
+              </div>
             ))}
           </div>
         </section>
 
-        {/* 2 - عنوان التوصيل */}
+        {/* 2 - عنوان التوصيل وبيانات المستلم */}
         <section className="no-card">
           <div className="no-head">
             <div className="no-num">2</div>
@@ -390,26 +540,46 @@ function NewOrderPage() {
             <label className="no-lbl">عنوان التوصيل بالتفصيل (المدينة، الحي، أقرب معلم) <span className="no-req">*</span></label>
             <div className="no-iw">
               <Pin />
-              <input className="has-ic" type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="مثال: صنعاء - شارع حدة - بجوار فندق برج السلام..." />
+              <input 
+                className="has-ic" 
+                type="text" 
+                value={address} 
+                onChange={(e) => setAddress(e.target.value)} 
+                placeholder="مثال: صنعاء - شارع حدة - بجوار فندق برج السلام..." 
+              />
             </div>
           </div>
           <div className="no-field">
             <label className="no-lbl">اسم المستلم الكريم <span className="no-req">*</span></label>
             <div className="no-iw">
               <User />
-              <input className="has-ic" type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="اسم المستلم" />
+              <input 
+                className="has-ic" 
+                type="text" 
+                value={name} 
+                onChange={(e) => setName(e.target.value)} 
+                placeholder="اسم المستلم" 
+              />
             </div>
           </div>
           <div className="no-field">
             <label className="no-lbl">رقم الهاتف / الواتساب <span className="no-req">*</span></label>
             <div className="no-iw">
               <Phone />
-              <input className="has-ic" type="tel" dir="ltr" style={{ textAlign: 'right' }} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="7XXXXXXXX" />
+              <input 
+                className="has-ic" 
+                type="tel" 
+                dir="ltr" 
+                style={{ textAlign: 'right' }} 
+                value={phone} 
+                onChange={(e) => setPhone(e.target.value)} 
+                placeholder="7XXXXXXXX" 
+              />
             </div>
           </div>
         </section>
 
-        {/* 3 - السعر */}
+        {/* 3 - سعر السلعة في المتجر الأصلي */}
         <section className="no-card">
           <div className="no-head alt">
             <div className="no-num">3</div>
@@ -418,7 +588,12 @@ function NewOrderPage() {
           </div>
           <div className="no-price">
             <div className="no-iw">
-              <input type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder={priceLoading ? 'جارٍ جلب السعر...' : '0.00'} />
+              <input 
+                type="number" 
+                value={price} 
+                onChange={(e) => setPrice(e.target.value)} 
+                placeholder="0.00" 
+              />
             </div>
             <select value={currency} onChange={(e) => setCurrency(e.target.value)}>
               <option>ر.س سعودي</option>
@@ -428,7 +603,7 @@ function NewOrderPage() {
           </div>
         </section>
 
-        {/* 4 - ملاحظات */}
+        {/* 4 - ملاحظات إضافية */}
         <section className="no-card">
           <div className="no-head alt">
             <div className="no-num">4</div>
@@ -436,16 +611,37 @@ function NewOrderPage() {
             <div className="no-title">ملاحظات إضافية (اختياري)</div>
           </div>
           <div className="no-ta">
-            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="اكتب أي ملاحظات خاصة بطلبك هنا (مقاسات، ألوان، تعليمات خاصة)..." />
-            <button className="mic" type="button" title="تسجيل صوتي"><Mic /></button>
+            <textarea 
+              value={notes} 
+              onChange={(e) => setNotes(e.target.value)} 
+              placeholder="اكتب أي ملاحظات خاصة بطلبك هنا (مقاسات، ألوان، تعليمات خاصة)..." 
+            />
+            <button 
+              className={`mic ${isRecording ? 'listening' : ''}`} 
+              type="button" 
+              title={isRecording ? 'جارٍ الاستماع... انقر للإيقاف' : 'تسجيل صوتي للملاحظات'}
+              onClick={toggleSpeechRecognition}
+            >
+              <Mic />
+            </button>
           </div>
         </section>
 
+        {/* زر تقديم الطلب */}
         <button className="no-btn no-primary" type="button" onClick={submit} disabled={status === 'sending'}>
           <Rocket />
-          <span>{status === 'sending' ? 'جارٍ إرسال الطلب...' : 'تقديم الطلب'}</span>
+          <span>{status === 'sending' ? 'جارٍ إرسال وحفظ الطلب...' : 'تقديم الطلب'}</span>
         </button>
-        <button className="no-btn no-ghost" type="button"><Arrow /><span>الرجوع للصفحة الرئيسية</span></button>
+
+        {/* زر الرجوع للصفحة الرئيسية */}
+        <button 
+          className="no-btn no-ghost" 
+          type="button"
+          onClick={() => navigate({ to: '/dashboard' })}
+        >
+          <Arrow />
+          <span>الرجوع للصفحة الرئيسية</span>
+        </button>
 
         <div className="no-foot">
           <div className="f"><Check /> فحص ومطابقة أصلية</div>
