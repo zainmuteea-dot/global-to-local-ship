@@ -28,8 +28,8 @@ import {
   Bell
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { AlShamelLogo } from '@/components/AlShamelLogo';
-import { NotificationService } from '@/services/notificationService';
+import { AlShamelLogo } from './index';
+
 
 export interface ReportOrderRow {
   id: string;
