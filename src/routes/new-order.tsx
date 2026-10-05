@@ -3,6 +3,10 @@ import { useEffect, useMemo, useState, useRef } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 
 export const Route = createFileRoute('/new-order')({
+  validateSearch: (search: Record<string, unknown>) => ({
+    name: typeof search.name === 'string' ? search.name : '',
+    phone: typeof search.phone === 'string' ? search.phone : '',
+  }),
   component: NewOrderPage,
 })
 
@@ -172,14 +176,50 @@ function detectStore(url: string): Store | null {
   return STORES.find((s) => s.test.test(u)) ?? null
 }
 
-/* ===================== Component ===================== */
 const DUP_OPTS = ['نعم', 'لا', 'غير متأكد'] as const
 
+/* دالة مساعدة لجلب الاسم الابتدائي فوراً بدون تأخير */
+function getInitialClientName(urlName?: string): string {
+  if (urlName && urlName.trim()) return urlName.trim()
+  if (typeof window === 'undefined') return ''
+  const direct = localStorage.getItem('sc_name') || sessionStorage.getItem('sc_name')
+  if (direct && direct.trim()) return direct.trim()
+  try {
+    const raw = localStorage.getItem('alsouk_current_user')
+    if (raw) {
+      const p = JSON.parse(raw)
+      if (p.full_name && p.full_name.trim()) return p.full_name.trim()
+    }
+  } catch {}
+  return ''
+}
+
+/* دالة مساعدة لجلب رقم الهاتف الابتدائي فوراً والتأكد أنه رقم وليس بريداً */
+function getInitialClientPhone(urlPhone?: string): string {
+  if (urlPhone && urlPhone.trim() && !urlPhone.includes('@')) return urlPhone.trim()
+  if (typeof window === 'undefined') return ''
+  const direct = localStorage.getItem('sc_phone') || sessionStorage.getItem('sc_phone')
+  if (direct && direct.trim() && !direct.includes('@')) return direct.trim()
+  try {
+    const raw = localStorage.getItem('alsouk_current_user')
+    if (raw) {
+      const p = JSON.parse(raw)
+      if (p.phone && p.phone.trim() && !p.phone.includes('@')) return p.phone.trim()
+    }
+  } catch {}
+  return ''
+}
+
 function NewOrderPage() {
+  const search = Route.useSearch()
+  const navigate = useNavigate()
+
+  // 🌟 تعبئة الاسم ورقم الهاتف فورياً ومباشرة لحظة فتح الصفحة
+  const [name, setName] = useState<string>(() => getInitialClientName(search.name))
+  const [phone, setPhone] = useState<string>(() => getInitialClientPhone(search.phone))
+  
   const [url, setUrl] = useState('')
   const [address, setAddress] = useState('')
-  const [name, setName] = useState('')
-  const [phone, setPhone] = useState('')
   const [price, setPrice] = useState('')
   const [currency, setCurrency] = useState('ر.س سعودي')
   const [notes, setNotes] = useState('')
@@ -191,62 +231,58 @@ function NewOrderPage() {
   const [isRecording, setIsRecording] = useState(false)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const recognitionRef = useRef<any>(null)
-  const navigate = useNavigate()
 
   const store = useMemo(() => detectStore(url), [url])
 
-  // (1) جلب هوية العميل المسجل تلقائياً (الاسم ورقم الهاتف) من الجلسة وقاعدة البيانات
+  // التحقق والتحديث من جلسة Supabase وجدول profiles في الخلفية
   useEffect(() => {
-    let isMounted = true
+    let active = true
 
-    const loadClientProfile = async () => {
+    const syncWithDatabaseProfile = async () => {
       try {
-        // أ. قراءة أولية سريعة من التخزين المحلي
-        const localStored = localStorage.getItem('alsouk_current_user')
-        if (localStored) {
-          try {
-            const parsed = JSON.parse(localStored)
-            if (parsed.full_name && isMounted) setName((v) => v || parsed.full_name)
-            if (parsed.phone && isMounted) setPhone((v) => v || parsed.phone)
-          } catch {}
-        }
-        const directPhone = localStorage.getItem('sc_phone') || sessionStorage.getItem('sc_phone')
-        const directName = localStorage.getItem('sc_name') || sessionStorage.getItem('sc_name')
-        if (directPhone && isMounted) setPhone((v) => v || directPhone)
-        if (directName && isMounted) setName((v) => v || directName)
+        // قراءة الجلسة المخزنة فوراً
+        const { data: { session } } = await supabase.auth.getSession()
+        const user = session?.user
 
-        // ب. فحص جلسة المستخدم الحقيقية من Supabase Auth
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user && isMounted) {
+        if (user && active) {
           setCurrentUserId(user.id)
-          // قراءة البيانات من بيانات الجلسة الوصفية
-          const metaName = user.user_metadata?.full_name
-          const metaPhone = user.phone || user.user_metadata?.phone
-          if (metaName) setName(metaName)
-          if (metaPhone) setPhone(metaPhone)
 
-          // ج. قراءة الملف الشخصي من جدول profiles للمستخدم المسجل الحالي حصراً
+          // 1. استعلام الملف الشخصي من جدول profiles للمستخدم المسجل الحالي حصراً
           const { data: profile } = await supabase
             .from('profiles')
             .select('full_name, phone')
             .eq('id', user.id)
             .maybeSingle()
 
-          if (profile && isMounted) {
-            if (profile.full_name) setName(profile.full_name)
-            if (profile.phone) setPhone(profile.phone)
+          if (profile && active) {
+            if (profile.full_name && profile.full_name.trim()) {
+              setName(profile.full_name.trim())
+              localStorage.setItem('sc_name', profile.full_name.trim())
+            }
+            if (profile.phone && profile.phone.trim() && !profile.phone.includes('@')) {
+              setPhone(profile.phone.trim())
+              localStorage.setItem('sc_phone', profile.phone.trim())
+            }
+          }
+
+          // 2. فحص metadata إن لم يتوفر في profiles
+          if (active) {
+            const metaName = user.user_metadata?.full_name
+            const metaPhone = user.phone || user.user_metadata?.phone
+            if (metaName) setName((prev) => prev || metaName)
+            if (metaPhone && !metaPhone.includes('@')) setPhone((prev) => prev || metaPhone)
           }
         }
       } catch (err) {
-        console.warn('Could not load profile automatically:', err)
+        console.warn('Profile sync notice:', err)
       }
     }
 
-    loadClientProfile()
-    return () => { isMounted = false }
+    syncWithDatabaseProfile()
+    return () => { active = false }
   }, [])
 
-  // (2) تفعيل الميكروفون والتسجيل الصوتي للملاحظات
+  // تفعيل الميكروفون والتسجيل الصوتي للملاحظات
   const toggleSpeechRecognition = () => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     if (!SpeechRecognition) {
@@ -283,12 +319,11 @@ function NewOrderPage() {
     }
   }
 
-  // (3) تقديم الطلب الفعلي وحفظه في جدول orders بقاعدة البيانات
+  // تقديم الطلب الفعلي وحفظه في جدول orders بقاعدة البيانات
   const submit = async () => {
     if (status === 'sending') return
     setSbError('')
 
-    // التحقق من الحقول الإلزامية
     if (!url.trim()) {
       setSbError('يرجى وضع رابط المنتج المطلوب من المتجر العالمي.')
       return
@@ -308,7 +343,6 @@ function NewOrderPage() {
 
     setStatus('sending')
 
-    // توليد كود تتبع فريد
     const code = 'SHP-' + Math.floor(100000 + Math.random() * 900000)
     const storeLabel = store?.label || 'متجر دولي'
     const notesSummary = [
@@ -332,8 +366,7 @@ function NewOrderPage() {
       })
 
       if (insertError) {
-        console.error('Supabase orders insert error:', insertError)
-        // في حال وجود مشكلة بصلاحيات الجداول نواصل الحفظ محلياً لعدم ضياع طلب العميل
+        console.error('Database insert error:', insertError)
       }
 
       // 2. إدراج إشعار رسمي في جدول notifications
@@ -345,7 +378,7 @@ function NewOrderPage() {
         }).then(() => {}).catch(() => {})
       }
 
-      // 3. تحديث التخزين المحلي فوراً لكي تنعكس العدادات في /dashboard
+      // 3. تحديث الذاكرة المحلية لتنعكس المؤشرات فوراً في /dashboard
       try {
         const localOrdersRaw = localStorage.getItem('alsouk_orders')
         const currentList = localOrdersRaw ? JSON.parse(localOrdersRaw) : []
@@ -361,7 +394,7 @@ function NewOrderPage() {
         }
         localStorage.setItem('alsouk_orders', JSON.stringify([newRecord, ...currentList]))
 
-        // تحديث بيانات العميل في التخزين المحلي ليتعرف عليه النظام دائماً
+        // تثبيت اسم ورقم العميل بشكل دائم
         localStorage.setItem(
           'alsouk_current_user',
           JSON.stringify({ full_name: name.trim(), phone: phone.trim() })
@@ -380,7 +413,6 @@ function NewOrderPage() {
     }
   }
 
-  // إعادة تعيين النموذج لطلب جديد
   const resetForm = () => {
     setUrl('')
     setAddress('')
@@ -397,9 +429,7 @@ function NewOrderPage() {
       await navigator.clipboard.writeText(orderCode)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
-    } catch {
-      /* النسخ غير متاح */
-    }
+    } catch {}
   }
 
   const Header = (
@@ -420,7 +450,7 @@ function NewOrderPage() {
     </header>
   )
 
-  // ===== شاشة نجاح الطلب (تظهر بعد الحفظ المباشر) =====
+  // شاشة تأكيد الطلب
   if (status === 'done') {
     return (
       <div className="no-root">
