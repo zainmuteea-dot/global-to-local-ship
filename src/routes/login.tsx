@@ -110,6 +110,15 @@ export function LoginPage() {
         if (error || !data.user) {
           throw new Error("بيانات الدخول غير صحيحة، يرجى التأكد من الرقم وكلمة المرور.");
         }
+localStorage.setItem('alsouk_customer_logged_in', 'true');
+localStorage.setItem('alsouk_current_user', JSON.stringify({
+  full_name: data.user.user_metadata?.full_name || 'عميل السوق الشامل',
+  phone: inputVal,
+}));
+localStorage.setItem('sc_phone', inputVal);
+if (data.user.user_metadata?.full_name) {
+  localStorage.setItem('sc_name', data.user.user_metadata.full_name);
+}
 
         if (accountType === "staff") {
           const [adminRole, staffRole] = await Promise.all([
