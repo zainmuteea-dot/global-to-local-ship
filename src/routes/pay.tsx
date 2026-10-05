@@ -367,11 +367,19 @@ function PayPage() {
     setNotifying(true)
 
     try {
-      // 1. إرسال إشعار في جدول notifications للإدارة
-      await supabase.from('notifications').insert({
-        title: `إشعار إيداع من العميل: ${customer || 'عميل'}`,
-        body: `العميل قام بتأكيد إيداع المبلغ للطلب رقم ${orderNo}. الهاتف: ${phone}${receiptImg ? ' (مرفق صورة سند التحويل)' : ''}`,
+      // 1. تسجيل طلب الدفع في القاعدة ليظهر للإدارة في قسم طلبات الدفع
+      const { data: { session } } = await supabase.auth.getSession()
+      const { error: payErr } = await supabase.from('payments').insert({
+        tracking_code: orderNo,
+        customer_name: customer || null,
+        phone: phone || null,
+        wallet: wallet?.label || walletKey,
+        amount: remaining,
+        currency,
+        receipt_image: receiptImg,
+        user_id: session?.user?.id ?? null,
       })
+      if (payErr) throw payErr
 
       // 2. تحديث حالة الطلب في orders
       await supabase
