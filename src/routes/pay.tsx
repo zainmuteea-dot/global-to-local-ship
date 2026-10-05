@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 
 export const Route = createFileRoute('/pay')({
@@ -74,8 +74,8 @@ const CSS = `
   background:#fff;position:relative;overflow:hidden;transition:.2s}
 .stat:hover{transform:translateY(-2px);box-shadow:var(--shadow-sm)}
 .stat .lab{font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px}
-.stat .num{font-size:18px;font-weight:900;line-height:1.1}
-.stat .cur{font-size:11px;font-weight:700;color:var(--muted);margin-top:3px}
+.stat .num{font-size:19px;font-weight:900;line-height:1.1}
+.stat .cur{font-size:11.5px;font-weight:700;color:var(--muted);margin-top:3px}
 .stat.total{background:linear-gradient(160deg,#eef5fc,#fff);border-color:var(--blue-100)}
 .stat.total .num{color:var(--blue-800)}
 .stat.paid{background:linear-gradient(160deg,var(--green-bg),#fff);border-color:#bfe9d2}
@@ -92,10 +92,10 @@ const CSS = `
   background:#fff;border:1.6px solid var(--line);border-radius:15px;padding:12px 6px 10px;
   cursor:pointer;font-family:inherit;transition:.18s;outline:none}
 .wbtn:hover{transform:translateY(-2px);box-shadow:0 10px 20px -12px rgba(0,0,0,.28)}
-.wbtn .wchip{width:48px;height:48px;border-radius:13px;display:grid;place-items:center;overflow:hidden;
-  background:#fff;box-shadow:0 2px 8px -3px rgba(0,0,0,.25)}
-.wbtn .wchip .fallback{font-weight:900;font-size:20px;color:#fff;width:100%;height:100%;display:grid;place-items:center}
-.wbtn .wname{font-size:12.5px;font-weight:800;color:var(--ink)}
+.wbtn .wchip{width:50px;height:50px;border-radius:14px;display:grid;place-items:center;overflow:hidden;
+  background:#fff;box-shadow:0 2px 8px -3px rgba(0,0,0,.25);border:1px solid #f0f0f0}
+.wbtn .wchip svg{width:32px;height:32px}
+.wbtn .wname{font-size:12px;font-weight:800;color:var(--ink);text-align:center}
 .wbtn.active{border-color:transparent;color:#fff;box-shadow:0 12px 24px -12px rgba(0,0,0,.4)}
 .wbtn.active .wname{color:#fff}
 .wbtn .tick{position:absolute;inset-inline-start:7px;top:7px;width:20px;height:20px;border-radius:50%;
@@ -107,15 +107,24 @@ const CSS = `
   box-shadow:0 12px 26px -12px rgba(0,0,0,.4);animation:slideUp .35s ease}
 @keyframes slideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 .pay-acc .atop{display:flex;align-items:center;gap:12px;margin-bottom:12px}
-.pay-acc .wlogo{width:42px;height:42px;border-radius:10px;display:grid;place-items:center;font-weight:900;font-size:18px}
+.pay-acc .wlogo{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-weight:900;font-size:18px}
 .pay-acc .at{font-size:12px;opacity:.9}
 .pay-acc .an{font-size:16px;font-weight:800}
-.pay-accnum{display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,.18);border-radius:12px;padding:12px 14px}
-.pay-accnum .k{font-size:11px;opacity:.85}
-.pay-accnum .num{font-size:20px;font-weight:900;letter-spacing:1px;direction:ltr}
-.pay-accnum .cp{border:none;background:rgba(255,255,255,.25);color:#fff;width:34px;height:34px;border-radius:8px;display:grid;place-items:center;cursor:pointer;transition:.2s}
+.pay-accnum{display:flex;flex-direction:column;gap:8px;background:rgba(0,0,0,.22);border-radius:14px;padding:14px}
+.pay-acc-row{display:flex;align-items:center;justify-content:space-between}
+.pay-accnum .k{font-size:12px;opacity:.88;font-weight:700}
+.pay-accnum .name-val{font-size:15px;font-weight:900;color:#fff}
+.pay-accnum .num-val{font-size:22px;font-weight:900;letter-spacing:1px;direction:ltr;color:#fff}
+.pay-accnum .cp{border:none;background:rgba(255,255,255,.25);color:#fff;width:36px;height:36px;border-radius:10px;display:grid;place-items:center;cursor:pointer;transition:.2s}
 .pay-accnum .cp:hover{background:rgba(255,255,255,.4)}
 .pay-accnum .cp.ok{background:#1aa260}
+/* تحميل إشعار الدفع */
+.upload-box{margin-top:14px;background:rgba(255,255,255,.18);border:1.6px dashed rgba(255,255,255,.6);border-radius:14px;padding:14px;text-align:center;cursor:pointer;transition:.2s}
+.upload-box:hover{background:rgba(255,255,255,.26);border-color:#fff}
+.upload-box-content{display:flex;align-items:center;justify-content:center;gap:9px;font-size:13.5px;font-weight:800}
+.upload-preview{margin-top:10px;position:relative;display:inline-block;border-radius:10px;overflow:hidden;border:2px solid #fff;max-height:160px}
+.upload-preview img{max-height:160px;width:auto;display:block}
+.upload-remove{position:absolute;top:5px;inset-inline-end:5px;background:#e3443a;color:#fff;border:none;border-radius:50%;width:24px;height:24px;cursor:pointer;display:grid;place-items:center;font-size:12px;font-weight:900}
 .pay-hint{margin-top:12px;font-size:12px;display:flex;gap:7px;align-items:center;opacity:.95;line-height:1.5}
 .pay-btn{width:100%;margin-top:14px;display:flex;align-items:center;justify-content:center;gap:8px;
   font-family:inherit;font-weight:800;font-size:16px;border:none;cursor:pointer;padding:15px;border-radius:14px;transition:.2s}
@@ -134,6 +143,8 @@ const CheckIc = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="non
 const Copy = () => (<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>)
 const Arrow = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>)
 const Bell = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>)
+const Camera = () => (<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>)
+
 const Logo = () => (
   <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
     <defs>
@@ -149,19 +160,89 @@ const Logo = () => (
   </svg>
 )
 
-/* ===================== خيارات الدفع ===================== */
-type Wallet = { key: string; label: string; account: string; color: string }
+/* ===================== خيارات المحافظ الرسمية ===================== */
+type Wallet = { key: string; label: string; color: string; iconSvg: any }
+
 const WALLETS: Wallet[] = [
-  { key: 'kuraimi', label: 'الكريمي جوال', account: '3045892110', color: '#0f766e' },
-  { key: 'onecash', label: 'ون كاش OneCash', account: '772399745', color: '#7c3aed' },
-  { key: 'floosak', label: 'فلوسك Floosak', account: '775564545', color: '#2563eb' },
-  { key: 'jawali', label: 'جوالي Jawali', account: '771234567', color: '#c026d3' },
-  { key: 'najm', label: 'حوالة النجم', account: 'باسم: زين مطيع سعيد', color: '#ea580c' },
-  { key: 'emiaz', label: 'حوالة الامتياز', account: 'باسم: زين مطيع سعيد', color: '#b91c1c' },
+  { 
+    key: 'kuraimi', 
+    label: 'الكريمي جوال / حاسب', 
+    color: '#0e7090', 
+    iconSvg: (
+      <svg viewBox="0 0 40 40" fill="none">
+        <rect width="40" height="40" rx="10" fill="#0e7090"/>
+        <path d="M12 28V12L28 20L12 28Z" fill="#fff"/>
+        <circle cx="28" cy="14" r="3" fill="#f59e0b"/>
+      </svg>
+    )
+  },
+  { 
+    key: 'onecash', 
+    label: 'ون كاش OneCash', 
+    color: '#7c3aed', 
+    iconSvg: (
+      <svg viewBox="0 0 40 40" fill="none">
+        <rect width="40" height="40" rx="10" fill="#7c3aed"/>
+        <circle cx="20" cy="20" r="10" stroke="#fff" strokeWidth="3"/>
+        <path d="M20 14V26" stroke="#fff" strokeWidth="3" strokeLinecap="round"/>
+      </svg>
+    )
+  },
+  { 
+    key: 'floosak', 
+    label: 'فلوسك Floosak', 
+    color: '#2563eb', 
+    iconSvg: (
+      <svg viewBox="0 0 40 40" fill="none">
+        <rect width="40" height="40" rx="10" fill="#2563eb"/>
+        <path d="M14 26C14 20 18 14 26 14M26 14V22M26 14H18" stroke="#fff" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    )
+  },
+  { 
+    key: 'jawali', 
+    label: 'جوالي Jawali', 
+    color: '#be185d', 
+    iconSvg: (
+      <svg viewBox="0 0 40 40" fill="none">
+        <rect width="40" height="40" rx="10" fill="#be185d"/>
+        <rect x="13" y="10" width="14" height="20" rx="3" stroke="#fff" strokeWidth="2.5"/>
+        <circle cx="20" cy="25" r="1.5" fill="#fff"/>
+      </svg>
+    )
+  },
+  { 
+    key: 'jeeb', 
+    label: 'جيب Jeeb', 
+    color: '#0284c7', 
+    iconSvg: (
+      <svg viewBox="0 0 40 40" fill="none">
+        <rect width="40" height="40" rx="10" fill="#0284c7"/>
+        <path d="M12 16H28V24C28 27 25 29 20 29C15 29 12 27 12 24V16Z" fill="#fff"/>
+        <line x1="16" y1="13" x2="24" y2="13" stroke="#fff" strokeWidth="2" strokeLinecap="round"/>
+      </svg>
+    )
+  },
+  { 
+    key: 'najm', 
+    label: 'حوالة النجم', 
+    color: '#ea580c', 
+    iconSvg: (
+      <svg viewBox="0 0 40 40" fill="none">
+        <rect width="40" height="40" rx="10" fill="#ea580c"/>
+        <path d="M20 11L22.5 17.5L29 18L24 22.5L25.5 29L20 25.5L14.5 29L16 22.5L11 18L17.5 17.5L20 11Z" fill="#fff"/>
+      </svg>
+    )
+  },
 ]
 
+// بيانات الحساب الموحدة لجميع المحافظ
+const UNIFIED_PHONE = '772399744'
+const UNIFIED_NAME = 'زين العابدين مطيع حاتم الوصابي'
+
 function fmt(n: number) {
-  return new Intl.NumberFormat('ar-YE').format(Math.round(n))
+  if (!n || isNaN(n)) return '0'
+  return Number(Math.round(n)).toLocaleString('en-US')
 }
 
 /* ===================== Component ===================== */
@@ -183,6 +264,10 @@ function PayPage() {
   // حالة زر إشعار الإدارة
   const [isNotified, setIsNotified] = useState(false)
   const [notifying, setNotifying] = useState(false)
+
+  // حالة صورة إشعار الدفع
+  const [receiptImg, setReceiptImg] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const remaining = Math.max(total - paid, 0)
   const isPaid = /مدفوع|مكتمل|paid|complete/i.test(status) && !/غير/.test(status)
@@ -212,15 +297,19 @@ function PayPage() {
         if (localUser.phone && !phone) setPhone(localUser.phone)
       } catch {}
 
-      // 2. فحص حالة الإشعار المخزنة سابقاً لهذا الطلب
+      // 2. فحص حالة الإشعار وصورة السند المخزنة سابقاً
       const notificationKey = `notified_order_${orderNo}`
       if (localStorage.getItem(notificationKey) === 'true') {
         setIsNotified(true)
       }
+      const savedReceipt = localStorage.getItem(`receipt_order_${orderNo}`)
+      if (savedReceipt) {
+        setReceiptImg(savedReceipt)
+      }
 
       // 3. الاستعلام الدقيق من جدول orders باستخدام tracking_code
       try {
-        const { data: dbOrder, error } = await supabase
+        const { data: dbOrder } = await supabase
           .from('orders')
           .select('id, tracking_code, customer_name, phone, product_name, notes, status, created_at, user_id')
           .or(`tracking_code.eq.${orderNo},id.eq.${orderNo}`)
@@ -229,7 +318,7 @@ function PayPage() {
         if (dbOrder && active) {
           setCustomer(dbOrder.customer_name || '')
           setPhone(dbOrder.phone || '')
-          setProductName(dbOrder.product_name || 'طلب وسيط دولي')
+          setProductName(dbOrder.product_name || 'طلب متجر دولي')
           if (dbOrder.status) setStatus(dbOrder.status)
 
           // استخراج السعر المعلن من تفاصيل notes
@@ -240,7 +329,6 @@ function PayPage() {
             const rawCur = priceMatch[2]?.trim() || ''
 
             if (rawCur.includes('سعودي') || rawCur.includes('ر.س')) {
-              // التحويل التقديري إلى ريال يمني (1 ر.س ≈ 142 ر.ي)
               setTotal(rawPrice * 142)
               setCurrency('ر.ي')
             } else if (rawCur.includes('$') || rawCur.includes('دولار')) {
@@ -251,16 +339,14 @@ function PayPage() {
               setCurrency(rawCur || 'ر.ي')
             }
           } else {
-            // قيمة افتراضية تقديرية إن لم يُحدد سعر
             setTotal(45000)
             setCurrency('ر.ي')
           }
         } else if (!fallbackFound) {
-          // قيم افتراضية متناسقة عند الطلب التجريبي
           setTotal(38500)
           setCurrency('ر.ي')
           const uName = localStorage.getItem('sc_name') || 'عميل السوق الشامل'
-          const uPhone = localStorage.getItem('sc_phone') || '772399745'
+          const uPhone = localStorage.getItem('sc_phone') || '772399744'
           setCustomer(uName)
           setPhone(uPhone)
         }
@@ -275,7 +361,7 @@ function PayPage() {
     return () => { active = false }
   }, [orderNo])
 
-  // دالة تفعيل زر "يرجى الانتظار" وإرسال الإشعار للإدارة
+  // دالة تفعيل زر إشعار الإدارة
   const handleNotifyAdmin = async () => {
     if (isNotified || notifying) return
     setNotifying(true)
@@ -283,11 +369,11 @@ function PayPage() {
     try {
       // 1. إرسال إشعار في جدول notifications للإدارة
       await supabase.from('notifications').insert({
-        title: `طلب مراجعة دفع من العميل: ${customer || 'عميل'}`,
-        body: `العميل قام بطلب تأكيد الدفع ومراجعة الشحنة رقم ${orderNo}. الهاتف: ${phone}`,
+        title: `إشعار إيداع من العميل: ${customer || 'عميل'}`,
+        body: `العميل قام بتأكيد إيداع المبلغ للطلب رقم ${orderNo}. الهاتف: ${phone}${receiptImg ? ' (مرفق صورة سند التحويل)' : ''}`,
       })
 
-      // 2. تحديث حالة الطلب
+      // 2. تحديث حالة الطلب في orders
       await supabase
         .from('orders')
         .update({ status: 'قيد مراجعة الدفع والتأكيد' })
@@ -298,7 +384,6 @@ function PayPage() {
       localStorage.setItem(`notified_order_${orderNo}`, 'true')
     } catch (e) {
       console.error(e)
-      // تفعيل محلي حتى لو حدث انقطاع في الاتصال
       setIsNotified(true)
       localStorage.setItem(`notified_order_${orderNo}`, 'true')
     } finally {
@@ -306,14 +391,29 @@ function PayPage() {
     }
   }
 
-  const [walletKey, setWalletKey] = useState('')
+  // معالجة رفع صورة إشعار الدفع
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string
+      setReceiptImg(base64)
+      try {
+        localStorage.setItem(`receipt_order_${orderNo}`, base64)
+      } catch {}
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const [walletKey, setWalletKey] = useState('kuraimi')
   const [copied, setCopied] = useState(false)
-  const wallet = useMemo(() => WALLETS.find((w) => w.key === walletKey) || null, [walletKey])
+  const wallet = useMemo(() => WALLETS.find((w) => w.key === walletKey) || WALLETS[0], [walletKey])
 
   const copyAcc = async () => {
-    if (!wallet) return
     try {
-      await navigator.clipboard.writeText(wallet.account)
+      await navigator.clipboard.writeText(UNIFIED_PHONE)
       setCopied(true)
       setTimeout(() => setCopied(false), 1800)
     } catch {}
@@ -368,7 +468,7 @@ function PayPage() {
               </div>
             )}
 
-            {/* 🌟 زر يرجى الانتظار التفاعلي مع الإدارة (يتحول للأخضر عند النقر) */}
+            {/* زر يرجى الانتظار التفاعلي مع الإدارة */}
             <button
               type="button"
               className={`pay-wait-btn ${isNotified ? 'notified' : ''}`}
@@ -418,7 +518,7 @@ function PayPage() {
           </div>
         </section>
 
-        {/* طريقة الدفع والحسابات الرسمية */}
+        {/* طريقة الدفع والحسابات المعتمدة */}
         <section className="pay-card">
           <div className="pay-head alt">
             <div className="pay-ico"><Card /></div>
@@ -439,7 +539,7 @@ function PayPage() {
                 >
                   <span className="tick"><CheckIc /></span>
                   <span className="wchip">
-                    <span className="fallback" style={{ background: w.color }}>{w.label.charAt(0)}</span>
+                    {w.iconSvg}
                   </span>
                   <span className="wname">{w.label}</span>
                 </button>
@@ -451,29 +551,77 @@ function PayPage() {
             <div className="pay-acc" style={{ background: `linear-gradient(140deg, ${wallet.color}, ${wallet.color}cc)` }}>
               <div className="atop">
                 <div className="wlogo" style={{ background: '#fff', color: wallet.color }}>
-                  {wallet.label.charAt(0)}
+                  {wallet.iconSvg}
                 </div>
                 <div>
                   <div className="at">أودِع عبر</div>
                   <div className="an">{wallet.label}</div>
                 </div>
               </div>
+
+              {/* 🌟 صندوق رقم الحساب والاسم الموحد */}
               <div className="pay-accnum">
-                <div>
-                  <div className="k">رقم الحساب / المستلم</div>
-                  <div className="num">{wallet.account}</div>
+                <div className="pay-acc-row">
+                  <div>
+                    <div className="k">اسم المستلم المعتمد:</div>
+                    <div className="name-val">{UNIFIED_NAME}</div>
+                  </div>
                 </div>
-                <button className={'cp' + (copied ? ' ok' : '')} type="button" onClick={copyAcc} title="نسخ الرقم">
-                  {copied ? <CheckIc /> : <Copy />}
-                </button>
+                <div className="pay-acc-row" style={{ marginTop: 4, borderTop: '1px dashed rgba(255,255,255,0.25)', paddingTop: 8 }}>
+                  <div>
+                    <div className="k">رقم الحساب / المحفظة:</div>
+                    <div className="num-val">{UNIFIED_PHONE}</div>
+                  </div>
+                  <button className={'cp' + (copied ? ' ok' : '')} type="button" onClick={copyAcc} title="نسخ الرقم">
+                    {copied ? <CheckIc /> : <Copy />}
+                  </button>
+                </div>
               </div>
+
+              {/* 🌟 بقعة الخط الأخضر — زر وخانة تحميل صورة إشعار الدفع */}
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                accept="image/*" 
+                style={{ display: 'none' }} 
+                onChange={handleFileUpload} 
+              />
+              
+              <div 
+                className="upload-box" 
+                onClick={() => fileInputRef.current?.click()}
+                title="انقر لتحميل صورة إشعار التحويل أو لقطة الشاشة"
+              >
+                <div className="upload-box-content">
+                  <Camera />
+                  <span>{receiptImg ? 'تغيير صورة سند / إشعار التحويل' : 'اضغط هنا لتحميل صورة إشعار الدفع (سند التحويل)'}</span>
+                </div>
+                {receiptImg && (
+                  <div className="upload-preview" onClick={(e) => e.stopPropagation()}>
+                    <img src={receiptImg} alt="سند الدفع" />
+                    <button 
+                      className="upload-remove" 
+                      type="button" 
+                      title="حذف الصورة"
+                      onClick={() => {
+                        setReceiptImg(null)
+                        localStorage.removeItem(`receipt_order_${orderNo}`)
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+              </div>
+
               <div className="pay-hint">
                 <Info />
-                <span>أودِع المبلغ المتبقي ({fmt(remaining)} {currency}) على الرقم أعلاه ثم اضغط على زر الإشعار لتأكيد العملية.</span>
+                <span>أودِع المبلغ المطلوب ({fmt(remaining)} {currency}) إلى الرقم والاسم أعلاه، ثم ارفع صورة الإشعار واضغط على الزر أدناه لتأكيد الإيداع.</span>
               </div>
             </div>
           )}
 
+          {/* زر تأكيد الإيداع وإشعار الإدارة */}
           <button 
             className="pay-btn pay-primary" 
             type="button" 
