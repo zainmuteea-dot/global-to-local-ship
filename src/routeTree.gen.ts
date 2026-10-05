@@ -30,6 +30,7 @@ import { Route as MyAccountRouteImport } from './routes/my-account'
 import { Route as NewOrderRouteImport } from './routes/new-order'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as PayRouteImport } from './routes/pay'
+import { Route as PaymentsRouteImport } from './routes/payments'
 import { Route as PricesRouteImport } from './routes/prices'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ProductsRouteImport } from './routes/products'
@@ -155,6 +156,11 @@ const PayRoute = PayRouteImport.update({
   path: '/pay',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PaymentsRoute = PaymentsRouteImport.update({
+  id: '/payments',
+  path: '/payments',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PricesRoute = PricesRouteImport.update({
   id: '/prices',
   path: '/prices',
@@ -273,6 +279,7 @@ export interface FileRoutesByFullPath {
   '/new-order': typeof NewOrderRoute
   '/notifications': typeof NotificationsRoute
   '/pay': typeof PayRoute
+  '/payments': typeof PaymentsRoute
   '/prices': typeof PricesRoute
   '/privacy': typeof PrivacyRoute
   '/products': typeof ProductsRoute
@@ -315,6 +322,7 @@ export interface FileRoutesByTo {
   '/new-order': typeof NewOrderRoute
   '/notifications': typeof NotificationsRoute
   '/pay': typeof PayRoute
+  '/payments': typeof PaymentsRoute
   '/prices': typeof PricesRoute
   '/privacy': typeof PrivacyRoute
   '/products': typeof ProductsRoute
@@ -358,6 +366,7 @@ export interface FileRoutesById {
   '/new-order': typeof NewOrderRoute
   '/notifications': typeof NotificationsRoute
   '/pay': typeof PayRoute
+  '/payments': typeof PaymentsRoute
   '/prices': typeof PricesRoute
   '/privacy': typeof PrivacyRoute
   '/products': typeof ProductsRoute
@@ -402,6 +411,7 @@ export interface FileRouteTypes {
     | '/new-order'
     | '/notifications'
     | '/pay'
+    | '/payments'
     | '/prices'
     | '/privacy'
     | '/products'
@@ -444,6 +454,7 @@ export interface FileRouteTypes {
     | '/new-order'
     | '/notifications'
     | '/pay'
+    | '/payments'
     | '/prices'
     | '/privacy'
     | '/products'
@@ -486,6 +497,7 @@ export interface FileRouteTypes {
     | '/new-order'
     | '/notifications'
     | '/pay'
+    | '/payments'
     | '/prices'
     | '/privacy'
     | '/products'
@@ -529,6 +541,7 @@ export interface RootRouteChildren {
   NewOrderRoute: typeof NewOrderRoute
   NotificationsRoute: typeof NotificationsRoute
   PayRoute: typeof PayRoute
+  PaymentsRoute: typeof PaymentsRoute
   PricesRoute: typeof PricesRoute
   PrivacyRoute: typeof PrivacyRoute
   ProductsRoute: typeof ProductsRoute
@@ -699,6 +712,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PayRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/payments': {
+      id: '/payments'
+      path: '/payments'
+      fullPath: '/payments'
+      preLoaderRoute: typeof PaymentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/prices': {
       id: '/prices'
       path: '/prices'
@@ -857,6 +877,7 @@ const rootRouteChildren: RootRouteChildren = {
   NewOrderRoute: NewOrderRoute,
   NotificationsRoute: NotificationsRoute,
   PayRoute: PayRoute,
+  PaymentsRoute: PaymentsRoute,
   PricesRoute: PricesRoute,
   PrivacyRoute: PrivacyRoute,
   ProductsRoute: ProductsRoute,

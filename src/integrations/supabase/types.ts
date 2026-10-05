@@ -113,6 +113,54 @@ export type Database = {
         }
         Relationships: []
       }
+      payments: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          customer_name: string | null
+          id: string
+          phone: string | null
+          receipt_image: string | null
+          reviewed_at: string | null
+          status: string
+          tracking_code: string
+          updated_at: string
+          user_id: string | null
+          wallet: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          customer_name?: string | null
+          id?: string
+          phone?: string | null
+          receipt_image?: string | null
+          reviewed_at?: string | null
+          status?: string
+          tracking_code: string
+          updated_at?: string
+          user_id?: string | null
+          wallet: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          customer_name?: string | null
+          id?: string
+          phone?: string | null
+          receipt_image?: string | null
+          reviewed_at?: string | null
+          status?: string
+          tracking_code?: string
+          updated_at?: string
+          user_id?: string | null
+          wallet?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null

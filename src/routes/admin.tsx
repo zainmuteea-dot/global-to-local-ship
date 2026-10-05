@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { AdminAlerts } from "@/components/admin/AdminAlerts";
 import { useEffect, useMemo, useState } from "react";
 import {
   Bell,
@@ -487,6 +488,7 @@ export default function AdminOperationsPage() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         {/* شريط الإحصائيات الحية الخماسي */}
+        <AdminAlerts />
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
           <div className="bg-white p-4 rounded-2xl border border-sky-100 shadow-xs">
             <div className="flex items-center justify-between text-slate-400 mb-2">
