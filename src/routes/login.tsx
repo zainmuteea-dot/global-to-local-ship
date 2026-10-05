@@ -80,7 +80,7 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
-  const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setErrorMessage("");
@@ -99,31 +99,66 @@ export function LoginPage() {
     }
 
     try {
-      const emailToUse = inputVal.includes("@") ? inputVal : `${inputVal}@alsouk.local`;
+      // دعم تسجيل الدخول بالرقم أو بالبريد مباشرة
+      const isEmail = inputVal.includes("@");
+      let emailToUse = isEmail ? inputVal : `${inputVal}@alsouq.local`;
 
       if (mode === "login") {
-        const { data, error } = await supabase.auth.signInWithPassword({
+        let authResult = await supabase.auth.signInWithPassword({
           email: emailToUse,
           password: password,
         });
 
-        if (error || !data.user) {
+        // تجربة النطاق البديل إذا كان التسجيل تم بـ alsouk
+        if (authResult.error && !isEmail) {
+          authResult = await supabase.auth.signInWithPassword({
+            email: `${inputVal}@alsouk.local`,
+            password: password,
+          });
+        }
+
+        if (authResult.error || !authResult.data.user) {
           throw new Error("بيانات الدخول غير صحيحة، يرجى التأكد من الرقم وكلمة المرور.");
         }
-localStorage.setItem('alsouk_customer_logged_in', 'true');
-localStorage.setItem('alsouk_current_user', JSON.stringify({
-  full_name: data.user.user_metadata?.full_name || 'عميل السوق الشامل',
-  phone: inputVal,
-}));
-localStorage.setItem('sc_phone', inputVal);
-if (data.user.user_metadata?.full_name) {
-  localStorage.setItem('sc_name', data.user.user_metadata.full_name);
-}
+
+        const user = authResult.data.user;
+
+        // 🌟 استعلام فوري من جدول profiles لجلب الاسم والرقم الحقيقيين
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("full_name, phone")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        const resolvedName = profile?.full_name || user.user_metadata?.full_name || fullName || "";
+        let resolvedPhone = profile?.phone || user.user_metadata?.phone || "";
+        if (!resolvedPhone && !isEmail) {
+          resolvedPhone = inputVal;
+        }
+
+        // حفظ بيانات العميل في الذاكرة لتثبيتها في كل الصفحات
+        localStorage.setItem("alsouk_customer_logged_in", "true");
+        localStorage.setItem(
+          "alsouk_current_user",
+          JSON.stringify({
+            full_name: resolvedName,
+            phone: resolvedPhone,
+            user_id: user.id,
+          })
+        );
+        if (resolvedPhone) {
+          localStorage.setItem("sc_phone", resolvedPhone);
+          sessionStorage.setItem("sc_phone", resolvedPhone);
+        }
+        if (resolvedName) {
+          localStorage.setItem("sc_name", resolvedName);
+          sessionStorage.setItem("sc_name", resolvedName);
+        }
 
         if (accountType === "staff") {
           const [adminRole, staffRole] = await Promise.all([
-            supabase.rpc("has_role", { _user_id: data.user.id, _role: "admin" }),
-            supabase.rpc("has_role", { _user_id: data.user.id, _role: "staff" }),
+            supabase.rpc("has_role", { _user_id: user.id, _role: "admin" }),
+            supabase.rpc("has_role", { _user_id: user.id, _role: "staff" }),
           ]);
           if (adminRole.error || staffRole.error || !(adminRole.data || staffRole.data)) {
             await supabase.auth.signOut();
@@ -132,11 +167,10 @@ if (data.user.user_metadata?.full_name) {
           }
         }
 
-        localStorage.setItem("alsouk_customer_logged_in", "true");
-        window.location.href = accountType === "staff" ? "/admin" : "/my-account";
+        window.location.href = accountType === "staff" ? "/admin" : "/dashboard";
       } else {
         // إنشاء حساب جديد
-        const { error: signUpError } = await supabase.auth.signUp({
+        const { error: signUpError, data: sData } = await supabase.auth.signUp({
           email: emailToUse,
           password: password,
           options: {
@@ -153,6 +187,14 @@ if (data.user.user_metadata?.full_name) {
           throw signUpError;
         }
 
+        if (sData?.user) {
+          await supabase.from("profiles").upsert({
+            id: sData.user.id,
+            full_name: fullName,
+            phone: inputVal,
+          });
+        }
+
         localStorage.setItem("alsouk_customer_logged_in", "true");
         localStorage.setItem(
           "alsouk_current_user",
@@ -163,7 +205,9 @@ if (data.user.user_metadata?.full_name) {
             role: accountType,
           })
         );
-        window.location.href = "/my-account";
+        localStorage.setItem("sc_phone", inputVal);
+        localStorage.setItem("sc_name", fullName);
+        window.location.href = "/dashboard";
       }
     } catch (err: any) {
       setErrorMessage(err?.message || "تعذر تسجيل الدخول. تحقق من البيانات وحاول مرة أخرى.");
@@ -171,6 +215,7 @@ if (data.user.user_metadata?.full_name) {
       setLoading(false);
     }
   };
+
 
   return (
     <div
