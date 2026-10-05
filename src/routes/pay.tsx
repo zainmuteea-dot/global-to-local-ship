@@ -392,8 +392,7 @@ function PayPage() {
       localStorage.setItem(`notified_order_${orderNo}`, 'true')
     } catch (e) {
       console.error(e)
-      setIsNotified(true)
-      localStorage.setItem(`notified_order_${orderNo}`, 'true')
+      alert('تعذّر إرسال إشعار الدفع، يرجى المحاولة مرة أخرى.')
     } finally {
       setNotifying(false)
     }
