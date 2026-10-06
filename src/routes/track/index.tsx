@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Search,
   Plane,
@@ -51,15 +51,43 @@ export interface OrderItem {
   updatedAt?: string;
 }
 
+// دالة قراءة رقم الهاتف فورياً من ذاكرة المتصفح
+function getInitialClientPhone(): string {
+  if (typeof window === 'undefined') return '';
+  const params = new URLSearchParams(window.location.search);
+  const urlPhone = params.get('phone');
+  if (urlPhone && urlPhone.trim()) return urlPhone.trim();
+
+  const direct = localStorage.getItem('sc_phone') || sessionStorage.getItem('sc_phone');
+  if (direct && direct.trim() && !direct.includes('@')) return direct.trim();
+
+  try {
+    const raw = localStorage.getItem('alsouk_current_user');
+    if (raw) {
+      const p = JSON.parse(raw);
+      if (p.phone && p.phone.trim() && !p.phone.includes('@')) return p.phone.trim();
+    }
+  } catch {}
+
+  return '';
+}
+
+// دالة قراءة كود التتبع من معلمات الرابط
+function getInitialTrackingCode(): string {
+  if (typeof window === 'undefined') return '';
+  const params = new URLSearchParams(window.location.search);
+  return (params.get('tracking') || params.get('order') || '').trim();
+}
+
 export function TrackPage() {
-  const [orderQuery, setOrderQuery] = useState('');
-  const [phoneQuery, setPhoneQuery] = useState('');
+  const [orderQuery, setOrderQuery] = useState<string>(() => getInitialTrackingCode());
+  const [phoneQuery, setPhoneQuery] = useState<string>(() => getInitialClientPhone());
   const [order, setOrder] = useState<OrderItem | null>(null);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
 
-  // المراحل السبع المعتمدة لعرض مسار الشحنة للعميل
+  // المراحل السبع المعتمدة لمسار تتبع العميل
   const trackingSteps = [
     {
       id: 'step-1',
@@ -126,8 +154,8 @@ export function TrackPage() {
     },
   ];
 
-  // دالة البحث التلقائي في قاعدة البيانات
-  const handleSearch = async (overrideOrder?: string, overridePhone?: string) => {
+  // دالة البحث التلقائي المصححة المتوافقة مع أعمدة Supabase (tracking_code و phone)
+  const handleSearch = useCallback(async (overrideOrder?: string, overridePhone?: string) => {
     const oQuery = (overrideOrder !== undefined ? overrideOrder : orderQuery).trim().toUpperCase();
     const pQuery = (overridePhone !== undefined ? overridePhone : phoneQuery).trim();
     if (!oQuery && !pQuery) return;
@@ -140,11 +168,11 @@ export function TrackPage() {
       let query = supabase.from('orders').select('*');
 
       if (oQuery && pQuery) {
-        query = query.or(`order_number.ilike.%${oQuery}%,tracking_code.ilike.%${oQuery}%,phone.ilike.%${pQuery}%`);
+        query = query.or(`tracking_code.ilike.%${oQuery}%,phone.ilike.%${pQuery}%`);
       } else if (oQuery) {
-        query = query.or(`order_number.ilike.%${oQuery}%,tracking_code.ilike.%${oQuery}%`);
+        query = query.ilike('tracking_code', `%${oQuery}%`);
       } else if (pQuery) {
-        query = query.or(`phone.ilike.%${pQuery}%,customer_phone.ilike.%${pQuery}%`);
+        query = query.ilike('phone', `%${pQuery}%`);
       }
 
       const { data, error } = await query.order('created_at', { ascending: false }).limit(1);
@@ -155,16 +183,16 @@ export function TrackPage() {
         const row = data[0] as any;
         setOrder({
           id: row.id,
-          orderNumber: row.order_number || row.tracking_code || 'ORD-001',
-          intlTrackingNumber: row.tracking_code || row.order_number,
+          orderNumber: row.tracking_code || 'ORD-001',
+          intlTrackingNumber: row.tracking_code || 'ORD-001',
           customerName: row.customer_name || 'عميل السوق الشامل',
-          customerPhone: row.phone || row.customer_phone || pQuery,
-          customerCity: row.city || row.customer_city || 'اليمن',
-          customerAddress: row.address || '',
-          storeName: row.store_name || row.store || 'المتجر الدولي',
-          productUrl: row.product_link || row.product_url,
+          customerPhone: row.phone || pQuery,
+          customerCity: 'اليمن',
+          customerAddress: '',
+          storeName: 'المتجر الدولي',
+          productUrl: row.product_link,
           productTitle: row.product_name || 'طلب وسيط شراء دولي',
-          quantity: row.quantity || 1,
+          quantity: 1,
           status: (row.status as OrderStatus) || 'new',
           createdAt: row.created_at || new Date().toISOString(),
           updatedAt: row.updated_at,
@@ -178,33 +206,18 @@ export function TrackPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [orderQuery, phoneQuery]);
 
-  // 1. جلب رقم وبيانات العميل تلقائياً والبحث الفوري
+  // الجلب التلقائي الفوري من جلسة المستخدم وقاعدة البيانات
   useEffect(() => {
-    let mounted = true;
+    let active = true;
 
-    async function loadCustomerAndAutoTrack() {
-      let userPhone = '';
-      let userTracking = '';
+    async function initUserTracking() {
+      let resolvedPhone = getInitialClientPhone();
+      const resolvedTracking = getInitialTrackingCode();
 
-      if (typeof window !== 'undefined') {
-        const params = new URLSearchParams(window.location.search);
-        userTracking = params.get('tracking') || params.get('order') || '';
-        userPhone = params.get('phone') || '';
-      }
-
-      if (!userPhone) {
-        try {
-          const storedUser = localStorage.getItem('alsouk_current_user');
-          if (storedUser) {
-            const parsed = JSON.parse(storedUser);
-            if (parsed.phone) userPhone = parsed.phone;
-          }
-        } catch {
-          // ignore
-        }
-
+      // فحص جلسة المستخدم في Supabase Auth إن لم يتوفر الرقم محلياً
+      if (!resolvedPhone) {
         try {
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
@@ -214,8 +227,12 @@ export function TrackPage() {
               .eq('id', user.id)
               .maybeSingle();
 
-            if (profile?.phone && !userPhone) {
-              userPhone = profile.phone;
+            if (profile?.phone && !profile.phone.includes('@')) {
+              resolvedPhone = profile.phone.trim();
+              if (active) {
+                setPhoneQuery(resolvedPhone);
+                localStorage.setItem('sc_phone', resolvedPhone);
+              }
             }
           }
         } catch {
@@ -223,29 +240,27 @@ export function TrackPage() {
         }
       }
 
-      if (!mounted) return;
+      if (!active) return;
 
-      if (userPhone) setPhoneQuery(userPhone);
-      if (userTracking) setOrderQuery(userTracking);
-
-      if (userTracking || userPhone) {
-        handleSearch(userTracking || undefined, userPhone || undefined);
+      // تشغيل البحث التلقائي إذا وجد رقم هاتف أو كود تتبع
+      if (resolvedTracking || resolvedPhone) {
+        handleSearch(resolvedTracking || undefined, resolvedPhone || undefined);
       }
     }
 
-    loadCustomerAndAutoTrack();
+    initUserTracking();
 
     return () => {
-      mounted = false;
+      active = false;
     };
-  }, []);
+  }, [handleSearch]);
 
-  // 2. الربط التلقائي المباشر (Realtime): تحديث المسار فوراً بمجرد أن يغير الأدمن الحالة
+  // الربط التلقائي المباشر (Realtime): تحديث المسار فوراً بمجرد أن يغير الأدمن الحالة
   useEffect(() => {
     if (!order?.id) return;
 
     const channel = supabase
-      .channel(`order-live-${order.id}`)
+      .channel(`customer-order-live-${order.id}`)
       .on(
         'postgres_changes',
         {
@@ -343,6 +358,7 @@ export function TrackPage() {
             }}
             className="space-y-4"
           >
+            {/* حقل كود التتبع */}
             <div className="space-y-1.5">
               <label className="block text-xs sm:text-sm font-black text-[#0F4C81]">
                 رقم الطلب أو الشحنة
@@ -361,6 +377,7 @@ export function TrackPage() {
               </div>
             </div>
 
+            {/* حقل رقم الهاتف - يظهر تلقائياً */}
             <div className="space-y-1.5">
               <label className="block text-xs sm:text-sm font-black text-[#0F4C81]">
                 رقم الهاتف أو الواتساب
@@ -387,7 +404,7 @@ export function TrackPage() {
                   <span>لم يتم العثور على شحنة مطابقة في قاعدة البيانات</span>
                 </p>
                 <div className="text-[11px] text-slate-600 text-center">
-                  يرجى التأكد من كتابة رقم الشحنة أو رقم الهاتف المسجل بشكل صحيح
+                  يرجى التأكد من كتابة كود التتبع أو رقم الهاتف المسجل بشكل صحيح
                 </div>
               </div>
             )}
@@ -512,7 +529,7 @@ export function TrackPage() {
                 </span>
               </div>
 
-              {/* المسار العمودي للمراحل السبع - متابعة حية للعميل */}
+              {/* المسار العمودي للمراحل السبع */}
               <div className="relative pr-2">
                 <div className="absolute right-[23px] top-4 bottom-4 w-1 bg-gradient-to-b from-[#0F4C81] via-[#0284C7] to-[#FF7A00] -z-0 rounded-full" />
                 <div className="space-y-6 relative z-10">
