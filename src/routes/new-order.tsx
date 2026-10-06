@@ -267,12 +267,10 @@ function NewOrderPage() {
           }
 
           // 2. فحص metadata إن لم يتوفر في profiles
-          const meta = user.user_metadata as Record<string, any> | undefined
-const metaName = meta?.['full_name']
-const metaPhone = user.phone || meta?.['phone']
-
-            const metaName = user.user_metadata?.full_name
-            const metaPhone = user.phone || user.user_metadata?.phone
+          if (active) {
+            const meta = user.user_metadata as Record<string, any> | undefined
+            const metaName = meta?.['full_name'] as string | undefined
+            const metaPhone = (user.phone || meta?.['phone']) as string | undefined
             if (metaName) setName((prev) => prev || metaName)
             if (metaPhone && !metaPhone.includes('@')) setPhone((prev) => prev || metaPhone)
           }
