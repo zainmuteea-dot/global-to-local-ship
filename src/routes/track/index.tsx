@@ -2,7 +2,6 @@ import { createFileRoute, Link } from '@tanstack/react-router';
 import React, { useState, useEffect } from 'react';
 import {
   Search,
-  Package,
   Plane,
   Truck,
   CheckCircle2,
@@ -127,7 +126,7 @@ export function TrackPage() {
     },
   ];
 
-  // دالة البحث التلقائي في قاعدة بيانات Supabase
+  // دالة البحث التلقائي في قاعدة البيانات
   const handleSearch = async (overrideOrder?: string, overridePhone?: string) => {
     const oQuery = (overrideOrder !== undefined ? overrideOrder : orderQuery).trim().toUpperCase();
     const pQuery = (overridePhone !== undefined ? overridePhone : phoneQuery).trim();
@@ -181,7 +180,7 @@ export function TrackPage() {
     }
   };
 
-  // جلب رقم وبيانات العميل المسجل تلقائياً والبحث الفوري عن شحنته
+  // 1. جلب رقم وبيانات العميل تلقائياً والبحث الفوري
   useEffect(() => {
     let mounted = true;
 
@@ -189,14 +188,12 @@ export function TrackPage() {
       let userPhone = '';
       let userTracking = '';
 
-      // 1. فحص معلمات الرابط أولاً
       if (typeof window !== 'undefined') {
         const params = new URLSearchParams(window.location.search);
         userTracking = params.get('tracking') || params.get('order') || '';
         userPhone = params.get('phone') || '';
       }
 
-      // 2. إذا لم يكن هناك هاتف بالرابط، جلبه من جلسة المستخدم أو التخزين المحلي
       if (!userPhone) {
         try {
           const storedUser = localStorage.getItem('alsouk_current_user');
@@ -228,14 +225,9 @@ export function TrackPage() {
 
       if (!mounted) return;
 
-      if (userPhone) {
-        setPhoneQuery(userPhone);
-      }
-      if (userTracking) {
-        setOrderQuery(userTracking);
-      }
+      if (userPhone) setPhoneQuery(userPhone);
+      if (userTracking) setOrderQuery(userTracking);
 
-      // 3. بحث تلقائي فوري في قاعدة البيانات
       if (userTracking || userPhone) {
         handleSearch(userTracking || undefined, userPhone || undefined);
       }
@@ -247,6 +239,41 @@ export function TrackPage() {
       mounted = false;
     };
   }, []);
+
+  // 2. الربط التلقائي المباشر (Realtime): تحديث المسار فوراً بمجرد أن يغير الأدمن الحالة
+  useEffect(() => {
+    if (!order?.id) return;
+
+    const channel = supabase
+      .channel(`order-live-${order.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'orders',
+          filter: `id=eq.${order.id}`,
+        },
+        (payload) => {
+          if (payload.new && (payload.new as any).status) {
+            setOrder((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    status: (payload.new as any).status as OrderStatus,
+                    updatedAt: (payload.new as any).updated_at,
+                  }
+                : null
+            );
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [order?.id]);
 
   const isStepActive = (step: (typeof trackingSteps)[0], currentStatus?: OrderStatus) => {
     if (!currentStatus) return false;
@@ -263,7 +290,7 @@ export function TrackPage() {
       className="min-h-screen bg-gradient-to-b from-[#F0F7FF] via-[#FAF9F6] to-[#FFF7ED] text-[#0A2540] font-sans selection:bg-[#0F4C81] selection:text-white pb-20"
       dir="rtl"
     >
-      {/* 1. الترويسة العلوية مع زر «لوحة حسابي» والشعار والرجوع */}
+      {/* الترويسة العلوية */}
       <header className="max-w-2xl mx-auto pt-6 pb-4 px-4 flex items-center justify-between">
         <Link
           to="/dashboard"
@@ -273,7 +300,6 @@ export function TrackPage() {
           <span>لوحة حسابي</span>
         </Link>
 
-        {/* الشعار في المنتصف */}
         <div className="text-center">
           <div className="flex items-center justify-center gap-1.5 font-black text-lg sm:text-xl tracking-tight">
             <span className="text-[#FF7A00]">SHOPPING</span>
@@ -284,7 +310,6 @@ export function TrackPage() {
           </p>
         </div>
 
-        {/* زر رجوع */}
         <Link
           to="/"
           className="px-3.5 py-2 rounded-2xl bg-white/90 hover:bg-sky-50 border-2 border-sky-100 hover:border-[#0F4C81] text-xs font-black text-[#0F4C81] transition-all flex items-center gap-1.5 shadow-xs active:scale-95"
@@ -295,7 +320,7 @@ export function TrackPage() {
       </header>
 
       <main className="max-w-xl mx-auto px-4 mt-2 space-y-6">
-        {/* ================================= البطاقة 1: استعلام وتتبع الشحنة ================================= */}
+        {/* البطاقة 1: استعلام وتتبع الشحنة */}
         <div className="bg-white/95 backdrop-blur-md border-2 border-sky-100 rounded-[32px] p-6 sm:p-8 shadow-[0_20px_50px_rgba(15,76,129,0.08)] ring-1 ring-sky-50 space-y-5">
           <div className="flex items-center justify-between pb-3 border-b-2 border-sky-100/80">
             <div className="flex items-center gap-2.5">
@@ -307,7 +332,7 @@ export function TrackPage() {
               </h2>
             </div>
             <span className="text-[11px] font-black text-[#EA580C] bg-orange-50 px-2.5 py-1 rounded-lg border border-orange-200">
-              تحديث مباشر ✨
+              تحديث مباشر تلقائي ✨
             </span>
           </div>
 
@@ -318,7 +343,6 @@ export function TrackPage() {
             }}
             className="space-y-4"
           >
-            {/* حقل رقم الشحنة */}
             <div className="space-y-1.5">
               <label className="block text-xs sm:text-sm font-black text-[#0F4C81]">
                 رقم الطلب أو الشحنة
@@ -337,7 +361,6 @@ export function TrackPage() {
               </div>
             </div>
 
-            {/* حقل رقم الهاتف يظهر تلقائياً للعميل المسجل */}
             <div className="space-y-1.5">
               <label className="block text-xs sm:text-sm font-black text-[#0F4C81]">
                 رقم الهاتف أو الواتساب
@@ -369,7 +392,6 @@ export function TrackPage() {
               </div>
             )}
 
-            {/* زر التتبع الأساسي */}
             <button
               type="submit"
               disabled={loading}
@@ -390,7 +412,7 @@ export function TrackPage() {
           </form>
         </div>
 
-        {/* رسائل التنبيه إن وُجدت */}
+        {/* رسائل التنبيه */}
         {errorMessage && (
           <div className="p-4 bg-rose-50 border-2 border-rose-300 rounded-2xl flex items-center justify-center gap-2 text-xs sm:text-sm font-black text-rose-900 shadow-md">
             <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
@@ -398,7 +420,7 @@ export function TrackPage() {
           </div>
         )}
 
-        {/* ================================= البطاقة 2: تفاصيل الشحنة واسم العميل بارزاً ================================= */}
+        {/* البطاقة 2: تفاصيل الشحنة */}
         {order && (
           <div className="space-y-6">
             <div className="bg-white/95 backdrop-blur-md border-2 border-sky-200 rounded-[32px] p-5 sm:p-7 shadow-[0_20px_50px_rgba(15,76,129,0.08)] space-y-4">
@@ -451,7 +473,7 @@ export function TrackPage() {
                 </div>
               </div>
 
-              {/* تفاصيل السلعة والمنشأ المعتمدة */}
+              {/* تفاصيل السلعة */}
               <div className="p-4 bg-sky-50/60 rounded-2xl border border-sky-200 space-y-1.5">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black text-[#0F4C81]">تفاصيل السلعة والمنشأ المعتمدة:</span>
@@ -474,7 +496,7 @@ export function TrackPage() {
               </div>
             </div>
 
-            {/* ================================= البطاقة 3: مسار الشحنة خطوة بخطوة 📍 ================================= */}
+            {/* البطاقة 3: مسار الشحنة خطوة بخطوة 📍 */}
             <div className="bg-white/95 backdrop-blur-md border-2 border-sky-100 rounded-[32px] p-5 sm:p-7 shadow-[0_20px_50px_rgba(15,76,129,0.08)] space-y-6">
               <div className="flex items-center justify-between border-b-2 border-sky-100 pb-4">
                 <div className="flex items-center gap-2">
@@ -490,7 +512,7 @@ export function TrackPage() {
                 </span>
               </div>
 
-              {/* المسار العمودي للمراحل السبع - عرض ومتابعة فقط للعميل */}
+              {/* المسار العمودي للمراحل السبع - متابعة حية للعميل */}
               <div className="relative pr-2">
                 <div className="absolute right-[23px] top-4 bottom-4 w-1 bg-gradient-to-b from-[#0F4C81] via-[#0284C7] to-[#FF7A00] -z-0 rounded-full" />
                 <div className="space-y-6 relative z-10">
@@ -506,7 +528,6 @@ export function TrackPage() {
                           active ? 'opacity-100' : 'opacity-60'
                         }`}
                       >
-                        {/* أيقونة المرحلة */}
                         <div
                           className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border-2 transition-all shadow-xs ${
                             current
