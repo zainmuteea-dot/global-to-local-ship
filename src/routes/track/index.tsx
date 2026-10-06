@@ -13,13 +13,10 @@ import {
   Building,
   Phone,
   User,
-  Printer,
   Sparkles,
   ArrowRight,
-  RotateCcw,
   Loader2,
   Check,
-  Send,
   LayoutDashboard
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -61,11 +58,9 @@ export function TrackPage() {
   const [order, setOrder] = useState<OrderItem | null>(null);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
-  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string>('');
 
-  // المراحل السبع المعتمدة مع نصوصها الدقيقة
+  // المراحل السبع المعتمدة لعرض مسار الشحنة للعميل
   const trackingSteps = [
     {
       id: 'step-1',
@@ -132,7 +127,7 @@ export function TrackPage() {
     },
   ];
 
-  // دالة البحث في قاعدة بيانات Supabase
+  // دالة البحث التلقائي في قاعدة بيانات Supabase
   const handleSearch = async (overrideOrder?: string, overridePhone?: string) => {
     const oQuery = (overrideOrder !== undefined ? overrideOrder : orderQuery).trim().toUpperCase();
     const pQuery = (overridePhone !== undefined ? overridePhone : phoneQuery).trim();
@@ -141,7 +136,6 @@ export function TrackPage() {
     setLoading(true);
     setHasSearched(true);
     setErrorMessage('');
-    setSuccessMessage('');
 
     try {
       let query = supabase.from('orders').select('*');
@@ -164,37 +158,20 @@ export function TrackPage() {
           id: row.id,
           orderNumber: row.order_number || row.tracking_code || 'ORD-001',
           intlTrackingNumber: row.tracking_code || row.order_number,
-          customerName: row.customer_name || 'محمد عبد الله باقصين',
-          customerPhone: row.phone || row.customer_phone || '',
-          customerCity: row.city || row.customer_city || 'صنعاء',
+          customerName: row.customer_name || 'عميل السوق الشامل',
+          customerPhone: row.phone || row.customer_phone || pQuery,
+          customerCity: row.city || row.customer_city || 'اليمن',
           customerAddress: row.address || '',
-          storeName: row.store_name || row.store || 'Amazon',
+          storeName: row.store_name || row.store || 'المتجر الدولي',
           productUrl: row.product_link || row.product_url,
-          productTitle: row.product_name || 'أجهزة إلكترونية (سماعات لاسلكية...)',
+          productTitle: row.product_name || 'طلب وسيط شراء دولي',
           quantity: row.quantity || 1,
           status: (row.status as OrderStatus) || 'new',
           createdAt: row.created_at || new Date().toISOString(),
           updatedAt: row.updated_at,
         });
       } else {
-        // شحنة تجريبية ذكية متطابقة مع الصورة إذا لم يُعثر على سجل بالقاعدة
-        if (oQuery === 'SQ-892411' || oQuery.includes('892411')) {
-          setOrder({
-            id: 'demo-892411',
-            orderNumber: 'SQ-892411',
-            intlTrackingNumber: 'SQ-892411',
-            customerName: 'محمد عبد الله باقصين',
-            customerPhone: '0501234567',
-            customerCity: 'صنعاء - حدة',
-            storeName: 'Amazon',
-            productTitle: 'أجهزة إلكترونية (سماعات لاسلكية...)',
-            productUrl: 'https://amazon.com/dp/B09VX63Q2R',
-            status: 'purchased',
-            createdAt: new Date().toISOString(),
-          });
-        } else {
-          setOrder(null);
-        }
+        setOrder(null);
       }
     } catch (err: any) {
       setErrorMessage(err.message || 'تعذر الاتصال بقاعدة البيانات');
@@ -204,58 +181,72 @@ export function TrackPage() {
     }
   };
 
-  // تعبئة وبحث تلقائي إذا وُجدت معلمات بالرابط
+  // جلب رقم وبيانات العميل المسجل تلقائياً والبحث الفوري عن شحنته
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const code = params.get('tracking') || params.get('order') || 'SQ-892411';
-      const ph = params.get('phone') || '';
-      if (code) {
-        setOrderQuery(code);
-        if (ph) setPhoneQuery(ph);
-        handleSearch(code, ph);
+    let mounted = true;
+
+    async function loadCustomerAndAutoTrack() {
+      let userPhone = '';
+      let userTracking = '';
+
+      // 1. فحص معلمات الرابط أولاً
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        userTracking = params.get('tracking') || params.get('order') || '';
+        userPhone = params.get('phone') || '';
+      }
+
+      // 2. إذا لم يكن هناك هاتف بالرابط، جلبه من جلسة المستخدم أو التخزين المحلي
+      if (!userPhone) {
+        try {
+          const storedUser = localStorage.getItem('alsouk_current_user');
+          if (storedUser) {
+            const parsed = JSON.parse(storedUser);
+            if (parsed.phone) userPhone = parsed.phone;
+          }
+        } catch {
+          // ignore
+        }
+
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('phone, full_name')
+              .eq('id', user.id)
+              .maybeSingle();
+
+            if (profile?.phone && !userPhone) {
+              userPhone = profile.phone;
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      if (!mounted) return;
+
+      if (userPhone) {
+        setPhoneQuery(userPhone);
+      }
+      if (userTracking) {
+        setOrderQuery(userTracking);
+      }
+
+      // 3. بحث تلقائي فوري في قاعدة البيانات
+      if (userTracking || userPhone) {
+        handleSearch(userTracking || undefined, userPhone || undefined);
       }
     }
+
+    loadCustomerAndAutoTrack();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
-
-  // تحديث المرحلة وحفظها مباشرة في Supabase
-  const handleUpdateStage = async (targetStatus: OrderStatus, stepTitle: string) => {
-    if (!order) return;
-    setUpdatingStatus(targetStatus);
-    setSuccessMessage('');
-    setErrorMessage('');
-
-    const now = new Date().toISOString();
-    try {
-      const { error } = await supabase
-        .from('orders')
-        .update({
-          status: targetStatus,
-          updated_at: now,
-        })
-        .eq('id', order.id);
-
-      if (error && !order.id.startsWith('demo-')) throw error;
-
-      setOrder((prev) => (prev ? { ...prev, status: targetStatus, updatedAt: now } : null));
-      setSuccessMessage(`تم تحديث وتثبيت حالة الشحنة في قاعدة البيانات إلى: [${stepTitle}] بنجاح! 🚀`);
-      setTimeout(() => setSuccessMessage(''), 5000);
-    } catch (err: any) {
-      setErrorMessage('حدث خطأ أثناء التحديث بالقاعدة: ' + (err.message || ''));
-    } finally {
-      setUpdatingStatus(null);
-    }
-  };
-
-  // إرسال إشعار فوري للعميل عبر الواتساب
-  const sendWhatsAppNotification = () => {
-    if (!order) return;
-    const phoneClean = order.customerPhone.replace(/[^0-9]/g, '');
-    const currentStepObj = trackingSteps.find((s) => s.targetStatus === order.status) || trackingSteps[0];
-    const message = `مرحباً بك أستاذ/ة ${order.customerName} 🌸\n\nتحديث جديد بشأن شحنتك رقم: ${order.intlTrackingNumber || order.orderNumber}\n📦 الحالة الحالية: *${currentStepObj.title}*\n📝 التفاصيل: ${currentStepObj.desc}\n🏪 المتجر: ${order.storeName || 'المتجر الدولي'}\n\nشكراً لاختياركم السوق الشامل - وسيطكم العالمي الموثوق ✨`;
-    const url = `https://wa.me/${phoneClean.startsWith('967') ? phoneClean : `967${phoneClean}`}?text=${encodeURIComponent(message)}`;
-    window.open(url, '_blank');
-  };
 
   const isStepActive = (step: (typeof trackingSteps)[0], currentStatus?: OrderStatus) => {
     if (!currentStatus) return false;
@@ -272,9 +263,8 @@ export function TrackPage() {
       className="min-h-screen bg-gradient-to-b from-[#F0F7FF] via-[#FAF9F6] to-[#FFF7ED] text-[#0A2540] font-sans selection:bg-[#0F4C81] selection:text-white pb-20"
       dir="rtl"
     >
-      {/* 1. الترويسة العلوية مع زر «لوحة حسابي» بدلاً من الأيقونات المحددة */}
+      {/* 1. الترويسة العلوية مع زر «لوحة حسابي» والشعار والرجوع */}
       <header className="max-w-2xl mx-auto pt-6 pb-4 px-4 flex items-center justify-between">
-        {/* زر لوحة حسابي في الزاوية اليسرى (مكان الدائرة الخضراء المحددة) */}
         <Link
           to="/dashboard"
           className="px-3.5 py-2 rounded-2xl bg-[#0F4C81] hover:bg-[#0A365C] text-white text-xs font-black transition-all flex items-center gap-1.5 shadow-md shadow-[#0F4C81]/20 active:scale-95"
@@ -341,13 +331,13 @@ export function TrackPage() {
                   type="text"
                   value={orderQuery}
                   onChange={(e) => setOrderQuery(e.target.value)}
-                  placeholder="SQ-892411"
+                  placeholder="أدخل كود التتبع أو رقم الطلب"
                   className="w-full py-3.5 pr-3 pl-4 bg-transparent text-[#0A2540] placeholder:text-slate-400 text-xs sm:text-sm font-mono font-bold focus:outline-none text-right"
                 />
               </div>
             </div>
 
-            {/* حقل رقم الهاتف */}
+            {/* حقل رقم الهاتف يظهر تلقائياً للعميل المسجل */}
             <div className="space-y-1.5">
               <label className="block text-xs sm:text-sm font-black text-[#0F4C81]">
                 رقم الهاتف أو الواتساب
@@ -360,32 +350,10 @@ export function TrackPage() {
                   type="text"
                   value={phoneQuery}
                   onChange={(e) => setPhoneQuery(e.target.value)}
-                  placeholder="0501234567"
+                  placeholder="رقم هاتفك المسجل"
                   className="w-full py-3.5 pr-3 pl-4 bg-transparent text-[#0A2540] placeholder:text-slate-400 text-xs sm:text-sm font-mono font-bold focus:outline-none text-right"
                   dir="ltr"
                 />
-              </div>
-            </div>
-
-            {/* الأرقام التجريبية السريعة للتتبع الفوري */}
-            <div className="pt-1">
-              <p className="text-[11px] font-bold text-slate-500 mb-1.5">
-                أرقام تجريبية سريعة للتتبع الفوري:
-              </p>
-              <div className="flex items-center gap-2 flex-wrap">
-                {['SQ-892411', 'SQ-892412', 'SQ-892413'].map((code) => (
-                  <button
-                    key={code}
-                    type="button"
-                    onClick={() => {
-                      setOrderQuery(code);
-                      handleSearch(code, phoneQuery);
-                    }}
-                    className="px-2.5 py-1 text-xs font-mono font-bold rounded-lg border border-sky-200 bg-sky-50 text-[#0F4C81] hover:bg-[#0F4C81] hover:text-white transition shadow-2xs cursor-pointer"
-                  >
-                    {code}
-                  </button>
-                ))}
               </div>
             </div>
 
@@ -396,7 +364,7 @@ export function TrackPage() {
                   <span>لم يتم العثور على شحنة مطابقة في قاعدة البيانات</span>
                 </p>
                 <div className="text-[11px] text-slate-600 text-center">
-                  يرجى التأكد من كتابة رقم الشحنة أو رقم الهاتف بشكل صحيح
+                  يرجى التأكد من كتابة رقم الشحنة أو رقم الهاتف المسجل بشكل صحيح
                 </div>
               </div>
             )}
@@ -422,13 +390,7 @@ export function TrackPage() {
           </form>
         </div>
 
-        {/* رسائل التنبيه والنجاح */}
-        {successMessage && (
-          <div className="p-4 bg-emerald-50 border-2 border-emerald-300 rounded-2xl flex items-center justify-center gap-2 text-xs sm:text-sm font-black text-emerald-900 shadow-md">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-            <span>{successMessage}</span>
-          </div>
-        )}
+        {/* رسائل التنبيه إن وُجدت */}
         {errorMessage && (
           <div className="p-4 bg-rose-50 border-2 border-rose-300 rounded-2xl flex items-center justify-center gap-2 text-xs sm:text-sm font-black text-rose-900 shadow-md">
             <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
@@ -466,7 +428,7 @@ export function TrackPage() {
                   <span className="text-[#0F4C81] block mb-1 font-bold">رقم الهاتف:</span>
                   <span className="font-mono font-bold text-slate-900 text-sm flex items-center gap-1.5" dir="ltr">
                     <Phone className="w-4 h-4 text-emerald-600" />
-                    {order.customerPhone || '0501234567'}
+                    {order.customerPhone || phoneQuery}
                   </span>
                 </div>
 
@@ -494,7 +456,7 @@ export function TrackPage() {
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black text-[#0F4C81]">تفاصيل السلعة والمنشأ المعتمدة:</span>
                   <span className="text-[10px] font-black bg-white text-[#EA580C] px-2 py-0.5 rounded border border-orange-200">
-                    {order.storeName || 'Amazon'}
+                    {order.storeName || 'المتجر الدولي'}
                   </span>
                 </div>
                 <p className="text-xs font-bold text-slate-800">{order.productTitle}</p>
@@ -509,27 +471,6 @@ export function TrackPage() {
                     <ExternalLink className="w-3 h-3 shrink-0" />
                   </a>
                 )}
-              </div>
-
-              {/* أزرار الإجراءات: إشعار الواتساب والطباعة */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={sendWhatsAppNotification}
-                  className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black transition flex items-center justify-center gap-2 shadow-sm cursor-pointer"
-                >
-                  <Send className="w-4 h-4" />
-                  <span>إشعار العميل عبر الواتساب 📱</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => window.print()}
-                  className="w-full py-3 px-4 rounded-xl bg-white hover:bg-slate-50 border-2 border-slate-200 text-slate-700 text-xs font-black transition flex items-center justify-center gap-2 shadow-xs cursor-pointer"
-                >
-                  <Printer className="w-4 h-4 text-[#0F4C81]" />
-                  <span>طباعة سند الشحنة والإيصال الرسمي 🖨️</span>
-                </button>
               </div>
             </div>
 
@@ -549,12 +490,7 @@ export function TrackPage() {
                 </span>
               </div>
 
-              <div className="p-3 bg-gradient-to-r from-sky-50 to-orange-50 rounded-2xl border border-sky-200 text-xs font-bold text-[#0F4C81] flex items-center gap-2">
-                <span className="text-base">💡</span>
-                <span>انقر على زر أي مرحلة من المسار لتحديث حالتها وتثبيتها فوراً في قاعدة بيانات الطلب!</span>
-              </div>
-
-              {/* المسار العمودي للمراحل السبع */}
+              {/* المسار العمودي للمراحل السبع - عرض ومتابعة فقط للعميل */}
               <div className="relative pr-2">
                 <div className="absolute right-[23px] top-4 bottom-4 w-1 bg-gradient-to-b from-[#0F4C81] via-[#0284C7] to-[#FF7A00] -z-0 rounded-full" />
                 <div className="space-y-6 relative z-10">
@@ -562,34 +498,26 @@ export function TrackPage() {
                     const active = isStepActive(step, order.status);
                     const current = isStepCurrent(step, order.status);
                     const StepIcon = step.icon;
-                    const isUpdatingThis = updatingStatus === step.targetStatus;
 
                     return (
                       <div
                         key={step.id}
                         className={`flex items-start gap-4 transition-all duration-300 ${
-                          active ? 'opacity-100' : 'opacity-70 hover:opacity-100'
+                          active ? 'opacity-100' : 'opacity-60'
                         }`}
                       >
-                        <button
-                          type="button"
-                          disabled={updatingStatus !== null}
-                          onClick={() => handleUpdateStage(step.targetStatus, step.title)}
-                          className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border-2 transition-all cursor-pointer shadow-xs active:scale-95 ${
+                        {/* أيقونة المرحلة */}
+                        <div
+                          className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border-2 transition-all shadow-xs ${
                             current
                               ? 'bg-gradient-to-br from-[#FF7A00] to-[#EA580C] border-white text-white shadow-lg shadow-orange-500/40 ring-4 ring-orange-200 scale-105'
                               : active
-                              ? 'bg-gradient-to-br from-[#0F4C81] to-[#0284C7] border-white text-white hover:scale-105'
-                              : 'bg-white border-slate-300 text-slate-400 hover:border-[#0F4C81] hover:text-[#0F4C81] hover:bg-sky-50'
+                              ? 'bg-gradient-to-br from-[#0F4C81] to-[#0284C7] border-white text-white'
+                              : 'bg-white border-slate-300 text-slate-400'
                           }`}
-                          title={`انقر لتعيين حالة الشحنة إلى (${step.title}) في قاعدة البيانات`}
                         >
-                          {isUpdatingThis ? (
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                          ) : (
-                            <StepIcon className="w-5 h-5" />
-                          )}
-                        </button>
+                          <StepIcon className="w-5 h-5" />
+                        </div>
 
                         <div className="flex-1 pt-1 text-right">
                           <div className="flex items-center gap-2 flex-wrap">
@@ -620,33 +548,12 @@ export function TrackPage() {
                             {step.desc}
                           </p>
 
-                          <div className="mt-2.5 flex items-center gap-2 flex-wrap">
-                            {current ? (
-                              <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-orange-50 border border-orange-200 text-xs font-black text-[#EA580C] shadow-2xs">
-                                <Check className="w-3.5 h-3.5 text-[#EA580C]" />
-                                <span>الحالة المسجلة حالياً بالشحنة</span>
-                              </div>
-                            ) : (
-                              <button
-                                type="button"
-                                disabled={updatingStatus !== null}
-                                onClick={() => handleUpdateStage(step.targetStatus, step.title)}
-                                className="px-3.5 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 border disabled:opacity-60 bg-white hover:bg-sky-50 text-[#0F4C81] border-sky-200 hover:border-[#0F4C81]"
-                              >
-                                {isUpdatingThis ? (
-                                  <>
-                                    <Loader2 className="w-3.5 h-3.5 animate-spin text-[#0F4C81]" />
-                                    <span>جاري الحفظ بالقاعدة...</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <RotateCcw className="w-3.5 h-3.5 text-[#FF7A00]" />
-                                    <span>تفعيل ونقل الشحنة لهذه المرحلة (حفظ بالقاعدة) 💾</span>
-                                  </>
-                                )}
-                              </button>
-                            )}
-                          </div>
+                          {current && (
+                            <div className="mt-2.5 flex items-center gap-1.5 px-3 py-1 rounded-xl bg-orange-50 border border-orange-200 text-xs font-black text-[#EA580C] w-fit shadow-2xs">
+                              <Check className="w-3.5 h-3.5 text-[#EA580C]" />
+                              <span>الحالة المسجلة حالياً بالشحنة</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
@@ -662,14 +569,5 @@ export function TrackPage() {
 }
 
 export const Route = createFileRoute('/track/')({
-  head: () => ({
-    meta: [
-      { title: 'استعلام وتتبع الشحنة — السوق الشامل' },
-      { name: 'description', content: 'تتبع مسار شحنتك المباشر وتحديث حالتها في قاعدة البيانات خطوة بخطوة.' },
-    ],
-  }),
   component: TrackPage,
 });
-
-export default TrackPage;
- 
