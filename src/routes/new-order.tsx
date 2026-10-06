@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState, useRef } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 
 export const Route = createFileRoute('/new-order')({
-  validateSearch: (search: Record<string, unknown>): { name?: string; phone?: string } => ({
+  validateSearch: (search: Record<string, unknown>): { name?: string | undefined; phone?: string | undefined } => ({
     name: typeof search['name'] === 'string' ? (search['name'] as string) : undefined,
     phone: typeof search['phone'] === 'string' ? (search['phone'] as string) : undefined,
   }),
@@ -377,7 +377,7 @@ function NewOrderPage() {
           user_id: currentUserId,
           title: `تم استلام طلبك برقم ${code}`,
           body: `طلبك من ${storeLabel} قيد المراجعة والتجهيز وسيتم إفادتك بالسعر النهائي والشحن.`,
-        }).then(() => {}).catch(() => {})
+        }).then(() => {}, () => {})
       }
 
       // 3. تحديث الذاكرة المحلية لتنعكس المؤشرات فوراً في /dashboard

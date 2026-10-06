@@ -130,8 +130,8 @@ export function LoginPage() {
           .eq("id", user.id)
           .maybeSingle();
 
-        const resolvedName = profile?.full_name || user.user_metadata?.full_name || fullName || "";
-        let resolvedPhone = profile?.phone || user.user_metadata?.phone || "";
+        const resolvedName = profile?.full_name || user.user_metadata?.['full_name'] || fullName || "";
+        let resolvedPhone = profile?.phone || user.user_metadata?.['phone'] || "";
         if (!resolvedPhone && !isEmail) {
           resolvedPhone = inputVal;
         }

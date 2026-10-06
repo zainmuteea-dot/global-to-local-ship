@@ -325,7 +325,7 @@ function PayPage() {
           const notesText = dbOrder.notes || ''
           const priceMatch = notesText.match(/السعر المعلن:\s*([\d.]+)\s*([^|]*)/)
           if (priceMatch) {
-            const rawPrice = parseFloat(priceMatch[1]) || 0
+            const rawPrice = parseFloat(priceMatch[1] ?? '0') || 0
             const rawCur = priceMatch[2]?.trim() || ''
 
             if (rawCur.includes('سعودي') || rawCur.includes('ر.س')) {

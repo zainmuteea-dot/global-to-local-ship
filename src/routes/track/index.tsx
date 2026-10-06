@@ -158,7 +158,7 @@ export function LiveTrackingAdminRoute() {
         }));
         setOrders(formatted);
         if (!selectedOrderId && formatted.length > 0) {
-          setSelectedOrderId(formatted[0].id);
+          setSelectedOrderId(formatted[0]?.id ?? '');
         }
       } else {
         // بيانات احتياطية ذكية في حال كانت الجداول خالية
@@ -201,7 +201,7 @@ export function LiveTrackingAdminRoute() {
           },
         ];
         setOrders(fallback);
-        setSelectedOrderId(fallback[0].id);
+        setSelectedOrderId(fallback[0]?.id ?? '');
       }
     } catch (err: any) {
       console.error('Error fetching orders:', err);
@@ -215,7 +215,7 @@ export function LiveTrackingAdminRoute() {
   }, []);
 
   // حساب مؤشرات الإحصائيات
-  const todayDateString = new Date().toISOString().split('T')[0];
+  const todayDateString = new Date().toISOString().split('T')[0] ?? '';
   const todayOrdersCount = orders.filter((o) => o.createdAt.startsWith(todayDateString)).length;
   const readyOrdersCount = orders.filter((o) => ['local_warehouse', 'out_for_delivery', 'delivered'].includes(o.status)).length;
   const activeOrdersCount = orders.filter((o) => o.status !== 'delivered' && o.status !== 'cancelled').length;
