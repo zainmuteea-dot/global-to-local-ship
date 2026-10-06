@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState, useRef } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 
 export const Route = createFileRoute('/new-order')({
-  validateSearch: (search: Record<string, unknown>): { name?: string; phone?: string } => ({
+  validateSearch: (search: Record<string, unknown>): { name?: string | undefined; phone?: string | undefined } => ({
     name: typeof search['name'] === 'string' ? (search['name'] as string) : undefined,
     phone: typeof search['phone'] === 'string' ? (search['phone'] as string) : undefined,
   }),
@@ -267,12 +267,10 @@ function NewOrderPage() {
           }
 
           // 2. فحص metadata إن لم يتوفر في profiles
-          const meta = user.user_metadata as Record<string, any> | undefined
-const metaName = meta?.['full_name']
-const metaPhone = user.phone || meta?.['phone']
-
-            const metaName = user.user_metadata?.full_name
-            const metaPhone = user.phone || user.user_metadata?.phone
+          if (active) {
+            const meta = user.user_metadata as Record<string, any> | undefined
+            const metaName = meta?.['full_name'] as string | undefined
+            const metaPhone = (user.phone || meta?.['phone']) as string | undefined
             if (metaName) setName((prev) => prev || metaName)
             if (metaPhone && !metaPhone.includes('@')) setPhone((prev) => prev || metaPhone)
           }
@@ -379,7 +377,7 @@ const metaPhone = user.phone || meta?.['phone']
           user_id: currentUserId,
           title: `تم استلام طلبك برقم ${code}`,
           body: `طلبك من ${storeLabel} قيد المراجعة والتجهيز وسيتم إفادتك بالسعر النهائي والشحن.`,
-        }).then(() => {}).catch(() => {})
+        }).then(() => {}, () => {})
       }
 
       // 3. تحديث الذاكرة المحلية لتنعكس المؤشرات فوراً في /dashboard

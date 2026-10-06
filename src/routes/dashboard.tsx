@@ -199,13 +199,13 @@ export default function DashboardPage() {
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 overflow-hidden flex-1">
             <span className="shrink-0 bg-[#EA580C] text-white text-[10px] font-black px-2 py-0.5 rounded-full">
-              {tickerItems[currentTicker].tag}
+              {tickerItems[currentTicker]?.tag}
             </span>
             <Link
-              to={tickerItems[currentTicker].link}
+              to={tickerItems[currentTicker]?.link ?? '/dashboard'}
               className="truncate hover:text-white transition font-medium"
             >
-              {tickerItems[currentTicker].text}
+              {tickerItems[currentTicker]?.text}
             </Link>
           </div>
 
