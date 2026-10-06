@@ -3,12 +3,13 @@ import { useEffect, useMemo, useState, useRef } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 
 export const Route = createFileRoute('/new-order')({
-  validateSearch: (search: Record<string, unknown>) => ({
-    name: typeof search.name === 'string' ? search.name : '',
-    phone: typeof search.phone === 'string' ? search.phone : '',
+  validateSearch: (search: Record<string, unknown>): { name?: string; phone?: string } => ({
+    name: typeof search['name'] === 'string' ? (search['name'] as string) : undefined,
+    phone: typeof search['phone'] === 'string' ? (search['phone'] as string) : undefined,
   }),
   component: NewOrderPage,
 })
+
 
 /* ===================== Styles ===================== */
 const CSS = `
