@@ -196,19 +196,19 @@ function LiveTrackingAdminRoute() {
         .order('created_at', { ascending: false });
 
       if (!error && data) {
-        const mapped: Shipment[] = (data as Record<string, unknown>[]).map((item) => ({
-          id: String(item.id),
-          trackingCode: (item.tracking_code as string) || `TRK-${String(item.id).slice(0, 6)}`,
-          customerName: (item.customer_name as string) || 'عميل مسجل',
-          customerPhone: (item.phone as string) || '',
-          productName: (item.product_name as string) || 'شحنة وساطة',
-          productLink: (item.product_link as string) || null,
-          storeName: detectStore(item.product_link as string),
-          city: (item.notes as string) || 'صنعاء',
-          status: (item.status as string) || 'new',
-          userId: (item.user_id as string) || null,
-          createdAt: (item.created_at as string) || new Date().toISOString(),
-          updatedAt: (item.updated_at as string) || undefined,
+        const mapped: Shipment[] = (data as any[]).map((item: any) => ({
+          id: String(item['id']),
+          trackingCode: item['tracking_code'] || `TRK-${String(item['id']).slice(0, 6)}`,
+          customerName: item['customer_name'] || 'عميل مسجل',
+          customerPhone: item['phone'] || '',
+          productName: item['product_name'] || 'شحنة وساطة',
+          productLink: item['product_link'] || null,
+          storeName: detectStore(item['product_link']),
+          city: item['notes'] || 'صنعاء',
+          status: item['status'] || 'new',
+          userId: item['user_id'] || null,
+          createdAt: item['created_at'] || new Date().toISOString(),
+          updatedAt: item['updated_at'] || undefined,
         }));
         setShipments(mapped);
       }
@@ -497,8 +497,8 @@ function LiveTrackingAdminRoute() {
                     <div className="text-left">
                       <p className="text-[10px] font-bold text-slate-400 mb-1">المرحلة الحالية</p>
                       <p className="text-xs font-black text-[#0F4C81] bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-xl">
-                        {currentIndex >= 0 && currentIndex < STAGES.length
-                          ? `${STAGES[currentIndex].stepNumber}. ${STAGES[currentIndex].title}`
+                        {currentStage
+                          ? `${currentStage.stepNumber}. ${currentStage.title}`
                           : 'بانتظار التسجيل'}
                       </p>
                     </div>
