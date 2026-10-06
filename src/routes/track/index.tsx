@@ -150,7 +150,8 @@ export function CustomerTrackingRoute() {
             updatedAt: item.updated_at,
           }));
           setOrders(mapped);
-          setSelectedOrder(mapped[0]);
+          setSelectedOrder(mapped[0] ?? null);
+
         }
       } catch (err) {
         console.error('Error fetching customer tracking:', err);
@@ -193,7 +194,8 @@ export function CustomerTrackingRoute() {
           createdAt: item.created_at,
           updatedAt: item.updated_at,
         }));
-        setOrders(mapped);
+        setSelectedOrder(mapped[0] ?? null);
+
         setSelectedOrder(mapped[0]);
       } else {
         setSearchNotFound(true);
