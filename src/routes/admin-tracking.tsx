@@ -459,6 +459,7 @@ function LiveTrackingAdminRoute() {
             {filtered.map((shipment) => {
               const currentIndex = stageIndexFor(shipment.status);
               const isCancelled = normalizeStatus(shipment.status) === 'cancelled';
+  const currentStage = STAGES.find((s) => s.code === normalizeStatus(shipment.status));
 
               return (
                 <div key={shipment.id} className="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-200">
