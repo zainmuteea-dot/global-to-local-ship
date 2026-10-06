@@ -16,6 +16,7 @@ import { Route as AccountsRouteImport } from './routes/accounts'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AdminClientsRouteImport } from './routes/admin-clients'
 import { Route as AdminStepsRouteImport } from './routes/admin-steps'
+import { Route as AdminTrackingRouteImport } from './routes/admin-tracking'
 import { Route as ClientDailyRouteImport } from './routes/client-daily'
 import { Route as ClientReportsRouteImport } from './routes/client-reports'
 import { Route as CustomersRouteImport } from './routes/customers'
@@ -84,6 +85,11 @@ const AdminClientsRoute = AdminClientsRouteImport.update({
 const AdminStepsRoute = AdminStepsRouteImport.update({
   id: '/admin-steps',
   path: '/admin-steps',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminTrackingRoute = AdminTrackingRouteImport.update({
+  id: '/admin-tracking',
+  path: '/admin-tracking',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ClientDailyRoute = ClientDailyRouteImport.update({
@@ -265,6 +271,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/admin-clients': typeof AdminClientsRoute
   '/admin-steps': typeof AdminStepsRoute
+  '/admin-tracking': typeof AdminTrackingRoute
   '/client-daily': typeof ClientDailyRoute
   '/client-reports': typeof ClientReportsRoute
   '/customers': typeof CustomersRoute
@@ -308,6 +315,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/admin-clients': typeof AdminClientsRoute
   '/admin-steps': typeof AdminStepsRoute
+  '/admin-tracking': typeof AdminTrackingRoute
   '/client-daily': typeof ClientDailyRoute
   '/client-reports': typeof ClientReportsRoute
   '/customers': typeof CustomersRoute
@@ -352,6 +360,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/admin-clients': typeof AdminClientsRoute
   '/admin-steps': typeof AdminStepsRoute
+  '/admin-tracking': typeof AdminTrackingRoute
   '/client-daily': typeof ClientDailyRoute
   '/client-reports': typeof ClientReportsRoute
   '/customers': typeof CustomersRoute
@@ -397,6 +406,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/admin-clients'
     | '/admin-steps'
+    | '/admin-tracking'
     | '/client-daily'
     | '/client-reports'
     | '/customers'
@@ -440,6 +450,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/admin-clients'
     | '/admin-steps'
+    | '/admin-tracking'
     | '/client-daily'
     | '/client-reports'
     | '/customers'
@@ -483,6 +494,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/admin-clients'
     | '/admin-steps'
+    | '/admin-tracking'
     | '/client-daily'
     | '/client-reports'
     | '/customers'
@@ -527,6 +539,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   AdminClientsRoute: typeof AdminClientsRoute
   AdminStepsRoute: typeof AdminStepsRoute
+  AdminTrackingRoute: typeof AdminTrackingRoute
   ClientDailyRoute: typeof ClientDailyRoute
   ClientReportsRoute: typeof ClientReportsRoute
   CustomersRoute: typeof CustomersRoute
@@ -612,6 +625,13 @@ declare module '@tanstack/react-router' {
       path: '/admin-steps'
       fullPath: '/admin-steps'
       preLoaderRoute: typeof AdminStepsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin-tracking': {
+      id: '/admin-tracking'
+      path: '/admin-tracking'
+      fullPath: '/admin-tracking'
+      preLoaderRoute: typeof AdminTrackingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/client-daily': {
@@ -863,6 +883,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   AdminClientsRoute: AdminClientsRoute,
   AdminStepsRoute: AdminStepsRoute,
+  AdminTrackingRoute: AdminTrackingRoute,
   ClientDailyRoute: ClientDailyRoute,
   ClientReportsRoute: ClientReportsRoute,
   CustomersRoute: CustomersRoute,
