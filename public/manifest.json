@@ -1,15 +1,43 @@
 {
-  "name": "السوق الشامل",
+  "id": "/",
+  "name": "السوق الشامل | AL SHAMEL SHOPPING",
   "short_name": "السوق الشامل",
+  "description": "وسيطكم العالمي للتسوق من TEMU و SHEIN و Amazon و AliExpress مع التوصيل لباب البيت في اليمن - تسوق عالمياً واستلم محلياً",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#fef6ee",
+  "background_color": "#ffffff",
   "theme_color": "#8b4a2e",
+  "orientation": "any",
+  "scope": "/",
+  "lang": "ar",
+  "dir": "rtl",
   "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    },
     {
       "src": "https://cdn-icons-png.flaticon.com/512/3081/3081559.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "https://alsouq-alshamel-cgvg3b3bt-zain-muteea.vercel.app/og-image.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "الصفحة الرئيسية للسوق الشامل"
+    },
+    {
+      "src": "https://alsouq-alshamel-cgvg3b3bt-zain-muteea.vercel.app/og-image.png",
+      "sizes": "720x1280",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "الصفحة الرئيسية للسوق الشامل"
     }
   ]
 }
