@@ -86,21 +86,21 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:site", content: "@Lovable" },
       { name: "theme-color", content: "#8b4a2e" },
     ],
-    links: [
-
-      {
-        rel: "stylesheet",
-        href: appCss,
-      },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
- { rel: "manifest", href: "/manifest.json" },   <- جديد
- { rel: "apple-touch-icon", href: "https://cdn..." }, <- جديد
- { rel: "preconnect", href: "https://fonts.googleapis.com" },
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800;900&family=Tajawal:wght@400;500;700;800&display=swap",
-      },
-    ],
-  }),
+      links: [
+    {
+      rel: "stylesheet",
+      href: appCss,
+    },
+    { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+    { rel: "manifest", href: "/manifest.json" },
+    { rel: "apple-touch-icon", href: "https://cdn-icons-png.flaticon.com/512/3081/3081559.png" },
+    { rel: "preconnect", href: "https://fonts.googleapis.com" },
+    { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" as const },
+    {
+      rel: "stylesheet",
+      href: "https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800;900&family=Tajawal:wght@400;500;700;800&display=swap",
+    },
+  ],
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
