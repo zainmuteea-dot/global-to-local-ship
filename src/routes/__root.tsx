@@ -82,18 +82,20 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:title", content: "السوق الشامل | AL SHAMEL SHOPPING" },
       { property: "og:description", content: "تسوق عالمياً واستلم محلياً — وسيط شراء يمني موثوق" },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
+            { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "theme-color", content: "#8b4a2e" },
     ],
     links: [
+
       {
         rel: "stylesheet",
         href: appCss,
       },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      {
+ { rel: "manifest", href: "/manifest.json" },   <- جديد
+ { rel: "apple-touch-icon", href: "https://cdn..." }, <- جديد
+ { rel: "preconnect", href: "https://fonts.googleapis.com" },
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800;900&family=Tajawal:wght@400;500;700;800&display=swap",
       },
