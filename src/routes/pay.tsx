@@ -86,22 +86,104 @@ const CSS = `
 .stat.total::after{background:var(--blue-600)}
 .stat.paid::after{background:var(--green)}
 .stat.rest::after{background:var(--red)}
-/* شبكة اختيار المحفظة بالصور */
-.pay-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:4px}
-.wbtn{position:relative;display:flex;flex-direction:column;align-items:center;gap:7px;
-  background:#fff;border:1.6px solid var(--line);border-radius:15px;padding:12px 6px 10px;
-  cursor:pointer;font-family:inherit;transition:.18s;outline:none}
-.wbtn:hover{transform:translateY(-2px);box-shadow:0 10px 20px -12px rgba(0,0,0,.28)}
-.wbtn .wchip{width:50px;height:50px;border-radius:14px;display:grid;place-items:center;overflow:hidden;
-  background:#fff;box-shadow:0 2px 8px -3px rgba(0,0,0,.25);border:1px solid #f0f0f0}
-.wbtn .wchip svg{width:32px;height:32px}
-.wbtn .wname{font-size:12px;font-weight:800;color:var(--ink);text-align:center}
-.wbtn.active{border-color:transparent;color:#fff;box-shadow:0 12px 24px -12px rgba(0,0,0,.4)}
-.wbtn.active .wname{color:#fff}
-.wbtn .tick{position:absolute;inset-inline-start:7px;top:7px;width:20px;height:20px;border-radius:50%;
-  background:#fff;display:none;align-items:center;justify-content:center;color:var(--green);box-shadow:0 2px 6px rgba(0,0,0,.2)}
+/* قائمة طرق الدفع: عمودية كما في الشكل المرجعي، ومتجاوبة مع الجوال */
+.pay-grid{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  width:100%;
+  margin-top:4px;
+  padding:7px;
+  background:#fffdfa;
+  border:1px solid #eee1c2;
+  border-radius:18px;
+}
+.wbtn{
+  position:relative;
+  display:flex;
+  flex-direction:row;
+  direction:rtl;
+  align-items:center;
+  justify-content:flex-start;
+  gap:12px;
+  width:100%;
+  min-height:54px;
+  padding:7px 9px;
+  background:#fff;
+  border:1px solid transparent;
+  border-radius:13px;
+  cursor:pointer;
+  font-family:inherit;
+  text-align:right;
+  transition:background .18s,border-color .18s,box-shadow .18s;
+  -webkit-tap-highlight-color:transparent;
+}
+.wbtn:hover{background:#fffaf0;border-color:#efe2c6}
+.wbtn:focus{outline:none}
+.wbtn:focus-visible{
+  outline:3px solid #2563eb;
+  outline-offset:2px;
+  box-shadow:0 0 0 5px rgba(37,99,235,.16);
+  z-index:1;
+}
+.wbtn .wchip{
+  display:grid;
+  place-items:center;
+  flex:0 0 38px;
+  width:38px;
+  height:38px;
+  overflow:hidden;
+  background:#fff;
+  border:1px solid #f0ece5;
+  border-radius:11px;
+  box-shadow:0 2px 8px -3px rgba(0,0,0,.18);
+}
+.wbtn .wchip svg{width:28px;height:28px}
+.wbtn .wname{
+  min-width:0;
+  color:#46382b;
+  font-size:13px;
+  font-weight:800;
+  text-align:right;
+  overflow-wrap:anywhere;
+}
+.wbtn.active{
+  color:#46382b;
+  background:#fff8e8;
+  border-color:#e6c76e;
+  box-shadow:0 2px 8px rgba(132,95,27,.08);
+}
+.wbtn.active .wname{color:#46382b}
+.wbtn .tick{
+  position:absolute;
+  top:50%;
+  inset-inline-start:10px;
+  display:none;
+  width:18px;
+  height:18px;
+  align-items:center;
+  justify-content:center;
+  color:#198754;
+  background:#fff;
+  border-radius:50%;
+  box-shadow:0 1px 5px rgba(0,0,0,.12);
+  transform:translateY(-50%);
+}
 .wbtn.active .tick{display:flex}
-@media(max-width:380px){.pay-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:420px){
+  .pay-root{padding:14px 10px 36px}
+  .pay-card{padding:14px}
+  .pay-grid{gap:4px;padding:6px}
+  .wbtn{min-height:52px;gap:10px;padding:6px 8px}
+  .wbtn .wname{font-size:12px}
+  .pay-acc{padding:13px}
+  .pay-accnum{padding:11px}
+  .pay-accnum .name-val{font-size:14px;overflow-wrap:anywhere}
+  .pay-accnum .num-val{font-size:20px}
+}
+@media(prefers-reduced-motion:reduce){
+  .wbtn{transition:none}
+}
 /* account box */
 .pay-acc{margin-top:16px;border-radius:16px;padding:16px;color:#fff;position:relative;overflow:hidden;
   box-shadow:0 12px 26px -12px rgba(0,0,0,.4);animation:slideUp .35s ease}
@@ -541,7 +623,7 @@ function PayPage() {
                   role="option"
                   aria-selected={active}
                   className={'wbtn' + (active ? ' active' : '')}
-                  style={active ? { background: `linear-gradient(140deg, ${w.color}, ${w.color}cc)` } : undefined}
+                  style={active ? { background: '#fff8e8', borderColor: '#e6c76e' } : undefined}
                   onClick={() => { setWalletKey(w.key); setCopied(false) }}
                 >
                   <span className="tick"><CheckIc /></span>
