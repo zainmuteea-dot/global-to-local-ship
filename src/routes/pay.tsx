@@ -213,6 +213,10 @@ const CSS = `
 .pay-primary{color:#fff;background:linear-gradient(135deg,var(--green),#15803d);box-shadow:0 10px 24px -8px rgba(26,162,96,.5)}
 .pay-primary:hover{transform:translateY(-2px)}
 .pay-primary:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.pay-btn:focus-visible,.pay-arrow:focus-visible,.pay-wait-btn:focus-visible,
+.pay-accnum .cp:focus-visible,.upload-box:focus-visible,.upload-remove:focus-visible{
+  outline:3px solid #2563eb;outline-offset:3px;box-shadow:0 0 0 5px rgba(37,99,235,.16)
+}
 `
 
 /* ===================== Icons ===================== */
@@ -714,11 +718,19 @@ function PayPage() {
           <button 
             className="pay-btn pay-primary" 
             type="button" 
-            disabled={!wallet}
+            disabled={!wallet || notifying || isNotified}
+            aria-live="polite"
+            aria-busy={notifying}
             onClick={handleNotifyAdmin}
           >
-            <CheckIc />
-            <span>{isNotified ? 'تم إشعار الإدارة بالإيداع بنجاح ✓' : 'لقد أودعت المبلغ — إشعار الإدارة الآن'}</span>
+            {isNotified ? <CheckIc /> : null}
+            <span>
+              {notifying
+                ? 'جارٍ إرسال إشعار الدفع للإدارة...'
+                : isNotified
+                  ? 'تم إرسال إشعار الدفع للإدارة بنجاح ✓'
+                  : 'لقد أودعت المبلغ — إشعار الإدارة الآن'}
+            </span>
           </button>
         </section>
 
