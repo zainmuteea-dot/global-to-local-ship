@@ -44,6 +44,67 @@ import { QuickScanModal } from "@/components/admin/QuickScanModal";
 import { PrintReceiptModal } from "@/components/admin/PrintReceiptModal";
 import { INITIAL_SEED_ORDERS } from "@/components/admin/seed-data";
 import type { OrderItem, OrderStatus } from "@/components/admin/types";
+function AdminRouteError({ error }: { error: unknown }) {
+  const message =
+    error instanceof Error ? error.message : String(error);
+
+  return (
+    <main
+      dir="rtl"
+      style={{
+        minHeight: "100vh",
+        display: "grid",
+        placeItems: "center",
+        padding: 24,
+        background: "#f8fafc",
+        fontFamily: "sans-serif",
+      }}
+    >
+      <section
+        role="alert"
+        style={{
+          width: "min(100%, 680px)",
+          padding: 24,
+          border: "1px solid #fecaca",
+          borderRadius: 16,
+          background: "#fff",
+          color: "#7f1d1d",
+        }}
+      >
+        <h1>تعذّر تحميل لوحة الإدارة</h1>
+        <p>انسخ رسالة الخطأ أدناه لمعرفة السبب:</p>
+
+        <pre
+          dir="ltr"
+          style={{
+            whiteSpace: "pre-wrap",
+            overflowWrap: "anywhere",
+            padding: 12,
+            borderRadius: 8,
+            background: "#fef2f2",
+          }}
+        >
+          {message}
+        </pre>
+
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          style={{
+            padding: "10px 16px",
+            border: 0,
+            borderRadius: 8,
+            background: "#7f1d1d",
+            color: "#fff",
+            cursor: "pointer",
+          }}
+        >
+          إعادة تحميل الصفحة
+        </button>
+      </section>
+    </main>
+  );
+}
 
 export const Route = createFileRoute("/admin")({
   component: AdminOperationsPage,
