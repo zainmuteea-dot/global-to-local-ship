@@ -1,9 +1,12 @@
-# Routes
-
-TanStack Start uses **file-based routing**. Every `.tsx` file in this directory
-defines a route. Do **not** create `src/pages/`, `src/routes/_app/index.tsx`, or
-`app/layout.tsx` — those are Next.js / Remix conventions. The only root layout
-is `src/routes/__root.tsx`.
+{
+  links: [
+    { rel: "manifest", href: "/manifest.json" },
+    { rel: "apple-touch-icon", href: "/favicon.png" },
+    { name: "theme-color", content: "#123F53" },
+    { name: "mobile-web-app-capable", content: "yes" },
+    { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+  ]
+}
 
 ## Conventions
 
