@@ -50,6 +50,11 @@ const CSS = `
 .badge{font-size:12.5px;font-weight:800;padding:5px 12px;border-radius:999px}
 .badge.warn{background:#fff2df;color:#b96d05}
 .badge.ok{background:var(--green-bg);color:var(--green)}
+.pay-error{margin-top:12px;padding:12px 14px;border:1px solid #f3b8b3;border-radius:12px;background:#fff2f0;color:#9f2822;font-size:13px;font-weight:800;line-height:1.7}
+.pay-retry{display:inline-flex;align-items:center;justify-content:center;gap:7px;margin-top:9px;padding:9px 14px;border:0;border-radius:10px;background:#b8322a;color:#fff;font:inherit;font-weight:800;cursor:pointer}
+.pay-retry:disabled{opacity:.6;cursor:wait}
+.brand-mark{display:grid;place-items:center;width:100%;height:100%;font-weight:1000;letter-spacing:-.6px;line-height:1;font-size:16px}
+.brand-mark.najm{font-size:25px}
 /* order details */
 .od-top{display:grid;grid-template-columns:1fr 1fr;gap:11px}
 .od-box{border:1.6px solid var(--line);border-radius:14px;padding:12px 10px;text-align:center;
@@ -139,6 +144,7 @@ const CSS = `
   box-shadow:0 2px 8px -3px rgba(0,0,0,.18);
 }
 .wbtn .wchip svg{width:28px;height:28px}
+.wbtn .wchip .brand-mark{border-radius:9px}
 .wbtn .wname{
   min-width:0;
   color:#46382b;
@@ -189,7 +195,9 @@ const CSS = `
   box-shadow:0 12px 26px -12px rgba(0,0,0,.4);animation:slideUp .35s ease}
 @keyframes slideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 .pay-acc .atop{display:flex;align-items:center;gap:12px;margin-bottom:12px}
-.pay-acc .wlogo{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-weight:900;font-size:18px}
+.pay-acc .wlogo{width:48px;height:48px;border-radius:12px;display:grid;place-items:center;font-weight:900;font-size:18px;flex:0 0 auto}
+.pay-acc .wlogo .brand-mark{font-size:17px}
+.pay-acc .wlogo .brand-mark.najm{font-size:25px}
 .pay-acc .at{font-size:12px;opacity:.9}
 .pay-acc .an{font-size:16px;font-weight:800}
 .pay-accnum{display:flex;flex-direction:column;gap:8px;background:rgba(0,0,0,.22);border-radius:14px;padding:14px}
@@ -213,6 +221,10 @@ const CSS = `
 .pay-primary{color:#fff;background:linear-gradient(135deg,var(--green),#15803d);box-shadow:0 10px 24px -8px rgba(26,162,96,.5)}
 .pay-primary:hover{transform:translateY(-2px)}
 .pay-primary:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.pay-btn:focus-visible,.pay-arrow:focus-visible,.pay-wait-btn:focus-visible,
+.pay-accnum .cp:focus-visible,.upload-box:focus-visible,.upload-remove:focus-visible{
+  outline:3px solid #2563eb;outline-offset:3px;box-shadow:0 0 0 5px rgba(37,99,235,.16)
+}
 `
 
 /* ===================== Icons ===================== */
@@ -242,80 +254,16 @@ const Logo = () => (
   </svg>
 )
 
-/* ===================== خيارات المحافظ الرسمية ===================== */
-type Wallet = { key: string; label: string; color: string; iconSvg: any }
+/* شعارات نصية مميزة للمحافظ؛ تُعرض كعلامات تعريفية وليست ملفات شعارات رسمية */
+type Wallet = { key: string; label: string; color: string; mark: string; markClass?: string }
 
 const WALLETS: Wallet[] = [
-  { 
-    key: 'kuraimi', 
-    label: 'الكريمي جوال / حاسب', 
-    color: '#0e7090', 
-    iconSvg: (
-      <svg viewBox="0 0 40 40" fill="none">
-        <rect width="40" height="40" rx="10" fill="#0e7090"/>
-        <path d="M12 28V12L28 20L12 28Z" fill="#fff"/>
-        <circle cx="28" cy="14" r="3" fill="#f59e0b"/>
-      </svg>
-    )
-  },
-  { 
-    key: 'onecash', 
-    label: 'ون كاش OneCash', 
-    color: '#7c3aed', 
-    iconSvg: (
-      <svg viewBox="0 0 40 40" fill="none">
-        <rect width="40" height="40" rx="10" fill="#7c3aed"/>
-        <circle cx="20" cy="20" r="10" stroke="#fff" strokeWidth="3"/>
-        <path d="M20 14V26" stroke="#fff" strokeWidth="3" strokeLinecap="round"/>
-      </svg>
-    )
-  },
-  { 
-    key: 'floosak', 
-    label: 'فلوسك Floosak', 
-    color: '#2563eb', 
-    iconSvg: (
-      <svg viewBox="0 0 40 40" fill="none">
-        <rect width="40" height="40" rx="10" fill="#2563eb"/>
-        <path d="M14 26C14 20 18 14 26 14M26 14V22M26 14H18" stroke="#fff" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
-    )
-  },
-  { 
-    key: 'jawali', 
-    label: 'جوالي Jawali', 
-    color: '#be185d', 
-    iconSvg: (
-      <svg viewBox="0 0 40 40" fill="none">
-        <rect width="40" height="40" rx="10" fill="#be185d"/>
-        <rect x="13" y="10" width="14" height="20" rx="3" stroke="#fff" strokeWidth="2.5"/>
-        <circle cx="20" cy="25" r="1.5" fill="#fff"/>
-      </svg>
-    )
-  },
-  { 
-    key: 'jeeb', 
-    label: 'جيب Jeeb', 
-    color: '#0284c7', 
-    iconSvg: (
-      <svg viewBox="0 0 40 40" fill="none">
-        <rect width="40" height="40" rx="10" fill="#0284c7"/>
-        <path d="M12 16H28V24C28 27 25 29 20 29C15 29 12 27 12 24V16Z" fill="#fff"/>
-        <line x1="16" y1="13" x2="24" y2="13" stroke="#fff" strokeWidth="2" strokeLinecap="round"/>
-      </svg>
-    )
-  },
-  { 
-    key: 'najm', 
-    label: 'حوالة النجم', 
-    color: '#ea580c', 
-    iconSvg: (
-      <svg viewBox="0 0 40 40" fill="none">
-        <rect width="40" height="40" rx="10" fill="#ea580c"/>
-        <path d="M20 11L22.5 17.5L29 18L24 22.5L25.5 29L20 25.5L14.5 29L16 22.5L11 18L17.5 17.5L20 11Z" fill="#fff"/>
-      </svg>
-    )
-  },
+  { key: 'kuraimi', label: 'الكريمي جوال / حاسب', color: '#0e7090', mark: 'K' },
+  { key: 'onecash', label: 'ون كاش OneCash', color: '#7c3aed', mark: '1C' },
+  { key: 'floosak', label: 'فلوسك Floosak', color: '#2563eb', mark: 'F' },
+  { key: 'jawali', label: 'جوالي Jawali', color: '#be185d', mark: 'J' },
+  { key: 'jeeb', label: 'جيب Jeeb', color: '#0284c7', mark: 'Je' },
+  { key: 'najm', label: 'حوالة النجم', color: '#ea580c', mark: '✦', markClass: 'najm' },
 ]
 
 // بيانات الحساب الموحدة لجميع المحافظ
@@ -346,6 +294,8 @@ function PayPage() {
   // حالة زر إشعار الإدارة
   const [isNotified, setIsNotified] = useState(false)
   const [notifying, setNotifying] = useState(false)
+  const [paymentSaved, setPaymentSaved] = useState(false)
+  const [paymentError, setPaymentError] = useState('')
 
   // حالة صورة إشعار الدفع
   const [receiptImg, setReceiptImg] = useState<string | null>(null)
@@ -443,38 +393,48 @@ function PayPage() {
     return () => { active = false }
   }, [orderNo])
 
-  // دالة تفعيل زر إشعار الإدارة
+  // حفظ سجل الدفعة أولاً، ثم تحديث الطلب. لا تظهر رسالة نجاح إلا بعد نجاح الخطوتين.
+  // إذا فشل تحديث الطلب بعد حفظ السجل، تُعيد المحاولة الخطوة الناقصة دون تكرار الإدخال خلال نفس الجلسة.
   const handleNotifyAdmin = async () => {
     if (isNotified || notifying) return
     setNotifying(true)
+    setPaymentError('')
 
     try {
-      // 1. تسجيل طلب الدفع في القاعدة ليظهر للإدارة في قسم طلبات الدفع
-      const { data: { session } } = await supabase.auth.getSession()
-      const { error: payErr } = await supabase.from('payments').insert({
-        tracking_code: orderNo,
-        customer_name: customer || null,
-        phone: phone || null,
-        wallet: wallet?.label || walletKey,
-        amount: remaining,
-        currency,
-        receipt_image: receiptImg,
-        user_id: session?.user?.id ?? null,
-      })
-      if (payErr) throw payErr
+      if (!paymentSaved) {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        if (sessionError) throw new Error('تعذر التحقق من جلسة المستخدم.')
 
-      // 2. تحديث حالة الطلب في orders
-      await supabase
+        const { error: payErr } = await supabase.from('payments').insert({
+          tracking_code: orderNo,
+          customer_name: customer || null,
+          phone: phone || null,
+          wallet: wallet?.label || walletKey,
+          amount: remaining,
+          currency,
+          receipt_image: receiptImg,
+          user_id: session?.user?.id ?? null,
+        })
+        if (payErr) throw new Error(`تعذر حفظ الدفعة: ${payErr.message}`)
+        setPaymentSaved(true)
+      }
+
+      const { data: updatedOrder, error: orderErr } = await supabase
         .from('orders')
         .update({ status: 'قيد مراجعة الدفع والتأكيد' })
-        .eq('tracking_code', orderNo)
+        .or(`tracking_code.eq.${orderNo},id.eq.${orderNo}`)
+        .select('id')
+        .maybeSingle()
+
+      if (orderErr) throw new Error(`تم حفظ سجل الدفعة، لكن تعذر تحديث الطلب: ${orderErr.message}`)
+      if (!updatedOrder) throw new Error('تم حفظ سجل الدفعة، لكن لم يُعثر على الطلب لتحديث حالته.')
 
       setStatus('قيد مراجعة الدفع والتأكيد')
       setIsNotified(true)
-      localStorage.setItem(`notified_order_${orderNo}`, 'true')
+      try { localStorage.setItem(`notified_order_${orderNo}`, 'true') } catch {}
     } catch (e) {
-      console.error(e)
-      alert('تعذّر إرسال إشعار الدفع، يرجى المحاولة مرة أخرى.')
+      console.error('Payment notification failed:', e)
+      setPaymentError(e instanceof Error ? e.message : 'تعذر حفظ الدفعة أو إرسال إشعار الإدارة. تحقق من الاتصال ثم أعد المحاولة.')
     } finally {
       setNotifying(false)
     }
@@ -572,6 +532,11 @@ function PayPage() {
                 </>
               ) : notifying ? (
                 <span>جارٍ إشعار الإدارة...</span>
+              ) : paymentError ? (
+                <>
+                  <Bell />
+                  <span>تعذر الإشعار — أعد المحاولة من زر تأكيد الإيداع أدناه</span>
+                </>
               ) : (
                 <>
                   <Bell />
@@ -627,8 +592,8 @@ function PayPage() {
                   onClick={() => { setWalletKey(w.key); setCopied(false) }}
                 >
                   <span className="tick"><CheckIc /></span>
-                  <span className="wchip">
-                    {w.iconSvg}
+                  <span className="wchip" aria-hidden="true" style={{ color: '#fff', background: w.color, borderColor: w.color }}>
+                    <span className={'brand-mark ' + (w.markClass || '')}>{w.mark}</span>
                   </span>
                   <span className="wname">{w.label}</span>
                 </button>
@@ -639,8 +604,8 @@ function PayPage() {
           {wallet && (
             <div className="pay-acc" style={{ background: `linear-gradient(140deg, ${wallet.color}, ${wallet.color}cc)` }}>
               <div className="atop">
-                <div className="wlogo" style={{ background: '#fff', color: wallet.color }}>
-                  {wallet.iconSvg}
+                <div className="wlogo" aria-hidden="true" style={{ background: '#fff', color: wallet.color }}>
+                  <span className={'brand-mark ' + (wallet.markClass || '')}>{wallet.mark}</span>
                 </div>
                 <div>
                   <div className="at">أودِع عبر</div>
@@ -714,12 +679,28 @@ function PayPage() {
           <button 
             className="pay-btn pay-primary" 
             type="button" 
-            disabled={!wallet}
+            disabled={!wallet || notifying || isNotified}
+            aria-live="polite"
+            aria-busy={notifying}
             onClick={handleNotifyAdmin}
           >
-            <CheckIc />
-            <span>{isNotified ? 'تم إشعار الإدارة بالإيداع بنجاح ✓' : 'لقد أودعت المبلغ — إشعار الإدارة الآن'}</span>
+            {isNotified ? <CheckIc /> : null}
+            <span>
+              {notifying
+                ? 'جارٍ إرسال إشعار الدفع للإدارة...'
+                : isNotified
+                  ? 'تم إرسال إشعار الدفع للإدارة بنجاح ✓'
+                  : 'لقد أودعت المبلغ — إشعار الإدارة الآن'}
+            </span>
           </button>
+          {paymentError && (
+            <div className="pay-error" role="alert" aria-live="assertive">
+              <div>{paymentError}</div>
+              <button className="pay-retry" type="button" onClick={handleNotifyAdmin} disabled={notifying}>
+                {notifying ? 'جارٍ إعادة المحاولة...' : 'إعادة المحاولة'}
+              </button>
+            </div>
+          )}
         </section>
 
       </div>
