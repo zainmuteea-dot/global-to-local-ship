@@ -51,6 +51,7 @@ import { Route as AccountProfileRouteImport } from './routes/account/profile'
 import { Route as AccountWalletRouteImport } from './routes/account/wallet'
 import { Route as TrackIndexRouteImport } from './routes/track/index'
 import { Route as TrackTrackingCodeRouteImport } from './routes/track/$trackingCode'
+import { Route as ApiPublicSheinPriceRouteImport } from './routes/api/public/shein-price'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -262,6 +263,11 @@ const TrackTrackingCodeRoute = TrackTrackingCodeRouteImport.update({
   path: '/track/$trackingCode',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicSheinPriceRoute = ApiPublicSheinPriceRouteImport.update({
+  id: '/api/public/shein-price',
+  path: '/api/public/shein-price',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -306,6 +312,7 @@ export interface FileRoutesByFullPath {
   '/account/wallet': typeof AccountWalletRoute
   '/track/$trackingCode': typeof TrackTrackingCodeRoute
   '/track/': typeof TrackIndexRoute
+  '/api/public/shein-price': typeof ApiPublicSheinPriceRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -350,6 +357,7 @@ export interface FileRoutesByTo {
   '/account/wallet': typeof AccountWalletRoute
   '/track/$trackingCode': typeof TrackTrackingCodeRoute
   '/track': typeof TrackIndexRoute
+  '/api/public/shein-price': typeof ApiPublicSheinPriceRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -395,6 +403,7 @@ export interface FileRoutesById {
   '/account/wallet': typeof AccountWalletRoute
   '/track/$trackingCode': typeof TrackTrackingCodeRoute
   '/track/': typeof TrackIndexRoute
+  '/api/public/shein-price': typeof ApiPublicSheinPriceRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -441,6 +450,7 @@ export interface FileRouteTypes {
     | '/account/wallet'
     | '/track/$trackingCode'
     | '/track/'
+    | '/api/public/shein-price'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -485,6 +495,7 @@ export interface FileRouteTypes {
     | '/account/wallet'
     | '/track/$trackingCode'
     | '/track'
+    | '/api/public/shein-price'
   id:
     | '__root__'
     | '/'
@@ -529,6 +540,7 @@ export interface FileRouteTypes {
     | '/account/wallet'
     | '/track/$trackingCode'
     | '/track/'
+    | '/api/public/shein-price'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -574,6 +586,7 @@ export interface RootRouteChildren {
   AccountWalletRoute: typeof AccountWalletRoute
   TrackTrackingCodeRoute: typeof TrackTrackingCodeRoute
   TrackIndexRoute: typeof TrackIndexRoute
+  ApiPublicSheinPriceRoute: typeof ApiPublicSheinPriceRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -872,6 +885,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TrackTrackingCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/shein-price': {
+      id: '/api/public/shein-price'
+      path: '/api/public/shein-price'
+      fullPath: '/api/public/shein-price'
+      preLoaderRoute: typeof ApiPublicSheinPriceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -918,6 +938,7 @@ const rootRouteChildren: RootRouteChildren = {
   AccountWalletRoute: AccountWalletRoute,
   TrackTrackingCodeRoute: TrackTrackingCodeRoute,
   TrackIndexRoute: TrackIndexRoute,
+  ApiPublicSheinPriceRoute: ApiPublicSheinPriceRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
