@@ -736,5 +736,26 @@ function PayPage() {
 
       </div>
     </div>
-  )
-}
+ // ... كل الـ CSS اللي فوق نفس ما هو ...
+
+          <div className="pay-grid" role="listbox" aria-label="اختر طريقة الدفع">
+            {WALLETS.map((w) => {
+              const active = w.key === walletKey
+              return (
+                <button
+                  key={w.key}
+                  type="button"
+                  role="option"
+                  aria-selected={active}
+                  className={'wbtn' + (active ? ' active' : '')}
+                  onClick={() => { setWalletKey(w.key); setCopied(false) }}
+                >
+                  <span className="tick"><CheckIc /></span>
+                  <span className="wchip">
+                    {w.iconSvg}
+                  </span>
+                  <span className="wname">{w.label}</span>
+                </button>
+              )
+            })}
+          </div>
