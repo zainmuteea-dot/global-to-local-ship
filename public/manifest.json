@@ -1,39 +1,26 @@
 {
-  "id": "/",
-  "name": "السوق الشامل | AL SHAMEL SHOPPING",
+  "name": "متجر السوق الشامل",
   "short_name": "السوق الشامل",
-  "description": "وسيطكم العالمي للتسوق من TEMU و SHEIN و Amazon و AliExpress مع التوصيل لباب البيت في اليمن",
+  "description": "تسوّق كل ما تحب من الغتر، العطور، الساعات، الإلكترونيات، والمزيد",
   "start_url": "/",
   "display": "standalone",
-  "theme_color": "#8b4a2e",
-  "background_color": "#ffffff",
-  "orientation": "any",
-  "lang": "ar",
+  "background_color": "#123F53",
+  "theme_color": "#123F53",
+  "orientation": "portrait",
   "dir": "rtl",
-  "categories": ["shopping", "lifestyle", "business"],
+  "lang": "ar",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/3081/3081559.png",
+      "src": "/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ],
-  "screenshots": [
-    {
-      "src": "https://cdn-icons-png.flaticon.com/512/3081/3081559.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "form_factor": "wide",
-      "label": "السوق الشامل"
-    },
-    {
-      "src": "https://cdn-icons-png.flaticon.com/512/3081/3081559.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "السوق الشامل"
-    }
-  ],
-  "prefer_related_applications": false
+  ]
 }
