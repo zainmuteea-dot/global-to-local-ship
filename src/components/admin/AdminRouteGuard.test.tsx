@@ -26,11 +26,21 @@ const adminSession = {
   token_type: "bearer",
   expires_in: 3600,
   expires_at: 9999999999,
-  user: { id: "admin-user-id", app_metadata: {}, user_metadata: {}, aud: "authenticated", created_at: "2026-01-01T00:00:00Z" },
+  user: {
+    id: "admin-user-id",
+    app_metadata: {},
+    user_metadata: {},
+    aud: "authenticated",
+    created_at: "2026-01-01T00:00:00Z",
+  },
 };
+
 const customerSession = {
   ...adminSession,
-  user: { ...adminSession.user, id: "customer-user-id" },
+  user: {
+    ...adminSession.user,
+    id: "customer-user-id",
+  },
 };
 
 function renderProtectedAdmin(onUnauthorized = vi.fn()) {
@@ -39,20 +49,34 @@ function renderProtectedAdmin(onUnauthorized = vi.fn()) {
       <div>محتوى لوحة الإدارة</div>
     </AdminRouteGuard>,
   );
+
   return onUnauthorized;
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.onAuthStateChange.mockReturnValue({ data: { subscription: { unsubscribe: mocks.unsubscribe } } });
+
+  mocks.onAuthStateChange.mockReturnValue({
+    data: {
+      subscription: {
+        unsubscribe: mocks.unsubscribe,
+      },
+    },
+  });
 });
 
 afterEach(() => cleanup());
 
 describe("/admin route guard", () => {
   it("allows an authenticated admin into the protected page", async () => {
-    mocks.getSession.mockResolvedValue({ data: { session: adminSession }, error: null });
-    mocks.rpc.mockResolvedValue({ data: true, error: null });
+    mocks.getSession.mockResolvedValue({
+      data: { session: adminSession },
+      error: null,
+    });
+    mocks.rpc.mockResolvedValue({
+      data: true,
+      error: null,
+    });
 
     renderProtectedAdmin();
 
@@ -64,29 +88,56 @@ describe("/admin route guard", () => {
   });
 
   it("redirects an unauthenticated visitor and never renders admin content", async () => {
-    mocks.getSession.mockResolvedValue({ data: { session: null }, error: null });
+    mocks.getSession.mockResolvedValue({
+      data: { session: null },
+      error: null,
+    });
+
     const onUnauthorized = renderProtectedAdmin();
 
-    await waitFor(() => expect(onUnauthorized).toHaveBeenCalledWith(undefined));
+    await waitFor(() => {
+      expect(onUnauthorized).toHaveBeenCalledWith(undefined);
+    });
+
     expect(screen.queryByText("محتوى لوحة الإدارة")).toBeNull();
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
 
   it("denies a signed-in user who does not have the admin role", async () => {
-    mocks.getSession.mockResolvedValue({ data: { session: customerSession }, error: null });
-    mocks.rpc.mockResolvedValue({ data: false, error: null });
+    mocks.getSession.mockResolvedValue({
+      data: { session: customerSession },
+      error: null,
+    });
+    mocks.rpc.mockResolvedValue({
+      data: false,
+      error: null,
+    });
+
     const onUnauthorized = renderProtectedAdmin();
 
-    await waitFor(() => expect(onUnauthorized).toHaveBeenCalledWith("not-admin"));
+    await waitFor(() => {
+      expect(onUnauthorized).toHaveBeenCalledWith("not-admin");
+    });
+
     expect(screen.queryByText("محتوى لوحة الإدارة")).toBeNull();
   });
 
   it("fails closed if the role check returns an error", async () => {
-    mocks.getSession.mockResolvedValue({ data: { session: adminSession }, error: null });
-    mocks.rpc.mockResolvedValue({ data: null, error: new Error("RPC unavailable") });
+    mocks.getSession.mockResolvedValue({
+      data: { session: adminSession },
+      error: null,
+    });
+    mocks.rpc.mockResolvedValue({
+      data: null,
+      error: new Error("RPC unavailable"),
+    });
+
     const onUnauthorized = renderProtectedAdmin();
 
-    await waitFor(() => expect(onUnauthorized).toHaveBeenCalledWith("not-admin"));
+    await waitFor(() => {
+      expect(onUnauthorized).toHaveBeenCalledWith("not-admin");
+    });
+
     expect(screen.queryByText("محتوى لوحة الإدارة")).toBeNull();
   });
 });
