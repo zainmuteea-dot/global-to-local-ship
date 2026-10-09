@@ -896,7 +896,7 @@ export default function AdminOperationsPage() {
             )}
 
             {/* بطاقات الطلبات للجوال: محتوى قابل للالتفاف بلا تمرير أفقي */}
-            <section className="min-w-0 space-y-3 md:hidden" aria-label="قائمة الشحنات للجوال">
+            <section className="min-w-0 space-y-3 2xl:hidden" aria-label="قائمة الشحنات للشاشات الصغيرة والمتوسطة">
               <div className="flex min-w-0 items-center justify-between gap-2 rounded-2xl border border-sky-100 bg-white px-3 py-3 sm:px-4">
                 <h2 className="min-w-0 font-black text-sm text-[#0A2540]">الطلبات والشحنات</h2>
                 <span className="shrink-0 rounded-full bg-sky-50 px-2.5 py-1 text-[11px] font-bold text-[#0F4C81]">{filteredOrders.length} نتيجة</span>
@@ -958,17 +958,17 @@ export default function AdminOperationsPage() {
             </section>
 
             {/* جدول الشحنات للشاشات المتوسطة والكبيرة */}
-            <div id="orders-table" className="hidden min-w-0 rounded-2xl border border-sky-100 bg-white shadow-xs md:block">
+            <div id="orders-table" className="hidden min-w-0 rounded-2xl border border-sky-100 bg-white shadow-xs 2xl:block">
               <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3"><h2 className="font-black text-sm text-[#0A2540]">الطلبات والشحنات</h2><span className="text-xs text-slate-500">{filteredOrders.length} نتيجة</span></div>
-              <div className="w-full min-w-0 overflow-x-auto overscroll-x-contain">
-                <table className="w-full min-w-[1000px] text-right text-xs">
+              <div className="w-full min-w-0 overflow-hidden">
+                <table className="w-full table-fixed text-right text-xs">
                   <thead className="bg-[#F0F7FF] text-[#0F4C81] border-b border-sky-100">
                     <tr>
-                      <th className="py-3 px-4 font-black">الشحنة / المتجر</th>
-                      <th className="py-3 px-4 font-black">العميل والهاتف</th>
-                      <th className="py-3 px-4 font-black">المنتج والتفاصيل</th>
-                      <th className="py-3 px-4 font-black">المرحلة الحالية</th>
-                      <th className="py-3 px-4 font-black text-center">إجراء فوري</th>
+                      <th className="w-[16%] break-words px-2 py-3 font-black sm:px-3">الشحنة / المتجر</th>
+                      <th className="w-[18%] break-words px-2 py-3 font-black sm:px-3">العميل والهاتف</th>
+                      <th className="w-[22%] break-words px-2 py-3 font-black sm:px-3">المنتج والتفاصيل</th>
+                      <th className="w-[24%] break-words px-2 py-3 font-black sm:px-3">المرحلة الحالية</th>
+                      <th className="w-[20%] break-words px-1 py-3 text-center font-black sm:px-2">إجراء فوري</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -981,31 +981,31 @@ export default function AdminOperationsPage() {
                     ) : (
                       filteredOrders.map((order) => (
                         <tr key={order.id} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="py-3 px-4">
-                            <div className="font-mono font-bold text-[#0F4C81]">{order.orderNumber}</div>
+                          <td className="break-words px-2 py-3 sm:px-3">
+                            <div className="break-all font-mono font-bold text-[#0F4C81]">{order.orderNumber}</div>
                             <span className="inline-block mt-1 px-2 py-0.5 rounded-md text-[10px] font-black bg-orange-100 text-[#EA580C]">
                               {order.storeName}
                             </span>
                           </td>
 
-                          <td className="py-3 px-4">
-                            <div className="font-bold text-[#0A2540]">{order.customerName}</div>
-                            <div className="text-[11px] font-mono text-slate-500 mt-0.5">{order.customerPhone}</div>
+                          <td className="break-words px-2 py-3 sm:px-3">
+                            <div className="break-words font-bold text-[#0A2540]">{order.customerName}</div>
+                            <div dir="ltr" className="mt-0.5 break-all text-right font-mono text-[11px] text-slate-500">{order.customerPhone}</div>
                           </td>
 
-                          <td className="py-3 px-4 max-w-xs">
-                            <div className="font-bold text-slate-700 truncate">{order.productTitle}</div>
+                          <td className="max-w-0 break-words px-2 py-3 sm:px-3">
+                            <div className="break-words font-bold text-slate-700">{order.productTitle}</div>
                             <div className="text-[11px] text-slate-400 mt-0.5">{order.customerCity || "صنعاء"}</div>
                           </td>
 
-                          <td className="py-3 px-4">
+                          <td className="min-w-0 break-words px-2 py-3 sm:px-3">
                             <select
                               aria-label={`تحديث مرحلة الطلب ${order.orderNumber}`}
                               aria-busy={updatingOrderIds.has(order.id)}
                               disabled={updatingOrderIds.has(order.id)}
                               value={order.status}
                               onChange={(e) => handleStatusChange(order.id, e.target.value as OrderStatus)}
-                              className="min-w-0 max-w-full rounded-xl border border-slate-200 bg-slate-50 px-2 py-2 text-xs font-bold text-[#0A2540] outline-none transition focus:border-[#0284C7] focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60"
+                              className="w-full min-w-0 max-w-full rounded-xl border border-slate-200 bg-slate-50 px-1.5 py-2 text-[10px] font-bold text-[#0A2540] sm:px-2 sm:text-xs outline-none transition focus:border-[#0284C7] focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60"
                             >
                               <option value="new">1. استلام الطلب والاعتماد</option>
                               <option value="reviewing">2. تدقيق التكاليف والأوزان</option>
@@ -1018,8 +1018,8 @@ export default function AdminOperationsPage() {
                             </select>
                           </td>
 
-                          <td className="py-3 px-4 text-center">
-                            <div className="flex items-center justify-center gap-1.5">
+                          <td className="px-1 py-3 text-center sm:px-2">
+                            <div className="flex flex-wrap items-center justify-center gap-1">
                               <button
                                 onClick={() => sendWhatsAppNotification(order)}
                                 className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition cursor-pointer" aria-label="رسالة واتساب للعميل"
