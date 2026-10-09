@@ -424,14 +424,14 @@ export default function AdminOperationsPage() {
   };
 
   const sendWhatsAppNotification = (order: OrderItem) => {
-    const localPhone = String(order.customerPhone ?? "").replace(/\D/g, "");
-    const customerPhone = localPhone
-      ? localPhone.startsWith("967")
-        ? localPhone
-        : `967${localPhone.replace(/^0+/, "")}`
+    const rawPhone = String(order.customerPhone ?? "").replace(/\D/g, "");
+    const phone = rawPhone
+      ? rawPhone.startsWith("967")
+        ? rawPhone
+        : `967${rawPhone.replace(/^0+/, "")}`
       : "";
 
-    if (!customerPhone) {
+    if (!phone) {
       window.alert("لا يوجد رقم هاتف صالح للعميل في هذا الطلب.");
       return;
     }
@@ -440,7 +440,7 @@ export default function AdminOperationsPage() {
     const message = encodeURIComponent(
       `مرحباً ${order.customerName}،\nشحنتك رقم (${order.orderNumber}) من متجر ${order.storeName}:\nالحالة الحالية: ${statusLabel}\nرقم التتبع: ${order.intlTrackingNumber || order.orderNumber}\n\nشكراً لتسوقك مع السوق الشامل 🌟`
     );
-    window.open(`https://wa.me/${customerPhone}?text=${message}`, "_blank", "noopener,noreferrer");
+    window.open(`https://wa.me/${phone}?text=${message}`, "_blank", "noopener,noreferrer");
   };
 
   // تصفية الشحنات
@@ -451,7 +451,7 @@ export default function AdminOperationsPage() {
         searchQuery === "" ||
         o.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
         o.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        o.customerPhone.includes(searchQuery) ||
+        (o.customerPhone ?? "").includes(searchQuery) ||
         (o.intlTrackingNumber && o.intlTrackingNumber.toLowerCase().includes(searchQuery.toLowerCase()));
       return matchStore && matchSearch;
     });
@@ -465,14 +465,71 @@ export default function AdminOperationsPage() {
   const netProfit = totalShipments * 28;
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-[#0A2540] font-sans" dir="rtl">
+    <div className="min-h-screen bg-[#F3F6FA] text-[#0A2540] font-sans lg:pr-72" dir="rtl">
+      {/* قائمة الإدارة الدائمة على الشاشات الكبيرة، مع الإبقاء على القائمة المنبثقة للجوال */}
+      <aside className="fixed inset-y-0 right-0 z-30 hidden w-72 flex-col border-l border-sky-950 bg-[#174F75] text-white shadow-xl lg:flex">
+        <div className="border-b border-white/10 bg-[#123F60] px-5 py-5">
+          <div className="flex items-center gap-3">
+            <div className="grid size-11 place-items-center rounded-xl bg-white text-[#174F75] shadow-sm">
+              <Package className="size-6" />
+            </div>
+            <div>
+              <div className="text-base font-black">السوق الشامل</div>
+              <div className="mt-0.5 text-[11px] text-sky-100">نظام إدارة الأعمال</div>
+            </div>
+          </div>
+        </div>
+        <div className="border-b border-white/10 px-4 py-4">
+          <div className="rounded-xl bg-white/10 px-3 py-3">
+            <div className="text-sm font-bold">مرحباً، زين مطيع</div>
+            <div className="mt-1 flex items-center gap-2 text-[11px] text-sky-100">
+              <span className="size-2 rounded-full bg-emerald-400" /> مدير النظام
+            </div>
+          </div>
+        </div>
+        <nav aria-label="القائمة الرئيسية للإدارة" className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+          {[
+            { label: "الرئيسية", icon: Home, path: "/admin" },
+            { label: "إدارة الطلبات والشحنات", icon: Truck, path: "/admin" },
+            { label: "المدفوعات", icon: Wallet, path: "/payments" },
+            { label: "إدارة العملاء", icon: Users, path: "/admin-clients" },
+            { label: "الأصناف والمخزون", icon: Package, path: "/inventory" },
+            { label: "فواتير المبيعات", icon: FileText, path: "/sales-invoices" },
+            { label: "فواتير المشتريات", icon: FileSpreadsheet, path: "/purchase-invoices" },
+            { label: "الحسابات والصناديق", icon: Coins, path: "/accounts" },
+            { label: "الموظفون", icon: UserCheck, path: "/employees" },
+            { label: "الموردون", icon: Truck, path: "/suppliers" },
+            { label: "الإشعارات", icon: Bell, path: "/notifications" },
+          ].map(({ label, icon: Icon, path }) => (
+            <button
+              key={label}
+              type="button"
+              onClick={() => navigateTo(path)}
+              aria-current={path === "/admin" ? "page" : undefined}
+              className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-right text-sm font-bold transition-colors ${
+                path === "/admin"
+                  ? "bg-[#23658F] text-white shadow-sm"
+                  : "text-sky-50 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              <Icon className="size-4 shrink-0 text-sky-100" />
+              <span>{label}</span>
+              <span className="mr-auto text-sky-200">‹</span>
+            </button>
+          ))}
+        </nav>
+        <div className="border-t border-white/10 px-4 py-3 text-center text-[10px] text-sky-100">
+          السوق الشامل © 2026
+        </div>
+      </aside>
+
       {/* الترويسة الرئيسية */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-sky-100 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsSidebarOpen(true)}
-              className="p-2.5 rounded-xl hover:bg-sky-50 text-[#0F4C81] border border-sky-100 transition-colors cursor-pointer"
+              className="p-2.5 rounded-xl hover:bg-sky-50 text-[#0F4C81] border border-sky-100 transition-colors cursor-pointer lg:hidden"
               title="القائمة الإدارية الشاملة"
             >
               <span className="space-y-1 block w-5">
@@ -876,7 +933,7 @@ export default function AdminOperationsPage() {
       <AdminSidebar
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
-        onOpenAccountsTree={() => setIsAccountsTreeOpen(false)}
+        onOpenAccountsTree={() => setIsAccountsTreeOpen(true)}
         onOpenQuickScan={() => setIsQuickScanOpen(true)}
         onOpenAddModal={() => setIsAddModalOpen(true)}
         navigateTo={navigateTo}
