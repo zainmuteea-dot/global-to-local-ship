@@ -1,11 +1,17 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-/**
- * Protects the admin page with Supabase Auth and the trusted public.has_role RPC.
- * Copy to src/components/admin/AdminRouteGuard.tsx and wrap the admin page route.
- */
-export function AdminRouteGuard({ children }: { children: ReactNode }) {
+type Session = Awaited<ReturnType<typeof supabase.auth.getSession>>["data"]["session"];
+
+/** Protects /admin with a valid Supabase session and the trusted has_role RPC. */
+export function AdminRouteGuard({
+  children,
+  onUnauthorized,
+}: {
+  children: ReactNode;
+  /** Test seam; production leaves this unset and is redirected to login. */
+  onUnauthorized?: (reason?: string) => void;
+}) {
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
@@ -15,11 +21,16 @@ export function AdminRouteGuard({ children }: { children: ReactNode }) {
     const goToLogin = (reason?: string) => {
       if (!active || redirecting) return;
       redirecting = true;
-      const query = reason ? `?error=${encodeURIComponent(reason)}` : "";
-      window.location.replace(`/admin-login${query}&redirect=${encodeURIComponent("/admin")}`);
+      if (onUnauthorized) {
+        onUnauthorized(reason);
+        return;
+      }
+      const query = new URLSearchParams({ redirect: "/admin" });
+      if (reason) query.set("error", reason);
+      window.location.replace(`/admin-login?${query.toString()}`);
     };
 
-    const verifyAdmin = async (knownSession?: Awaited<ReturnType<typeof supabase.auth.getSession>>["data"]["session"]) => {
+    const verifyAdmin = async (knownSession?: Session) => {
       const sessionResult = knownSession === undefined
         ? await supabase.auth.getSession()
         : { data: { session: knownSession }, error: null };
@@ -41,25 +52,20 @@ export function AdminRouteGuard({ children }: { children: ReactNode }) {
         goToLogin("not-admin");
         return;
       }
-
       setChecking(false);
     };
 
     void verifyAdmin();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_OUT" || !session) {
-        goToLogin();
-      } else if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
-        void verifyAdmin(session);
-      }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) goToLogin();
+      else void verifyAdmin(session);
     });
 
     return () => {
       active = false;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [onUnauthorized]);
 
   if (checking) {
     return (
