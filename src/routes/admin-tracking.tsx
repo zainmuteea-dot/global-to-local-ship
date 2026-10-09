@@ -1,584 +1,146 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { useEffect, useMemo, useState } from 'react';
-import {
-  Search,
-  Package,
-  Plane,
-  Truck,
-  CheckCircle2,
-  MapPin,
-  DollarSign,
-  Building,
-  Sparkles,
-  Loader2,
-  AlertCircle,
-  ShieldCheck,
-  ChevronLeft,
-  Lock,
-  RefreshCw,
-  Phone,
-  User,
-  CalendarDays,
-  Radio,
-} from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AlertCircle, Bell, Check, CheckCircle2, ChevronLeft, Circle, Clock3, CreditCard, MapPin, Package, Plane, RefreshCw, Search, ShieldCheck, ShoppingBag, Truck, Warehouse, X, MessageCircle, Loader2, History, UserRound, Phone } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
+const db = supabase as any;
 export const Route = createFileRoute('/admin-tracking')({
-  head: () => ({
-    meta: [
-      { title: 'تتبع الشحنات المباشر — الإدارة | السوق الشامل' },
-      { name: 'description', content: 'لوحة تتبع الشحنات المباشرة للموظفين: تحديث مراحل الشحن وحفظها بالقاعدة تلقائياً.' },
-    ],
-  }),
+  head: () => ({ meta: [{ title: 'تتبع الشحنات المباشر — الإدارة | السوق الشامل' }] }),
   component: LiveTrackingAdminRoute,
 });
 
-// أكواد المراحل السبع المعتمدة (تُحفظ في عمود status بالقاعدة)
-type StageCode = 'new' | 'purchased' | 'international_ship' | 'shipped' | 'local_warehouse' | 'out_for_delivery' | 'delivered';
-
-interface Shipment {
-  id: string;
-  trackingCode: string;
-  customerName: string;
-  customerPhone: string;
-  productName: string;
-  productLink: string | null;
-  storeName: string;
-  city: string;
-  status: StageCode | string;
-  userId: string | null;
-  createdAt: string;
-  updatedAt?: string;
-}
-
-// عناوين المراحل السبع كما تظهر للعميل حتى يتطابق المسار في الشاشتين
-const STAGES: Array<{
-  code: StageCode;
-  stepNumber: number;
-  title: string;
-  customerNote: string;
-  icon: typeof CheckCircle2;
-}> = [
-  {
-    code: 'new',
-    stepNumber: 1,
-    title: 'استلام الطلب والاعتماد',
-    customerNote: 'تم تسجيل الطلب وتدقيق الروابط والكميات بنجاح',
-    icon: CheckCircle2,
-  },
-  {
-    code: 'purchased',
-    stepNumber: 2,
-    title: 'الشراء من المتجر الدولي',
-    customerNote: 'تم إتمام عملية الدفع والشراء من المتجر الأصلي',
-    icon: DollarSign,
-  },
-  {
-    code: 'international_ship',
-    stepNumber: 3,
-    title: 'وصول المستودع الدولي',
-    customerNote: 'وصلت الشحنة لمستودعنا وجاري الفحص والتغليف الآمن',
-    icon: Building,
-  },
-  {
-    code: 'shipped',
-    stepNumber: 4,
-    title: 'الشحن الدولي (جوي / بحري)',
-    customerNote: 'الشحنة على متن رحلة الشحن الدولي متجهة إلى اليمن',
-    icon: Plane,
-  },
-  {
-    code: 'local_warehouse',
-    stepNumber: 5,
-    title: 'الوصول لليمن والفرز المحلي',
-    customerNote: 'وصلت الشحنة واجتازت التخليص الجمركي وجاري الفرز المحلي',
-    icon: MapPin,
-  },
-  {
-    code: 'out_for_delivery',
-    stepNumber: 6,
-    title: 'خروج الشحنة مع المندوب للتوصيل',
-    customerNote: 'الشحنة حالياً مع مندوب التوصيل في طريقها لعنوانك',
-    icon: Truck,
-  },
-  {
-    code: 'delivered',
-    stepNumber: 7,
-    title: 'تم التسليم بنجاح',
-    customerNote: 'تم تسليم الشحنة للعميل بنجاح واستلام الطلب',
-    icon: Sparkles,
-  },
-];
-
-const STAGE_ORDER: StageCode[] = STAGES.map((s) => s.code);
-
-// توحيد الحالات القديمة (عربية أو أكواد سابقة) إلى أكواد المراحل السبع
-const STATUS_NORMALIZE: Record<string, StageCode | 'cancelled'> = {
-  new: 'new',
-  'جديد': 'new',
-  reviewing: 'new',
-  'قيد المراجعة': 'new',
-  purchased: 'purchased',
-  'تم الشراء': 'purchased',
-  warehouse_china: 'international_ship',
-  'المستودع الدولي': 'international_ship',
-  international_ship: 'international_ship',
-  'شحن دولي': 'international_ship',
-  shipped: 'shipped',
-  'الفرز والتوصيل': 'shipped',
-  local_warehouse: 'local_warehouse',
-  out_for_delivery: 'out_for_delivery',
-  delivered: 'delivered',
-  'تم التسليم': 'delivered',
-  cancelled: 'cancelled',
-  'ملغي': 'cancelled',
+type StageCode = 'new' | 'payment_review' | 'purchased' | 'international_warehouse' | 'international_transit' | 'customs_local' | 'out_for_delivery' | 'delivered';
+type Channel = 'app' | 'whatsapp';
+type Shipment = { id: string; trackingCode: string; customerName: string; customerPhone: string; productName: string; productLink: string; storeName: string; city: string; status: string; userId: string | null; courierName: string; courierPhone: string; createdAt: string };
+type EventRow = { id: string; stage_code: StageCode; channel: Channel; delivery_state: string; event_type: string; message: string; created_at: string };
+const STAGES = [
+  { code: 'new', title: 'استلام الطلب والتدقيق', location: 'مكتب الاستقبال المركزي', detail: 'تسجيل الطلب وتدقيق روابط السلع والكميات والمقاسات والألوان.', icon: Package },
+  { code: 'payment_review', title: 'التدقيق المالي والدفع', location: 'قسم الحسابات والوساطة', detail: 'حساب التكلفة والعملات وتأكيد استلام الدفعة.', icon: CreditCard },
+  { code: 'purchased', title: 'الشراء من المتجر الدولي', location: 'الصين / أمريكا / الإمارات / تركيا', detail: 'إتمام الشراء وإصدار كود الشحن وفاتورة المورد.', icon: ShoppingBag },
+  { code: 'international_warehouse', title: 'وصول مستودع التجميع الدولي', location: 'كوانزو / دبي / الرياض', detail: 'فحص الجودة ومطابقة الوزن والتغليف الآمن.', icon: Warehouse },
+  { code: 'international_transit', title: 'الشحن الدولي في الترانزيت', location: 'في الطريق إلى الجمهورية اليمنية', detail: 'انطلاق الشحن الجوي أو البحري نحو الموانئ والمطارات اليمنية.', icon: Plane },
+  { code: 'customs_local', title: 'الجمارك والفرز بالمستودع المحلي', location: 'صنعاء / عدن', detail: 'التخليص الجمركي والفرز حسب المحافظات والمدن.', icon: MapPin },
+  { code: 'out_for_delivery', title: 'جاري التوصيل مع المندوب', location: 'مندوب التوصيل الميداني', detail: 'خرجت الشحنة مع المندوب إلى عنوان العميل.', icon: Truck },
+  { code: 'delivered', title: 'تم التسليم للعميل بنجاح', location: 'عنوان العميل النهائي', detail: 'تم استلام الطرد وإغلاق الطلب.', icon: CheckCircle2 },
+] as const;
+const stageCodes = STAGES.map(s => s.code) as StageCode[];
+const stageIndex = (status: string) => {
+  const s = (status || '').trim().toLowerCase();
+  const aliases: Record<string, StageCode> = {
+    'جديد':'new', reviewing:'new', 'قيد المراجعة':'new', 'استلام الطلب والتدقيق':'new',
+    'تدقيق مالي':'payment_review', payment_review:'payment_review', 'التدقيق المالي والدفع':'payment_review',
+    purchased:'purchased', 'تم الشراء':'purchased', 'قيد الشراء والتجهيز':'purchased',
+    warehouse_china:'international_warehouse', 'المستودع الدولي':'international_warehouse', international_warehouse:'international_warehouse',
+    international_ship:'international_transit', shipped:'international_transit', 'شحن دولي':'international_transit',
+    local_warehouse:'customs_local', customs_local:'customs_local', 'الفرز والتوصيل':'customs_local',
+    out_for_delivery:'out_for_delivery', delivered:'delivered', 'تم التسليم':'delivered',
+  };
+  const code = aliases[s] || (stageCodes.includes(s as StageCode) ? s as StageCode : 'new');
+  return stageCodes.indexOf(code);
+};
+const detectStore = (link: string) => {
+  const value = (link || '').toLowerCase();
+  return value.includes('shein') ? 'SHEIN' : value.includes('amazon') ? 'Amazon' : value.includes('aliexpress') ? 'AliExpress' : value.includes('trendyol') ? 'Trendyol' : value.includes('iherb') ? 'iHerb' : value.includes('temu') ? 'TEMU' : 'متجر دولي';
+};
+const trackingUrl = (code: string) => `${window.location.origin}/track/${encodeURIComponent(code)}`;
+const messageFor = (s: Shipment, stage: typeof STAGES[number]) => `مرحباً ${s.customerName}، تحديث شحنتك ${s.trackingCode}\nالمتجر: ${s.storeName}\nالمرحلة: ${stage.title}\n${stage.detail}${stage.code === 'out_for_delivery' && s.courierName ? `\nالمندوب: ${s.courierName}${s.courierPhone ? ` — ${s.courierPhone}` : ''}` : ''}\nرابط التتبع: ${trackingUrl(s.trackingCode)}`;
+const normalizePhone = (input: string) => {
+  let digits = input.replace(/\D/g, '');
+  if (digits.startsWith('00')) digits = digits.slice(2);
+  if (digits.startsWith('0')) digits = `967${digits.slice(1)}`;
+  else if (digits.length === 9) digits = `967${digits}`;
+  return digits;
 };
 
-function normalizeStatus(raw: string): StageCode | 'cancelled' | 'unknown' {
-  const value = (raw || '').trim().toLowerCase();
-  const mapped = STATUS_NORMALIZE[value];
-  if (mapped) return mapped;
-  return 'unknown';
-}
-
-function stageIndexFor(status: string): number {
-  const normalized = normalizeStatus(status);
-  if (normalized === 'cancelled' || normalized === 'unknown') return 0;
-  return STAGE_ORDER.indexOf(normalized);
-}
-
-function detectStore(link: string | null | undefined): string {
-  const value = (link || '').toLowerCase();
-  if (value.includes('amazon')) return 'Amazon';
-  if (value.includes('aliexpress')) return 'AliExpress';
-  if (value.includes('alibaba')) return 'Alibaba';
-  if (value.includes('temu')) return 'TEMU';
-  if (value.includes('trendyol')) return 'Trendyol';
-  if (value.includes('shein')) return 'SHEIN';
-  return 'متجر دولي';
-}
-
-type Access = 'loading' | 'allowed' | 'denied';
-
 function LiveTrackingAdminRoute() {
-  const [access, setAccess] = useState<Access>('loading');
-  const [loading, setLoading] = useState(true);
+  const [access, setAccess] = useState<'loading'|'allowed'|'denied'>('loading');
   const [shipments, setShipments] = useState<Shipment[]>([]);
-  const [searchInput, setSearchInput] = useState('');
-  const [busyId, setBusyId] = useState<string | null>(null);
-  const [toast, setToast] = useState<{ kind: 'success' | 'error'; text: string } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState<Shipment|null>(null);
+  const [history, setHistory] = useState<EventRow[]>([]);
+  const [courierName, setCourierName] = useState('');
+  const [courierPhone, setCourierPhone] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState('');
 
-  // فحص الجلسة والدور (الموظفون والإدارة فقط)
   useEffect(() => {
-    const checkAccess = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
-        setAccess('denied');
-        return;
-      }
-      const { data: roles } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', session.user.id);
-      const allowed = (roles || []).some((r: { role: string }) => r.role === 'admin' || r.role === 'staff');
-      setAccess(allowed ? 'allowed' : 'denied');
-    };
-    checkAccess();
+    let alive = true;
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { if (alive) setAccess('denied'); return; }
+      const { data, error } = await db.from('user_roles').select('role').eq('user_id', user.id);
+      if (alive) setAccess(!error && data?.some((r: any) => r.role === 'admin' || r.role === 'staff') ? 'allowed' : 'denied');
+    })();
+    return () => { alive = false; };
   }, []);
 
-  // جلب جميع الشحنات من القاعدة
-  const fetchShipments = async () => {
+  const refresh = useCallback(async () => {
     setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('orders')
-        .select('*')
-        .order('created_at', { ascending: false });
+    const { data, error } = await db.from('orders').select('id,tracking_code,customer_name,phone,product_name,product_link,status,user_id,created_at,notes,courier_name,courier_phone').order('created_at', { ascending: false });
+    if (error) setNotice(`تعذّر تحميل الطلبات: ${error.message}`);
+    else setShipments((data || []).map((r: any) => ({ id:r.id, trackingCode:r.tracking_code, customerName:r.customer_name || 'عميل', customerPhone:r.phone || '', productName:r.product_name || 'شحنة', productLink:r.product_link || '', storeName:detectStore(r.product_link || ''), city:r.notes || 'غير محدد', status:r.status || 'new', userId:r.user_id || null, courierName:r.courier_name || '', courierPhone:r.courier_phone || '', createdAt:r.created_at })));
+    setLoading(false);
+  }, []);
+  useEffect(() => { if (access !== 'allowed') return; void refresh(); const channel = supabase.channel('admin-tracking-orders-v2').on('postgres_changes', { event:'*', schema:'public', table:'orders' }, () => void refresh()).subscribe(); return () => { void supabase.removeChannel(channel); }; }, [access, refresh]);
 
-      if (!error && data) {
-        const mapped: Shipment[] = (data as any[]).map((item: any) => ({
-          id: String(item['id']),
-          trackingCode: item['tracking_code'] || `TRK-${String(item['id']).slice(0, 6)}`,
-          customerName: item['customer_name'] || 'عميل مسجل',
-          customerPhone: item['phone'] || '',
-          productName: item['product_name'] || 'شحنة وساطة',
-          productLink: item['product_link'] || null,
-          storeName: detectStore(item['product_link']),
-          city: item['notes'] || 'صنعاء',
-          status: item['status'] || 'new',
-          userId: item['user_id'] || null,
-          createdAt: item['created_at'] || new Date().toISOString(),
-          updatedAt: item['updated_at'] || undefined,
-        }));
-        setShipments(mapped);
+  const loadHistory = useCallback(async (shipment: Shipment) => {
+    const { data, error } = await db.rpc('admin_shipment_notification_history', { _order_id: shipment.id });
+    if (error) { setHistory([]); setNotice(`تعذّر تحميل سجل الإشعارات: ${error.message}. تأكد من تطبيق SQL المرفق.`); }
+    else setHistory(data || []);
+  }, []);
+  useEffect(() => { if (selected) { setCourierName(selected.courierName); setCourierPhone(selected.courierPhone); void loadHistory(selected); } else setHistory([]); }, [selected, loadHistory]);
+  useEffect(() => { if (!notice) return; const t = window.setTimeout(() => setNotice(''), 5500); return () => clearTimeout(t); }, [notice]);
+
+  const filtered = useMemo(() => { const q=search.trim().toLowerCase(); return shipments.filter(s => !q || `${s.trackingCode} ${s.customerName} ${s.customerPhone} ${s.storeName}`.toLowerCase().includes(q)); }, [shipments, search]);
+
+  const doAction = async (shipment: Shipment, stage: typeof STAGES[number], action: 'advance'|'notify', channel: Channel) => {
+    if (channel === 'whatsapp' && !normalizePhone(shipment.customerPhone)) { setNotice('لا يوجد رقم هاتف صالح لهذا العميل.'); return; }
+    if (stage.code === 'out_for_delivery' && action === 'advance' && (!courierName.trim() || !normalizePhone(courierPhone))) { setNotice('أدخل اسم المندوب ورقمه قبل تفعيل مرحلة التوصيل.'); return; }
+    const popup = channel === 'whatsapp' ? window.open('about:blank', '_blank') : null;
+    setBusy(true); setNotice('');
+    try {
+      const text = messageFor({ ...shipment, courierName:courierName.trim(), courierPhone:courierPhone.trim() }, stage);
+      const { data, error } = await db.rpc('admin_set_shipment_stage', {
+        _order_id: shipment.id, _stage_code: stage.code, _action: action, _channel: channel,
+        _message: text,
+        _courier_name: stage.code === 'out_for_delivery' ? courierName.trim() : null,
+        _courier_phone: stage.code === 'out_for_delivery' ? normalizePhone(courierPhone) : null,
+      });
+      if (error) throw error;
+      if (action === 'advance') setShipments(prev => prev.map(s => s.id === shipment.id ? { ...s, status:stage.code, courierName:stage.code === 'out_for_delivery' ? courierName.trim() : s.courierName, courierPhone:stage.code === 'out_for_delivery' ? normalizePhone(courierPhone) : s.courierPhone } : s));
+      await loadHistory(shipment);
+      if (channel === 'whatsapp') {
+        if (popup) popup.location.href = `https://wa.me/${normalizePhone(shipment.customerPhone)}?text=${encodeURIComponent(text)}`;
+        else setNotice('حُفظت الرسالة كجاهزة في السجل، لكن المتصفح منع نافذة واتساب. اسمح بالنوافذ المنبثقة وافتح سجل الرسائل.');
+        if (popup) setNotice('فُتح واتساب برسالة جاهزة. لم تُرسل تلقائياً؛ أكّد الإرسال داخل واتساب.');
+      } else {
+        setNotice(data?.notification_state === 'created' ? (action === 'advance' ? 'تم تحديث المرحلة وحفظ إشعار العميل داخل التطبيق.' : 'تم حفظ التذكير داخل التطبيق دون تغيير حالة الشحنة.') : 'تم تحديث السجل، لكن العميل لا يملك حساباً مرتبطاً لتلقي إشعار داخل التطبيق.');
       }
-    } catch (err) {
-      console.error('خطأ في جلب الشحنات:', err);
-    } finally {
-      setLoading(false);
-    }
+      if (action === 'advance') await refresh();
+    } catch (e) {
+      popup?.close();
+      setNotice(`لم تكتمل العملية: ${e instanceof Error ? e.message : 'خطأ غير معروف'}`);
+    } finally { setBusy(false); }
   };
 
-  // تحميل أولي + اشتراك لحظي مع جدول الطلبات
-  useEffect(() => {
-    if (access !== 'allowed') return;
-    fetchShipments();
+  if (access === 'loading') return <div dir="rtl" className="min-h-screen grid place-items-center text-slate-600">جارٍ التحقق من الصلاحيات...</div>;
+  if (access === 'denied') return <div dir="rtl" className="min-h-screen grid place-items-center p-6"><div className="max-w-md rounded-3xl bg-white p-8 text-center shadow"><ShieldCheck className="mx-auto mb-3 size-10 text-amber-600"/><h1 className="font-black">هذه الصفحة للمدير والموظفين</h1><p className="my-4 text-sm text-slate-500">سجّل الدخول بحساب مخوّل لمتابعة الشحنات.</p><Link to="/login" className="inline-block rounded-xl bg-blue-900 px-5 py-3 text-white">تسجيل الدخول</Link></div></div>;
 
-    const channel = supabase
-      .channel('admin_tracking_realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
-        fetchShipments();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [access]);
-
-  // إظهار رسالة مؤقتة
-  useEffect(() => {
-    if (!toast) return;
-    const timer = setTimeout(() => setToast(null), 4000);
-    return () => clearTimeout(timer);
-  }, [toast]);
-
-  // تفعيل مرحلة: حفظ بالقاعدة + إشعار تلقائي للعميل
-  const activateStage = async (shipment: Shipment, stage: (typeof STAGES)[number]) => {
-    setBusyId(shipment.id);
-    try {
-      const { error } = await supabase
-        .from('orders')
-        .update({ status: stage.code, updated_at: new Date().toISOString() })
-        .eq('id', shipment.id);
-
-      if (error) {
-        setToast({ kind: 'error', text: 'تعذر حفظ المرحلة في القاعدة. تحقق من الصلاحيات وحاول مجدداً.' });
-        return;
-      }
-
-      await supabase.from('notifications').insert({
-        user_id: shipment.userId,
-        title: `تحديث مسار الشحنة (${shipment.trackingCode})`,
-        body: `مرحباً ${shipment.customerName}، ${stage.customerNote}.`,
-      });
-
-      setShipments((prev) =>
-        prev.map((s) =>
-          s.id === shipment.id ? { ...s, status: stage.code, updatedAt: new Date().toISOString() } : s
-        )
-      );
-      setToast({
-        kind: 'success',
-        text: `تم نقل الشحنة ${shipment.trackingCode} إلى المرحلة (${stage.stepNumber}. ${stage.title}) وحفظها بالقاعدة وإشعار العميل.`,
-      });
-    } catch (err) {
-      console.error('فشل تفعيل المرحلة:', err);
-      setToast({ kind: 'error', text: 'حدث خطأ غير متوقع أثناء الحفظ.' });
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  const filtered = useMemo(() => {
-    const term = searchInput.trim().toLowerCase();
-    if (!term) return shipments;
-    return shipments.filter(
-      (s) =>
-        s.trackingCode.toLowerCase().includes(term) ||
-        s.customerName.includes(term) ||
-        s.customerPhone.includes(term)
-    );
-  }, [shipments, searchInput]);
-
-  const todayKey = new Date().toDateString();
-  const todayOrders = shipments.filter(
-    (s) => new Date(s.createdAt).toDateString() === todayKey
-  ).length;
-  const readyShipments = shipments.filter((s) => normalizeStatus(s.status) === 'out_for_delivery').length;
-  const deliveredCount = shipments.filter((s) => normalizeStatus(s.status) === 'delivered').length;
-
-  // شاشة الفحص
-  if (access === 'loading') {
-    return (
-      <div dir="rtl" className="min-h-screen bg-[#F8FAFC] grid place-items-center">
-        <div className="text-center">
-          <Loader2 className="size-8 animate-spin text-[#0F4C81] mx-auto mb-3" />
-          <p className="text-sm font-bold text-slate-600">جاري التحقق من صلاحيات الموظف...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // شاشة عدم السماح
-  if (access === 'denied') {
-    return (
-      <div dir="rtl" className="min-h-screen bg-[#F8FAFC] grid place-items-center px-4">
-        <div className="w-full max-w-md bg-white rounded-3xl p-8 text-center border border-slate-200 shadow-sm">
-          <div className="size-14 rounded-2xl bg-amber-50 text-amber-600 grid place-items-center mx-auto mb-4">
-            <Lock className="size-7" />
-          </div>
-          <h1 className="text-lg font-black text-[#0A2540]">هذه الشاشة للموظفين والإدارة فقط</h1>
-          <p className="text-xs text-slate-500 mt-2 mb-6">
-            تتبع الشحنات المباشر متاح لحساب الموظفين. إذا كنت عميلاً، تابع شحنتك من صفحة التتبع الخاصة بك.
-          </p>
-          <div className="flex flex-col gap-2">
-            <Link
-              to="/track"
-              className="bg-[#F97316] hover:bg-[#EA580C] text-white px-5 py-3 rounded-2xl font-black text-sm transition"
-            >
-              تتبع شحنتي (للعملاء)
-            </Link>
-            <Link
-              to="/login"
-              className="bg-[#0F4C81] hover:bg-[#0A2540] text-white px-5 py-3 rounded-2xl font-black text-sm transition"
-            >
-              تسجيل دخول الموظفين
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div dir="rtl" className="min-h-screen bg-[#F8FAFC] text-slate-800 font-sans pb-16">
-      {/* الترويسة الرئيسية */}
-      <header className="bg-[#0F4C81] text-white border-b border-sky-900 sticky top-0 z-30 shadow-md">
-        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <Link to="/admin" className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition">
-              <ChevronLeft className="size-5" />
-            </Link>
-            <div>
-              <h1 className="text-base sm:text-lg font-black flex items-center gap-2">
-                <Radio className="size-5 text-[#F97316]" />
-                تتبع الشحنات المباشر — تحكم الموظفين
-              </h1>
-              <p className="text-[11px] text-sky-200">نقل الشحنات بين المراحل السبع وحفظها بالقاعدة مع إشعار تلقائي للعميل</p>
-            </div>
-          </div>
-          <button
-            onClick={fetchShipments}
-            disabled={loading}
-            className="text-xs bg-white/15 hover:bg-white/25 text-white px-3.5 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 disabled:opacity-50"
-          >
-            <RefreshCw className={`size-3.5 ${loading ? 'animate-spin' : ''}`} />
-            تحديث
-          </button>
-        </div>
-      </header>
-
-      <main className="max-w-5xl mx-auto px-4 pt-6 space-y-6">
-        {/* بطاقة الإحصائيات وتاريخ اليوم */}
-        <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-200">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="size-11 rounded-2xl bg-[#0F4C81] text-white grid place-items-center">
-                <CalendarDays className="size-5" />
-              </div>
-              <div>
-                <p className="text-[11px] text-slate-500 font-bold">تاريخ اليوم</p>
-                <p className="text-sm font-black text-[#0A2540]">
-                  {new Date().toLocaleDateString('ar-YE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-center min-w-[92px]">
-                <p className="text-xl font-black text-[#0F4C81]">{shipments.length}</p>
-                <p className="text-[10px] font-bold text-slate-500">إجمالي الشحنات</p>
-              </div>
-              <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 text-center min-w-[92px]">
-                <p className="text-xl font-black text-[#EA580C]">{todayOrders}</p>
-                <p className="text-[10px] font-bold text-amber-700">طلبات اليوم</p>
-              </div>
-              <div className="bg-orange-50 border border-orange-200 rounded-2xl px-4 py-3 text-center min-w-[92px]">
-                <p className="text-xl font-black text-[#F97316]">{readyShipments}</p>
-                <p className="text-[10px] font-bold text-orange-700">جاهزة للتوصيل</p>
-              </div>
-              <div className="bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-3 text-center min-w-[92px]">
-                <p className="text-xl font-black text-emerald-600">{deliveredCount}</p>
-                <p className="text-[10px] font-bold text-emerald-700">تم التسليم</p>
-              </div>
-            </div>
-          </div>
-
-          {/* البحث */}
-          <form
-            onSubmit={(e) => e.preventDefault()}
-            className="mt-5 relative"
-          >
-            <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
-            <input
-              type="text"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="بحث برقم الشحنة أو اسم العميل أو رقم الهاتف..."
-              className="w-full pr-10 pl-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#0F4C81] focus:bg-white transition"
-            />
-          </form>
-        </div>
-
-        {/* رسالة الحفظ */}
-        {toast && (
-          <div
-            className={`p-3.5 rounded-2xl border flex items-center gap-2.5 text-xs font-bold ${
-              toast.kind === 'success'
-                ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                : 'bg-amber-50 border-amber-200 text-amber-800'
-            }`}
-          >
-            {toast.kind === 'success' ? (
-              <CheckCircle2 className="size-4 text-emerald-600 shrink-0" />
-            ) : (
-              <AlertCircle className="size-4 text-amber-600 shrink-0" />
-            )}
-            <span>{toast.text}</span>
-          </div>
-        )}
-
-        {/* قائمة الشحنات */}
-        {loading && shipments.length === 0 ? (
-          <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 shadow-sm">
-            <Loader2 className="size-8 animate-spin text-[#0F4C81] mx-auto mb-3" />
-            <p className="text-sm font-bold text-slate-600">جاري جلب الشحنات من القاعدة...</p>
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="bg-white rounded-3xl p-10 text-center border border-slate-200 shadow-sm">
-            <Package className="size-12 text-slate-300 mx-auto mb-3" />
-            <h3 className="text-sm font-black text-slate-700 mb-1">لا توجد شحنات مطابقة</h3>
-            <p className="text-xs text-slate-400">
-              {shipments.length === 0
-                ? 'لم تُسجل أي شحنة في القاعدة بعد. أضف شحنة جديدة من لوحة الإدارة.'
-                : 'جرّب تغيير كلمة البحث أو مسح حقل البحث.'}
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {filtered.map((shipment) => {
-              const currentIndex = stageIndexFor(shipment.status);
-              const isCancelled = normalizeStatus(shipment.status) === 'cancelled';
-  const currentStage = STAGES.find((s) => s.code === normalizeStatus(shipment.status));
-
-              return (
-                <div key={shipment.id} className="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-200">
-                  {/* ترويسة الشحنة */}
-                  <div className="flex flex-wrap items-start justify-between gap-3 pb-4 border-b border-slate-100">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <span className="text-[11px] font-bold bg-[#0F4C81]/10 text-[#0F4C81] px-3 py-1 rounded-full font-mono" dir="ltr">
-                          {shipment.trackingCode}
-                        </span>
-                        <span className="text-[10px] bg-orange-100 text-[#EA580C] px-2 py-0.5 rounded-md font-bold">
-                          {shipment.storeName}
-                        </span>
-                        {isCancelled && (
-                          <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-md font-bold">
-                            ملغي
-                          </span>
-                        )}
-                      </div>
-                      <h3 className="text-base font-black text-[#0A2540]">{shipment.productName}</h3>
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5 text-xs text-slate-500 font-bold">
-                        <span className="flex items-center gap-1">
-                          <User className="size-3.5 text-slate-400" />
-                          {shipment.customerName}
-                        </span>
-                        <span className="flex items-center gap-1" dir="ltr">
-                          <Phone className="size-3.5 text-slate-400" />
-                          {shipment.customerPhone || 'غير مسجل'}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <MapPin className="size-3.5 text-slate-400" />
-                          {shipment.city}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="text-left">
-                      <p className="text-[10px] font-bold text-slate-400 mb-1">المرحلة الحالية</p>
-                      <p className="text-xs font-black text-[#0F4C81] bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-xl">
-                        {currentStage
-                          ? `${currentStage.stepNumber}. ${currentStage.title}`
-                          : 'بانتظار التسجيل'}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* خط سير المراحل السبع مع أزرار التفعيل */}
-                  <div className="mt-4 space-y-3">
-                    {STAGES.map((stage) => {
-                      const idx = STAGE_ORDER.indexOf(stage.code);
-                      const isDone = idx < currentIndex;
-                      const isCurrent = idx === currentIndex;
-                      const Icon = stage.icon;
-
-                      let cardStyle = 'bg-slate-50 border-slate-200';
-                      let iconBadge = 'bg-slate-200 text-slate-500';
-
-                      if (isDone) {
-                        cardStyle = 'bg-emerald-50/60 border-emerald-200';
-                        iconBadge = 'bg-emerald-500 text-white';
-                      } else if (isCurrent) {
-                        cardStyle = 'bg-blue-50/70 border-sky-300 ring-2 ring-sky-400/30';
-                        iconBadge = 'bg-[#0F4C81] text-white';
-                      }
-
-                      return (
-                        <div
-                          key={stage.code}
-                          className={`p-3.5 rounded-2xl border transition flex items-start gap-3.5 ${cardStyle}`}
-                        >
-                          <div className={`size-10 rounded-xl grid place-items-center shrink-0 shadow-sm ${iconBadge}`}>
-                            {isDone ? <CheckCircle2 className="size-5" /> : <Icon className="size-5" />}
-                          </div>
-
-                          <div className="flex-1 min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <h4 className={`text-sm font-black ${isCurrent ? 'text-[#0F4C81]' : isDone ? 'text-emerald-900' : 'text-slate-600'}`}>
-                                {stage.stepNumber}. {stage.title}
-                              </h4>
-                              {isCurrent && (
-                                <span className="text-[10px] bg-[#F97316] text-white px-2 py-0.5 rounded-md font-bold">
-                                  المرحلة الحالية
-                                </span>
-                              )}
-                              {isDone && (
-                                <span className="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded-md font-bold">
-                                  مكتمل
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-[11px] text-slate-500 mt-0.5 font-medium">{stage.customerNote}</p>
-                          </div>
-
-                          {/* زر التفعيل والحفظ بالقاعدة */}
-                          {!isCurrent && !isDone && (
-                            <button
-                              onClick={() => activateStage(shipment, stage)}
-                              disabled={busyId === shipment.id}
-                              className="shrink-0 self-center bg-[#F97316] hover:bg-[#EA580C] disabled:opacity-60 text-white text-[10px] font-black px-3 py-2 rounded-xl shadow-sm transition active:scale-95 flex items-center gap-1.5"
-                            >
-                              {busyId === shipment.id ? (
-                                <Loader2 className="size-3.5 animate-spin" />
-                              ) : (
-                                <ShieldCheck className="size-3.5" />
-                              )}
-                              <span>تفعيل ونقل الشحنة لهذه المرحلة (حفظ بالقاعدة)</span>
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </main>
-    </div>
-  );
+  return <div dir="rtl" className="min-h-screen bg-slate-50 pb-16 text-slate-800">
+    <header className="sticky top-0 z-20 bg-[#0F4C81] text-white shadow"><div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4"><div className="flex items-center gap-3"><Link to="/admin" className="rounded-xl bg-white/10 p-2"><ChevronLeft className="size-5"/></Link><div><h1 className="font-black">مسار الشحنة وإشعارات العميل</h1><p className="text-[11px] text-sky-100">ثماني مراحل · تحديث مباشر</p></div></div><button onClick={() => void refresh()} disabled={loading} className="flex items-center gap-2 rounded-xl bg-white/15 px-3 py-2 text-xs font-bold"><RefreshCw className={`size-4 ${loading?'animate-spin':''}`}/> تحديث</button></div></header>
+    <main className="mx-auto max-w-6xl space-y-5 px-4 py-6">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{[['إجمالي الشحنات',shipments.length],['طلبات اليوم',shipments.filter(s=>new Date(s.createdAt).toDateString()===new Date().toDateString()).length],['قيد التوصيل',shipments.filter(s=>s.status==='out_for_delivery').length],['مكتملة',shipments.filter(s=>s.status==='delivered').length]].map(([label,value])=><div key={String(label)} className="rounded-2xl border bg-white p-4 shadow-sm"><p className="text-xs text-slate-500">{label}</p><p className="mt-1 text-2xl font-black text-[#0F4C81]">{value}</p></div>)}</div>
+      <label className="relative block"><Search className="absolute right-3 top-3 size-4 text-slate-400"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="ابحث برقم الشحنة أو العميل أو الهاتف" className="w-full rounded-2xl border bg-white py-3 pr-10 pl-4 outline-none focus:border-blue-500"/></label>
+      {notice && <div role="status" className="flex items-start gap-2 rounded-2xl border border-sky-200 bg-sky-50 p-3 text-sm font-bold text-sky-900"><Bell className="mt-0.5 size-4 shrink-0"/>{notice}</div>}
+      {loading && !shipments.length ? <div className="rounded-3xl bg-white p-12 text-center">جارٍ تحميل الشحنات...</div> : filtered.length ? <div className="grid gap-4 lg:grid-cols-2">{filtered.map(s=>{const idx=stageIndex(s.status);const current=STAGES[idx];return <article key={s.id} className="rounded-3xl border bg-white p-5 shadow-sm"><div className="flex items-start justify-between gap-3"><div><div className="flex flex-wrap items-center gap-2"><span dir="ltr" className="rounded-full bg-blue-50 px-3 py-1 font-mono text-xs font-black text-blue-900">{s.trackingCode}</span><span className="rounded-lg bg-orange-50 px-2 py-1 text-[11px] font-bold text-orange-700">{s.storeName}</span></div><h2 className="mt-2 font-black">{s.customerName}</h2><p className="mt-1 text-xs text-slate-500">{s.productName} · {s.city}</p><p dir="ltr" className="mt-1 text-right text-xs text-slate-500">{s.customerPhone}</p></div><span className="rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800">{current?.title}</span></div><div className="mt-4 flex items-center gap-1">{STAGES.map((st,i)=><span key={st.code} title={`${i+1}. ${st.title}`} className={`h-2 flex-1 rounded-full ${i<=idx?'bg-emerald-500':'bg-slate-200'}`}/>)}</div><button onClick={()=>setSelected(s)} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#0F4C81] px-4 py-3 text-sm font-black text-white"><Bell className="size-4"/>مسار الشحنة وإشعار</button></article>})}</div> : <div className="rounded-3xl bg-white p-12 text-center text-slate-500">لا توجد شحنات مطابقة.</div>}
+    </main>
+    {selected && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-2 sm:p-5" role="dialog" aria-modal="true" aria-labelledby="shipment-modal-title"><section className="max-h-[95vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white p-4 shadow-2xl sm:p-6"><div className="sticky top-0 z-10 -mx-4 -mt-4 mb-4 flex items-center justify-between border-b bg-white/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:-mt-6 sm:px-6"><div><h2 id="shipment-modal-title" className="font-black">مسار الشحنة {selected.trackingCode}</h2><p className="text-xs text-slate-500">{selected.customerName} · {selected.storeName}</p></div><button onClick={()=>setSelected(null)} className="rounded-xl bg-slate-100 p-2" aria-label="إغلاق"><X className="size-4"/></button></div>
+      <div className="mb-4 rounded-2xl border border-sky-100 bg-sky-50 p-3 text-xs leading-6 text-sky-950">تحديث المرحلة ينشئ إشعاراً داخل التطبيق. زر واتساب يفتح رسالة جاهزة ويسجلها «جاهزة»، ولا يثبت الإرسال حتى تؤكده من واتساب.</div>
+      {STAGES.some(s=>s.code==='out_for_delivery') && <div className="mb-4 grid gap-2 rounded-2xl bg-slate-50 p-3 sm:grid-cols-2"><label className="text-xs font-bold">اسم المندوب (مطلوب عند التوصيل)<input value={courierName} onChange={e=>setCourierName(e.target.value)} className="mt-1 w-full rounded-xl border bg-white p-2.5" placeholder="اسم المندوب"/></label><label className="text-xs font-bold">هاتف المندوب<input value={courierPhone} onChange={e=>setCourierPhone(e.target.value)} dir="ltr" className="mt-1 w-full rounded-xl border bg-white p-2.5 text-right" placeholder="7xxxxxxxx"/></label></div>}
+      <ol className="space-y-3">{STAGES.map((stage,i)=>{const Icon=stage.icon;const active=i===stageIndex(selected.status);const done=i<stageIndex(selected.status);return <li key={stage.code} className={`rounded-2xl border p-3 ${active?'border-blue-300 bg-blue-50':done?'border-emerald-200 bg-emerald-50/60':'bg-white'}`}><div className="flex items-start gap-3"><span className={`grid size-9 shrink-0 place-items-center rounded-xl ${done?'bg-emerald-600 text-white':active?'bg-blue-900 text-white':'bg-slate-100 text-slate-500'}`}>{done?<Check className="size-4"/>:<Icon className="size-4"/>}</span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><b className="text-sm">{i+1}. {stage.title}</b>{active&&<span className="rounded bg-blue-900 px-2 py-0.5 text-[10px] text-white">الحالية</span>}</div><p className="mt-1 text-xs text-slate-500">{stage.location} · {stage.detail}</p>{stage.code==='out_for_delivery'&&selected.courierName&&<p className="mt-1 text-xs font-bold text-emerald-800">المندوب: {selected.courierName} {selected.courierPhone&&<span dir="ltr">· {selected.courierPhone}</span>}</p>}<div className="mt-3 flex flex-wrap gap-2">{!active&&<button disabled={busy} onClick={()=>void doAction(selected,stage,'advance','app')} className="rounded-lg bg-orange-600 px-3 py-2 text-[11px] font-black text-white disabled:opacity-50">{busy?'جارٍ الحفظ...':'تفعيل المرحلة وإشعار التطبيق'}</button>}<button disabled={busy} onClick={()=>void doAction(selected,stage,'notify','app')} className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-[11px] font-bold text-blue-900 disabled:opacity-50">تذكير داخل التطبيق فقط</button><button disabled={busy||!normalizePhone(selected.customerPhone)} onClick={()=>void doAction(selected,stage,'notify','whatsapp')} className="flex items-center gap-1 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-[11px] font-bold text-emerald-800 disabled:opacity-50"><MessageCircle className="size-3.5"/>فتح رسالة واتساب</button></div></div></div></li>})}</ol>
+      <section className="mt-5 rounded-2xl border p-4"><h3 className="flex items-center gap-2 font-black"><History className="size-4"/>سجل الإشعارات</h3>{history.length?<ul className="mt-3 space-y-2">{history.map(ev=><li key={ev.id} className="rounded-xl bg-slate-50 p-3 text-xs"><div className="flex flex-wrap justify-between gap-2 font-bold"><span>{ev.event_type==='stage'?'تغيير مرحلة':'تذكير'} · {ev.channel==='app'?'التطبيق':'واتساب'} · {ev.delivery_state==='created'?'أُنشئ إشعار التطبيق':ev.delivery_state==='prepared'?'رسالة مجهزة، بانتظار تأكيد واتساب':ev.delivery_state==='no_account'?'لا يوجد حساب تطبيق للعميل':ev.delivery_state}</span><time>{new Date(ev.created_at).toLocaleString('ar-YE')}</time></div><p className="mt-1 whitespace-pre-line text-slate-600">{ev.message}</p></li>)}</ul>:<p className="mt-3 text-xs text-slate-500">لا يوجد سجل بعد. طبّق SQL إذا لم يظهر السجل.</p>}</section>
+      </section></div>}
+  </div>;
 }
-
 export default LiveTrackingAdminRoute;
