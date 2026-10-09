@@ -1,5 +1,6 @@
 import { createFileRoute, useLocation } from "@tanstack/react-router";
 import { AdminAlerts } from "@/components/admin/AdminAlerts";
+import { AdminRouteGuard } from "@/components/admin/AdminRouteGuard";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Bell,
@@ -106,8 +107,16 @@ function AdminRouteError({ error }: { error: unknown }) {
   );
 }
 
+function ProtectedAdminRoute() {
+  return (
+    <AdminRouteGuard>
+      <AdminOperationsPage />
+    </AdminRouteGuard>
+  );
+}
+
 export const Route = createFileRoute("/admin")({
-  component: AdminOperationsPage,
+  component: ProtectedAdminRoute,
   errorComponent: AdminRouteError,
 });
 
