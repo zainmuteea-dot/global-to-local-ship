@@ -1,6 +1,6 @@
 import { createFileRoute, useLocation } from "@tanstack/react-router";
 import { AdminAlerts } from "@/components/admin/AdminAlerts";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Bell,
   CheckCircle2,
@@ -267,6 +267,9 @@ export default function AdminOperationsPage() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStore, setSelectedStore] = useState("ALL");
+  const [statusNotice, setStatusNotice] = useState<{ type: "success" | "error" | "warning"; message: string } | null>(null);
+  const [updatingOrderIds, setUpdatingOrderIds] = useState<Set<string>>(() => new Set());
+  const updatingOrderIdsRef = useRef<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [now, setNow] = useState(() => new Date());
   const [pendingPaymentsCount, setPendingPaymentsCount] = useState(0);
@@ -440,30 +443,52 @@ export default function AdminOperationsPage() {
     };
   }, []);
 
-  // تحديث حالة الشحنة وحفظها بالقاعدة مع إشعار تلقائي للعميل
+  // تحديث حالة الشحنة، مع منع الطلبات المتكررة ورسالة نتيجة واضحة.
   const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
     const targetOrder = orders.find((o) => o.id === orderId);
+    if (!targetOrder || targetOrder.status === newStatus || updatingOrderIdsRef.current.has(orderId)) return;
 
-    setOrders((prev) =>
-      prev.map((o) => (o.id === orderId ? { ...o, status: newStatus, updatedAt: new Date().toISOString() } : o))
+    const currentStatus = STATUS_MAP_TO_ARABIC[targetOrder.status] || targetOrder.status;
+    const nextStatus = STATUS_MAP_TO_ARABIC[newStatus] || newStatus;
+    const confirmed = window.confirm(
+      `تأكيد تحديث الطلب ${targetOrder.orderNumber}:\n\nالحالة الحالية: ${currentStatus}\nالحالة الجديدة: ${nextStatus}\n\nهل تريد المتابعة؟`
     );
+    if (!confirmed) return;
 
-    const arabicStatus = STATUS_MAP_TO_ARABIC[newStatus] || newStatus;
+    updatingOrderIdsRef.current.add(orderId);
+    setUpdatingOrderIds(new Set(updatingOrderIdsRef.current));
+    setStatusNotice(null);
 
     try {
-      await supabase
+      const { error } = await supabase
         .from("orders")
-        .update({ status: arabicStatus, updated_at: new Date().toISOString() })
+        .update({ status: nextStatus, updated_at: new Date().toISOString() })
         .eq("id", orderId);
+      if (error) throw error;
+
+      setOrders((prev) =>
+        prev.map((o) => (o.id === orderId ? { ...o, status: newStatus, updatedAt: new Date().toISOString() } : o))
+      );
 
       if (targetOrder) {
-        await supabase.from("notifications").insert({
+        const { error: notificationError } = await supabase.from("notifications").insert({
           title: `تحديث مسار الشحنة (${targetOrder.orderNumber})`,
           body: `مرحباً ${targetOrder.customerName}، شحنتك أصبحت في مرحلة: ${STATUS_TEXT[newStatus]}`,
         });
+        if (notificationError) {
+          console.error("تم تحديث حالة الطلب لكن تعذر إنشاء الإشعار:", notificationError);
+          setStatusNotice({ type: "warning", message: `تم تحديث حالة الطلب ${targetOrder.orderNumber}، لكن تعذر حفظ إشعار العميل.` });
+          return;
+        }
       }
-    } catch (e) {
-      console.error("فشل التحديث في القاعدة:", e);
+
+      setStatusNotice({ type: "success", message: `تم تحديث حالة الطلب ${targetOrder.orderNumber} إلى «${nextStatus}» بنجاح.` });
+    } catch (error) {
+      console.error("فشل تحديث حالة الطلب:", error);
+      setStatusNotice({ type: "error", message: `تعذر تحديث حالة الطلب ${targetOrder.orderNumber}. تحقق من الاتصال ثم حاول مرة أخرى.` });
+    } finally {
+      updatingOrderIdsRef.current.delete(orderId);
+      setUpdatingOrderIds(new Set(updatingOrderIdsRef.current));
     }
   };
 
@@ -821,34 +846,54 @@ export default function AdminOperationsPage() {
             </div>
 
             {/* أدوات البحث وفلاتر المتاجر */}
-            <div className="bg-white p-4 rounded-2xl border border-sky-100 shadow-xs flex flex-col md:flex-row gap-3 items-center justify-between">
-              <div className="relative w-full md:w-96">
+            <div className="flex min-w-0 flex-col items-stretch gap-3 rounded-2xl border border-sky-100 bg-white p-3 shadow-xs sm:p-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="relative w-full min-w-0 lg:w-auto lg:min-w-72 lg:flex-1">
+                <label htmlFor="orders-search" className="sr-only">البحث في الطلبات</label>
                 <input
-                  type="text"
-                  placeholder="بحث برقم الشحنة (SQ-..)، اسم العميل، أو الهاتف..."
+                  id="orders-search"
+                  type="search"
+                  aria-label="بحث برقم الشحنة أو اسم العميل أو الهاتف"
+                  placeholder="بحث برقم الشحنة، اسم العميل، أو الهاتف..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pr-10 pl-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-bold outline-none focus:border-[#0284C7] focus:bg-white"
+                  className="min-h-11 w-full min-w-0 rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-4 pr-10 text-xs font-bold outline-none transition focus:border-[#0284C7] focus:bg-white focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
                 />
-                <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
+                <Search aria-hidden="true" className="pointer-events-none absolute right-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
               </div>
 
-              <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1 md:pb-0">
+              <div role="group" aria-label="تصفية الطلبات حسب المتجر" className="grid w-full min-w-0 grid-cols-2 gap-2 min-[390px]:grid-cols-3 lg:flex lg:w-auto lg:flex-wrap lg:justify-end">
                 {["ALL", "SHEIN", "Amazon", "AliExpress", "Trendyol", "iHerb", "TEMU"].map((store) => (
                   <button
                     key={store}
+                    type="button"
                     onClick={() => setSelectedStore(store)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                    aria-pressed={selectedStore === store}
+                    className={`flex min-h-10 min-w-0 items-center justify-center rounded-xl px-2 py-2 text-center text-[11px] font-bold leading-tight transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 px-1.5 sm:px-3 sm:text-xs ${
                       selectedStore === store
                         ? "bg-[#0F4C81] text-white shadow-xs"
                         : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                     }`}
                   >
-                    {store === "ALL" ? "جميع المتاجر" : store === "iHerb" ? "آي هيرب iHerb" : store === "SHEIN" ? "شي إن SHEIN" : store === "Amazon" ? "أمازون Amazon" : store === "AliExpress" ? "علي إكسبريس" : store}
+                    <span className="break-words">{store === "ALL" ? "جميع المتاجر" : store === "iHerb" ? "آي هيرب iHerb" : store === "SHEIN" ? "شي إن SHEIN" : store === "Amazon" ? "أمازون Amazon" : store === "AliExpress" ? "علي إكسبريس" : store}</span>
                   </button>
                 ))}
               </div>
+              <p role="status" aria-live="polite" aria-atomic="true" className="w-full min-w-0 break-words text-xs font-bold text-slate-600 lg:basis-full">
+                عدد الطلبات المطابقة: <span className="text-[#0F4C81]">{filteredOrders.length}</span>
+                {searchQuery.trim() || selectedStore !== "ALL" ? " وفق البحث والفلاتر الحالية" : ""}
+              </p>
             </div>
+
+            {statusNotice && (
+              <div
+                role={statusNotice.type === "error" ? "alert" : "status"}
+                aria-live={statusNotice.type === "error" ? "assertive" : "polite"}
+                className={`flex min-w-0 items-start gap-2 rounded-xl border px-3 py-3 text-xs font-bold sm:px-4 ${statusNotice.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : statusNotice.type === "warning" ? "border-amber-200 bg-amber-50 text-amber-900" : "border-red-200 bg-red-50 text-red-800"}`}
+              >
+                <span className="min-w-0 flex-1 break-words">{statusNotice.message}</span>
+                <button type="button" onClick={() => setStatusNotice(null)} aria-label="إغلاق رسالة تحديث الحالة" className="shrink-0 rounded-md px-2 py-1 hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current">إغلاق</button>
+              </div>
+            )}
 
             {/* بطاقات الطلبات للجوال: محتوى قابل للالتفاف بلا تمرير أفقي */}
             <section className="min-w-0 space-y-3 md:hidden" aria-label="قائمة الشحنات للجوال">
@@ -859,7 +904,7 @@ export default function AdminOperationsPage() {
               {filteredOrders.length === 0 ? (
                 <div className="rounded-2xl border bg-white p-8 text-center text-sm text-slate-500">لا توجد شحنات مطابقة.</div>
               ) : filteredOrders.map((order) => (
-                <article key={order.id} className="w-full min-w-0 overflow-hidden rounded-2xl border border-sky-100 bg-white p-3 shadow-sm sm:p-4">
+                <article key={order.id} className="w-full min-w-0 overflow-hidden rounded-2xl border border-sky-100 bg-white p-3 shadow-sm transition-shadow focus-within:border-sky-400 focus-within:ring-2 focus-within:ring-sky-400 focus-within:ring-offset-2 sm:p-4">
                   <div className="flex min-w-0 flex-wrap items-start justify-between gap-2 border-b border-slate-100 pb-3">
                     <div className="min-w-0 flex-1">
                       <p className="break-all font-mono text-sm font-black text-[#0F4C81]">{order.orderNumber}</p>
@@ -889,22 +934,22 @@ export default function AdminOperationsPage() {
 
                   <label className="mt-3 block min-w-0 text-[11px] font-bold text-slate-500">
                     تحديث المرحلة
-                    <select value={order.status} onChange={(e) => handleStatusChange(order.id, e.target.value as OrderStatus)} className="mt-1 min-h-11 w-full min-w-0 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-[#0A2540] outline-none focus:border-[#0284C7]">
+                    <select aria-label={`تحديث مرحلة الطلب ${order.orderNumber}`} aria-busy={updatingOrderIds.has(order.id)} disabled={updatingOrderIds.has(order.id)} value={order.status} onChange={(e) => handleStatusChange(order.id, e.target.value as OrderStatus)} className="mt-1 min-h-11 w-full min-w-0 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-[#0A2540] outline-none transition focus:border-[#0284C7] focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60">
                       <option value="new">1. استلام الطلب والاعتماد</option><option value="reviewing">2. تدقيق التكاليف والأوزان</option><option value="purchased">3. الشراء من المتجر الدولي</option><option value="warehouse_china">4. وصول المستودع الدولي</option><option value="international_ship">5. الشحن الدولي (جوي/بحري)</option><option value="shipped">6. الفرز والتسليم للمندوب</option><option value="delivered">7. تم التسليم بنجاح</option><option value="cancelled">إلغاء الطلب</option>
                     </select>
                   </label>
 
                   <div className="mt-3 grid min-w-0 grid-cols-2 gap-2">
-                    <button type="button" onClick={() => sendWhatsAppNotification(order)} className="flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl bg-emerald-50 px-2 text-xs font-bold text-emerald-700 hover:bg-emerald-100" aria-label="رسالة واتساب">
+                    <button type="button" onClick={() => sendWhatsAppNotification(order)} className="flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl bg-emerald-50 px-2 text-xs font-bold text-emerald-700 hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2" aria-label="رسالة واتساب">
                       <MessageCircle className="size-4 shrink-0" /><span>واتساب</span>
                     </button>
-                    <button type="button" onClick={() => void copyTrackingCode(order)} className="flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl bg-amber-50 px-2 text-xs font-bold text-amber-700 hover:bg-amber-100" aria-label="نسخ رقم التتبع">
+                    <button type="button" onClick={() => void copyTrackingCode(order)} className="flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl bg-amber-50 px-2 text-xs font-bold text-amber-700 hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2" aria-label="نسخ رقم التتبع">
                       <Copy className="size-4 shrink-0" /><span>نسخ التتبع</span>
                     </button>
-                    <button type="button" onClick={() => setPrintingOrder(order)} className="flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl bg-blue-50 px-2 text-xs font-bold text-blue-700 hover:bg-blue-100" aria-label="طباعة السند">
+                    <button type="button" onClick={() => setPrintingOrder(order)} className="flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl bg-blue-50 px-2 text-xs font-bold text-blue-700 hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2" aria-label="طباعة السند">
                       <Printer className="size-4 shrink-0" /><span>طباعة السند</span>
                     </button>
-                    <button type="button" onClick={() => void handleDeleteOrder(order.id, order.orderNumber)} className="flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl bg-red-50 px-2 text-xs font-bold text-red-600 hover:bg-red-100" aria-label="حذف الشحنة">
+                    <button type="button" onClick={() => void handleDeleteOrder(order.id, order.orderNumber)} className="flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl bg-red-50 px-2 text-xs font-bold text-red-600 hover:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2" aria-label="حذف الشحنة">
                       <Trash2 className="size-4 shrink-0" /><span>حذف</span>
                     </button>
                   </div>
@@ -955,9 +1000,12 @@ export default function AdminOperationsPage() {
 
                           <td className="py-3 px-4">
                             <select
+                              aria-label={`تحديث مرحلة الطلب ${order.orderNumber}`}
+                              aria-busy={updatingOrderIds.has(order.id)}
+                              disabled={updatingOrderIds.has(order.id)}
                               value={order.status}
                               onChange={(e) => handleStatusChange(order.id, e.target.value as OrderStatus)}
-                              className="px-2.5 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-bold text-[#0A2540] outline-none focus:border-[#0284C7] cursor-pointer"
+                              className="min-w-0 max-w-full rounded-xl border border-slate-200 bg-slate-50 px-2 py-2 text-xs font-bold text-[#0A2540] outline-none transition focus:border-[#0284C7] focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60"
                             >
                               <option value="new">1. استلام الطلب والاعتماد</option>
                               <option value="reviewing">2. تدقيق التكاليف والأوزان</option>
