@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useLocation } from "@tanstack/react-router";
 import { AdminAlerts } from "@/components/admin/AdminAlerts";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -534,8 +534,8 @@ export default function AdminOperationsPage() {
   const totalShipments = orders.length;
   const transitShipments = orders.filter((o) => ["purchased", "warehouse_china", "international_ship"].includes(o.status)).length;
   const deliveredShipments = orders.filter((o) => o.status === "delivered").length;
-  const billedRevenue = totalShipments * 185;
-  const netProfit = totalShipments * 28;
+  const billedRevenue: number | null = null;
+  const netProfit: number | null = null;
 
   return (
     <div className="min-h-screen bg-[#F3F6FA] text-[#0A2540] font-sans lg:pr-72" dir="rtl">
@@ -564,6 +564,7 @@ export default function AdminOperationsPage() {
           {[
             { label: "الرئيسية", icon: Home, path: "/admin" },
             { label: "إدارة الطلبات والشحنات", icon: Truck, path: "/admin" },
+            { label: "مسار تتبع الشحنات", icon: Plane, path: "/admin-tracking" },
             { label: "المدفوعات", icon: Wallet, path: "/payments" },
             { label: "إدارة العملاء", icon: Users, path: "/admin-clients" },
             { label: "الأصناف والمخزون", icon: Package, path: "/inventory" },
@@ -578,9 +579,9 @@ export default function AdminOperationsPage() {
               key={label}
               type="button"
               onClick={() => navigateTo(path)}
-              aria-current={path === "/admin" ? "page" : undefined}
+              aria-current={path === currentPath ? "page" : undefined}
               className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-right text-sm font-bold transition-colors ${
-                path === "/admin"
+                path === currentPath
                   ? "bg-[#23658F] text-white shadow-sm"
                   : "text-sky-50 hover:bg-white/10 hover:text-white"
               }`}
@@ -598,7 +599,7 @@ export default function AdminOperationsPage() {
 
       {/* الترويسة الرئيسية */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-sky-100 shadow-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between gap-4">
+        <div className="mx-auto flex min-h-[4.25rem] max-w-7xl flex-wrap items-center justify-between gap-2 px-3 py-2 sm:gap-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsSidebarOpen(true)}
@@ -622,21 +623,25 @@ export default function AdminOperationsPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
             <button
               onClick={() => setIsAddModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#F97316] to-[#EA580C] text-white font-bold text-xs shadow-md hover:shadow-lg transition-all cursor-pointer"
+              className="flex min-h-10 items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#F97316] to-[#EA580C] px-3 py-2 text-white text-xs font-bold shadow-md transition-all hover:shadow-lg sm:gap-2 sm:px-4"
             >
               <PlusCircle className="w-4 h-4" />
-              <span>شحنة جديدة</span>
+              <span className="hidden xs:inline sm:inline">شحنة جديدة</span>
             </button>
 
             <button
               onClick={() => setIsQuickScanOpen(true)}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-[#0F4C81] text-white font-bold text-xs hover:bg-[#0A2540] transition-colors cursor-pointer"
+              className="hidden min-h-10 items-center gap-1.5 rounded-xl bg-[#0F4C81] px-3 py-2 text-white text-xs font-bold transition-colors hover:bg-[#0A2540] sm:flex"
             >
               <ScanLine className="w-4 h-4" />
               <span>مسح باركود</span>
+            </button>
+
+            <button type="button" onClick={() => navigateTo("/admin-tracking")} className="hidden md:flex min-h-10 items-center gap-1.5 rounded-xl border border-sky-100 bg-white px-3 text-xs font-bold text-[#0F4C81] hover:bg-sky-50">
+              <Truck className="size-4" /><span>التتبع</span>
             </button>
 
             <button
@@ -664,10 +669,10 @@ export default function AdminOperationsPage() {
         </div>
 
         {/* شريط التبويبات الثلاثية */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-slate-100 flex gap-2">
+        <div className="mx-auto flex max-w-7xl gap-1 overflow-x-auto border-t border-slate-100 px-2 sm:gap-2 sm:px-6 lg:px-8">
           <button
             onClick={() => setActiveTab("operations")}
-            className={`py-3 px-4 font-bold text-xs flex items-center gap-2 border-b-2 cursor-pointer transition-colors ${
+            className={`flex flex-none items-center gap-2 border-b-2 px-3 py-3 text-xs font-bold transition-colors ${
               activeTab === "operations"
                 ? "border-[#0284C7] text-[#0284C7]"
                 : "border-transparent text-slate-500 hover:text-slate-800"
@@ -679,7 +684,7 @@ export default function AdminOperationsPage() {
 
           <button
             onClick={() => setActiveTab("finance")}
-            className={`py-3 px-4 font-bold text-xs flex items-center gap-2 border-b-2 cursor-pointer transition-colors ${
+            className={`flex flex-none items-center gap-2 border-b-2 px-3 py-3 text-xs font-bold transition-colors ${
               activeTab === "finance"
                 ? "border-[#0284C7] text-[#0284C7]"
                 : "border-transparent text-slate-500 hover:text-slate-800"
@@ -691,7 +696,7 @@ export default function AdminOperationsPage() {
 
           <button
             onClick={() => setActiveTab("employees")}
-            className={`py-3 px-4 font-bold text-xs flex items-center gap-2 border-b-2 cursor-pointer transition-colors ${
+            className={`flex flex-none items-center gap-2 border-b-2 px-3 py-3 text-xs font-bold transition-colors ${
               activeTab === "employees"
                 ? "border-[#0284C7] text-[#0284C7]"
                 : "border-transparent text-slate-500 hover:text-slate-800"
@@ -703,7 +708,7 @@ export default function AdminOperationsPage() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      <main className="mx-auto max-w-7xl space-y-4 px-3 py-4 sm:space-y-6 sm:px-6 sm:py-6 lg:px-8">
         {/* شريط الإحصائيات الحية الخماسي */}
         <AdminAlerts />
         <section className="grid grid-cols-1 md:grid-cols-2 gap-3" aria-label="التنبيهات العاجلة">
@@ -747,8 +752,8 @@ export default function AdminOperationsPage() {
               <span className="text-xs font-bold">المبيعات المفوترة</span>
               <DollarSign className="w-4 h-4 text-[#0284C7]" />
             </div>
-            <div className="text-2xl font-black text-[#0284C7] font-mono">${billedRevenue}</div>
-            <div className="text-[11px] text-slate-500 mt-1">إجمالي مشتريات العملاء</div>
+            <div className="text-2xl font-black text-[#0284C7] font-mono">{billedRevenue === null ? "—" : billedRevenue.toLocaleString("en-US")}</div>
+            <div className="text-[11px] text-slate-500 mt-1">تظهر بعد ربط بيانات الفواتير</div>
           </div>
 
           <div className="bg-white p-4 rounded-2xl border border-sky-100 shadow-xs col-span-2 lg:col-span-1">
@@ -756,14 +761,14 @@ export default function AdminOperationsPage() {
               <span className="text-xs font-bold">صافي أرباح الوساطة</span>
               <TrendingUp className="w-4 h-4 text-emerald-600" />
             </div>
-            <div className="text-2xl font-black text-emerald-600 font-mono">${netProfit}</div>
-            <div className="text-[11px] text-emerald-600 font-bold mt-1">عمولة الوساطة المحققة</div>
+            <div className="text-2xl font-black text-emerald-600 font-mono">{netProfit === null ? "—" : netProfit.toLocaleString("en-US")}</div>
+            <div className="text-[11px] text-slate-500 mt-1">تظهر بعد ربط بيانات الفواتير</div>
           </div>
         </div>
 
         <section className="grid grid-cols-1 xl:grid-cols-3 gap-4" aria-label="التحليل الأسبوعي">
           <div className="xl:col-span-2 rounded-2xl border border-sky-100 bg-white p-5 shadow-sm">
-            <div className="flex items-start justify-between gap-3"><div><h2 className="font-black text-[#0A2540]">حركة المبيعات والمشتريات — آخر 7 أيام</h2><p className="mt-1 text-[11px] text-slate-500">الرسم توضيحي حتى ربط بيانات جدول invoices؛ لا يمثل أرقاماً حية.</p></div><span className="rounded-full bg-sky-50 px-3 py-1 text-[10px] font-bold text-sky-700">أسبوعي</span></div>
+            <div className="flex items-start justify-between gap-3"><div><h2 className="font-black text-[#0A2540]">حركة المبيعات والمشتريات — آخر 7 أيام</h2><p className="mt-1 text-[11px] text-slate-500">عرض توضيحي فقط؛ لا يمثل بيانات فعلية.</p></div><span className="rounded-full bg-sky-50 px-3 py-1 text-[10px] font-bold text-sky-700">أسبوعي</span></div>
             <div className="mt-5 flex h-40 items-end justify-around gap-3 border-b border-slate-100 px-2">
               {[{d:"السبت",s:55,p:31},{d:"الأحد",s:72,p:38},{d:"الاثنين",s:61,p:49},{d:"الثلاثاء",s:39,p:43},{d:"الأربعاء",s:28,p:20},{d:"الخميس",s:58,p:91},{d:"الجمعة",s:34,p:24}].map((day) => <div key={day.d} className="flex h-full min-w-7 flex-1 flex-col items-center justify-end gap-2"><div className="flex h-[118px] items-end gap-1"><span className="w-3 rounded-t bg-blue-500" style={{height:`${day.s}%`}} title="مبيعات توضيحية"/><span className="w-3 rounded-t bg-rose-400" style={{height:`${day.p}%`}} title="مشتريات توضيحية"/></div><span className="pb-2 text-[9px] text-slate-500">{day.d}</span></div>)}
             </div>
@@ -835,8 +840,40 @@ export default function AdminOperationsPage() {
               </div>
             </div>
 
-            {/* جدول الشحنات المباشر */}
-            <div className="bg-white rounded-2xl border border-sky-100 shadow-xs overflow-hidden">
+            {/* قائمة بطاقات للجوال */}
+            <section className="space-y-3 md:hidden" aria-label="قائمة الشحنات للجوال">
+              <div className="flex items-center justify-between rounded-2xl border border-sky-100 bg-white px-4 py-3">
+                <h2 className="font-black text-sm text-[#0A2540]">الطلبات والشحنات</h2>
+                <span className="rounded-full bg-sky-50 px-2.5 py-1 text-[11px] font-bold text-[#0F4C81]">{filteredOrders.length} نتيجة</span>
+              </div>
+              {filteredOrders.length === 0 ? <div className="rounded-2xl border bg-white p-8 text-center text-sm text-slate-500">لا توجد شحنات مطابقة.</div> : filteredOrders.map((order) => (
+                <article key={order.id} className="rounded-2xl border border-sky-100 bg-white p-4 shadow-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0"><p className="break-all font-mono text-sm font-black text-[#0F4C81]">{order.orderNumber}</p><span className="mt-1 inline-flex rounded-md bg-orange-50 px-2 py-0.5 text-[10px] font-black text-orange-700">{order.storeName}</span></div>
+                    <span className="shrink-0 rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-600">{STATUS_MAP_TO_ARABIC[order.status]}</span>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
+                    <div><p className="text-slate-400">العميل</p><p className="mt-1 font-bold">{order.customerName}</p><p dir="ltr" className="mt-1 text-right font-mono text-slate-500">{order.customerPhone || "—"}</p></div>
+                    <div><p className="text-slate-400">المنتج / المدينة</p><p className="mt-1 line-clamp-2 font-bold">{order.productTitle}</p><p className="mt-1 text-slate-500">{order.customerCity || "صنعاء"}</p></div>
+                  </div>
+                  <label className="mt-3 block text-[11px] font-bold text-slate-500">تحديث المرحلة
+                    <select value={order.status} onChange={(e) => handleStatusChange(order.id, e.target.value as OrderStatus)} className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-[#0A2540] outline-none focus:border-[#0284C7]">
+                      <option value="new">1. استلام الطلب والاعتماد</option><option value="reviewing">2. تدقيق التكاليف والأوزان</option><option value="purchased">3. الشراء من المتجر الدولي</option><option value="warehouse_china">4. وصول المستودع الدولي</option><option value="international_ship">5. الشحن الدولي (جوي/بحري)</option><option value="shipped">6. الفرز والتسليم للمندوب</option><option value="delivered">7. تم التسليم بنجاح</option><option value="cancelled">إلغاء الطلب</option>
+                    </select>
+                  </label>
+                  <div className="mt-3 grid grid-cols-4 gap-2">
+                    <button type="button" onClick={() => sendWhatsAppNotification(order)} aria-label="رسالة واتساب" className="flex min-h-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700"><MessageCircle className="size-4" /></button>
+                    <button type="button" onClick={() => void copyTrackingCode(order)} aria-label="نسخ رقم التتبع" className="flex min-h-11 items-center justify-center rounded-xl bg-amber-50 text-amber-700"><Copy className="size-4" /></button>
+                    <button type="button" onClick={() => setPrintingOrder(order)} aria-label="طباعة السند" className="flex min-h-11 items-center justify-center rounded-xl bg-blue-50 text-blue-700"><Printer className="size-4" /></button>
+                    <button type="button" onClick={() => void handleDeleteOrder(order.id, order.orderNumber)} aria-label="حذف الشحنة" className="flex min-h-11 items-center justify-center rounded-xl bg-red-50 text-red-600"><Trash2 className="size-4" /></button>
+                  </div>
+                </article>
+              ))}
+            </section>
+
+            {/* جدول الشحنات للشاشات المتوسطة والكبيرة */}
+            <div id="orders-table" className="hidden overflow-hidden rounded-2xl border border-sky-100 bg-white shadow-xs md:block">
+              <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3"><h2 className="font-black text-sm text-[#0A2540]">الطلبات والشحنات</h2><span className="text-xs text-slate-500">{filteredOrders.length} نتيجة</span></div>
               <div className="overflow-x-auto">
                 <table className="w-full text-right text-xs">
                   <thead className="bg-[#F0F7FF] text-[#0F4C81] border-b border-sky-100">
@@ -896,7 +933,7 @@ export default function AdminOperationsPage() {
                             <div className="flex items-center justify-center gap-1.5">
                               <button
                                 onClick={() => sendWhatsAppNotification(order)}
-                                className="p-2 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition cursor-pointer"
+                                className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition cursor-pointer" aria-label="رسالة واتساب للعميل"
                                 title="إرسال واتساب للعميل"
                               >
                                 <MessageCircle className="w-4 h-4" />
@@ -904,14 +941,14 @@ export default function AdminOperationsPage() {
 
                               <button
                                 onClick={() => copyTrackingCode(order)}
-                                className="p-2 rounded-xl bg-amber-50 text-amber-700 hover:bg-amber-100 transition cursor-pointer"
+                                className="p-2.5 rounded-xl bg-amber-50 text-amber-700 hover:bg-amber-100 transition cursor-pointer" aria-label="نسخ رقم التتبع"
                                 title="نسخ رقم التتبع"
                               >
                                 <Copy className="w-4 h-4" />
                               </button>
                               <button
                                 onClick={() => setPrintingOrder(order)}
-                                className="p-2 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition cursor-pointer"
+                                className="p-2.5 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition cursor-pointer" aria-label="طباعة السند"
                                 title="طباعة سند قبض رسمي"
                               >
                                 <Printer className="w-4 h-4" />
@@ -919,7 +956,7 @@ export default function AdminOperationsPage() {
 
                               <button
                                 onClick={() => handleDeleteOrder(order.id, order.orderNumber)}
-                                className="p-2 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 transition cursor-pointer"
+                                className="p-2.5 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 transition cursor-pointer" aria-label="حذف الشحنة"
                                 title="حذف الشحنة"
                               >
                                 <Trash2 className="w-4 h-4" />
