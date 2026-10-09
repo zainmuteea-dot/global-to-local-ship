@@ -1,182 +1,40 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { ArrowRight, Bell, Bike, Check, Hash, Home, PackageSearch, Phone, Plane, Printer } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
-
-export const Route = createFileRoute("/track/$trackingCode")({
-  head: () => ({
-    meta: [
-      { title: "مسار الشحنة — السوق الشامل" },
-      { name: "description", content: "شاهد حالة طلبك وجميع مراحل الشحن والتسليم من السوق الشامل." },
-    ],
-  }),
-  component: TrackingDetailPage,
-});
-
+import { createFileRoute, Link } from '@tanstack/react-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ArrowRight, Bell, Bike, Check, CheckCircle2, Circle, CreditCard, Home, MapPin, Package, PackageSearch, Plane, Printer, ShoppingBag, Truck, Warehouse, Volume2, VolumeX, History } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
+const db = supabase as any;
+export const Route = createFileRoute('/track/$trackingCode')({ head:()=>({meta:[{title:'مسار الشحنة — السوق الشامل'}]}), component:TrackingDetailPage });
 const STEPS = [
-  { key: "confirmed", title: "الطلب والاعتماد", desc: "تم استلام طلبك ومراجعته واعتماده بنجاح.", icon: Check },
-  { key: "shipping", title: "الشراء والشحن الدولي", desc: "جاري شراء المنتجات من المتجر العالمي وشحنها دولياً.", icon: Plane },
-  { key: "warehouse", title: "المستودع والفحص", desc: "وصلت الشحنة للمستودع الإقليمي وجاري فحصها وفرزها.", icon: PackageSearch },
-  { key: "out", title: "في طريق التوصيل", desc: "الشحنة مع مندوب التوصيل المحلي وهي في طريقها إليك.", icon: Bike },
-  { key: "delivered", title: "تم التسليم", desc: "تم تسليم الشحنة بنجاح للعميل.", icon: Home },
-];
-
-function statusToIndex(status: string): number {
-  const val = (status || "").toLowerCase();
-  if (val.includes("تسليم") || val.includes("delivered") || val.includes("مكتمل")) return 4;
-  if (val.includes("طريق") || val.includes("توصيل") || val.includes("out")) return 3;
-  if (val.includes("مستودع") || val.includes("وصل") || val.includes("مخزن") || val.includes("warehouse")) return 2;
-  if (val.includes("شراء") || val.includes("شحن") || val.includes("ship")) return 1;
-  return 0; // جديد / تم التواصل
-}
-
-function TrackingDetailPage() {
-  const { trackingCode } = Route.useParams();
-  const [order, setOrder] = useState<any | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchOrder = async () => {
-      setLoading(true);
-      const cleanCode = (trackingCode || "").trim().toUpperCase();
-
-      // جلب تفاصيل الطلب من قاعدة البيانات
-      const { data, error } = await supabase
-        .from("orders")
-        .select("*")
-        .ilike("tracking_code", cleanCode)
-        .maybeSingle();
-
-      if (data && !error) {
-        setOrder({
-          trackingCode: data.tracking_code,
-          customerName: data.customer_name,
-          phone: data.phone,
-          status: data.status,
-          productName: data.product_name,
-          productLink: data.product_link,
-          createdAt: new Date(data.created_at).toLocaleDateString("ar-YE"),
-        });
-      }
-      setLoading(false);
-    };
-
-    fetchOrder();
-  }, [trackingCode]);
-
-  if (loading) {
-    return (
-      <div dir="rtl" className="min-h-screen bg-[#FDF8EE] flex items-center justify-center font-body">
-        <div className="text-center text-[#8B5E34]">
-          <PackageSearch className="size-10 animate-bounce mx-auto mb-2" />
-          <p className="font-bold">جاري تحميل مسار الشحنة من قاعدة البيانات...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!order) {
-    return (
-      <div dir="rtl" className="grid min-h-screen place-items-center bg-[#FDF8EE] px-5 font-body">
-        <div className="w-full max-w-sm rounded-2xl bg-white p-7 text-center shadow-lg border border-[#e8d7bb]">
-          <PackageSearch className="mx-auto size-12 text-[#C17A4A]" />
-          <h1 className="mt-4 font-black text-xl text-[#4A3728]">لم يتم العثور على الشحنة</h1>
-          <p className="mt-2 text-xs text-gray-500">تأكد من إدخال رقم الشحنة بشكل صحيح (مثال: SC-XXXXXX)</p>
-          <Button asChild className="mt-5 h-11 w-full rounded-xl bg-[#8B5E34] text-white hover:bg-[#6e4926]">
-            <Link to="/track">العودة إلى شاشة التتبع</Link>
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  const activeIndex = statusToIndex(order.status);
-
-  return (
-    <div dir="rtl" className="min-h-screen bg-[#FDF8EE] px-4 pb-14 pt-6 font-body">
-      <main className="mx-auto w-full max-w-md">
-        {/* Header Card */}
-        <header className="rounded-2xl bg-white p-4 shadow-sm border border-[#e8d7bb] flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="size-3 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="font-black text-sm text-[#4A3728]">{order.status}</span>
-          </div>
-          <button
-            onClick={() => window.print()}
-            className="flex items-center gap-1 text-xs text-[#8B5E34] hover:bg-[#FAF4E6] px-2.5 py-1 rounded-lg border border-[#8B5E34]/30"
-          >
-            <Printer className="size-3.5" />
-            <span>طباعة السند</span>
-          </button>
-        </header>
-
-        <div className="mt-4 flex gap-2">
-          <Button asChild variant="outline" className="h-9 rounded-xl px-3 font-bold text-xs bg-white">
-            <Link to="/track">
-              <ArrowRight className="size-3.5 ml-1" />
-              <span>بحث عن شحنة أخرى</span>
-            </Link>
-          </Button>
-        </div>
-
-        {/* Info Box */}
-        <div className="mt-4 grid grid-cols-2 gap-3">
-          <div className="bg-white p-3 rounded-xl border border-[#e8d7bb] shadow-sm">
-            <span className="text-[11px] text-gray-500 block">رقم الشحنة</span>
-            <span className="font-mono font-black text-sm text-[#8B5E34]">{order.trackingCode}</span>
-          </div>
-          <div className="bg-white p-3 rounded-xl border border-[#e8d7bb] shadow-sm">
-            <span className="text-[11px] text-gray-500 block">هاتف العميل</span>
-            <span className="font-mono font-bold text-xs text-gray-800" dir="ltr">{order.phone}</span>
-          </div>
-        </div>
-
-        {/* Timeline Steps */}
-        <div className="mt-6 bg-white p-5 rounded-2xl border border-[#e8d7bb] shadow-sm">
-          <h2 className="mb-5 font-black text-base text-[#4A3728]">مراحل الشحن والتسليم</h2>
-          <ol className="relative space-y-6">
-            {STEPS.map((step, index) => {
-              const Icon = step.icon;
-              const reached = index <= activeIndex;
-              const active = index === activeIndex;
-              const last = index === STEPS.length - 1;
-
-              return (
-                <li key={step.key} className="relative flex gap-3">
-                  {!last && (
-                    <span
-                      className={`absolute right-[15px] top-8 h-[calc(100%+10px)] w-0.5 ${
-                        index < activeIndex ? "bg-emerald-500" : "bg-gray-200"
-                      }`}
-                      aria-hidden
-                    />
-                  )}
-                  <span
-                    className={`relative z-10 grid size-8 shrink-0 place-items-center rounded-full text-xs font-bold transition ${
-                      active
-                        ? "bg-[#8B5E34] text-white ring-4 ring-[#8B5E34]/20"
-                        : reached
-                        ? "bg-emerald-500 text-white"
-                        : "bg-gray-100 text-gray-400 border border-gray-200"
-                    }`}
-                  >
-                    <Icon className="size-4" />
-                  </span>
-                  <div className={`flex-1 -mt-0.5 ${active ? "bg-[#FAF4E6] p-2.5 rounded-xl border border-[#8B5E34]/20" : ""}`}>
-                    <p className={`text-sm font-black ${reached ? "text-[#4A3728]" : "text-gray-400"}`}>
-                      {step.title}
-                    </p>
-                    <p className="mt-0.5 text-xs text-gray-500 leading-relaxed">
-                      {step.desc}
-                    </p>
-                  </div>
-                </li>
-              );
-            })}
-          </ol>
-        </div>
-      </main>
-    </div>
-  );
+ {key:'new',title:'استلام الطلب والتدقيق',location:'مكتب الاستقبال المركزي',desc:'تسجيل الطلب وتدقيق روابط السلع والكميات والمقاسات والألوان.',icon:Package},
+ {key:'payment_review',title:'التدقيق المالي والدفع',location:'قسم الحسابات والوساطة',desc:'حساب التكلفة والعملات وتأكيد استلام الدفعة.',icon:CreditCard},
+ {key:'purchased',title:'الشراء من المتجر الدولي',location:'الصين / أمريكا / الإمارات / تركيا',desc:'إتمام الشراء وإصدار كود الشحن وفاتورة المورد.',icon:ShoppingBag},
+ {key:'international_warehouse',title:'وصول مستودع التجميع الدولي',location:'كوانزو / دبي / الرياض',desc:'فحص الجودة ومطابقة الوزن والتغليف الآمن.',icon:Warehouse},
+ {key:'international_transit',title:'الشحن الدولي في الترانزيت',location:'في الطريق إلى الجمهورية اليمنية',desc:'انطلاق الشحن الجوي أو البحري نحو اليمن.',icon:Plane},
+ {key:'customs_local',title:'الجمارك والفرز بالمستودع المحلي',location:'صنعاء / عدن',desc:'التخليص الجمركي والفرز حسب المحافظات والمدن.',icon:MapPin},
+ {key:'out_for_delivery',title:'جاري التوصيل مع المندوب',location:'مندوب التوصيل الميداني',desc:'خرجت الشحنة مع المندوب إلى عنوان العميل.',icon:Truck},
+ {key:'delivered',title:'تم التسليم للعميل بنجاح',location:'عنوان العميل النهائي',desc:'تم استلام الطرد وإغلاق الطلب.',icon:Home},
+] as const;
+const codes=STEPS.map(s=>s.key);
+const getIndex=(raw:string)=>{const s=(raw||'').trim().toLowerCase();const old:Record<string,string>={'جديد':'new',reviewing:'new','قيد المراجعة':'new','قيد الشراء والتجهيز':'purchased',warehouse_china:'international_warehouse','المستودع الدولي':'international_warehouse',international_ship:'international_transit',shipped:'international_transit','شحن دولي':'international_transit',local_warehouse:'customs_local','الفرز والتوصيل':'customs_local','تم التسليم':'delivered'};const key=old[s]||s;const i=codes.indexOf(key as typeof codes[number]);return i<0?0:i;};
+type EventRow={id:string;stage_code:string;channel:string;delivery_state:string;event_type:string;message:string;created_at:string};
+function ding(){try{const Ctx=window.AudioContext||(window as any).webkitAudioContext;if(!Ctx)return;const ctx=new Ctx();const now=ctx.currentTime;[880,1174].forEach((freq,i)=>{const osc=ctx.createOscillator();const gain=ctx.createGain();osc.type='sine';osc.frequency.value=freq;gain.gain.setValueAtTime(.0001,now+i*.16);gain.gain.exponentialRampToValueAtTime(.13,now+i*.16+.025);gain.gain.exponentialRampToValueAtTime(.0001,now+i*.16+.22);osc.connect(gain);gain.connect(ctx.destination);osc.start(now+i*.16);osc.stop(now+i*.16+.24);});window.setTimeout(()=>void ctx.close(),900);}catch{}}
+function TrackingDetailPage(){
+ const {trackingCode}=Route.useParams();const [order,setOrder]=useState<any>(null);const [events,setEvents]=useState<EventRow[]>([]);const [loading,setLoading]=useState(true);const [error,setError]=useState('');const [banner,setBanner]=useState('');const [soundOn,setSoundOn]=useState(false);const seenStatus=useRef<string|null>(null);
+ const fetchData=useCallback(async()=>{const code=(trackingCode||'').trim();if(!code){setLoading(false);return;}const {data,error:err}=await db.from('orders').select('id,tracking_code,customer_name,phone,product_name,product_link,status,created_at,user_id,courier_name,courier_phone').ilike('tracking_code',code).maybeSingle();if(err){setError(`تعذّر تحميل بيانات الشحنة: ${err.message}`);setLoading(false);return;}if(data){if(seenStatus.current&&seenStatus.current!==data.status){setBanner(`تحديث جديد: ${STEPS[getIndex(data.status)].title}`);if(soundOn)ding();}seenStatus.current=data.status;setOrder(data);const {data:logs}=await db.rpc('public_shipment_notification_history',{_tracking_code:code});if(Array.isArray(logs))setEvents(logs as EventRow[]);}else setOrder(null);setLoading(false);},[trackingCode,soundOn]);
+ useEffect(()=>{void fetchData();const timer=window.setInterval(()=>void fetchData(),20000);let channel:any=null;if(order?.id){channel=supabase.channel(`public-track-${order.id}`).on('postgres_changes',{event:'UPDATE',schema:'public',table:'orders',filter:`id=eq.${order.id}`},()=>void fetchData()).subscribe();}return()=>{window.clearInterval(timer);if(channel)void supabase.removeChannel(channel);};},[fetchData,order?.id]);
+ useEffect(()=>{if(!banner)return;const t=window.setTimeout(()=>setBanner(''),10000);return()=>clearTimeout(t);},[banner]);
+ if(loading)return <div dir="rtl" className="grid min-h-screen place-items-center bg-[#FDF8EE] text-[#704820]">جارٍ تحميل مسار الشحنة...</div>;
+ if(error)return <div dir="rtl" className="grid min-h-screen place-items-center bg-[#FDF8EE] p-5"><div role="alert" className="max-w-md rounded-2xl bg-white p-6 text-center shadow"><p className="font-bold text-red-800">{error}</p><button onClick={()=>{setLoading(true);void fetchData();}} className="mt-4 rounded-xl bg-[#8B5E34] px-5 py-2 text-white">إعادة المحاولة</button></div></div>;
+ if(!order)return <div dir="rtl" className="grid min-h-screen place-items-center bg-[#FDF8EE] p-5"><div className="rounded-2xl bg-white p-7 text-center shadow"><PackageSearch className="mx-auto size-12 text-[#C17A4A]"/><h1 className="mt-3 font-black">لم يتم العثور على الشحنة</h1><p className="mt-2 text-sm text-slate-500">تأكد من رقم التتبع وحاول مجدداً.</p><Button asChild className="mt-5"><Link to="/track">العودة للتتبع</Link></Button></div></div>;
+ const active=getIndex(order.status);const pct=Math.round((active/(STEPS.length-1))*100);const store=(order.product_link||'').includes('shein')?'SHEIN':(order.product_link||'').includes('amazon')?'Amazon':(order.product_link||'').includes('temu')?'TEMU':'متجر دولي';
+ return <div dir="rtl" className="min-h-screen bg-[#FDF8EE] px-4 pb-14 pt-5 font-body"><main className="mx-auto max-w-2xl">
+ {banner&&<div role="status" className="sticky top-2 z-30 mb-4 flex items-center justify-between gap-3 rounded-2xl border border-emerald-300 bg-emerald-50 p-4 font-bold text-emerald-950 shadow-lg"><div className="flex items-center gap-2"><Bell className="size-5 animate-pulse"/>{banner}</div><button onClick={()=>setBanner('')} aria-label="إغلاق"><span className="text-xl">×</span></button></div>}
+ <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#e8d7bb] bg-white p-4 shadow-sm"><div><p className="text-xs text-slate-500">حالة الشحنة</p><h1 className="mt-1 font-black text-[#4A3728]">{STEPS[active].title}</h1></div><div className="flex gap-2"><button onClick={()=>{setSoundOn(v=>!v);if(!soundOn)ding();}} className="flex items-center gap-1 rounded-xl border px-3 py-2 text-xs font-bold" aria-label={soundOn?'إيقاف صوت التنبيه':'تفعيل صوت التنبيه'}>{soundOn?<Volume2 className="size-4"/>:<VolumeX className="size-4"/>}{soundOn?'الصوت مفعل':'تفعيل الصوت'}</button><button onClick={()=>window.print()} className="flex items-center gap-1 rounded-xl border px-3 py-2 text-xs font-bold"><Printer className="size-4"/>طباعة</button></div></header>
+ <div className="mt-3 flex items-center justify-between rounded-2xl border border-[#e8d7bb] bg-white p-4"><div><p className="text-xs text-slate-500">رقم الشحنة</p><p dir="ltr" className="font-mono font-black text-[#8B5E34]">{order.tracking_code}</p></div><div className="text-left"><p className="text-xs text-slate-500">نسبة الإنجاز</p><p className="font-black text-emerald-700">{pct}%</p></div></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-white"><div className="h-full rounded-full bg-emerald-500 transition-all" style={{width:`${pct}%`}}/></div>
+ <section className="mt-4 grid grid-cols-2 gap-3 rounded-2xl border border-[#e8d7bb] bg-white p-4 text-sm"><div><span className="text-xs text-slate-500">العميل</span><p className="font-bold">{order.customer_name||'عميل'}</p></div><div><span className="text-xs text-slate-500">المتجر</span><p className="font-bold">{store}</p></div><div><span className="text-xs text-slate-500">المنتج</span><p className="font-bold">{order.product_name||'شحنة'}</p></div><div><span className="text-xs text-slate-500">تاريخ الطلب</span><p className="font-bold">{new Date(order.created_at).toLocaleDateString('ar-YE')}</p></div>{active===6&&order.courier_name&&<div className="col-span-2 rounded-xl bg-emerald-50 p-3"><span className="text-xs text-emerald-800">مندوب التوصيل</span><p className="font-bold text-emerald-950">{order.courier_name}{order.courier_phone&&<span dir="ltr" className="mr-2">{order.courier_phone}</span>}</p></div>}</section>
+ <section className="mt-5 rounded-2xl border border-[#e8d7bb] bg-white p-5 shadow-sm"><h2 className="mb-5 font-black text-[#4A3728]">المراحل الثماني للشحنة</h2><ol className="space-y-5">{STEPS.map((step,i)=>{const Icon=step.icon;const complete=i<active;const current=i===active;return <li key={step.key} className="relative flex gap-3">{i<STEPS.length-1&&<span className={`absolute right-4 top-9 h-[calc(100%+12px)] w-0.5 ${i<active?'bg-emerald-500':'bg-slate-200'}`}/>}<span className={`relative z-10 grid size-9 shrink-0 place-items-center rounded-full ${complete?'bg-emerald-600 text-white':current?'bg-[#8B5E34] text-white ring-4 ring-[#8B5E34]/20':'border bg-slate-100 text-slate-400'}`}>{complete?<Check className="size-4"/>:<Icon className="size-4"/>}</span><div className={`flex-1 rounded-xl ${current?'border border-[#8B5E34]/20 bg-[#FAF4E6] p-3':''}`}><div className="flex flex-wrap items-center gap-2"><b className={complete||current?'text-[#4A3728]':'text-slate-400'}>{i+1}. {step.title}</b>{current&&<span className="rounded-full bg-orange-500 px-2 py-0.5 text-[10px] font-bold text-white">الآن</span>}</div><p className="mt-1 text-xs text-slate-500">{step.location}</p><p className="mt-1 text-xs leading-5 text-slate-500">{step.desc}</p></div></li>})}</ol></section>
+ <section className="mt-4 rounded-2xl border border-[#e8d7bb] bg-white p-5"><h2 className="flex items-center gap-2 font-black"><History className="size-4"/>سجل إشعارات الشحنة</h2>{events.length?<ul className="mt-3 space-y-2">{events.map(ev=><li key={ev.id} className="rounded-xl bg-slate-50 p-3 text-xs"><div className="flex flex-wrap justify-between gap-2 font-bold"><span>{ev.channel==='app'?'إشعار التطبيق':'واتساب'} · {ev.delivery_state==='created'?'أُنشئ':ev.delivery_state==='prepared'?'رسالة مجهزة للإرسال':ev.delivery_state}</span><time>{new Date(ev.created_at).toLocaleString('ar-YE')}</time></div><p className="mt-1 whitespace-pre-line text-slate-600">{ev.message}</p></li>)}</ul>:<p className="mt-3 text-xs text-slate-500">لا توجد إشعارات محفوظة حتى الآن.</p>}</section>
+ <div className="mt-4"><Button asChild variant="outline" className="rounded-xl bg-white"><Link to="/track"><ArrowRight className="ml-1 size-4"/>البحث عن شحنة أخرى</Link></Button></div>
+ </main></div>;
 }
