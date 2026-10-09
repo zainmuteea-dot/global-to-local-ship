@@ -108,6 +108,7 @@ function AdminRouteError({ error }: { error: unknown }) {
 
 export const Route = createFileRoute("/admin")({
   component: AdminOperationsPage,
+  errorComponent: AdminRouteError,
 });
 
 // كادر الموظفين المعتمد
