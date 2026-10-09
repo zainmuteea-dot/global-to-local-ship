@@ -579,9 +579,11 @@ export default function AdminOperationsPage() {
               key={label}
               type="button"
               onClick={() => navigateTo(path)}
-              aria-current={path === currentPath ? "page" : undefined}
-              className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-right text-sm font-bold transition-colors ${
-                path === currentPath
+             export default function AdminOperationsPage() {
+  const { pathname: currentPath } = useLocation();
+
+  const [activeTab, setActiveTab] = useState<"operations" | "finance" | "employees">("operations");
+
                   ? "bg-[#23658F] text-white shadow-sm"
                   : "text-sky-50 hover:bg-white/10 hover:text-white"
               }`}
