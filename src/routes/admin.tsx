@@ -324,7 +324,7 @@ export default function AdminOperationsPage() {
             id: String(item.id),
             orderNumber: item.tracking_code || `SQ-${item.id.slice(0, 8)}`,
             customerName: item.customer_name || "عميل مسجل",
-            customerPhone: item.phone || "770000000",
+            customerPhone: item.phone ?? "",
             customerCity: item.notes || "صنعاء",
             productTitle: item.product_name || "شحنة وساطة دولية",
             storeName: store,
@@ -424,11 +424,23 @@ export default function AdminOperationsPage() {
   };
 
   const sendWhatsAppNotification = (order: OrderItem) => {
+    const localPhone = String(order.customerPhone ?? "").replace(/\D/g, "");
+    const customerPhone = localPhone
+      ? localPhone.startsWith("967")
+        ? localPhone
+        : `967${localPhone.replace(/^0+/, "")}`
+      : "";
+
+    if (!customerPhone) {
+      window.alert("لا يوجد رقم هاتف صالح للعميل في هذا الطلب.");
+      return;
+    }
+
     const statusLabel = STATUS_TEXT[order.status] || order.status;
     const message = encodeURIComponent(
       `مرحباً ${order.customerName}،\nشحنتك رقم (${order.orderNumber}) من متجر ${order.storeName}:\nالحالة الحالية: ${statusLabel}\nرقم التتبع: ${order.intlTrackingNumber || order.orderNumber}\n\nشكراً لتسوقك مع السوق الشامل 🌟`
     );
-    window.open(`https://wa.me/967${order.customerPhone.replace(/\D/g, "")}?text=${message}`, "_blank");
+    window.open(`https://wa.me/${customerPhone}?text=${message}`, "_blank", "noopener,noreferrer");
   };
 
   // تصفية الشحنات
