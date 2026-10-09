@@ -22,7 +22,9 @@ function getSafeRedirect() {
 function AdminLoginPage() {
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
+  const [remember, setRemember] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
   const initialError = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("error") === "not-admin"
     ? "هذا الحساب لا يملك صلاحية مدير. استخدم حسابًا مخولًا للإدارة."
     : "";
@@ -31,6 +33,7 @@ function AdminLoginPage() {
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
+    setMessage("");
 
     const login = identifier.trim();
     if (!login || !password) {
@@ -69,6 +72,9 @@ function AdminLoginPage() {
         return;
       }
 
+      if (!remember) {
+        setMessage("تم التحقق. ملاحظة: تذكّر الجلسة يعتمد على إعدادات جلسات Supabase للمشروع.");
+      }
       window.location.replace(getSafeRedirect());
     } catch (cause) {
       console.error("Admin login failed:", cause);
@@ -94,6 +100,7 @@ function AdminLoginPage() {
           </div>
 
           {error && <div role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-3 text-sm font-bold leading-6 text-red-800">{error}</div>}
+          {message && <div role="status" className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-xs font-bold leading-5 text-amber-900">{message}</div>}
 
           <form onSubmit={submit} className="space-y-5" noValidate>
             <div>
@@ -129,6 +136,11 @@ function AdminLoginPage() {
                 required
               />
             </div>
+
+            <label className="flex cursor-pointer items-center gap-2 text-xs text-[#65584d]">
+              <input type="checkbox" checked={remember} onChange={(event) => setRemember(event.target.checked)} className="size-4 accent-[#873512]" />
+              ابقني مسجلًا على هذا الجهاز
+            </label>
 
             <button type="submit" disabled={busy} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#873512] px-4 py-3 text-sm font-black text-white shadow-lg shadow-[#873512]/15 transition hover:bg-[#70290d] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#873512]/25 disabled:cursor-wait disabled:opacity-60">
               {busy ? <span className="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white" /> : <LogIn className="size-4" />}
