@@ -278,6 +278,7 @@ export default function AdminOperationsPage() {
 
   // Modals state
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = useState(true);
   const [isAccountsTreeOpen, setIsAccountsTreeOpen] = useState(false);
   const [isQuickScanOpen, setIsQuickScanOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -539,19 +540,17 @@ export default function AdminOperationsPage() {
   const netProfit: number | null = null;
 
   return (
-    <div className="min-h-screen bg-[#F3F6FA] text-[#0A2540] font-sans lg:pr-72" dir="rtl">
-      {/* قائمة الإدارة الدائمة على الشاشات الكبيرة، مع الإبقاء على القائمة المنبثقة للجوال */}
-      <aside className="fixed inset-y-0 right-0 z-30 hidden w-72 flex-col border-l border-sky-950 bg-[#174F75] text-white shadow-xl lg:flex">
-        <div className="border-b border-white/10 bg-[#123F60] px-5 py-5">
+    <div className={`min-h-screen bg-[#F3F6FA] text-[#0A2540] font-sans transition-[padding] duration-300 ${isDesktopSidebarOpen ? "lg:pr-72" : "lg:pr-0"}`} dir="rtl">
+      {/* القائمة الجانبية على الشاشات الكبيرة قابلة للفتح والإغلاق */}
+      <aside className={`fixed inset-y-0 right-0 z-30 ${isDesktopSidebarOpen ? "lg:flex" : "lg:hidden"} hidden w-72 flex-col border-l border-sky-950 bg-[#174F75] text-white shadow-xl`}>
+        <div className="flex items-center justify-between border-b border-white/10 bg-[#123F60] px-5 py-4">
           <div className="flex items-center gap-3">
-            <div className="grid size-11 place-items-center rounded-xl bg-white text-[#174F75] shadow-sm">
-              <Package className="size-6" />
-            </div>
-            <div>
-              <div className="text-base font-black">السوق الشامل</div>
-              <div className="mt-0.5 text-[11px] text-sky-100">نظام إدارة الأعمال</div>
-            </div>
+            <div className="grid size-11 place-items-center rounded-xl bg-white text-[#174F75] shadow-sm"><Package className="size-6" /></div>
+            <div><div className="text-base font-black">السوق الشامل</div><div className="mt-0.5 text-[11px] text-sky-100">نظام إدارة الأعمال</div></div>
           </div>
+          <button type="button" onClick={() => setIsDesktopSidebarOpen(false)} aria-label="إغلاق القائمة الجانبية" title="إغلاق القائمة الجانبية" className="grid size-10 place-items-center rounded-xl bg-white/10 text-white hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white">
+            <X className="size-5" />
+          </button>
         </div>
         <div className="border-b border-white/10 px-4 py-4">
           <div className="rounded-xl bg-white/10 px-3 py-3">
@@ -612,6 +611,16 @@ export default function AdminOperationsPage() {
                 <span className="block h-0.5 w-full bg-[#0F4C81] rounded-full"></span>
                 <span className="block h-0.5 w-3/4 bg-[#0F4C81] rounded-full"></span>
               </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsDesktopSidebarOpen((open) => !open)}
+              aria-expanded={isDesktopSidebarOpen}
+              aria-label={isDesktopSidebarOpen ? "إغلاق القائمة الجانبية" : "فتح القائمة الجانبية"}
+              title={isDesktopSidebarOpen ? "إغلاق القائمة الجانبية وتوسيع الصفحة" : "فتح القائمة الجانبية"}
+              className="hidden size-10 place-items-center rounded-xl border border-sky-100 bg-white text-[#0F4C81] transition-colors hover:bg-sky-50 focus:outline-none focus:ring-2 focus:ring-sky-300 lg:grid"
+            >
+              {isDesktopSidebarOpen ? <X className="size-5" /> : <span className="text-lg font-black">☰</span>}
             </button>
             <div className="cursor-pointer" onClick={() => navigateTo("/admin")}>
               <EmbeddedLogo />
