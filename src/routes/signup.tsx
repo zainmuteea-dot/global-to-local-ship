@@ -98,13 +98,40 @@ export function SignupPage() {
 
       if (signUpError) {
         const message = signUpError.message.toLowerCase();
+        const errorCode = String(signUpError.code ?? "").toLowerCase();
+
+        if (
+          errorCode === "phone_provider_disabled" ||
+          message.includes("phone signups are disabled") ||
+          message.includes("phone signup is disabled") ||
+          message.includes("phone provider is disabled") ||
+          (message.includes("phone") && message.includes("disabled"))
+        ) {
+          throw new Error(
+            "تسجيل الهاتف معطّل في مشروع Supabase المتصل بالتطبيق. من لوحة Supabase افتح Authentication → Sign In / Providers، فعّل Phone، واحفظ الإعدادات."
+          );
+        }
+
+        if (
+          errorCode === "signup_disabled" ||
+          message.includes("signups are disabled") ||
+          message.includes("sign ups are disabled")
+        ) {
+          throw new Error(
+            "تسجيل المستخدمين الجدد معطّل في مشروع Supabase. فعّل Allow new users to sign up من إعدادات المصادقة ثم أعد المحاولة."
+          );
+        }
+
         if (
           message.includes("already registered") ||
           message.includes("already exists") ||
           message.includes("user already")
         ) {
-          throw new Error("هذا الرقم مسجل مسبقًا. سجّل الدخول أو تواصل مع الإدارة لاستعادة الحساب.");
+          throw new Error(
+            "هذا الرقم مسجل مسبقًا. سجّل الدخول أو تواصل مع الإدارة لاستعادة الحساب."
+          );
         }
+
         throw signUpError;
       }
 
