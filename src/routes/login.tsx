@@ -67,6 +67,20 @@ const AlShamelLogo: React.FC<{ size?: number }> = ({ size = 64 }) => (
   </div>
 );
 
+/* رقم واتساب الإدارة بصيغة دولية دون علامة +. تأكد من الرقم قبل النشر. */
+const ADMIN_WHATSAPP_NUMBER = "967773370041";
+
+function normalizePhoneE164(value: string) {
+  const cleaned = value.trim().replace(/[\s()-]/g, "");
+  const phone = cleaned.startsWith("00") ? `+${cleaned.slice(2)}` : cleaned;
+
+  if (!/^\+[1-9]\d{7,14}$/.test(phone)) {
+    throw new Error("أدخل رقم الهاتف بالصيغة الدولية، مثل +9677XXXXXXXX.");
+  }
+
+  return phone;
+}
+
 /* =========================================================================
    2. صفحة تسجيل الدخول وإنشاء الحساب
    ========================================================================= */
@@ -80,142 +94,175 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
-    const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setErrorMessage("");
 
-    const inputVal = identifier.trim();
-    if (!inputVal) {
-      setErrorMessage("يرجى إدخال رقم الهاتف أو البريد الإلكتروني.");
-      setLoading(false);
-      return;
-    }
-
-    if (!password) {
-      setErrorMessage("يرجى إدخال كلمة المرور.");
-      setLoading(false);
-      return;
-    }
-
     try {
-      // دعم تسجيل الدخول بالرقم أو بالبريد مباشرة
-      const isEmail = inputVal.includes("@");
-      let emailToUse = isEmail ? inputVal : `${inputVal}@alsouq.local`;
+      let user;
 
-      if (mode === "login") {
-        let authResult = await supabase.auth.signInWithPassword({
-          email: emailToUse,
-          password: password,
-        });
+      if (mode === "signup") {
+        const phone = normalizePhoneE164(identifier);
+        const trimmedName = fullName.trim();
 
-        // تجربة النطاق البديل إذا كان التسجيل تم بـ alsouk
-        if (authResult.error && !isEmail) {
-          authResult = await supabase.auth.signInWithPassword({
-            email: `${inputVal}@alsouk.local`,
-            password: password,
-          });
+        if (trimmedName.length < 3) {
+          throw new Error("أدخل الاسم الكامل، 3 أحرف على الأقل.");
+        }
+        if (password.length < 6) {
+          throw new Error("كلمة المرور يجب ألا تقل عن 6 أحرف.");
         }
 
-        if (authResult.error || !authResult.data.user) {
-          throw new Error("بيانات الدخول غير صحيحة، يرجى التأكد من الرقم وكلمة المرور.");
-        }
-
-        const user = authResult.data.user;
-
-        // 🌟 استعلام فوري من جدول profiles لجلب الاسم والرقم الحقيقيين
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("full_name, phone")
-          .eq("id", user.id)
-          .maybeSingle();
-
-        const resolvedName = profile?.full_name || user.user_metadata?.['full_name'] || fullName || "";
-        let resolvedPhone = profile?.phone || user.user_metadata?.['phone'] || "";
-        if (!resolvedPhone && !isEmail) {
-          resolvedPhone = inputVal;
-        }
-
-        // حفظ بيانات العميل في الذاكرة لتثبيتها في كل الصفحات
-        localStorage.setItem("alsouk_customer_logged_in", "true");
-        localStorage.setItem(
-          "alsouk_current_user",
-          JSON.stringify({
-            full_name: resolvedName,
-            phone: resolvedPhone,
-            user_id: user.id,
-          })
-        );
-        if (resolvedPhone) {
-          localStorage.setItem("sc_phone", resolvedPhone);
-          sessionStorage.setItem("sc_phone", resolvedPhone);
-        }
-        if (resolvedName) {
-          localStorage.setItem("sc_name", resolvedName);
-          sessionStorage.setItem("sc_name", resolvedName);
-        }
-
-        if (accountType === "staff") {
-          const [adminRole, staffRole] = await Promise.all([
-            supabase.rpc("has_role", { _user_id: user.id, _role: "admin" }),
-            supabase.rpc("has_role", { _user_id: user.id, _role: "staff" }),
-          ]);
-          if (adminRole.error || staffRole.error || !(adminRole.data || staffRole.data)) {
-            await supabase.auth.signOut();
-            setErrorMessage("هذا الحساب لا يملك صلاحية دخول الإدارة.");
-            return;
-          }
-        }
-
-        window.location.href = accountType === "staff" ? "/admin" : "/dashboard";
-      } else {
-        // إنشاء حساب جديد
-        const { error: signUpError, data: sData } = await supabase.auth.signUp({
-          email: emailToUse,
-          password: password,
+        const { data, error } = await supabase.auth.signUp({
+          phone,
+          password,
           options: {
             data: {
-              full_name: fullName,
-              phone: inputVal,
-              city: city,
-              role: accountType,
+              full_name: trimmedName,
+              phone,
+              city,
+              role: "client",
             },
           },
         });
 
-        if (signUpError && !signUpError.message.includes("already registered")) {
-          throw signUpError;
+        if (error) throw error;
+        if (!data.user || !data.session) {
+          throw new Error(
+            "تم إنشاء الحساب، لكن الدخول لم يكتمل. عطّل Confirm phone في إعدادات Supabase إذا كنت تريد الدخول دون رمز."
+          );
         }
 
-        if (sData?.user) {
-          await supabase.from("profiles").upsert({
-            id: sData.user.id,
-            full_name: fullName,
-            phone: inputVal,
-          });
+        user = data.user;
+        const { error: profileError } = await supabase.from("profiles").upsert({
+          id: user.id,
+          full_name: trimmedName,
+          phone,
+        });
+        if (profileError) throw profileError;
+      } else if (accountType === "staff") {
+        const email = identifier.trim().toLowerCase();
+        if (!email || !email.includes("@")) {
+          throw new Error("أدخل البريد الإلكتروني للموظف.");
+        }
+        if (password.length < 8) {
+          throw new Error("كلمة مرور الموظف يجب ألا تقل عن 8 أحرف.");
         }
 
-        localStorage.setItem("alsouk_customer_logged_in", "true");
-        localStorage.setItem(
-          "alsouk_current_user",
-          JSON.stringify({
-            full_name: fullName || "عميل السوق الشامل",
-            phone: inputVal,
-            city: city,
-            role: accountType,
-          })
-        );
-        localStorage.setItem("sc_phone", inputVal);
-        localStorage.setItem("sc_name", fullName);
-        window.location.href = "/dashboard";
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (error || !data.user) {
+          throw new Error("البريد الإلكتروني أو كلمة المرور غير صحيحة.");
+        }
+
+        user = data.user;
+        const [adminRole, staffRole] = await Promise.all([
+          supabase.rpc("has_role", { _user_id: user.id, _role: "admin" }),
+          supabase.rpc("has_role", { _user_id: user.id, _role: "staff" }),
+        ]);
+
+        if (
+          adminRole.error ||
+          staffRole.error ||
+          !(adminRole.data || staffRole.data)
+        ) {
+          await supabase.auth.signOut();
+          throw new Error("هذا الحساب غير مصرح له بدخول الإدارة.");
+        }
+
+        window.location.href = "/admin";
+        return;
+      } else {
+        const phone = normalizePhoneE164(identifier);
+        const { data, error } = await supabase.auth.signInWithPassword({
+          phone,
+          password,
+        });
+        if (error || !data.user) {
+          throw new Error("رقم الهاتف أو كلمة المرور غير صحيحة.");
+        }
+        user = data.user;
       }
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name, phone")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      const resolvedName =
+        profile?.full_name || user.user_metadata?.full_name || fullName.trim();
+      const resolvedPhone =
+        profile?.phone || user.user_metadata?.phone || normalizePhoneE164(identifier);
+
+      localStorage.setItem("alsouk_customer_logged_in", "true");
+      localStorage.setItem(
+        "alsouk_current_user",
+        JSON.stringify({
+          full_name: resolvedName,
+          phone: resolvedPhone,
+          user_id: user.id,
+        })
+      );
+      localStorage.setItem("sc_phone", resolvedPhone);
+      sessionStorage.setItem("sc_phone", resolvedPhone);
+      if (resolvedName) {
+        localStorage.setItem("sc_name", resolvedName);
+        sessionStorage.setItem("sc_name", resolvedName);
+      }
+
+      window.location.href = "/dashboard";
     } catch (err: any) {
-      setErrorMessage(err?.message || "تعذر تسجيل الدخول. تحقق من البيانات وحاول مرة أخرى.");
+      setErrorMessage(
+        err?.message || "تعذر إكمال العملية. تحقق من البيانات وحاول مرة أخرى."
+      );
     } finally {
       setLoading(false);
     }
   };
 
+  const handleForgotPassword = async () => {
+    setErrorMessage("");
+
+    if (accountType === "customer") {
+      let phone: string;
+      try {
+        phone = normalizePhoneE164(identifier);
+      } catch (err: any) {
+        setErrorMessage(err?.message || "أدخل رقم هاتفك أولًا.");
+        return;
+      }
+
+      const message =
+        `السلام عليكم، نسيت كلمة مرور حسابي في السوق الشامل. رقم الهاتف المسجل: ${phone}`;
+      window.open(
+        `https://wa.me/${ADMIN_WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`,
+        "_blank",
+        "noopener,noreferrer"
+      );
+      return;
+    }
+
+    const email = identifier.trim().toLowerCase();
+    if (!email || !email.includes("@")) {
+      setErrorMessage("أدخل بريد الموظف أولًا لاستعادة كلمة المرور.");
+      return;
+    }
+
+    setLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/login`,
+    });
+    setLoading(false);
+
+    if (error) {
+      setErrorMessage("تعذر إرسال رابط الاستعادة. تحقق من إعدادات البريد وحاول لاحقًا.");
+    } else {
+      setErrorMessage("إذا كان البريد مسجلًا، فسيصل إليه رابط استعادة كلمة المرور.");
+    }
+  };
 
   return (
     <div
@@ -291,22 +338,35 @@ export function LoginPage() {
             </div>
           )}
 
-          {/* حقل رقم الهاتف أو الواتساب */}
+          {/* رقم العميل أو بريد الموظف */}
           <div>
             <label className="block text-[11px] font-bold text-[#0F4C81] mb-1">
-              رقم الهاتف أو الواتساب *
+              {mode === "login" && accountType === "staff"
+                ? "البريد الإلكتروني للموظف *"
+                : "رقم الهاتف بالصيغة الدولية *"}
             </label>
             <div className="relative">
               <input
-                type="text"
+                type={mode === "login" && accountType === "staff" ? "email" : "tel"}
                 required
-                placeholder="770000000"
+                placeholder={
+                  mode === "login" && accountType === "staff"
+                    ? "name@example.com"
+                    : "+9677XXXXXXXX"
+                }
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
                 className="w-full pl-3 pr-10 py-3 rounded-xl bg-[#F8FAFC] border border-sky-200 text-xs font-mono text-[#0A2540] focus:outline-none focus:border-[#0284C7] focus:ring-2 focus:ring-sky-400/20"
                 dir="ltr"
+                autoComplete={
+                  mode === "login" && accountType === "staff" ? "username" : "tel"
+                }
               />
-              <Phone className="w-4 h-4 text-[#0284C7] absolute right-3.5 top-1/2 -translate-y-1/2" />
+              {mode === "login" && accountType === "staff" ? (
+                <Mail className="w-4 h-4 text-[#0284C7] absolute right-3.5 top-1/2 -translate-y-1/2" />
+              ) : (
+                <Phone className="w-4 h-4 text-[#0284C7] absolute right-3.5 top-1/2 -translate-y-1/2" />
+              )}
             </div>
           </div>
 
@@ -320,7 +380,7 @@ export function LoginPage() {
                 type="password"
                 required
                 placeholder="••••••••"
-                minLength={6}
+                minLength={mode === "signup" ? 6 : undefined}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full pl-4 pr-10 py-3 rounded-xl bg-[#F8FAFC] border border-sky-200 text-xs font-mono text-[#0A2540] focus:outline-none focus:border-[#0284C7] focus:ring-2 focus:ring-sky-400/20"
@@ -330,15 +390,18 @@ export function LoginPage() {
             </div>
           </div>
 
-          {/* هل نسيت كلمة السر */}
+          {/* استعادة كلمة المرور: العميل عبر واتساب الإدارة، والموظف عبر البريد */}
           {mode === "login" && (
             <div className="flex justify-start">
               <button
                 type="button"
-                onClick={() => alert("أدخل رقم هاتفك في الحقل وسيتم إرسال كود الاستعادة عبر الواتساب.")}
-                className="text-xs font-bold text-[#0284C7] hover:text-[#0F4C81] hover:underline cursor-pointer"
+                onClick={() => void handleForgotPassword()}
+                disabled={loading}
+                className="text-xs font-bold text-[#0284C7] hover:text-[#0F4C81] hover:underline cursor-pointer disabled:opacity-50"
               >
-                هل نسيت كلمة السر؟
+                {accountType === "customer"
+                  ? "نسيت كلمة المرور؟ تواصل مع الإدارة عبر واتساب"
+                  : "نسيت كلمة المرور؟ أرسل رابطًا إلى بريد الموظف"}
               </button>
             </div>
           )}
@@ -352,7 +415,7 @@ export function LoginPage() {
             {loading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin text-white" />
-                <span>جاري التحقق...</span>
+                <span>جارٍ تسجيل الدخول...</span>
               </>
             ) : mode === "login" ? (
               <>
@@ -362,7 +425,7 @@ export function LoginPage() {
             ) : (
               <>
                 <Sparkles className="w-4 h-4 text-orange-200" />
-                <span>إنشاء الحساب وتفعيله فوراً ⚡</span>
+                <span>إنشاء الحساب والدخول ⚡</span>
               </>
             )}
           </button>
