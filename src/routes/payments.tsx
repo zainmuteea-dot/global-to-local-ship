@@ -183,78 +183,93 @@ function PaymentsPage() {
 
     const status = approve ? "approved" : "rejected";
 
-    const { error } = await supabase
-      .from("payments")
-      .update({
-        status,
-        reviewed_at: new Date().toISOString(),
-      })
-      .eq("id", payment.id);
+    try {
+      const { error: paymentError } = await supabase
+        .from("payments")
+        .update({
+          status,
+          reviewed_at: new Date().toISOString(),
+        })
+        .eq("id", payment.id);
 
-    if (error) {
-      setErr(
-        `تعذر تحديث حالة الدفعة. تحقق من دور admin/staff وسياسة UPDATE في RLS: ${error.message}`,
-      );
-      setBusy(null);
-      return;
-    }
+      if (paymentError) {
+        const message = paymentError.message || "خطأ غير معروف";
+        if (message.includes('record "new" has no field "order_id"')) {
+          throw new Error(
+            'رفضت قاعدة Supabase تحديث الدفعة: يوجد trigger أو دالة سياسة تشير إلى NEW.order_id، لكن هذا الحقل غير موجود في payments. هذا خطأ في إعداد قاعدة البيانات، وليس في زر الاعتماد أو صلاحية الحساب وحدها. افحص triggers ودوال RLS في مشروع Supabase الذي يستخدمه Vercel.',
+          );
+        }
+        throw new Error(
+          `تعذر تحديث حالة الدفعة: ${message}${paymentError.code ? ` (رمز ${paymentError.code})` : ""}`,
+        );
+      }
 
-    const { error: orderError } = await supabase
-      .from("orders")
-      .update({
-        status: approve
-          ? "تم الدفع - قيد الشراء"
-          : "الدفع مرفوض - بانتظار إيداع صحيح",
-      })
-      .eq("tracking_code", payment.tracking_code);
+      const followUpWarnings: string[] = [];
 
-    if (orderError) {
-      console.error(
-        "تم تحديث الدفعة لكن تعذر تحديث الطلب:",
-        orderError.message,
-      );
-    }
+      // تغيير حالة الطلب خطوة لاحقة. لا نلغي اعتماد الدفعة إذا تعذر تحديث الطلب.
+      const { error: orderError } = await supabase
+        .from("orders")
+        .update({
+          status: approve
+            ? "تم الدفع - قيد الشراء"
+            : "الدفع مرفوض - بانتظار إيداع صحيح",
+        })
+        .eq("tracking_code", payment.tracking_code);
 
-    if (payment.user_id) {
-      if (approve) {
-        const { error: walletError } = await supabase
-          .from("wallet_transactions")
+      if (orderError) {
+        followUpWarnings.push(`تعذر تحديث حالة الطلب: ${orderError.message}`);
+      }
+
+      if (payment.user_id) {
+        if (approve) {
+          const { error: walletError } = await supabase
+            .from("wallet_transactions")
+            .insert({
+              user_id: payment.user_id,
+              amount: Number(payment.amount),
+              description: `إيداع معتمد للطلب ${payment.tracking_code} عبر ${payment.wallet}`,
+            });
+
+          if (walletError) {
+            followUpWarnings.push(
+              `اعتمدت الدفعة لكن تعذر تسجيل حركة المحفظة: ${walletError.message}`,
+            );
+          }
+        }
+
+        const { error: notificationError } = await supabase
+          .from("notifications")
           .insert({
             user_id: payment.user_id,
-            amount: Number(payment.amount),
-            description: `إيداع معتمد للطلب ${payment.tracking_code} عبر ${payment.wallet}`,
+            title: approve
+              ? `تم اعتماد دفعتك للطلب ${payment.tracking_code} ✓`
+              : `لم يتم قبول إيداع الطلب ${payment.tracking_code}`,
+            body: approve
+              ? `تم استلام ${fmt(Number(payment.amount))} ${payment.currency} وبدأنا بشراء طلبك.`
+              : "يرجى التواصل معنا أو إرفاق سند صحيح.",
           });
 
-        if (walletError) {
-          console.error(
-            "تم اعتماد الدفعة لكن تعذر تسجيل حركة المحفظة:",
-            walletError.message,
+        if (notificationError) {
+          followUpWarnings.push(
+            `تم تحديث حالة الدفعة لكن تعذر إرسال إشعار العميل: ${notificationError.message}`,
           );
         }
       }
 
-      const { error: notificationError } = await supabase
-        .from("notifications")
-        .insert({
-          user_id: payment.user_id,
-          title: approve
-            ? `تم اعتماد دفعتك للطلب ${payment.tracking_code} ✓`
-            : `لم يتم قبول إيداع الطلب ${payment.tracking_code}`,
-          body: approve
-            ? `تم استلام ${fmt(Number(payment.amount))} ${payment.currency} وبدأنا بشراء طلبك.`
-            : "يرجى التواصل معنا أو إرفاق سند صحيح.",
-        });
-
-      if (notificationError) {
-        console.error(
-          "تعذر إرسال إشعار حالة الدفع:",
-          notificationError.message,
-        );
+      await load();
+      if (followUpWarnings.length) {
+        setErr(followUpWarnings.join(" • "));
       }
+    } catch (error) {
+      console.error("تعذر مراجعة الدفعة:", error);
+      setErr(
+        error instanceof Error
+          ? error.message
+          : "تعذر تنفيذ قرار مراجعة الدفعة بسبب خطأ غير معروف.",
+      );
+    } finally {
+      setBusy(null);
     }
-
-    setBusy(null);
-    await load();
   };
 
   const shown =
