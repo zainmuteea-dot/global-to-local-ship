@@ -275,6 +275,10 @@ function fmt(n: number) {
   return Number(Math.round(n)).toLocaleString('en-US')
 }
 
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+}
+
 /* ===================== Component ===================== */
 function PayPage() {
   const { order } = Route.useSearch()
@@ -341,11 +345,15 @@ function PayPage() {
 
       // 3. الاستعلام الدقيق من جدول orders باستخدام tracking_code
       try {
-        const { data: dbOrder } = await supabase
+        const orderQuery = supabase
           .from('orders')
           .select('id, tracking_code, customer_name, phone, product_name, notes, status, created_at, user_id')
-          .or(`tracking_code.eq.${orderNo},id.eq.${orderNo}`)
-          .maybeSingle()
+
+        // رقم الطلب مثل SHP-... نص؛ لا تمرره إلى عمود id ذي النوع UUID.
+        const { data: dbOrder } = await (isUuid(orderNo)
+          ? orderQuery.or(`tracking_code.eq.${orderNo},id.eq.${orderNo}`)
+          : orderQuery.eq('tracking_code', orderNo)
+        ).maybeSingle()
 
         if (dbOrder && active) {
           setCustomer(dbOrder.customer_name || '')
@@ -393,48 +401,68 @@ function PayPage() {
     return () => { active = false }
   }, [orderNo])
 
-  // حفظ سجل الدفعة أولاً، ثم تحديث الطلب. لا تظهر رسالة نجاح إلا بعد نجاح الخطوتين.
-  // إذا فشل تحديث الطلب بعد حفظ السجل، تُعيد المحاولة الخطوة الناقصة دون تكرار الإدخال خلال نفس الجلسة.
+  // حفظ سجل الدفعة في الأعمدة الظاهرة في قاعدة Supabase الحالية.
+  // يجب أن تكون أعمدة order_tracking وmethod موجودة لأنها إلزامية في هذا المخطط.
   const handleNotifyAdmin = async () => {
     if (isNotified || notifying) return
     setNotifying(true)
     setPaymentError('')
 
     try {
-      if (!paymentSaved) {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-        if (sessionError) throw new Error('تعذر التحقق من جلسة المستخدم.')
-
-        const { error: payErr } = await supabase.from('payments').insert({
-          tracking_code: orderNo,
-          customer_name: customer || null,
-          phone: phone || null,
-          wallet: wallet?.label || walletKey,
-          amount: remaining,
-          currency,
-          receipt_image: receiptImg,
-          user_id: session?.user?.id ?? null,
-        })
-        if (payErr) throw new Error(`تعذر حفظ الدفعة: ${payErr.message}`)
-        setPaymentSaved(true)
+      if (!receiptImg) {
+        throw new Error('أرفق صورة سند التحويل أولاً قبل إرسال طلب المراجعة.')
       }
 
-      const { data: updatedOrder, error: orderErr } = await supabase
-        .from('orders')
-        .update({ status: 'قيد مراجعة الدفع والتأكيد' })
-        .or(`tracking_code.eq.${orderNo},id.eq.${orderNo}`)
-        .select('id')
-        .maybeSingle()
+      const paymentMethod = wallet?.label || walletKey
+      const paymentPayload = {
+        order_tracking: orderNo,
+        tracking_code: orderNo,
+        customer_name: customer || null,
+        phone: phone || null,
+        method: paymentMethod,
+        payment_method: paymentMethod,
+        amount: remaining,
+        currency,
+        receipt_image: receiptImg,
+        status: 'pending',
+        beneficiary_name: UNIFIED_NAME,
+        account_number: UNIFIED_PHONE,
+      }
 
-      if (orderErr) throw new Error(`تم حفظ سجل الدفعة، لكن تعذر تحديث الطلب: ${orderErr.message}`)
-      if (!updatedOrder) throw new Error('تم حفظ سجل الدفعة، لكن لم يُعثر على الطلب لتحديث حالته.')
+      // قاعدة الإنتاج المعروضة لا تحتوي user_id أو wallet؛ لا نرسلهما.
+      // يُستخدم cast مؤقتًا لأن types.ts ما زال يصف مخططًا مختلفًا عن قاعدة الإنتاج.
+      const { error: payErr } = await (supabase.from('payments') as any)
+        .insert(paymentPayload)
 
+      if (payErr) {
+        throw new Error(`تعذر حفظ الدفعة: ${payErr.message}`)
+      }
+
+      // حفظ الدفعة هو الخطوة الأساسية؛ تحديث حالة الطلب محاولة تكميلية.
+      // استخدم رقم التتبع كنص، ولا تقارنه بـ id إلا إذا كان UUID صالحًا.
+      try {
+        const orderQuery = supabase
+          .from('orders')
+          .update({ status: 'قيد مراجعة الدفع والتأكيد' })
+
+        const { error: orderErr } = await (isUuid(orderNo)
+          ? orderQuery.or(`tracking_code.eq.${orderNo},id.eq.${orderNo}`)
+          : orderQuery.eq('tracking_code', orderNo))
+
+        if (orderErr) {
+          console.warn('حُفظ طلب الدفع، لكن تعذر تحديث حالة الطلب:', orderErr.message)
+        }
+      } catch (orderUpdateError) {
+        console.warn('حُفظ طلب الدفع، لكن تعذر تحديث حالة الطلب:', orderUpdateError)
+      }
+
+      setPaymentSaved(true)
       setStatus('قيد مراجعة الدفع والتأكيد')
       setIsNotified(true)
       try { localStorage.setItem(`notified_order_${orderNo}`, 'true') } catch {}
     } catch (e) {
       console.error('Payment notification failed:', e)
-      setPaymentError(e instanceof Error ? e.message : 'تعذر حفظ الدفعة أو إرسال إشعار الإدارة. تحقق من الاتصال ثم أعد المحاولة.')
+      setPaymentError(e instanceof Error ? e.message : 'تعذر حفظ الدفعة. تحقق من الاتصال ثم أعد المحاولة.')
     } finally {
       setNotifying(false)
     }
