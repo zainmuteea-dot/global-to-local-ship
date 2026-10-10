@@ -70,15 +70,38 @@ const AlShamelLogo: React.FC<{ size?: number }> = ({ size = 64 }) => (
 /* رقم واتساب الإدارة بصيغة دولية دون علامة +. تأكد من الرقم قبل النشر. */
 const ADMIN_WHATSAPP_NUMBER = "967773370041";
 
+/**
+ * يحوّل رقم الهاتف اليمني المحلي إلى صيغة E.164 المطلوبة من Supabase.
+ * يقبل: 7XXXXXXXX، 07XXXXXXXX، 9677XXXXXXXX، +9677XXXXXXXX، 009677XXXXXXXX.
+ */
 function normalizePhoneE164(value: string) {
-  const cleaned = value.trim().replace(/[\s()-]/g, "");
-  const phone = cleaned.startsWith("00") ? `+${cleaned.slice(2)}` : cleaned;
+  const digitMap: Record<string, string> = {
+    "٠": "0", "١": "1", "٢": "2", "٣": "3", "٤": "4",
+    "٥": "5", "٦": "6", "٧": "7", "٨": "8", "٩": "9",
+    "۰": "0", "۱": "1", "۲": "2", "۳": "3", "۴": "4",
+    "۵": "5", "۶": "6", "۷": "7", "۸": "8", "۹": "9",
+  };
+  const asciiValue = value.replace(/[٠-٩۰-۹]/g, (digit) => digitMap[digit]);
+  const trimmed = asciiValue.trim();
 
-  if (!/^\+[1-9]\d{7,14}$/.test(phone)) {
-    throw new Error("أدخل رقم الهاتف بالصيغة الدولية، مثل +9677XXXXXXXX.");
+  if (!/^[+0-9\s().-]+$/.test(trimmed)) {
+    throw new Error("أدخل رقم الهاتف بالأرقام فقط، مثل 770000000.");
   }
 
-  return phone;
+  let digits = trimmed.replace(/\D/g, "");
+  if (digits.startsWith("00967")) {
+    digits = digits.slice(5);
+  } else if (digits.startsWith("967")) {
+    digits = digits.slice(3);
+  } else if (digits.startsWith("0")) {
+    digits = digits.slice(1);
+  }
+
+  if (!/^7\d{8}$/.test(digits)) {
+    throw new Error("أدخل رقمًا يمنيًا صحيحًا من 9 أرقام يبدأ بـ7، مثل 770000000.");
+  }
+
+  return `+967${digits}`;
 }
 
 /* =========================================================================
@@ -343,7 +366,7 @@ export function LoginPage() {
             <label className="block text-[11px] font-bold text-[#0F4C81] mb-1">
               {mode === "login" && accountType === "staff"
                 ? "البريد الإلكتروني للموظف *"
-                : "رقم الهاتف بالصيغة الدولية *"}
+                : "رقم الهاتف المحلي *"}
             </label>
             <div className="relative">
               <input
@@ -352,7 +375,7 @@ export function LoginPage() {
                 placeholder={
                   mode === "login" && accountType === "staff"
                     ? "name@example.com"
-                    : "+9677XXXXXXXX"
+                    : "770000000"
                 }
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
@@ -361,6 +384,11 @@ export function LoginPage() {
                 autoComplete={
                   mode === "login" && accountType === "staff" ? "username" : "tel"
                 }
+                aria-label={
+                  mode === "login" && accountType === "staff"
+                    ? "البريد الإلكتروني للموظف"
+                    : "رقم الهاتف اليمني المحلي"
+                }
               />
               {mode === "login" && accountType === "staff" ? (
                 <Mail className="w-4 h-4 text-[#0284C7] absolute right-3.5 top-1/2 -translate-y-1/2" />
@@ -368,6 +396,11 @@ export function LoginPage() {
                 <Phone className="w-4 h-4 text-[#0284C7] absolute right-3.5 top-1/2 -translate-y-1/2" />
               )}
             </div>
+            {!(mode === "login" && accountType === "staff") && (
+              <p className="mt-1.5 text-[10px] text-slate-500">
+                أدخل الرقم المحلي مثل 770000000؛ سيُضاف مفتاح اليمن تلقائيًا.
+              </p>
+            )}
           </div>
 
           {/* كلمة المرور */}
