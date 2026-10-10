@@ -35,45 +35,97 @@ function PaymentsPage() {
   const [busy, setBusy] = useState<string | null>(null);
 
   const load = async () => {
-    const { data, error } = await supabase.from("payments").select("*").order("created_at", { ascending: false });
-    if (error) setErr("لا تملك صلاحية عرض طلبات الدفع — سجّل الدخول بحساب موظف.");
-    else { setErr(""); setRows(data ?? []); }
-    setLoading(false);
+    setLoading(true);
+    setErr("");
+
+    try {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError) throw new Error(`تعذر التحقق من جلسة الدخول: ${authError.message}`);
+      if (!authData.user) {
+        throw new Error("لا توجد جلسة دخول. سجّل الدخول بحساب الإدارة ثم أعد تحميل الصفحة.");
+      }
+
+      const [adminRole, staffRole] = await Promise.all([
+        supabase.rpc("has_role", { _user_id: authData.user.id, _role: "admin" }),
+        supabase.rpc("has_role", { _user_id: authData.user.id, _role: "staff" }),
+      ]);
+      if (adminRole.error || staffRole.error) {
+        const roleError = adminRole.error ?? staffRole.error;
+        throw new Error(`تعذر فحص دور الحساب: ${roleError?.message ?? "خطأ غير معروف"}`);
+      }
+      if (!adminRole.data && !staffRole.data) {
+        throw new Error("الحساب مسجل الدخول لكنه لا يحمل دور admin أو staff في جدول user_roles.");
+      }
+
+      // لا نطلب currency هنا لأن بعض قواعد البيانات المتصلة لم تطبق عمود العملة بعد.
+      // المحافظ المعروضة محلية، لذلك نستخدم الريال اليمني كقيمة افتراضية في الواجهة.
+      const { data, error } = await supabase
+        .from("payments")
+        .select("id,amount,created_at,customer_name,phone,receipt_image,reviewed_at,status,tracking_code,updated_at,user_id,wallet")
+        .order("created_at", { ascending: false });
+      if (error) {
+        if (error.code === "42501" || error.message.toLowerCase().includes("permission")) {
+          throw new Error(`رفضت سياسات RLS قراءة طلبات الدفع: ${error.message}`);
+        }
+        throw new Error(`فشل استعلام جدول payments: ${error.message}${error.code ? ` (رمز ${error.code})` : ""}`);
+      }
+
+      const paymentRows = (data ?? []).map((row) => ({
+        ...row,
+        currency: "ر.ي",
+      } as Payment));
+      setRows(paymentRows);
+      setErr("");
+    } catch (error) {
+      console.error("تعذر تحميل طلبات الدفع:", error);
+      setErr(error instanceof Error ? error.message : "تعذر تحميل طلبات الدفع لسبب غير معروف.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    load();
+    void load();
     const ch = supabase
       .channel("payments_live")
-      .on("postgres_changes", { event: "*", schema: "public", table: "payments" }, load)
+      .on("postgres_changes", { event: "*", schema: "public", table: "payments" }, () => void load())
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => { void supabase.removeChannel(ch); };
   }, []);
 
   const review = async (p: Payment, approve: boolean) => {
     setBusy(p.id);
     const status = approve ? "approved" : "rejected";
     const { error } = await supabase.from("payments").update({ status, reviewed_at: new Date().toISOString() }).eq("id", p.id);
-    if (!error) {
-      await supabase.from("orders")
-        .update({ status: approve ? "تم الدفع - قيد الشراء" : "الدفع مرفوض - بانتظار إيداع صحيح" })
-        .eq("tracking_code", p.tracking_code);
-      if (p.user_id) {
-        if (approve) {
-          await supabase.from("wallet_transactions").insert({
-            user_id: p.user_id, amount: Number(p.amount),
-            description: `إيداع معتمد للطلب ${p.tracking_code} عبر ${p.wallet}`,
-          });
-        }
-        await supabase.from("notifications").insert({
-          user_id: p.user_id,
-          title: approve ? `تم اعتماد دفعتك للطلب ${p.tracking_code} ✓` : `لم يتم قبول إيداع الطلب ${p.tracking_code}`,
-          body: approve ? `تم استلام ${fmt(Number(p.amount))} ${p.currency} وبدأنا بشراء طلبك.` : "يرجى التواصل معنا أو إرفاق سند صحيح.",
-        });
-      }
+    if (error) {
+      setErr(`تعذر تحديث حالة الدفعة. تحقق من دور admin/staff وسياسة UPDATE في RLS: ${error.message}`);
+      setBusy(null);
+      return;
     }
+
+    const { error: orderError } = await supabase.from("orders")
+      .update({ status: approve ? "تم الدفع - قيد الشراء" : "الدفع مرفوض - بانتظار إيداع صحيح" })
+      .eq("tracking_code", p.tracking_code);
+    if (orderError) console.error("تم تحديث الدفعة لكن تعذر تحديث الطلب:", orderError.message);
+
+    if (p.user_id) {
+      if (approve) {
+        const { error: walletError } = await supabase.from("wallet_transactions").insert({
+          user_id: p.user_id, amount: Number(p.amount),
+          description: `إيداع معتمد للطلب ${p.tracking_code} عبر ${p.wallet}`,
+        });
+        if (walletError) console.error("تم اعتماد الدفعة لكن تعذر تسجيل حركة المحفظة:", walletError.message);
+      }
+      const { error: notificationError } = await supabase.from("notifications").insert({
+        user_id: p.user_id,
+        title: approve ? `تم اعتماد دفعتك للطلب ${p.tracking_code} ✓` : `لم يتم قبول إيداع الطلب ${p.tracking_code}`,
+        body: approve ? `تم استلام ${fmt(Number(p.amount))} ${p.currency} وبدأنا بشراء طلبك.` : "يرجى التواصل معنا أو إرفاق سند صحيح.",
+      });
+      if (notificationError) console.error("تعذر إرسال إشعار حالة الدفع:", notificationError.message);
+    }
+
     setBusy(null);
-    load();
+    await load();
   };
 
   const shown = filter === "all" ? rows : rows.filter((r) => r.status === filter);
@@ -96,7 +148,16 @@ function PaymentsPage() {
           <Link to="/admin" className="bg-white/15 hover:bg-white/25 px-4 py-2 rounded-xl text-sm font-bold">← لوحة الإدارة</Link>
         </div>
 
-        {err && <div className="mt-4 bg-red-50 border border-red-200 text-red-700 rounded-xl p-3 text-sm font-bold">{err}</div>}
+        {err && (
+          <div role="alert" className="mt-4 flex items-start justify-between gap-3 bg-red-50 border border-red-200 text-red-800 rounded-xl p-3 text-sm">
+            <div>
+              <p className="font-black">تعذر تحميل أو تنفيذ طلبات الدفع</p>
+              <p className="mt-1 break-words">{err}</p>
+              <p className="mt-2 text-xs">إذا كان الخطأ متعلقًا بـRLS، تأكد من أن هذا المستخدم يملك دور admin أو staff في user_roles وأن سياسة payments تسمح له بالقراءة والتحديث.</p>
+            </div>
+            <button type="button" onClick={() => void load()} className="shrink-0 rounded-lg bg-red-100 px-3 py-1.5 font-bold hover:bg-red-200">إعادة المحاولة</button>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
           <Kpi label="بانتظار الاعتماد" value={rows.filter((r) => r.status === "pending").length} sub={`${fmt(pendingSum)} ر.ي`} color="text-amber-600" />
