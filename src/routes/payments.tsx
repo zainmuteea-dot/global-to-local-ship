@@ -1,26 +1,177 @@
+egin;
+
+alter table public.payments
+  add column if not exists requested_amount integer,
+  add column if not exists received_amount integer,
+  add column if not exists remaining_amount integer;
+
+-- احفظ المبالغ الحالية قبل بدء استخدام الاعتماد الجزئي.
+update public.payments
+set requested_amount = coalesce(requested_amount, amount),
+    received_amount = case
+      when status = 'approved' then coalesce(received_amount, amount)
+      else received_amount
+    end,
+    remaining_amount = case
+      when status = 'approved' then coalesce(remaining_amount, 0)
+      else remaining_amount
+    end
+where requested_amount is null
+   or (status = 'approved' and (received_amount is null or remaining_amount is null));
+
+alter table public.wallet_transactions
+  add column if not exists payment_id uuid references public.payments(id) on delete set null;
+
+-- يمنع إدراج رصيد العميل مرتين لنفس طلب الدفع.
+create unique index if not exists wallet_transactions_payment_id_unique
+  on public.wallet_transactions(payment_id)
+  where payment_id is not null;
+
+create or replace function public.approve_payment_received(
+  _payment_id uuid,
+  _received_amount integer
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = pg_catalog, public
+as $function$
+declare
+  v_payment public.payments%rowtype;
+  v_requested integer;
+  v_remaining integer;
+  v_customer_id uuid;
+begin
+  if auth.uid() is null
+     or not (
+       coalesce(public.has_role(auth.uid(), 'admin'::public.app_role), false)
+       or coalesce(public.has_role(auth.uid(), 'staff'::public.app_role), false)
+     ) then
+    raise exception 'غير مصرح: يلزم دور admin أو staff.' using errcode = '42501';
+  end if;
+
+  if _received_amount is null or _received_amount <= 0 then
+    raise exception 'المبلغ المقبوض يجب أن يكون أكبر من صفر.' using errcode = '22023';
+  end if;
+
+  select * into v_payment
+  from public.payments
+  where id = _payment_id
+  for update;
+
+  if not found then
+    raise exception 'طلب الدفع غير موجود.' using errcode = 'P0002';
+  end if;
+
+  if v_payment.status not in ('pending', 'بانتظار التأكيد') then
+    raise exception 'لا يمكن اعتماد هذا الطلب: حالته الحالية ليست بانتظار المراجعة.' using errcode = '55000';
+  end if;
+
+  v_requested := coalesce(v_payment.requested_amount, v_payment.amount);
+  if v_requested is null or v_requested <= 0 then
+    raise exception 'المبلغ المطلوب في سجل الدفع غير صالح.' using errcode = '22023';
+  end if;
+
+  if _received_amount > v_requested then
+    raise exception 'المبلغ المقبوض لا يمكن أن يتجاوز المبلغ المطلوب.' using errcode = '22023';
+  end if;
+
+  v_remaining := v_requested - _received_amount;
+
+  -- حاول ربط صاحب طلب الدفع نفسه، أو صاحب الطلب التجاري برمز التتبع.
+  v_customer_id := v_payment.user_id;
+  if v_customer_id is null then
+    select o.user_id into v_customer_id
+    from public.orders o
+    where o.tracking_code = v_payment.tracking_code
+    limit 1;
+  end if;
+
+  if v_customer_id is null then
+    raise exception 'لا يمكن إشعار العميل: هذا الدفع غير مرتبط بحساب عميل مسجل.' using errcode = '23502';
+  end if;
+
+  -- هذا التحديث يشغّل المشغل الحالي داخل المعاملة نفسها.
+  -- amount يصبح المقبوض الفعلي ليُسجل الصندوق والقسيمة القيمة الصحيحة.
+  update public.payments
+  set requested_amount = v_requested,
+      received_amount = _received_amount,
+      remaining_amount = v_remaining,
+      amount = _received_amount,
+      user_id = v_customer_id,
+      status = 'approved',
+      reviewed_at = now()
+  where id = _payment_id;
+
+  -- إضافة المقبوض إلى سجل رصيد العميل مرة واحدة فقط.
+  insert into public.wallet_transactions(user_id, amount, description, payment_id)
+  values (
+    v_customer_id,
+    _received_amount,
+    'مبلغ مقبوض معتمد للطلب ' || v_payment.tracking_code ||
+      case when v_remaining > 0 then '؛ المتبقي عند التسليم' else '' end,
+    _payment_id
+  );
+
+  -- إشعار العميل داخل التطبيق، ضمن المعاملة ذاتها.
+  insert into public.notifications(user_id, title, body, kind, href, is_active, sent_at)
+  values (
+    v_customer_id,
+    'تم تسجيل الدفعة للطلب ' || v_payment.tracking_code,
+    'تم اعتماد وإضافة ' || _received_amount::text || ' ر.ي إلى رصيدك.' ||
+      case
+        when v_remaining > 0 then ' والمتبقي ' || v_remaining::text || ' ر.ي مستحق عند التسليم.'
+        else ' وقد سُدد المبلغ المطلوب كاملًا.'
+      end,
+    'payment',
+    '/account/wallet',
+    true,
+    now()
+  );
+
+  -- وضح على الطلب أن جزءًا من المبلغ مستحق عند التسليم.
+  update public.orders
+  set status = case
+    when v_remaining > 0 then 'دفع جزئي - المتبقي عند التسليم'
+    else 'تم الدفع - قيد الشراء'
+  end,
+  updated_at = now()
+  where tracking_code = v_payment.tracking_code;
+
+  return jsonb_build_object(
+    'payment_id', _payment_id,
+    'requested_amount', v_requested,
+    'received_amount', _received_amount,
+    'remaining_amount', v_remaining,
+    'customer_id', v_customer_id
+  );
+end;
+$function$;
+
+revoke all on function public.approve_payment_received(uuid, integer) from public, anon;
+grant execute on function public.approve_payment_received(uuid, integer) to authenticated;
+
+commit;
+2) استبدل src/routes/payments.tsx كاملًا
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import type { Database } from "@/integrations/supabase/types";
 
-type PaymentRow = Database["public"]["Tables"]["payments"]["Row"];
-
-// نوع الصفحة يقتصر على الأعمدة المطلوبة فعلًا.
-// currency قيمة عرض ثابتة، وليست عمودًا مطلوبًا من قاعدة البيانات.
-type Payment = Pick<
-  PaymentRow,
-  | "id"
-  | "amount"
-  | "created_at"
-  | "customer_name"
-  | "receipt_image"
-  | "reviewed_at"
-  | "status"
-  | "tracking_code"
-  | "updated_at"
-  | "user_id"
-  | "wallet"
-> & {
+type Payment = {
+  id: string;
+  amount: number;
+  requested_amount: number | null;
+  received_amount: number | null;
+  remaining_amount: number | null;
+  created_at: string;
+  customer_name: string | null;
+  receipt_image: string | null;
+  reviewed_at: string | null;
+  status: string;
+  tracking_code: string;
+  updated_at: string;
+  user_id: string | null;
+  wallet: string;
   currency: string;
 };
 
@@ -30,15 +181,8 @@ export const Route = createFileRoute("/payments")({
   head: () => ({
     meta: [
       { title: "طلبات الدفع والمحاسبة — السوق الشامل" },
-      {
-        name: "description",
-        content: "مراجعة واعتماد إيداعات العملاء وأرصدة المحافظ لحظياً.",
-      },
+      { name: "description", content: "مراجعة دفعات العملاء وتسجيل المبالغ المقبوضة." },
       { property: "og:title", content: "طلبات الدفع والمحاسبة — السوق الشامل" },
-      {
-        property: "og:description",
-        content: "مراجعة واعتماد إيداعات العملاء وأرصدة المحافظ لحظياً.",
-      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -48,504 +192,248 @@ export const Route = createFileRoute("/payments")({
 
 const fmt = (value: number) => Math.round(value).toLocaleString("en-US");
 
-const STATUS: Record<string, { t: string; c: string }> = {
-  pending: {
-    t: "بانتظار المراجعة",
-    c: "bg-amber-100 text-amber-800",
-  },
-  approved: {
-    t: "معتمد ✓",
-    c: "bg-emerald-100 text-emerald-700",
-  },
-  rejected: {
-    t: "مرفوض",
-    c: "bg-red-100 text-red-700",
-  },
+const STATUS: Record<string, { label: string; classes: string }> = {
+  pending: { label: "بانتظار المراجعة", classes: "bg-amber-100 text-amber-800" },
+  "بانتظار التأكيد": { label: "بانتظار التأكيد", classes: "bg-amber-100 text-amber-800" },
+  approved: { label: "معتمد ✓", classes: "bg-emerald-100 text-emerald-700" },
+  rejected: { label: "مرفوض", classes: "bg-red-100 text-red-700" },
 };
 
 function PaymentsPage() {
   const [rows, setRows] = useState<Payment[]>([]);
+  const [receivedInputs, setReceivedInputs] = useState<Record<string, string>>({});
   const [filter, setFilter] = useState<PaymentFilter>("pending");
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   const [preview, setPreview] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     setErr("");
-
     try {
-      const { data: authData, error: authError } =
-        await supabase.auth.getUser();
-
-      if (authError) {
-        throw new Error(`تعذر التحقق من جلسة الدخول: ${authError.message}`);
-      }
-
-      if (!authData.user) {
-        throw new Error(
-          "لا توجد جلسة دخول. سجّل الدخول بحساب الإدارة ثم أعد تحميل الصفحة.",
-        );
-      }
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError) throw new Error(`تعذر التحقق من جلسة الدخول: ${authError.message}`);
+      if (!authData.user) throw new Error("سجّل الدخول بحساب الإدارة ثم أعد تحميل الصفحة.");
 
       const [adminRole, staffRole] = await Promise.all([
-        supabase.rpc("has_role", {
-          _user_id: authData.user.id,
-          _role: "admin",
-        }),
-        supabase.rpc("has_role", {
-          _user_id: authData.user.id,
-          _role: "staff",
-        }),
+        supabase.rpc("has_role", { _user_id: authData.user.id, _role: "admin" }),
+        supabase.rpc("has_role", { _user_id: authData.user.id, _role: "staff" }),
       ]);
-
       if (adminRole.error || staffRole.error) {
-        const roleError = adminRole.error ?? staffRole.error;
-
-        throw new Error(
-          `تعذر فحص دور الحساب: ${roleError?.message ?? "خطأ غير معروف"}`,
-        );
+        throw new Error(`تعذر فحص دور الحساب: ${(adminRole.error ?? staffRole.error)?.message ?? "خطأ غير معروف"}`);
       }
-
       if (!adminRole.data && !staffRole.data) {
-        throw new Error(
-          "الحساب مسجل الدخول لكنه لا يحمل دور admin أو staff في جدول user_roles.",
-        );
+        throw new Error("الحساب لا يحمل دور admin أو staff في جدول user_roles.");
       }
 
-      // لا تطلب phone أو currency؛ قد لا يكونان موجودين في قاعدة البيانات المتصلة.
-      const { data, error } = await supabase
-        .from("payments")
-        .select(
-          "id,amount,created_at,customer_name,receipt_image,reviewed_at,status,tracking_code,updated_at,user_id,wallet",
-        )
+      // الأعمدة الجزئية تُضاف في ترحيل SQL أعلاه.
+      const { data, error } = await (supabase.from("payments") as any)
+        .select("id,amount,requested_amount,received_amount,remaining_amount,created_at,customer_name,receipt_image,reviewed_at,status,tracking_code,updated_at,user_id,wallet")
         .order("created_at", { ascending: false });
+      if (error) throw new Error(`تعذر تحميل طلبات الدفع: ${error.message}${error.code ? ` (${error.code})` : ""}`);
 
-      if (error) {
-        if (
-          error.code === "42501" ||
-          error.message.toLowerCase().includes("permission")
-        ) {
-          throw new Error(
-            `رفضت سياسات RLS قراءة طلبات الدفع: ${error.message}`,
-          );
-        }
-
-        throw new Error(
-          `فشل استعلام جدول payments: ${error.message}${
-            error.code ? ` (رمز ${error.code})` : ""
-          }`,
-        );
-      }
-
-      const paymentRows: Payment[] = (data ?? []).map((row) => ({
+      const nextRows: Payment[] = (data ?? []).map((row: any) => ({
         ...row,
+        amount: Number(row.amount),
+        requested_amount: row.requested_amount == null ? null : Number(row.requested_amount),
+        received_amount: row.received_amount == null ? null : Number(row.received_amount),
+        remaining_amount: row.remaining_amount == null ? null : Number(row.remaining_amount),
         currency: "ر.ي",
       }));
-
-      setRows(paymentRows);
-    } catch (error) {
-      console.error("تعذر تحميل طلبات الدفع:", error);
-
-      setErr(
-        error instanceof Error
-          ? error.message
-          : "تعذر تحميل طلبات الدفع لسبب غير معروف.",
-      );
+      setRows(nextRows);
+      setReceivedInputs((previous) => {
+        const next = { ...previous };
+        for (const payment of nextRows) {
+          if (next[payment.id] === undefined) {
+            next[payment.id] = String(payment.requested_amount ?? payment.amount ?? "");
+          }
+        }
+        return next;
+      });
+    } catch (cause) {
+      console.error("تعذر تحميل طلبات الدفع:", cause);
+      setErr(cause instanceof Error ? cause.message : "تعذر تحميل طلبات الدفع.");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     void load();
-
     const channel = supabase
-      .channel("payments_live")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "payments" },
-        () => {
-          void load();
-        },
-      )
+      .channel("payments_live_partial_approval")
+      .on("postgres_changes", { event: "*", schema: "public", table: "payments" }, () => void load())
       .subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [load]);
 
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, []);
-
-  const review = async (payment: Payment, approve: boolean) => {
-    setBusy(payment.id);
+  const approve = async (payment: Payment) => {
     setErr("");
+    const received = Number(receivedInputs[payment.id]);
+    const requested = Number(payment.requested_amount ?? payment.amount);
+    if (!Number.isSafeInteger(received) || received <= 0) {
+      setErr(`أدخل مبلغًا مقبوضًا صحيحًا أكبر من صفر للطلب ${payment.tracking_code}.`);
+      return;
+    }
+    if (received > requested) {
+      setErr(`المبلغ المقبوض لا يمكن أن يتجاوز المطلوب (${fmt(requested)} ر.ي) للطلب ${payment.tracking_code}.`);
+      return;
+    }
+    if (!window.confirm(`سيُعتمد ${fmt(received)} ر.ي للطلب ${payment.tracking_code}.\nالمتبقي عند التسليم: ${fmt(requested - received)} ر.ي.\nسيُرسل إشعار للعميل. متابعة؟`)) return;
 
-    const status = approve ? "approved" : "rejected";
-
+    setBusy(payment.id);
     try {
-      const { error: paymentError } = await supabase
-        .from("payments")
-        .update({
-          status,
-          reviewed_at: new Date().toISOString(),
-        })
-        .eq("id", payment.id);
-
-      if (paymentError) {
-        const message = paymentError.message || "خطأ غير معروف";
-        if (message.includes('record "new" has no field "order_id"')) {
-          throw new Error(
-            'رفضت قاعدة Supabase تحديث الدفعة: يوجد trigger أو دالة سياسة تشير إلى NEW.order_id، لكن هذا الحقل غير موجود في payments. هذا خطأ في إعداد قاعدة البيانات، وليس في زر الاعتماد أو صلاحية الحساب وحدها. افحص triggers ودوال RLS في مشروع Supabase الذي يستخدمه Vercel.',
-          );
-        }
-        throw new Error(
-          `تعذر تحديث حالة الدفعة: ${message}${paymentError.code ? ` (رمز ${paymentError.code})` : ""}`,
-        );
-      }
-
-      const followUpWarnings: string[] = [];
-
-      // تغيير حالة الطلب خطوة لاحقة. لا نلغي اعتماد الدفعة إذا تعذر تحديث الطلب.
-      const { error: orderError } = await supabase
-        .from("orders")
-        .update({
-          status: approve
-            ? "تم الدفع - قيد الشراء"
-            : "الدفع مرفوض - بانتظار إيداع صحيح",
-        })
-        .eq("tracking_code", payment.tracking_code);
-
-      if (orderError) {
-        followUpWarnings.push(`تعذر تحديث حالة الطلب: ${orderError.message}`);
-      }
-
-      if (payment.user_id) {
-        if (approve) {
-          const { error: walletError } = await supabase
-            .from("wallet_transactions")
-            .insert({
-              user_id: payment.user_id,
-              amount: Number(payment.amount),
-              description: `إيداع معتمد للطلب ${payment.tracking_code} عبر ${payment.wallet}`,
-            });
-
-          if (walletError) {
-            followUpWarnings.push(
-              `اعتمدت الدفعة لكن تعذر تسجيل حركة المحفظة: ${walletError.message}`,
-            );
-          }
-        }
-
-        const { error: notificationError } = await supabase
-          .from("notifications")
-          .insert({
-            user_id: payment.user_id,
-            title: approve
-              ? `تم اعتماد دفعتك للطلب ${payment.tracking_code} ✓`
-              : `لم يتم قبول إيداع الطلب ${payment.tracking_code}`,
-            body: approve
-              ? `تم استلام ${fmt(Number(payment.amount))} ${payment.currency} وبدأنا بشراء طلبك.`
-              : "يرجى التواصل معنا أو إرفاق سند صحيح.",
-          });
-
-        if (notificationError) {
-          followUpWarnings.push(
-            `تم تحديث حالة الدفعة لكن تعذر إرسال إشعار العميل: ${notificationError.message}`,
-          );
-        }
-      }
-
+      const { error } = await (supabase as any).rpc("approve_payment_received", {
+        _payment_id: payment.id,
+        _received_amount: received,
+      });
+      if (error) throw new Error(error.message || "تعذر اعتماد الدفعة الجزئية.");
       await load();
-      if (followUpWarnings.length) {
-        setErr(followUpWarnings.join(" • "));
-      }
-    } catch (error) {
-      console.error("تعذر مراجعة الدفعة:", error);
-      setErr(
-        error instanceof Error
-          ? error.message
-          : "تعذر تنفيذ قرار مراجعة الدفعة بسبب خطأ غير معروف.",
-      );
+    } catch (cause) {
+      console.error("تعذر اعتماد الدفعة:", cause);
+      setErr(cause instanceof Error ? cause.message : "تعذر اعتماد الدفعة. لم يُعرض نجاح الاعتماد.");
     } finally {
       setBusy(null);
     }
   };
 
-  const shown =
-    filter === "all"
-      ? rows
-      : rows.filter((payment) => payment.status === filter);
+  const reject = async (payment: Payment) => {
+    if (!window.confirm(`هل تريد رفض سند الدفع للطلب ${payment.tracking_code}؟`)) return;
+    setErr("");
+    setBusy(payment.id);
+    try {
+      const { error } = await supabase.from("payments").update({
+        status: "rejected",
+        reviewed_at: new Date().toISOString(),
+      }).eq("id", payment.id).in("status", ["pending", "بانتظار التأكيد"]);
+      if (error) throw new Error(`تعذر رفض الدفعة: ${error.message}`);
+
+      const warnings: string[] = [];
+      if (payment.user_id) {
+        const { error: notificationError } = await supabase.from("notifications").insert({
+          user_id: payment.user_id,
+          title: `لم يتم قبول سند الدفع للطلب ${payment.tracking_code}`,
+          body: "يرجى مراجعة السند أو التواصل مع خدمة العملاء لإعادة تقديمه.",
+          kind: "payment",
+          href: "/account/wallet",
+          is_active: true,
+        });
+        if (notificationError) warnings.push(`تعذر إرسال إشعار الرفض: ${notificationError.message}`);
+      }
+      if (warnings.length) setErr(warnings.join(" • "));
+      await load();
+    } catch (cause) {
+      console.error("تعذر رفض الدفعة:", cause);
+      setErr(cause instanceof Error ? cause.message : "تعذر رفض الدفعة.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const shown = filter === "all" ? rows : rows.filter((payment) => {
+    if (filter === "pending") return payment.status === "pending" || payment.status === "بانتظار التأكيد";
+    return payment.status === filter;
+  });
 
   const ledger = useMemo(() => {
     const totals: Record<string, number> = {};
-
-    rows
-      .filter((payment) => payment.status === "approved")
-      .forEach((payment) => {
-        totals[payment.wallet] =
-          (totals[payment.wallet] ?? 0) + Number(payment.amount);
-      });
-
+    rows.filter((payment) => payment.status === "approved").forEach((payment) => {
+      totals[payment.wallet] = (totals[payment.wallet] ?? 0) + Number(payment.received_amount ?? payment.amount);
+    });
     return totals;
   }, [rows]);
-
-  const totalApproved = Object.values(ledger).reduce(
-    (total, amount) => total + amount,
-    0,
-  );
-
-  const pendingSum = rows
-    .filter((payment) => payment.status === "pending")
-    .reduce((total, payment) => total + Number(payment.amount), 0);
+  const totalApproved = Object.values(ledger).reduce((sum, value) => sum + value, 0);
+  const pendingSum = rows.filter((payment) => payment.status === "pending" || payment.status === "بانتظار التأكيد")
+    .reduce((sum, payment) => sum + Number(payment.requested_amount ?? payment.amount), 0);
 
   return (
-    <div
-      dir="rtl"
-      className="min-h-screen bg-slate-50 p-4 sm:p-6 font-[Cairo]"
-    >
-      <div className="max-w-6xl mx-auto">
-        <div className="flex items-center justify-between bg-gradient-to-l from-[#0A2540] to-[#0F4C81] text-white rounded-2xl p-5 shadow">
+    <div dir="rtl" className="min-h-screen bg-slate-50 p-4 font-[Cairo] sm:p-6">
+      <div className="mx-auto max-w-6xl">
+        <header className="flex items-center justify-between rounded-2xl bg-gradient-to-l from-[#0A2540] to-[#0F4C81] p-5 text-white shadow">
           <div>
             <h1 className="text-xl font-black">طلبات الدفع والمحاسبة</h1>
-            <p className="text-xs text-sky-200 mt-1">
-              تحديث لحظي من قاعدة البيانات
-            </p>
+            <p className="mt-1 text-xs text-sky-200">اعتماد المقبوض الفعلي وتسجيل المتبقي عند التسليم</p>
           </div>
+          <Link to="/admin" className="rounded-xl bg-white/15 px-4 py-2 text-sm font-bold hover:bg-white/25">← لوحة الإدارة</Link>
+        </header>
 
-          <Link
-            to="/admin"
-            className="bg-white/15 hover:bg-white/25 px-4 py-2 rounded-xl text-sm font-bold"
-          >
-            ← لوحة الإدارة
-          </Link>
+        {err && <div role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+          <p className="font-black">تعذر تنفيذ العملية</p><p className="mt-1 break-words">{err}</p>
+          <button type="button" onClick={() => void load()} className="mt-2 rounded-lg bg-red-100 px-3 py-1.5 font-bold">إعادة تحميل البيانات</button>
+        </div>}
+
+        <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <Kpi label="بانتظار الاعتماد" value={rows.filter((p) => p.status === "pending" || p.status === "بانتظار التأكيد").length} sub={`${fmt(pendingSum)} ر.ي مطلوب`} color="text-amber-600" />
+          <Kpi label="المقبوض المعتمد" value={fmt(totalApproved)} sub="ر.ي" color="text-emerald-600" />
+          <Kpi label="دفعات معتمدة" value={rows.filter((p) => p.status === "approved").length} sub="عملية" color="text-[#0F4C81]" />
+          <Kpi label="مرفوضة" value={rows.filter((p) => p.status === "rejected").length} sub="عملية" color="text-red-600" />
         </div>
 
-        {err && (
-          <div
-            role="alert"
-            className="mt-4 flex items-start justify-between gap-3 bg-red-50 border border-red-200 text-red-800 rounded-xl p-3 text-sm"
-          >
-            <div>
-              <p className="font-black">تعذر تحميل أو تنفيذ طلبات الدفع</p>
-              <p className="mt-1 break-words">{err}</p>
-              <p className="mt-2 text-xs">
-                إذا كان الخطأ متعلقًا بـRLS، تأكد من أن هذا المستخدم يملك دور
-                admin أو staff في user_roles وأن سياسة payments تسمح له بالقراءة
-                والتحديث.
-              </p>
-            </div>
+        <section className="mt-4 rounded-2xl border border-sky-100 bg-white p-4">
+          <h2 className="mb-3 text-sm font-black text-[#0A2540]">إجمالي المقبوض في الصناديق (من الدفعات المعتمدة)</h2>
+          {Object.keys(ledger).length === 0 ? <p className="text-xs text-slate-500">لا توجد مقبوضات معتمدة.</p> :
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+              {Object.entries(ledger).map(([wallet, value]) => <div key={wallet} className="rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-center">
+                <div className="text-xs font-bold text-slate-600">{wallet}</div><div className="mt-1 text-lg font-black text-emerald-700">{fmt(value)}</div><div className="text-[10px] text-slate-500">ر.ي</div>
+              </div>)}
+            </div>}
+        </section>
 
-            <button
-              type="button"
-              onClick={() => void load()}
-              className="shrink-0 rounded-lg bg-red-100 px-3 py-1.5 font-bold hover:bg-red-200"
-            >
-              إعادة المحاولة
-            </button>
-          </div>
-        )}
-
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
-          <Kpi
-            label="بانتظار الاعتماد"
-            value={rows.filter((payment) => payment.status === "pending").length}
-            sub={`${fmt(pendingSum)} ر.ي`}
-            color="text-amber-600"
-          />
-
-          <Kpi
-            label="إجمالي المقبوضات المعتمدة"
-            value={fmt(totalApproved)}
-            sub="ر.ي"
-            color="text-emerald-600"
-          />
-
-          <Kpi
-            label="دفعات معتمدة"
-            value={rows.filter((payment) => payment.status === "approved").length}
-            sub="عملية"
-            color="text-[#0F4C81]"
-          />
-
-          <Kpi
-            label="مرفوضة"
-            value={rows.filter((payment) => payment.status === "rejected").length}
-            sub="عملية"
-            color="text-red-600"
-          />
-        </div>
-
-        <div className="bg-white rounded-2xl border border-sky-100 p-4 mt-4">
-          <h2 className="font-black text-sm text-[#0A2540] mb-3">
-            أرصدة الصناديق والمحافظ (تلقائي من الدفعات المعتمدة)
-          </h2>
-
-          {Object.keys(ledger).length === 0 ? (
-            <p className="text-xs text-slate-500">
-              لا توجد مقبوضات معتمدة بعد.
-            </p>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-              {Object.entries(ledger).map(([wallet, value]) => (
-                <div
-                  key={wallet}
-                  className="border border-emerald-100 bg-emerald-50 rounded-xl p-3 text-center"
-                >
-                  <div className="text-xs font-bold text-slate-600">
-                    {wallet}
-                  </div>
-                  <div className="text-lg font-black text-emerald-700 mt-1">
-                    {fmt(value)}
-                  </div>
-                  <div className="text-[10px] text-slate-500">ر.ي</div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="flex gap-2 mt-4 flex-wrap">
-          {(["pending", "approved", "rejected", "all"] as const).map(
-            (statusFilter) => (
-              <button
-                key={statusFilter}
-                type="button"
-                onClick={() => setFilter(statusFilter)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold border ${
-                  filter === statusFilter
-                    ? "bg-[#0F4C81] text-white border-[#0F4C81]"
-                    : "bg-white text-slate-600 border-slate-200"
-                }`}
-              >
-                {statusFilter === "all"
-                  ? "الكل"
-                  : STATUS[statusFilter]?.t}
-              </button>
-            ),
-          )}
+        <div className="mt-4 flex flex-wrap gap-2">
+          {(["pending", "approved", "rejected", "all"] as const).map((item) => <button key={item} type="button" onClick={() => setFilter(item)} className={`rounded-xl border px-4 py-2 text-xs font-bold ${filter === item ? "border-[#0F4C81] bg-[#0F4C81] text-white" : "border-slate-200 bg-white text-slate-600"}`}>
+            {item === "all" ? "الكل" : STATUS[item]?.label}
+          </button>)}
         </div>
 
         <div className="mt-3 space-y-3">
-          {loading && (
-            <p className="text-sm text-slate-500">جارٍ التحميل...</p>
-          )}
-
-          {!loading && shown.length === 0 && (
-            <p className="text-sm text-slate-500 bg-white rounded-xl p-4">
-              لا توجد طلبات دفع في هذا القسم.
-            </p>
-          )}
-
-          {shown.map((payment) => (
-            <div
-              key={payment.id}
-              className="bg-white rounded-2xl border border-slate-200 p-4 flex flex-col sm:flex-row gap-4"
-            >
-              {payment.receipt_image ? (
-                <button
-                  type="button"
-                  onClick={() => setPreview(payment.receipt_image)}
-                  className="shrink-0"
-                  aria-label="معاينة سند الدفع"
-                >
-                  <img
-                    src={payment.receipt_image}
-                    alt="سند الدفع"
-                    className="w-24 h-24 object-cover rounded-xl border"
-                  />
-                </button>
-              ) : (
-                <div className="w-24 h-24 shrink-0 rounded-xl border border-dashed grid place-items-center text-[10px] text-slate-400">
-                  بدون سند
+          {loading && <p className="text-sm text-slate-500">جارٍ التحميل...</p>}
+          {!loading && shown.length === 0 && <p className="rounded-xl bg-white p-4 text-sm text-slate-500">لا توجد طلبات في هذا القسم.</p>}
+          {shown.map((payment) => {
+            const requested = Number(payment.requested_amount ?? payment.amount);
+            const entered = Number(receivedInputs[payment.id] ?? requested);
+            const remainingPreview = Number.isFinite(entered) ? Math.max(0, requested - entered) : requested;
+            const isPending = payment.status === "pending" || payment.status === "بانتظار التأكيد";
+            const actualReceived = Number(payment.received_amount ?? payment.amount);
+            return <article key={payment.id} className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-4 sm:flex-row">
+              {payment.receipt_image ? <button type="button" onClick={() => setPreview(payment.receipt_image)} className="shrink-0" aria-label="معاينة سند الدفع">
+                <img src={payment.receipt_image} alt="سند الدفع" className="h-24 w-24 rounded-xl border object-cover" />
+              </button> : <div className="grid h-24 w-24 shrink-0 place-items-center rounded-xl border border-dashed text-xs text-slate-400">بدون سند</div>}
+              <div className="min-w-0 flex-1 text-sm">
+                <div className="flex flex-wrap items-center gap-2"><span className="font-black text-[#0A2540]">{payment.customer_name || "عميل"}</span>
+                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${STATUS[payment.status]?.classes ?? "bg-slate-100 text-slate-700"}`}>{STATUS[payment.status]?.label ?? payment.status}</span>
                 </div>
-              )}
-
-              <div className="flex-1 text-sm">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-black text-[#0A2540]">
-                    {payment.customer_name || "عميل"}
-                  </span>
-
-                  <span
-                    className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
-                      STATUS[payment.status]?.c ?? ""
-                    }`}
-                  >
-                    {STATUS[payment.status]?.t ?? payment.status}
-                  </span>
-                </div>
-
-                <div className="mt-1 text-xs text-slate-600">
-                  الطلب <b dir="ltr">{payment.tracking_code}</b> • عبر{" "}
-                  <b>{payment.wallet}</b> •{" "}
-                  {new Date(payment.created_at).toLocaleString("ar")}
-                </div>
-
-                <div className="mt-2 text-lg font-black text-emerald-700">
-                  {fmt(Number(payment.amount))} {payment.currency}
-                </div>
+                <div className="mt-1 text-xs text-slate-600">الطلب <b dir="ltr">{payment.tracking_code}</b> • عبر <b>{payment.wallet}</b> • {new Date(payment.created_at).toLocaleString("ar")}</div>
+                {isPending ? <>
+                  <div className="mt-3 text-sm font-bold">المبلغ المطلوب: {fmt(requested)} {payment.currency}</div>
+                  <label className="mt-2 block max-w-xs text-xs font-bold text-slate-700">المبلغ المقبوض فعليًا
+                    <div className="mt-1 flex items-center gap-2"><input type="number" min="1" max={requested} step="1" inputMode="numeric" value={receivedInputs[payment.id] ?? String(requested)} onChange={(event) => setReceivedInputs((prev) => ({ ...prev, [payment.id]: event.target.value }))} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-base font-black" /> <span>ر.ي</span></div>
+                  </label>
+                  <p className="mt-2 text-xs font-bold text-amber-700">المتبقي على العميل عند التسليم: {fmt(remainingPreview)} ر.ي</p>
+                  <p className="mt-1 text-[11px] text-slate-500">تأكد من السند. الاعتماد يسجل المقبوض الفعلي في الصندوق ويرسل للعميل إشعارًا داخل التطبيق.</p>
+                </> : <div className="mt-3 space-y-1 text-sm">
+                  <p>المطلوب: {fmt(Number(payment.requested_amount ?? payment.amount))} {payment.currency}</p>
+                  <p className="font-black text-emerald-700">المقبوض والمضاف: {fmt(actualReceived)} {payment.currency}</p>
+                  <p className="font-bold text-amber-700">المتبقي عند التسليم: {fmt(Number(payment.remaining_amount ?? 0))} {payment.currency}</p>
+                </div>}
               </div>
-
-              {payment.status === "pending" && (
-                <div className="flex sm:flex-col gap-2 shrink-0">
-                  <button
-                    type="button"
-                    disabled={busy === payment.id}
-                    onClick={() => void review(payment, true)}
-                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold disabled:opacity-50"
-                  >
-                    اعتماد واستلام المبلغ ✓
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={busy === payment.id}
-                    onClick={() => void review(payment, false)}
-                    className="px-4 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-xs font-bold disabled:opacity-50"
-                  >
-                    رفض
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
+              {isPending && <div className="flex shrink-0 flex-col gap-2 sm:w-48">
+                <button type="button" disabled={busy === payment.id} onClick={() => void approve(payment)} className="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50">{busy === payment.id ? "جارٍ الاعتماد…" : "اعتماد المقبوض وإشعار العميل ✓"}</button>
+                <button type="button" disabled={busy === payment.id} onClick={() => void reject(payment)} className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-xs font-bold text-red-700 hover:bg-red-100 disabled:opacity-50">رفض السند</button>
+              </div>}
+            </article>;
+          })}
         </div>
       </div>
 
-      {preview && (
-        <div
-          role="presentation"
-          onClick={() => setPreview(null)}
-          className="fixed inset-0 bg-black/70 grid place-items-center p-4 z-50"
-        >
-          <img
-            src={preview}
-            alt="سند الدفع"
-            className="max-h-[90vh] max-w-full rounded-xl"
-          />
-        </div>
-      )}
+      {preview && <div role="presentation" onClick={() => setPreview(null)} className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4">
+        <button type="button" onClick={() => setPreview(null)} className="absolute right-4 top-4 rounded-lg bg-white px-3 py-2 font-bold">إغلاق</button>
+        <img src={preview} alt="سند الدفع" className="max-h-[90vh] max-w-full rounded-xl" />
+      </div>}
     </div>
   );
 }
 
-function Kpi({
-  label,
-  value,
-  sub,
-  color,
-}: {
-  label: string;
-  value: string | number;
-  sub: string;
-  color: string;
-}) {
-  return (
-    <div className="bg-white rounded-2xl border border-sky-100 p-4">
-      <div className="text-xs font-bold text-slate-500">{label}</div>
-      <div className={`text-2xl font-black mt-1 ${color}`}>{value}</div>
-      <div className="text-[11px] text-slate-400">{sub}</div>
-    </div>
-  );
+function Kpi({ label, value, sub, color }: { label: string; value: string | number; sub: string; color: string }) {
+  return <div className="rounded-2xl border border-sky-100 bg-white p-4"><div className="text-xs font-bold text-slate-500">{label}</div><div className={`mt-1 text-2xl font-black ${color}`}>{value}</div><div className="text-[11px] text-slate-400">{sub}</div></div>;
 }
