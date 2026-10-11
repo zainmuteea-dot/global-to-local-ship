@@ -632,12 +632,12 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
                     <span className="font-bold text-emerald-950">خدمة الواتساب المباشرة:</span>
                   </div>
                   <a
-                    href="https://wa.me/967772399744"
+                    href="https://wa.me/967773370041"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="font-mono font-bold text-emerald-700 bg-white px-2.5 py-1 rounded-lg border border-emerald-200"
                   >
-                    772399744
+                    773370041
                   </a>
                 </div>
                 <div className="p-3.5 rounded-2xl bg-sky-50 border border-sky-200 flex items-center justify-between">
