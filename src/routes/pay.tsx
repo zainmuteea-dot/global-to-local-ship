@@ -42,162 +42,46 @@ const CSS = `
 .pay-arrow:hover{background:rgba(255,255,255,.22)}
 .pay-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
   padding:18px;margin-top:16px;box-shadow:var(--shadow-sm)}
-.pay-head{display:flex;align-items:center;gap:11px;margin-bottom:15px}
-.pay-ico{width:36px;height:36px;flex:0 0 auto;border-radius:11px;display:grid;place-items:center;
-  color:#fff;background:linear-gradient(140deg,var(--blue-600),var(--blue-800))}
-.pay-head.alt .pay-ico{background:linear-gradient(140deg,var(--orange-400),var(--orange-600))}
-.pay-title{font-weight:800;font-size:16px}
-.badge{font-size:12.5px;font-weight:800;padding:5px 12px;border-radius:999px}
-.badge.warn{background:#fff2df;color:#b96d05}
+.pay-head{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.pay-ico{width:34px;height:34px;border-radius:10px;background:var(--blue-100);color:var(--blue-800);display:grid;place-items:center}
+.pay-title{font-size:15px;font-weight:800;color:var(--blue-900)}
+.pay-ord{display:flex;flex-direction:column;gap:10px}
+.od-top{display:flex;gap:10px}
+.od-box{flex:1;background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:10px 14px}
+.od-k{font-size:11px;color:var(--muted);font-weight:700}
+.od-v{font-size:15px;font-weight:900;color:var(--ink);display:flex;align-items:center;gap:6px;margin-top:2px}
+.badge{padding:3px 10px;border-radius:20px;font-size:12px;font-weight:800}
 .badge.ok{background:var(--green-bg);color:var(--green)}
-.pay-error{margin-top:12px;padding:12px 14px;border:1px solid #f3b8b3;border-radius:12px;background:#fff2f0;color:#9f2822;font-size:13px;font-weight:800;line-height:1.7}
-.pay-retry{display:inline-flex;align-items:center;justify-content:center;gap:7px;margin-top:9px;padding:9px 14px;border:0;border-radius:10px;background:#b8322a;color:#fff;font:inherit;font-weight:800;cursor:pointer}
-.pay-retry:disabled{opacity:.6;cursor:wait}
-.brand-mark{display:grid;place-items:center;width:100%;height:100%;font-weight:1000;letter-spacing:-.6px;line-height:1;font-size:16px}
-.brand-mark.najm{font-size:25px}
-/* order details */
-.od-top{display:grid;grid-template-columns:1fr 1fr;gap:11px}
-.od-box{border:1.6px solid var(--line);border-radius:14px;padding:12px 10px;text-align:center;
-  display:flex;flex-direction:column;align-items:center;gap:7px;background:#fff}
-.od-box .od-k{font-size:12px;font-weight:800;color:var(--muted)}
-.od-box.num{background:linear-gradient(160deg,var(--green-bg),#fff);border-color:#bfe9d2}
-.od-box.num .od-v{display:inline-flex;align-items:center;gap:5px;font-size:18px;font-weight:900;
-  color:var(--green);direction:ltr}
-.od-box.stat .od-v{display:flex}
-.od-name{text-align:center;margin-top:14px;font-size:16px;font-weight:900;color:var(--ink)}
-.od-prod{text-align:center;margin-top:5px;font-size:13.5px;color:var(--muted);font-weight:700}
-/* زر التنبيه والإشعار التفاعلي */
-.pay-wait-btn{margin-top:13px;width:100%;display:flex;align-items:center;justify-content:center;gap:9px;
-  background:#fff6e9;border:1.6px solid #f3d9a8;color:#9a5b05;font-size:13.5px;font-weight:800;
-  padding:13px 14px;border-radius:14px;line-height:1.6;text-align:center;cursor:pointer;transition:.25s;font-family:inherit}
-.pay-wait-btn:hover{background:#ffeed1;border-color:var(--orange-500);transform:translateY(-1px)}
-.pay-wait-btn.notified{background:var(--green-bg);border-color:#a3e4be;color:var(--green);cursor:default;box-shadow:0 4px 12px -4px rgba(26,162,96,.35)}
-.pay-wait-btn.notified:hover{transform:none}
-/* amount squares */
-.pay-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:11px}
-.stat{border-radius:16px;padding:15px 10px;text-align:center;border:1.6px solid var(--line);
-  background:#fff;position:relative;overflow:hidden;transition:.2s}
-.stat:hover{transform:translateY(-2px);box-shadow:var(--shadow-sm)}
-.stat .lab{font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px}
-.stat .num{font-size:19px;font-weight:900;line-height:1.1}
-.stat .cur{font-size:11.5px;font-weight:700;color:var(--muted);margin-top:3px}
-.stat.total{background:linear-gradient(160deg,#eef5fc,#fff);border-color:var(--blue-100)}
-.stat.total .num{color:var(--blue-800)}
-.stat.paid{background:linear-gradient(160deg,var(--green-bg),#fff);border-color:#bfe9d2}
+.badge.warn{background:#fff8e8;color:#b45309}
+.od-name{font-size:13px;font-weight:800;color:var(--blue-900);padding:4px 6px}
+.od-prod{font-size:12px;color:var(--muted);padding:0 6px}
+
+.pay-wait-btn{width:100%;margin-top:6px;display:flex;align-items:center;justify-content:center;gap:8px;
+  font-family:inherit;font-weight:800;font-size:13px;padding:11px 14px;border-radius:12px;border:none;cursor:pointer;transition:.2s}
+.pay-wait-btn.notified{background:var(--green-bg);color:var(--green)}
+.pay-wait-btn:not(.notified){background:#fff8e8;color:#b45309;border:1px solid #fde68a}
+
+.pay-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.stat{background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:12px 10px;text-align:center}
+.stat .lab{font-size:11px;color:var(--muted);font-weight:700;margin-bottom:4px}
+.stat .num{font-size:20px;font-weight:900;line-height:1.2}
+.stat .cur{font-size:11px;color:var(--muted);font-weight:700}
+.stat.total .num{color:var(--blue-900)}
 .stat.paid .num{color:var(--green)}
-.stat.rest{background:linear-gradient(160deg,var(--red-bg),#fff);border-color:#f6c9c4}
 .stat.rest .num{color:var(--red)}
-.stat::after{content:'';position:absolute;inset-inline-start:0;top:0;bottom:0;width:4px}
-.stat.total::after{background:var(--blue-600)}
-.stat.paid::after{background:var(--green)}
-.stat.rest::after{background:var(--red)}
-/* قائمة طرق الدفع: عمودية كما في الشكل المرجعي، ومتجاوبة مع الجوال */
-.pay-grid{
-  display:flex;
-  flex-direction:column;
-  gap:6px;
-  width:100%;
-  margin-top:4px;
-  padding:7px;
-  background:#fffdfa;
-  border:1px solid #eee1c2;
-  border-radius:18px;
-}
-.wbtn{
-  position:relative;
-  display:flex;
-  flex-direction:row;
-  direction:rtl;
-  align-items:center;
-  justify-content:flex-start;
-  gap:12px;
-  width:100%;
-  min-height:54px;
-  padding:7px 9px;
-  background:#fff;
-  border:1px solid transparent;
-  border-radius:13px;
-  cursor:pointer;
-  font-family:inherit;
-  text-align:right;
-  transition:background .18s,border-color .18s,box-shadow .18s;
-  -webkit-tap-highlight-color:transparent;
-}
+
+.pay-grid{display:grid;grid-template-columns:1fr;gap:8px;margin-top:4px;padding:7px;background:#fffdfa;border:1px solid #eee1c2;border-radius:18px;}
+.wbtn{position:relative;display:flex;direction:rtl;align-items:center;gap:12px;width:100%;min-height:54px;padding:7px 9px;background:#fff;border:1px solid transparent;border-radius:13px;cursor:pointer;font-family:inherit;text-align:right;transition:.18s;}
 .wbtn:hover{background:#fffaf0;border-color:#efe2c6}
-.wbtn:focus{outline:none}
-.wbtn:focus-visible{
-  outline:3px solid #2563eb;
-  outline-offset:2px;
-  box-shadow:0 0 0 5px rgba(37,99,235,.16);
-  z-index:1;
-}
-.wbtn .wchip{
-  display:grid;
-  place-items:center;
-  flex:0 0 38px;
-  width:38px;
-  height:38px;
-  overflow:hidden;
-  background:#fff;
-  border:1px solid #f0ece5;
-  border-radius:11px;
-  box-shadow:0 2px 8px -3px rgba(0,0,0,.18);
-}
-.wbtn .wchip svg{width:28px;height:28px}
-.wbtn .wchip .brand-mark{border-radius:9px}
-.wbtn .wname{
-  min-width:0;
-  color:#46382b;
-  font-size:13px;
-  font-weight:800;
-  text-align:right;
-  overflow-wrap:anywhere;
-}
-.wbtn.active{
-  color:#46382b;
-  background:#fff8e8;
-  border-color:#e6c76e;
-  box-shadow:0 2px 8px rgba(132,95,27,.08);
-}
-.wbtn.active .wname{color:#46382b}
-.wbtn .tick{
-  position:absolute;
-  top:50%;
-  inset-inline-start:10px;
-  display:none;
-  width:18px;
-  height:18px;
-  align-items:center;
-  justify-content:center;
-  color:#198754;
-  background:#fff;
-  border-radius:50%;
-  box-shadow:0 1px 5px rgba(0,0,0,.12);
-  transform:translateY(-50%);
-}
+.wbtn .wchip{display:grid;place-items:center;flex:0 0 38px;width:38px;height:38px;overflow:hidden;background:#fff;border:1px solid #f0ece5;border-radius:11px;}
+.wbtn .wname{min-width:0;color:#46382b;font-size:13px;font-weight:800}
+.wbtn.active{background:#fff8e8;border-color:#e6c76e}
+.wbtn .tick{position:absolute;top:50%;inset-inline-start:10px;display:none;width:18px;height:18px;align-items:center;justify-content:center;color:#198754;background:#fff;border-radius:50%;transform:translateY(-50%)}
 .wbtn.active .tick{display:flex}
-@media(max-width:420px){
-  .pay-root{padding:14px 10px 36px}
-  .pay-card{padding:14px}
-  .pay-grid{gap:4px;padding:6px}
-  .wbtn{min-height:52px;gap:10px;padding:6px 8px}
-  .wbtn .wname{font-size:12px}
-  .pay-acc{padding:13px}
-  .pay-accnum{padding:11px}
-  .pay-accnum .name-val{font-size:14px;overflow-wrap:anywhere}
-  .pay-accnum .num-val{font-size:20px}
-}
-@media(prefers-reduced-motion:reduce){
-  .wbtn{transition:none}
-}
-/* account box */
-.pay-acc{margin-top:16px;border-radius:16px;padding:16px;color:#fff;position:relative;overflow:hidden;
-  box-shadow:0 12px 26px -12px rgba(0,0,0,.4);animation:slideUp .35s ease}
-@keyframes slideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+.pay-acc{margin-top:16px;border-radius:16px;padding:16px;color:#fff;position:relative;overflow:hidden;box-shadow:0 12px 26px -12px rgba(0,0,0,.4)}
 .pay-acc .atop{display:flex;align-items:center;gap:12px;margin-bottom:12px}
 .pay-acc .wlogo{width:48px;height:48px;border-radius:12px;display:grid;place-items:center;font-weight:900;font-size:18px;flex:0 0 auto}
-.pay-acc .wlogo .brand-mark{font-size:17px}
-.pay-acc .wlogo .brand-mark.najm{font-size:25px}
 .pay-acc .at{font-size:12px;opacity:.9}
 .pay-acc .an{font-size:16px;font-weight:800}
 .pay-accnum{display:flex;flex-direction:column;gap:8px;background:rgba(0,0,0,.22);border-radius:14px;padding:14px}
@@ -208,7 +92,7 @@ const CSS = `
 .pay-accnum .cp{border:none;background:rgba(255,255,255,.25);color:#fff;width:36px;height:36px;border-radius:10px;display:grid;place-items:center;cursor:pointer;transition:.2s}
 .pay-accnum .cp:hover{background:rgba(255,255,255,.4)}
 .pay-accnum .cp.ok{background:#1aa260}
-/* تحميل إشعار الدفع */
+
 .upload-box{margin-top:14px;background:rgba(255,255,255,.18);border:1.6px dashed rgba(255,255,255,.6);border-radius:14px;padding:14px;text-align:center;cursor:pointer;transition:.2s}
 .upload-box:hover{background:rgba(255,255,255,.26);border-color:#fff}
 .upload-box-content{display:flex;align-items:center;justify-content:center;gap:9px;font-size:13.5px;font-weight:800}
@@ -216,15 +100,12 @@ const CSS = `
 .upload-preview img{max-height:160px;width:auto;display:block}
 .upload-remove{position:absolute;top:5px;inset-inline-end:5px;background:#e3443a;color:#fff;border:none;border-radius:50%;width:24px;height:24px;cursor:pointer;display:grid;place-items:center;font-size:12px;font-weight:900}
 .pay-hint{margin-top:12px;font-size:12px;display:flex;gap:7px;align-items:center;opacity:.95;line-height:1.5}
-.pay-btn{width:100%;margin-top:14px;display:flex;align-items:center;justify-content:center;gap:8px;
-  font-family:inherit;font-weight:800;font-size:16px;border:none;cursor:pointer;padding:15px;border-radius:14px;transition:.2s}
+.pay-btn{width:100%;margin-top:14px;display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;font-weight:800;font-size:16px;border:none;cursor:pointer;padding:15px;border-radius:14px;transition:.2s}
 .pay-primary{color:#fff;background:linear-gradient(135deg,var(--green),#15803d);box-shadow:0 10px 24px -8px rgba(26,162,96,.5)}
 .pay-primary:hover{transform:translateY(-2px)}
 .pay-primary:disabled{opacity:.5;cursor:not-allowed;transform:none}
-.pay-btn:focus-visible,.pay-arrow:focus-visible,.pay-wait-btn:focus-visible,
-.pay-accnum .cp:focus-visible,.upload-box:focus-visible,.upload-remove:focus-visible{
-  outline:3px solid #2563eb;outline-offset:3px;box-shadow:0 0 0 5px rgba(37,99,235,.16)
-}
+.pay-error{margin-top:10px;background:var(--red-bg);color:var(--red);padding:10px 14px;border-radius:10px;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:space-between}
+.pay-retry{background:var(--red);color:#fff;border:none;border-radius:8px;padding:4px 10px;cursor:pointer;font-family:inherit;font-size:12px}
 `
 
 /* ===================== Icons ===================== */
@@ -254,7 +135,6 @@ const Logo = () => (
   </svg>
 )
 
-/* شعارات نصية مميزة للمحافظ؛ تُعرض كعلامات تعريفية وليست ملفات شعارات رسمية */
 type Wallet = { key: string; label: string; color: string; mark: string; markClass?: string }
 
 const WALLETS: Wallet[] = [
@@ -266,7 +146,6 @@ const WALLETS: Wallet[] = [
   { key: 'najm', label: 'حوالة النجم', color: '#ea580c', mark: '✦', markClass: 'najm' },
 ]
 
-// بيانات الحساب الموحدة لجميع المحافظ
 const UNIFIED_PHONE = '772399744'
 const UNIFIED_NAME = 'زين العابدين مطيع حاتم الوصابي'
 
@@ -295,104 +174,112 @@ function PayPage() {
   const [paid, setPaid] = useState(0)
   const [status, setStatus] = useState('غير مكتمل')
   
-  // حالة زر إشعار الإدارة
   const [isNotified, setIsNotified] = useState(false)
   const [notifying, setNotifying] = useState(false)
   const [paymentSaved, setPaymentSaved] = useState(false)
   const [paymentError, setPaymentError] = useState('')
   const [paymentWarning, setPaymentWarning] = useState('')
 
-  // حالة صورة إشعار الدفع
   const [receiptImg, setReceiptImg] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const remaining = Math.max(total - paid, 0)
-  const isPaid = /مدفوع|مكتمل|paid|complete/i.test(status) && !/غير/.test(status)
+  const isPaid = /مدفوع|مكتمل|paid|complete/i.test(status) && !/غير|جزئي/i.test(status)
 
-  // قراءة تفاصيل الطلب من Supabase + fallback من الذاكرة المحلية
+  // قراءة تفاصيل الطلب والدفعات بدقة من Supabase
   useEffect(() => {
     let active = true
 
     const loadOrderData = async () => {
       setLoading(true)
 
-      // 1. فحص فوري من التخزين المحلي كـ fallback سريع
-      let fallbackFound = false
       try {
-        const localList = JSON.parse(localStorage.getItem('alsouk_orders') || '[]')
-        const matched = localList.find((o: any) => o.tracking_code === orderNo || o.id === orderNo)
-        if (matched) {
-          fallbackFound = true
-          setCustomer(matched.customer_name || '')
-          setPhone(matched.phone || '')
-          setProductName(matched.product_name || '')
-          if (matched.status) setStatus(matched.status)
-        }
-
-        const localUser = JSON.parse(localStorage.getItem('alsouk_current_user') || '{}')
-        if (localUser.full_name && !customer) setCustomer(localUser.full_name)
-        if (localUser.phone && !phone) setPhone(localUser.phone)
-      } catch {}
-
-      // 2. فحص حالة الإشعار وصورة السند المخزنة سابقاً
-      const notificationKey = `notified_order_${orderNo}`
-      if (localStorage.getItem(notificationKey) === 'true') {
-        setIsNotified(true)
-      }
-      const savedReceipt = localStorage.getItem(`receipt_order_${orderNo}`)
-      if (savedReceipt) {
-        setReceiptImg(savedReceipt)
-      }
-
-      // 3. الاستعلام الدقيق من جدول orders باستخدام tracking_code
-      try {
+        // 1. استعلام الطلب بجميع حقول المبالغ والحالة
         const orderQuery = supabase
           .from('orders')
-          .select('id, tracking_code, customer_name, phone, product_name, notes, status, created_at, user_id')
+          .select('id, tracking_code, customer_name, phone, product_name, notes, status, created_at, user_id, total_cost_yer, paid_amount, remaining_amount, payment_status')
 
-        // رقم الطلب مثل SHP-... نص؛ لا تمرره إلى عمود id ذي النوع UUID.
         const { data: dbOrder } = await (isUuid(orderNo)
           ? orderQuery.or(`tracking_code.eq.${orderNo},id.eq.${orderNo}`)
           : orderQuery.eq('tracking_code', orderNo)
         ).maybeSingle()
 
+        // 2. استعلام الدفعات المعتمدة والمعلقة للطلب
+        const { data: paymentsList } = await supabase
+          .from('payments')
+          .select('id, amount, status, receipt_image')
+          .eq('order_tracking', orderNo)
+
+        let totalApprovedPaid = 0
+        let hasPendingPayment = false
+        let latestReceipt = ''
+
+        if (paymentsList && paymentsList.length > 0) {
+          paymentsList.forEach((p: any) => {
+            if (p.status === 'approved') {
+              totalApprovedPaid += Number(p.amount) || 0
+            } else if (p.status === 'pending' || p.status === 'بانتظار التأكيد') {
+              hasPendingPayment = true
+              if (p.receipt_image) latestReceipt = p.receipt_image
+            }
+          })
+        }
+
         if (dbOrder && active) {
           setCustomer(dbOrder.customer_name || '')
           setPhone(dbOrder.phone || '')
           setProductName(dbOrder.product_name || 'طلب متجر دولي')
-          if (dbOrder.status) setStatus(dbOrder.status)
 
-          // استخراج السعر المعلن من تفاصيل notes
-          const notesText = dbOrder.notes || ''
-          const priceMatch = notesText.match(/السعر المعلن:\s*([\d.]+)\s*([^|]*)/)
-          if (priceMatch) {
-            const rawPrice = parseFloat(priceMatch[1] ?? '0') || 0
-            const rawCur = priceMatch[2]?.trim() || ''
+          // حساب الإجمالي: الاعتماد أولاً على total_cost_yer من قاعدة البيانات
+          let calculatedTotal = Number(dbOrder.total_cost_yer) || 0
 
-            if (rawCur.includes('سعودي') || rawCur.includes('ر.س')) {
-              setTotal(rawPrice * 142)
-              setCurrency('ر.ي')
-            } else if (rawCur.includes('$') || rawCur.includes('دولار')) {
-              setTotal(rawPrice * 535)
-              setCurrency('ر.ي')
-            } else if (rawPrice > 0) {
-              setTotal(rawPrice)
-              setCurrency(rawCur || 'ر.ي')
+          if (!calculatedTotal) {
+            const notesText = dbOrder.notes || ''
+            const priceMatch = notesText.match(/السعر المعلن:\s*([\d.]+)\s*([^|]*)/)
+            if (priceMatch) {
+              const rawPrice = parseFloat(priceMatch[1] ?? '0') || 0
+              const rawCur = priceMatch[2]?.trim() || ''
+
+              if (rawCur.includes('سعودي') || rawCur.includes('ر.س')) {
+                calculatedTotal = Math.round(rawPrice * 142)
+              } else if (rawCur.includes('$') || rawCur.includes('دولار')) {
+                calculatedTotal = Math.round(rawPrice * 535)
+              } else if (rawPrice > 0) {
+                calculatedTotal = Math.round(rawPrice)
+              }
             }
-          } else {
-            setTotal(45000)
-            setCurrency('ر.ي')
           }
-        } else if (!fallbackFound) {
-          setTotal(38500)
+
+          if (!calculatedTotal) calculatedTotal = 42458
+          setTotal(calculatedTotal)
           setCurrency('ر.ي')
-          const uName = localStorage.getItem('sc_name') || 'عميل السوق الشامل'
-          const uPhone = localStorage.getItem('sc_phone') || '772399744'
-          setCustomer(uName)
-          setPhone(uPhone)
+
+          // حساب المدفوع: الأعلى بين paid_amount ومجموع الدفعات المعتمدة
+          const orderPaid = Number(dbOrder.paid_amount) || 0
+          const finalPaid = Math.max(orderPaid, totalApprovedPaid)
+          setPaid(finalPaid)
+
+          // تحديد حالة الدفع
+          if (finalPaid >= calculatedTotal && calculatedTotal > 0) {
+            setStatus('مدفوع بالكامل')
+            setIsNotified(false)
+          } else if (finalPaid > 0) {
+            setStatus(hasPendingPayment ? 'قيد مراجعة الدفعة الإضافية' : 'مدفوع جزئياً')
+            setIsNotified(hasPendingPayment)
+          } else if (hasPendingPayment) {
+            setStatus('قيد مراجعة الدفع والتأكيد')
+            setIsNotified(true)
+          } else {
+            setStatus(dbOrder.status || 'بانتظار الدفع')
+            setIsNotified(false)
+          }
+
+          if (latestReceipt) {
+            setReceiptImg(latestReceipt)
+          }
         }
       } catch (err) {
-        console.warn('Order fetch fallback applied:', err)
+        console.warn('Order fetch error:', err)
       } finally {
         if (active) setLoading(false)
       }
@@ -402,8 +289,6 @@ function PayPage() {
     return () => { active = false }
   }, [orderNo])
 
-  // حفظ سجل الدفعة في الأعمدة الظاهرة في قاعدة Supabase الحالية.
-  // يجب أن تكون أعمدة order_tracking وmethod موجودة لأنها إلزامية في هذا المخطط.
   const handleNotifyAdmin = async () => {
     if (isNotified || notifying) return
     setNotifying(true)
@@ -415,7 +300,6 @@ function PayPage() {
         throw new Error('أرفق صورة سند التحويل أولاً قبل إرسال طلب المراجعة.')
       }
 
-      // تحقّق من الجلسة الحالية عند الإرسال؛ لا تعتمد على التخزين المحلي.
       const { data: { user }, error: authError } = await supabase.auth.getUser()
       if (authError) {
         throw new Error(`تعذر التحقق من تسجيل الدخول: ${authError.message}`)
@@ -426,8 +310,6 @@ function PayPage() {
         return
       }
 
-      // ابحث برمز التتبع، أو بالمعرّف فقط إذا كان orderNo بصيغة UUID.
-      // maybeSingle يفشل مغلقًا إذا ظهر أكثر من طلب مطابق.
       const orderOwnershipQuery = supabase
         .from('orders')
         .select('user_id, tracking_code, customer_name, phone')
@@ -440,9 +322,7 @@ function PayPage() {
         throw new Error(`تعذر التحقق من ملكية الطلب: ${ownerError.message}`)
       }
       if (!ownedOrder || ownedOrder.user_id !== user.id) {
-        throw new Error(
-          'هذا الطلب غير مرتبط بحسابك. سجّل الدخول بالحساب الذي أنشأ الطلب أو تواصل مع الإدارة للتحقق.'
-        )
+        throw new Error('هذا الطلب غير مرتبط بحسابك. سجّل الدخول بالحساب الذي أنشأ الطلب.')
       }
       if (!ownedOrder.tracking_code) {
         throw new Error('تعذر قراءة رمز تتبع الطلب؛ لم يتم إرسال الدفع.')
@@ -468,8 +348,6 @@ function PayPage() {
         account_number: UNIFIED_PHONE,
       }
 
-      // قراءة id الراجع ضرورية لربط إشعار الاستلام بالدفعة التي حُفظت.
-      // يُستخدم cast مؤقتًا لأن types.ts لا يطابق جميع أعمدة قاعدة الإنتاج.
       const { data: savedPayment, error: payErr } = await (supabase.from('payments') as any)
         .insert(paymentPayload)
         .select('id')
@@ -478,13 +356,8 @@ function PayPage() {
       if (payErr) {
         throw new Error(`تعذر حفظ الدفعة: ${payErr.message}`)
       }
-      if (!savedPayment?.id) {
-        throw new Error('تعذر قراءة معرّف الدفعة بعد الإرسال. تحقق من صفحة الدفع قبل إعادة المحاولة.')
-      }
 
-      // إشعار استلام فقط بعد إدراج الدفع. هذا لا يعني اعتماد الدفعة.
-      // فشل الإشعار تحذير منفصل ولا يلغي نجاح إدراج الدفع.
-      const { error: notificationError } = await (supabase.from('notifications') as any)
+      await (supabase.from('notifications') as any)
         .insert({
           user_id: user.id,
           title: 'طلب الدفع',
@@ -492,32 +365,9 @@ function PayPage() {
           payment_id: savedPayment.id,
         })
 
-      if (notificationError) {
-        console.warn('حُفظ طلب الدفع، لكن تعذر حفظ إشعار التطبيق:', notificationError.message)
-        setPaymentWarning('تم حفظ طلب الدفع للمراجعة، لكن تعذر حفظ إشعار التطبيق.')
-      }
-
-      // تحديث حالة الطلب إجراء تكميلي؛ لا يحوّل حالة الدفعة إلى معتمدة.
-      try {
-        const orderQuery = supabase
-          .from('orders')
-          .update({ status: 'قيد مراجعة الدفع والتأكيد' })
-
-        const { error: orderErr } = await (isUuid(orderNo)
-          ? orderQuery.or(`tracking_code.eq.${orderNo},id.eq.${orderNo}`)
-          : orderQuery.eq('tracking_code', orderNo))
-
-        if (orderErr) {
-          console.warn('حُفظ طلب الدفع، لكن تعذر تحديث حالة الطلب:', orderErr.message)
-        }
-      } catch (orderUpdateError) {
-        console.warn('حُفظ طلب الدفع، لكن تعذر تحديث حالة الطلب:', orderUpdateError)
-      }
-
       setPaymentSaved(true)
       setStatus('قيد مراجعة الدفع والتأكيد')
       setIsNotified(true)
-      try { localStorage.setItem(`notified_order_${orderNo}`, 'true') } catch {}
     } catch (e) {
       console.error('Payment notification failed:', e)
       setPaymentError(e instanceof Error ? e.message : 'تعذر حفظ الدفعة. تحقق من الاتصال ثم أعد المحاولة.')
@@ -526,7 +376,6 @@ function PayPage() {
     }
   }
 
-  // معالجة رفع صورة إشعار الدفع
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -535,9 +384,6 @@ function PayPage() {
     reader.onload = (event) => {
       const base64 = event.target?.result as string
       setReceiptImg(base64)
-      try {
-        localStorage.setItem(`receipt_order_${orderNo}`, base64)
-      } catch {}
     }
     reader.readAsDataURL(file)
   }
@@ -566,7 +412,7 @@ function PayPage() {
             <h1>SHOPPING <b>AL SHAMEL</b></h1>
             <p>طرق الدفع • أودِع بأمان</p>
           </div>
-          <button className="pay-arrow" type="button" title="رجوع" onClick={() => navigate({ to: '/dashboard' })}>
+          <button className="pay-arrow" type="button" title="رجوع" onClick={() => navigate({ to: '/' })}>
             <Arrow />
           </button>
         </header>
@@ -593,7 +439,6 @@ function PayPage() {
               </div>
             </div>
 
-            {/* اسم العميل ورقم الهاتف وتفاصيل المنتج */}
             <div className="od-name">
               {loading ? 'جارٍ التحميل...' : `${customer || 'عميل السوق الشامل'} • ${phone || ''}`}
             </div>
@@ -603,13 +448,12 @@ function PayPage() {
               </div>
             )}
 
-            {/* زر يرجى الانتظار التفاعلي مع الإدارة */}
             <button
               type="button"
               className={`pay-wait-btn ${isNotified ? 'notified' : ''}`}
               onClick={handleNotifyAdmin}
               disabled={isNotified || notifying}
-              title="انقر لإشعار الإدارة فوراً بمراجعة طلبك"
+              title="حالة المراجعة"
             >
               {isNotified ? (
                 <>
@@ -618,22 +462,27 @@ function PayPage() {
                 </>
               ) : notifying ? (
                 <span>جارٍ إشعار الإدارة...</span>
-              ) : paymentError ? (
+              ) : isPaid ? (
+                <>
+                  <CheckIc />
+                  <span>تم سداد كامل المبلغ بنجاح ✓</span>
+                </>
+              ) : paid > 0 ? (
                 <>
                   <Bell />
-                  <span>تعذر الإشعار — أعد المحاولة من زر تأكيد الإيداع أدناه</span>
+                  <span>تم اعتماد دفعة سابقة ({fmt(paid)} {currency}) • يمكنك سداد المتبقي أدناه</span>
                 </>
               ) : (
                 <>
                   <Bell />
-                  <span>يرجى الانتظار حتى يتم مراجعة طلبك • (انقر هنا لإشعار الإدارة الآن)</span>
+                  <span>يرجى إيداع المبلغ وإشعار الإدارة للمراجعة الفورية</span>
                 </>
               )}
             </button>
           </div>
         </section>
 
-        {/* ملخص المبالغ (الإجمالي، المدفوع، المتبقي) بالريال */}
+        {/* ملخص المبالغ المالية */}
         <section className="pay-card">
           <div className="pay-head">
             <div className="pay-ico"><Wallet /></div>
@@ -658,141 +507,131 @@ function PayPage() {
           </div>
         </section>
 
-        {/* طريقة الدفع والحسابات المعتمدة */}
-        <section className="pay-card">
-          <div className="pay-head alt">
-            <div className="pay-ico"><Card /></div>
-            <div className="pay-title">طريقة الدفع المعتمدة</div>
-          </div>
-          <div className="pay-grid" role="listbox" aria-label="اختر طريقة الدفع">
-            {WALLETS.map((w) => {
-              const active = w.key === walletKey
-              return (
-                <button
-                  key={w.key}
-                  type="button"
-                  role="option"
-                  aria-selected={active}
-                  className={'wbtn' + (active ? ' active' : '')}
-                  style={active ? { background: '#fff8e8', borderColor: '#e6c76e' } : undefined}
-                  onClick={() => { setWalletKey(w.key); setCopied(false) }}
-                >
-                  <span className="tick"><CheckIc /></span>
-                  <span className="wchip" aria-hidden="true" style={{ color: '#fff', background: w.color, borderColor: w.color }}>
-                    <span className={'brand-mark ' + (w.markClass || '')}>{w.mark}</span>
-                  </span>
-                  <span className="wname">{w.label}</span>
-                </button>
-              )
-            })}
-          </div>
-
-          {wallet && (
-            <div className="pay-acc" style={{ background: `linear-gradient(140deg, ${wallet.color}, ${wallet.color}cc)` }}>
-              <div className="atop">
-                <div className="wlogo" aria-hidden="true" style={{ background: '#fff', color: wallet.color }}>
-                  <span className={'brand-mark ' + (wallet.markClass || '')}>{wallet.mark}</span>
-                </div>
-                <div>
-                  <div className="at">أودِع عبر</div>
-                  <div className="an">{wallet.label}</div>
-                </div>
-              </div>
-
-              {/* 🌟 صندوق رقم الحساب والاسم الموحد */}
-              <div className="pay-accnum">
-                <div className="pay-acc-row">
-                  <div>
-                    <div className="k">اسم المستلم المعتمد:</div>
-                    <div className="name-val">{UNIFIED_NAME}</div>
-                  </div>
-                </div>
-                <div className="pay-acc-row" style={{ marginTop: 4, borderTop: '1px dashed rgba(255,255,255,0.25)', paddingTop: 8 }}>
-                  <div>
-                    <div className="k">رقم الحساب / المحفظة:</div>
-                    <div className="num-val">{UNIFIED_PHONE}</div>
-                  </div>
-                  <button className={'cp' + (copied ? ' ok' : '')} type="button" onClick={copyAcc} title="نسخ الرقم">
-                    {copied ? <CheckIc /> : <Copy />}
+        {/* طريقة الدفع والتحويل */}
+        {!isPaid && (
+          <section className="pay-card">
+            <div className="pay-head alt">
+              <div className="pay-ico"><Card /></div>
+              <div className="pay-title">طريقة الدفع المعتمدة</div>
+            </div>
+            <div className="pay-grid" role="listbox" aria-label="اختر طريقة الدفع">
+              {WALLETS.map((w) => {
+                const active = w.key === walletKey
+                return (
+                  <button
+                    key={w.key}
+                    type="button"
+                    role="option"
+                    aria-selected={active}
+                    className={'wbtn' + (active ? ' active' : '')}
+                    onClick={() => { setWalletKey(w.key); setCopied(false) }}
+                  >
+                    <span className="tick"><CheckIc /></span>
+                    <span className="wchip" aria-hidden="true" style={{ color: '#fff', background: w.color, borderColor: w.color }}>
+                      <span className={'brand-mark ' + (w.markClass || '')}>{w.mark}</span>
+                    </span>
+                    <span className="wname">{w.label}</span>
                   </button>
-                </div>
-              </div>
+                )
+              })}
+            </div>
 
-              {/* 🌟 بقعة الخط الأخضر — زر وخانة تحميل صورة إشعار الدفع */}
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                accept="image/*" 
-                style={{ display: 'none' }} 
-                onChange={handleFileUpload} 
-              />
-              
-              <div 
-                className="upload-box" 
-                onClick={() => fileInputRef.current?.click()}
-                title="انقر لتحميل صورة إشعار التحويل أو لقطة الشاشة"
-              >
-                <div className="upload-box-content">
-                  <Camera />
-                  <span>{receiptImg ? 'تغيير صورة سند / إشعار التحويل' : 'اضغط هنا لتحميل صورة إشعار الدفع (سند التحويل)'}</span>
+            {wallet && (
+              <div className="pay-acc" style={{ background: `linear-gradient(140deg, ${wallet.color}, ${wallet.color}cc)` }}>
+                <div className="atop">
+                  <div className="wlogo" aria-hidden="true" style={{ background: '#fff', color: wallet.color }}>
+                    <span className={'brand-mark ' + (wallet.markClass || '')}>{wallet.mark}</span>
+                  </div>
+                  <div>
+                    <div className="at">أودِع عبر</div>
+                    <div className="an">{wallet.label}</div>
+                  </div>
                 </div>
-                {receiptImg && (
-                  <div className="upload-preview" onClick={(e) => e.stopPropagation()}>
-                    <img src={receiptImg} alt="سند الدفع" />
-                    <button 
-                      className="upload-remove" 
-                      type="button" 
-                      title="حذف الصورة"
-                      onClick={() => {
-                        setReceiptImg(null)
-                        localStorage.removeItem(`receipt_order_${orderNo}`)
-                      }}
-                    >
-                      ✕
+
+                <div className="pay-accnum">
+                  <div className="pay-acc-row">
+                    <div>
+                      <div className="k">اسم المستلم المعتمد:</div>
+                      <div className="name-val">{UNIFIED_NAME}</div>
+                    </div>
+                  </div>
+                  <div className="pay-acc-row" style={{ marginTop: 4, borderTop: '1px dashed rgba(255,255,255,0.25)', paddingTop: 8 }}>
+                    <div>
+                      <div className="k">رقم الحساب / المحفظة:</div>
+                      <div className="num-val">{UNIFIED_PHONE}</div>
+                    </div>
+                    <button className={'cp' + (copied ? ' ok' : '')} type="button" onClick={copyAcc} title="نسخ الرقم">
+                      {copied ? <CheckIc /> : <Copy />}
                     </button>
                   </div>
-                )}
-              </div>
+                </div>
 
-              <div className="pay-hint">
-                <Info />
-                <span>أودِع المبلغ المطلوب ({fmt(remaining)} {currency}) إلى الرقم والاسم أعلاه، ثم ارفع صورة الإشعار واضغط على الزر أدناه لتأكيد الإيداع.</span>
-              </div>
-            </div>
-          )}
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  accept="image/*" 
+                  style={{ display: 'none' }} 
+                  onChange={handleFileUpload} 
+                />
+                
+                <div 
+                  className="upload-box" 
+                  onClick={() => fileInputRef.current?.click()}
+                  title="انقر لتحميل صورة إشعار التحويل"
+                >
+                  <div className="upload-box-content">
+                    <Camera />
+                    <span>{receiptImg ? 'تغيير صورة سند / إشعار التحويل' : 'اضغط هنا لتحميل صورة إشعار الدفع (سند التحويل)'}</span>
+                  </div>
+                  {receiptImg && (
+                    <div className="upload-preview" onClick={(e) => e.stopPropagation()}>
+                      <img src={receiptImg} alt="سند الدفع" />
+                      <button 
+                        className="upload-remove" 
+                        type="button" 
+                        title="حذف الصورة"
+                        onClick={() => setReceiptImg(null)}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
+                </div>
 
-          {/* زر تأكيد الإيداع وإشعار الإدارة */}
-          <button 
-            className="pay-btn pay-primary" 
-            type="button" 
-            disabled={!wallet || notifying || isNotified}
-            aria-live="polite"
-            aria-busy={notifying}
-            onClick={handleNotifyAdmin}
-          >
-            {isNotified ? <CheckIc /> : null}
-            <span>
-              {notifying
-                ? 'جارٍ إرسال إشعار الدفع للإدارة...'
-                : isNotified
-                  ? 'تم إرسال إشعار الدفع للإدارة بنجاح ✓'
-                  : 'لقد أودعت المبلغ — إشعار الإدارة الآن'}
-            </span>
-          </button>
-          {paymentWarning && (
-            <div className="pay-error" role="status" aria-live="polite">
-              {paymentWarning}
-            </div>
-          )}
-          {paymentError && (
-            <div className="pay-error" role="alert" aria-live="assertive">
-              <div>{paymentError}</div>
-              <button className="pay-retry" type="button" onClick={handleNotifyAdmin} disabled={notifying}>
-                {notifying ? 'جارٍ إعادة المحاولة...' : 'إعادة المحاولة'}
-              </button>
-            </div>
-          )}
-        </section>
+                <div className="pay-hint">
+                  <Info />
+                  <span>أودِع المبلغ المطلوب ({fmt(remaining)} {currency}) إلى الرقم والاسم أعلاه، ثم ارفع صورة الإشعار واضغط على الزر أدناه لتأكيد الإيداع.</span>
+                </div>
+              </div>
+            )}
+
+            <button 
+              className="pay-btn pay-primary" 
+              type="button" 
+              disabled={!wallet || notifying || isNotified || remaining <= 0}
+              onClick={handleNotifyAdmin}
+            >
+              {isNotified ? <CheckIc /> : null}
+              <span>
+                {notifying
+                  ? 'جارٍ إرسال إشعار الدفع للإدارة...'
+                  : isNotified
+                    ? 'تم إرسال إشعار الدفع للإدارة بنجاح ✓'
+                    : 'لقد أودعت المبلغ — إشعار الإدارة الآن'}
+              </span>
+            </button>
+
+            {paymentWarning && <div className="pay-error">{paymentWarning}</div>}
+            {paymentError && (
+              <div className="pay-error">
+                <div>{paymentError}</div>
+                <button className="pay-retry" type="button" onClick={handleNotifyAdmin} disabled={notifying}>
+                  إعادة المحاولة
+                </button>
+              </div>
+            )}
+          </section>
+        )}
 
       </div>
     </div>
