@@ -49,9 +49,9 @@ function WalletPage() {
   useEffect(() => {
     if (!user) return;
     setCustomerName(
-      String(user.user_metadata?.full_name ?? user.user_metadata?.name ?? ""),
+      String(user.user_metadata?.["full_name"] ?? user.user_metadata?.["name"] ?? ""),
     );
-    setPhone(String(user.user_metadata?.phone ?? ""));
+    setPhone(String(user.user_metadata?.["phone"] ?? ""));
 
     let alive = true;
     supabase
