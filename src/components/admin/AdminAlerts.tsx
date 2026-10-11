@@ -43,7 +43,7 @@ export function AdminAlerts() {
           .select(
             "id,tracking_code,customer_name,phone,wallet,receipt_image,created_at",
           )
-          .eq("status", "pending")
+          .in("status", ["pending", "بانتظار التأكيد"])
           .order("created_at", { ascending: false })
           .limit(50),
       ]);
