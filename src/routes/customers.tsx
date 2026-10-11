@@ -14,6 +14,15 @@ interface Customer {
   phone: string | null;
 }
 
+interface ProfileRow {
+  id: string;
+  full_name: string | null;
+  phone: string | null;
+  created_at: string;
+}
+
+const PAGE_SIZE = 50;
+
 function formatDate(value: string): string {
   const date = new Date(value);
 
@@ -28,72 +37,93 @@ function formatDate(value: string): string {
   });
 }
 
+async function getStaffIdsForAdmin(): Promise<Set<string>> {
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+
+  if (authError) throw authError;
+
+  if (!authData.user) {
+    throw new Error("سجّل الدخول بحساب إداري لعرض قائمة العملاء.");
+  }
+
+  const { data: isAdmin, error: roleCheckError } = await supabase.rpc(
+    "has_role",
+    {
+      _user_id: authData.user.id,
+      _role: "admin",
+    },
+  );
+
+  if (roleCheckError) throw roleCheckError;
+
+  if (!isAdmin) {
+    throw new Error("هذا الحساب لا يملك صلاحية عرض قائمة العملاء.");
+  }
+
+  const { data: roleRows, error: rolesError } = await supabase
+    .from("user_roles")
+    .select("user_id, role");
+
+  if (rolesError) throw rolesError;
+
+  return new Set(
+    (roleRows ?? [])
+      .filter((row) => row.role === "admin" || row.role === "staff")
+      .map((row) => row.user_id),
+  );
+}
+
+function toCustomers(
+  profiles: ProfileRow[],
+  staffIds: Set<string>,
+): Customer[] {
+  return profiles
+    .filter((profile) => !staffIds.has(profile.id))
+    .map((profile) => ({
+      id: profile.id,
+      name: profile.full_name?.trim() || "عميل بدون اسم",
+      phone: profile.phone,
+      created_at: profile.created_at,
+    }));
+}
+
 function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
+  const [nextOffset, setNextOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
+    setCustomers([]);
+    setNextOffset(0);
+    setHasMore(true);
 
     try {
-      const { data: authData, error: authError } =
-        await supabase.auth.getUser();
+      const staffIds = await getStaffIdsForAdmin();
 
-      if (authError) throw authError;
-
-      if (!authData.user) {
-        throw new Error("سجّل الدخول بحساب إداري لعرض قائمة العملاء.");
-      }
-
-      const { data: isAdmin, error: roleCheckError } =
-        await supabase.rpc("has_role", {
-          _user_id: authData.user.id,
-          _role: "admin",
-        });
-
-      if (roleCheckError) throw roleCheckError;
-
-      if (!isAdmin) {
-        throw new Error("هذا الحساب لا يملك صلاحية عرض قائمة العملاء.");
-      }
-
-      const { data: roleRows, error: rolesError } = await supabase
-        .from("user_roles")
-        .select("user_id, role");
-
-      if (rolesError) throw rolesError;
-
-      const staffIds = new Set(
-        (roleRows ?? [])
-          .filter((row) => row.role === "admin" || row.role === "staff")
-          .map((row) => row.user_id),
-      );
-
-      const { data: profileRows, error: profilesError } = await supabase
+      const { data, error } = await supabase
         .from("profiles")
         .select("id, full_name, phone, created_at")
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .range(0, PAGE_SIZE - 1);
 
-      if (profilesError) throw profilesError;
+      if (error) throw error;
 
-      const customerRows: Customer[] = (profileRows ?? [])
-        .filter((profile) => !staffIds.has(profile.id))
-        .map((profile) => ({
-          id: profile.id,
-          name: profile.full_name?.trim() || "عميل بدون اسم",
-          phone: profile.phone,
-          created_at: profile.created_at,
-        }));
-
-      setCustomers(customerRows);
+      const profiles = (data ?? []) as ProfileRow[];
+      setCustomers(toCustomers(profiles, staffIds));
+      setNextOffset(profiles.length);
+      setHasMore(profiles.length === PAGE_SIZE);
     } catch (error) {
       console.error("تعذر تحميل قائمة العملاء:", error);
 
       setCustomers([]);
+      setHasMore(false);
       setLoadError(
         error instanceof Error
           ? error.message
@@ -108,17 +138,52 @@ function CustomersPage() {
     void fetchData();
   }, [fetchData, reloadKey]);
 
+  const loadMore = useCallback(async () => {
+    if (loading || loadingMore || !hasMore) return;
+
+    setLoadingMore(true);
+    setLoadError(null);
+
+    try {
+      const staffIds = await getStaffIdsForAdmin();
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name, phone, created_at")
+        .order("created_at", { ascending: false })
+        .range(nextOffset, nextOffset + PAGE_SIZE - 1);
+
+      if (error) throw error;
+
+      const profiles = (data ?? []) as ProfileRow[];
+      setCustomers((current) => [
+        ...current,
+        ...toCustomers(profiles, staffIds),
+      ]);
+      setNextOffset((current) => current + profiles.length);
+      setHasMore(profiles.length === PAGE_SIZE);
+    } catch (error) {
+      console.error("تعذر تحميل دفعة أخرى من العملاء:", error);
+      setLoadError(
+        error instanceof Error
+          ? error.message
+          : "تعذر تحميل المزيد من العملاء.",
+      );
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [hasMore, loading, loadingMore, nextOffset]);
+
   const filteredCustomers = useMemo(() => {
     const query = search.trim().toLowerCase();
 
     if (!query) return customers;
 
-    return customers.filter((customer) => {
-      return (
+    return customers.filter(
+      (customer) =>
         customer.name.toLowerCase().includes(query) ||
-        (customer.phone ?? "").toLowerCase().includes(query)
-      );
-    });
+        (customer.phone ?? "").toLowerCase().includes(query),
+    );
   }, [customers, search]);
 
   return (
@@ -130,14 +195,14 @@ function CustomersPage() {
               كشف العملاء
             </h1>
             <p className="mt-1 text-sm text-slate-600">
-              الحسابات المسجلة في النظام، مع استبعاد حسابات الإدارة والموظفين.
+              الحسابات المسجلة، مع استبعاد حسابات الإدارة والموظفين.
             </p>
           </div>
 
           <button
             type="button"
             onClick={() => setReloadKey((key) => key + 1)}
-            disabled={loading}
+            disabled={loading || loadingMore}
             className="inline-flex items-center gap-2 rounded-xl bg-[#0F4C81] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#0b3b65] disabled:cursor-not-allowed disabled:opacity-60"
           >
             <RefreshCw
@@ -154,7 +219,7 @@ function CustomersPage() {
             </span>
             <div>
               <p className="text-sm font-bold text-slate-600">
-                عدد العملاء
+                العملاء المحمّلون
               </p>
               <p className="text-2xl font-black text-[#0A2540]">
                 {loading ? "—" : customers.length}
@@ -168,6 +233,7 @@ function CustomersPage() {
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="ابحث بالاسم أو رقم الهاتف"
+              aria-label="البحث في العملاء المحمّلين بالاسم أو الهاتف"
               className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pr-10 pl-3 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
             />
           </label>
@@ -180,15 +246,10 @@ function CustomersPage() {
           >
             {loadError}
             <p className="mt-2 font-normal">
-              إذا كان الخطأ متعلقًا بالصلاحيات، راجع سياسات RLS على جدولي
-              {" "}
-              <code dir="ltr">profiles</code>
-              {" "}
-              و
-              {" "}
-              <code dir="ltr">user_roles</code>
-              {" "}
-              وتأكد أن الوصول مقصور على الإدارة.
+              إذا كان الخطأ متعلقًا بالصلاحيات، راجع سياسات RLS على جدولي{" "}
+              <code dir="ltr">profiles</code> و{" "}
+              <code dir="ltr">user_roles</code>، وتأكد أن الوصول مقصور على
+              الإدارة.
             </p>
           </div>
         )}
@@ -197,11 +258,15 @@ function CustomersPage() {
           <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-slate-600">
             جارٍ تحميل العملاء...
           </div>
-        ) : loadError ? null : filteredCustomers.length === 0 ? (
+        ) : filteredCustomers.length === 0 ? (
           <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-slate-600">
-            {customers.length === 0
-              ? "لا توجد حسابات عملاء لعرضها."
-              : "لا توجد نتائج مطابقة للبحث."}
+            {search.trim()
+              ? hasMore
+                ? "لا توجد نتائج ضمن العملاء المحمّلين. حمّل المزيد للبحث في دفعات أخرى."
+                : "لا توجد نتائج مطابقة للبحث."
+              : hasMore
+                ? "لا يوجد عملاء في هذه الدفعة. حمّل المزيد للتحقق من بقية القائمة."
+                : "لا توجد حسابات عملاء لعرضها."}
           </div>
         ) : (
           <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -221,7 +286,10 @@ function CustomersPage() {
                       <td className="px-4 py-3 font-bold text-[#0A2540]">
                         {customer.name}
                       </td>
-                      <td dir="ltr" className="px-4 py-3 text-right font-mono text-slate-700">
+                      <td
+                        dir="ltr"
+                        className="px-4 py-3 text-right font-mono text-slate-700"
+                      >
                         {customer.phone || "—"}
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-600">
@@ -239,6 +307,22 @@ function CustomersPage() {
               </table>
             </div>
           </section>
+        )}
+
+        {!loading && hasMore && (
+          <div className="flex justify-center">
+            <button
+              type="button"
+              onClick={() => void loadMore()}
+              disabled={loadingMore}
+              className="inline-flex items-center gap-2 rounded-xl border border-sky-200 bg-white px-6 py-3 text-sm font-bold text-[#0F4C81] shadow-sm transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {loadingMore && (
+                <RefreshCw className="size-4 animate-spin" />
+              )}
+              {loadingMore ? "جارٍ تحميل المزيد..." : "تحميل المزيد"}
+            </button>
+          </div>
         )}
       </div>
     </main>
