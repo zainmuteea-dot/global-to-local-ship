@@ -51,6 +51,17 @@ export const Route = createFileRoute("/payments")({
 const fmt = (value: number) =>
   Math.round(Number(value || 0)).toLocaleString("en-US");
 
+// توحيد تسمية العملة مع قيمة افتراضية للريال اليمني.
+const normCur = (currency: string | null | undefined) =>
+  (currency || "").trim() || "ر.ي";
+
+// صياغة سطر مختصر متعدد العملات: "320,000 ر.ي · 1,200 SAR".
+const fmtByCurrency = (record: Record<string, number>) => {
+  const entries = Object.entries(record);
+  if (entries.length === 0) return "0";
+  return entries.map(([cur, val]) => `${fmt(val)} ${cur}`).join(" · ");
+};
+
 const STATUS: Record<string, { label: string; classes: string }> = {
   pending: {
     label: "بانتظار المراجعة",
@@ -640,29 +651,50 @@ function PaymentsPage() {
     });
   }, [rows, archivedIds, showArchived, filter, period]);
 
-  // تشمل الإجماليات كل الدفعات المعتمدة، حتى المؤرشفة.
+  // الإجماليات المعتمدة مفصولة حسب وسيلة الدفع ثم العملة (تشمل المؤرشف).
   const totals = useMemo(() => {
-    const byWallet: Record<string, number> = {};
+    const byWallet: Record<string, Record<string, number>> = {};
 
     rows
       .filter((payment) => payment.status === "approved")
       .forEach((payment) => {
-        byWallet[payment.wallet] =
-          (byWallet[payment.wallet] ?? 0) +
-          Number(payment.amount || 0);
+        const wallet = payment.wallet || "غير محدد";
+        const cur = normCur(payment.currency);
+        byWallet[wallet] = byWallet[wallet] ?? {};
+        byWallet[wallet][cur] =
+          (byWallet[wallet][cur] ?? 0) + Number(payment.amount || 0);
       });
 
     return byWallet;
   }, [rows]);
 
-  const totalApproved = Object.values(totals).reduce(
-    (sum, value) => sum + value,
-    0,
-  );
+  // إجمالي المقبوض المعتمد لكل عملة على حدة.
+  const totalApprovedByCurrency = useMemo(() => {
+    const byCur: Record<string, number> = {};
 
-  const pendingSum = rows
-    .filter((payment) => PENDING_APPROVAL_STATUSES.includes(payment.status))
-    .reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
+    rows
+      .filter((payment) => payment.status === "approved")
+      .forEach((payment) => {
+        const cur = normCur(payment.currency);
+        byCur[cur] = (byCur[cur] ?? 0) + Number(payment.amount || 0);
+      });
+
+    return byCur;
+  }, [rows]);
+
+  // المبالغ المعلّقة (بانتظار الاعتماد) لكل عملة على حدة.
+  const pendingByCurrency = useMemo(() => {
+    const byCur: Record<string, number> = {};
+
+    rows
+      .filter((payment) => PENDING_APPROVAL_STATUSES.includes(payment.status))
+      .forEach((payment) => {
+        const cur = normCur(payment.currency);
+        byCur[cur] = (byCur[cur] ?? 0) + Number(payment.amount || 0);
+      });
+
+    return byCur;
+  }, [rows]);
 
   const pendingCount = rows.filter((payment) =>
     PENDING_APPROVAL_STATUSES.includes(payment.status),
@@ -844,13 +876,30 @@ function PaymentsPage() {
           <Kpi
             label="بانتظار الاعتماد"
             value={pendingCount}
-            sub={`${fmt(pendingSum)} ر.ي مطلوب`}
+            sub={`${fmtByCurrency(pendingByCurrency)} مطلوب`}
             color="text-amber-600"
           />
           <Kpi
             label="المقبوض المعتمد"
-            value={fmt(totalApproved)}
-            sub="ر.ي، يشمل المؤرشف"
+            value={
+              Object.keys(totalApprovedByCurrency).length === 0 ? (
+                "0"
+              ) : (
+                <div className="space-y-0.5">
+                  {Object.entries(totalApprovedByCurrency).map(
+                    ([cur, val]) => (
+                      <div key={cur} className="leading-tight">
+                        {fmt(val)}{" "}
+                        <span className="text-xs font-bold text-slate-400">
+                          {cur}
+                        </span>
+                      </div>
+                    ),
+                  )}
+                </div>
+              )
+            }
+            sub="لكل عملة · يشمل المؤرشف"
             color="text-emerald-600"
           />
           <Kpi
@@ -882,7 +931,7 @@ function PaymentsPage() {
             </p>
           ) : (
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-              {Object.entries(totals).map(([wallet, value]) => (
+              {Object.entries(totals).map(([wallet, byCur]) => (
                 <div
                   key={wallet}
                   className="rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-center"
@@ -890,10 +939,18 @@ function PaymentsPage() {
                   <div className="text-xs font-bold text-slate-600">
                     {wallet}
                   </div>
-                  <div className="mt-1 text-lg font-black text-emerald-700">
-                    {fmt(value)}
+                  <div className="mt-1 space-y-1">
+                    {Object.entries(byCur).map(([cur, val]) => (
+                      <div key={cur} className="leading-tight">
+                        <span className="text-lg font-black text-emerald-700">
+                          {fmt(val)}
+                        </span>{" "}
+                        <span className="text-[10px] text-slate-500">
+                          {cur}
+                        </span>
+                      </div>
+                    ))}
                   </div>
-                  <div className="text-[10px] text-slate-500">ر.ي</div>
                 </div>
               ))}
             </div>
@@ -1323,8 +1380,8 @@ function Kpi({
   color,
 }: {
   label: string;
-  value: string | number;
-  sub: string;
+  value: React.ReactNode;
+  sub: React.ReactNode;
   color: string;
 }) {
   return (
