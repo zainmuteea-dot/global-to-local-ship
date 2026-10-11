@@ -300,6 +300,7 @@ function PayPage() {
   const [notifying, setNotifying] = useState(false)
   const [paymentSaved, setPaymentSaved] = useState(false)
   const [paymentError, setPaymentError] = useState('')
+  const [paymentWarning, setPaymentWarning] = useState('')
 
   // حالة صورة إشعار الدفع
   const [receiptImg, setReceiptImg] = useState<string | null>(null)
@@ -407,18 +408,56 @@ function PayPage() {
     if (isNotified || notifying) return
     setNotifying(true)
     setPaymentError('')
+    setPaymentWarning('')
 
     try {
       if (!receiptImg) {
         throw new Error('أرفق صورة سند التحويل أولاً قبل إرسال طلب المراجعة.')
       }
 
+      // تحقّق من الجلسة الحالية عند الإرسال؛ لا تعتمد على التخزين المحلي.
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      if (authError) {
+        throw new Error(`تعذر التحقق من تسجيل الدخول: ${authError.message}`)
+      }
+      if (!user) {
+        const next = window.location.pathname + window.location.search
+        window.location.replace(`/login?next=${encodeURIComponent(next)}`)
+        return
+      }
+
+      // ابحث برمز التتبع، أو بالمعرّف فقط إذا كان orderNo بصيغة UUID.
+      // maybeSingle يفشل مغلقًا إذا ظهر أكثر من طلب مطابق.
+      const orderOwnershipQuery = supabase
+        .from('orders')
+        .select('user_id, tracking_code, customer_name, phone')
+      const { data: ownedOrder, error: ownerError } = await (isUuid(orderNo)
+        ? orderOwnershipQuery.or(`tracking_code.eq.${orderNo},id.eq.${orderNo}`)
+        : orderOwnershipQuery.eq('tracking_code', orderNo)
+      ).maybeSingle()
+
+      if (ownerError) {
+        throw new Error(`تعذر التحقق من ملكية الطلب: ${ownerError.message}`)
+      }
+      if (!ownedOrder || ownedOrder.user_id !== user.id) {
+        throw new Error(
+          'هذا الطلب غير مرتبط بحسابك. سجّل الدخول بالحساب الذي أنشأ الطلب أو تواصل مع الإدارة للتحقق.'
+        )
+      }
+      if (!ownedOrder.tracking_code) {
+        throw new Error('تعذر قراءة رمز تتبع الطلب؛ لم يتم إرسال الدفع.')
+      }
+      if (!Number.isFinite(remaining) || remaining <= 0) {
+        throw new Error('لا يوجد مبلغ متبقٍ صالح لإرسال طلب الدفع.')
+      }
+
       const paymentMethod = wallet?.label || walletKey
       const paymentPayload = {
-        order_tracking: orderNo,
-        tracking_code: orderNo,
-        customer_name: customer || null,
-        phone: phone || null,
+        order_tracking: ownedOrder.tracking_code,
+        tracking_code: ownedOrder.tracking_code,
+        customer_name: ownedOrder.customer_name || null,
+        phone: ownedOrder.phone || null,
+        user_id: user.id,
         method: paymentMethod,
         payment_method: paymentMethod,
         amount: remaining,
@@ -429,17 +468,36 @@ function PayPage() {
         account_number: UNIFIED_PHONE,
       }
 
-      // قاعدة الإنتاج المعروضة لا تحتوي user_id أو wallet؛ لا نرسلهما.
-      // يُستخدم cast مؤقتًا لأن types.ts ما زال يصف مخططًا مختلفًا عن قاعدة الإنتاج.
-      const { error: payErr } = await (supabase.from('payments') as any)
+      // قراءة id الراجع ضرورية لربط إشعار الاستلام بالدفعة التي حُفظت.
+      // يُستخدم cast مؤقتًا لأن types.ts لا يطابق جميع أعمدة قاعدة الإنتاج.
+      const { data: savedPayment, error: payErr } = await (supabase.from('payments') as any)
         .insert(paymentPayload)
+        .select('id')
+        .single()
 
       if (payErr) {
         throw new Error(`تعذر حفظ الدفعة: ${payErr.message}`)
       }
+      if (!savedPayment?.id) {
+        throw new Error('تعذر قراءة معرّف الدفعة بعد الإرسال. تحقق من صفحة الدفع قبل إعادة المحاولة.')
+      }
 
-      // حفظ الدفعة هو الخطوة الأساسية؛ تحديث حالة الطلب محاولة تكميلية.
-      // استخدم رقم التتبع كنص، ولا تقارنه بـ id إلا إذا كان UUID صالحًا.
+      // إشعار استلام فقط بعد إدراج الدفع. هذا لا يعني اعتماد الدفعة.
+      // فشل الإشعار تحذير منفصل ولا يلغي نجاح إدراج الدفع.
+      const { error: notificationError } = await (supabase.from('notifications') as any)
+        .insert({
+          user_id: user.id,
+          title: 'طلب الدفع',
+          message: 'تم استلام طلب الدفع للمراجعة',
+          payment_id: savedPayment.id,
+        })
+
+      if (notificationError) {
+        console.warn('حُفظ طلب الدفع، لكن تعذر حفظ إشعار التطبيق:', notificationError.message)
+        setPaymentWarning('تم حفظ طلب الدفع للمراجعة، لكن تعذر حفظ إشعار التطبيق.')
+      }
+
+      // تحديث حالة الطلب إجراء تكميلي؛ لا يحوّل حالة الدفعة إلى معتمدة.
       try {
         const orderQuery = supabase
           .from('orders')
@@ -721,6 +779,11 @@ function PayPage() {
                   : 'لقد أودعت المبلغ — إشعار الإدارة الآن'}
             </span>
           </button>
+          {paymentWarning && (
+            <div className="pay-error" role="status" aria-live="polite">
+              {paymentWarning}
+            </div>
+          )}
           {paymentError && (
             <div className="pay-error" role="alert" aria-live="assertive">
               <div>{paymentError}</div>
