@@ -3,9 +3,14 @@ import { useEffect, useMemo, useState, useRef } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 
 export const Route = createFileRoute('/new-order')({
-  validateSearch: (search: Record<string, unknown>): { name?: string | undefined; phone?: string | undefined } => ({
-    name: typeof search['name'] === 'string' ? (search['name'] as string) : undefined,
-    phone: typeof search['phone'] === 'string' ? (search['phone'] as string) : undefined,
+  validateSearch: (search: Record<string, unknown>): {
+    name?: string
+    phone?: string
+    store?: string
+  } => ({
+    name: typeof search['name'] === 'string' ? search['name'] : undefined,
+    phone: typeof search['phone'] === 'string' ? search['phone'] : undefined,
+    store: typeof search['store'] === 'string' ? search['store'] : undefined,
   }),
   component: NewOrderPage,
 })
@@ -233,7 +238,22 @@ function NewOrderPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const recognitionRef = useRef<any>(null)
 
-  const store = useMemo(() => detectStore(url), [url])
+  const selectedStore = useMemo(() => {
+    const requestedStore = search.store?.trim().toLowerCase()
+    if (!requestedStore) return null
+
+    return STORES.find(
+      (candidate) =>
+        candidate.key.toLowerCase() === requestedStore ||
+        candidate.label.toLowerCase() === requestedStore,
+    ) ?? null
+  }, [search.store])
+
+  // رابط المنتج يتقدم على اختيار لوحة التحكم عند التعرف على متجره.
+  const store = useMemo(
+    () => detectStore(url) ?? selectedStore,
+    [url, selectedStore],
+  )
 
   // التحقق والتحديث من جلسة Supabase وجدول profiles في الخلفية
   useEffect(() => {
