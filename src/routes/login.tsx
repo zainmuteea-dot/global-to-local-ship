@@ -104,6 +104,28 @@ function normalizePhoneE164(value: string) {
   return `+967${digits}`;
 }
 
+/**
+ * وجهة رجوع آمنة بعد دخول العميل.
+ * يسمح فقط بالرجوع إلى نموذج الطلب أو صفحة الدفع على نفس الموقع.
+ */
+function getSafeCustomerReturnPath(): string {
+  const next = new URLSearchParams(window.location.search).get("next");
+  if (!next) return "/dashboard";
+
+  try {
+    const target = new URL(next, window.location.origin);
+    const allowedPath = ["/new-order", "/pay"].includes(target.pathname);
+
+    if (target.origin !== window.location.origin || !allowedPath) {
+      return "/dashboard";
+    }
+
+    return `${target.pathname}${target.search}${target.hash}`;
+  } catch {
+    return "/dashboard";
+  }
+}
+
 /* =========================================================================
    2. صفحة تسجيل الدخول وإنشاء الحساب
    ========================================================================= */
@@ -236,7 +258,7 @@ export function LoginPage() {
         sessionStorage.setItem("sc_name", resolvedName);
       }
 
-      window.location.href = "/dashboard";
+      window.location.href = getSafeCustomerReturnPath();
     } catch (err: any) {
       setErrorMessage(
         err?.message || "تعذر إكمال العملية. تحقق من البيانات وحاول مرة أخرى."
