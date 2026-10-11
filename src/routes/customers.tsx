@@ -21,6 +21,12 @@ interface ProfileRow {
   created_at: string;
 }
 
+interface CustomerBatch {
+  customers: Customer[];
+  nextOffset: number;
+  hasMore: boolean;
+}
+
 const PAGE_SIZE = 50;
 
 function formatDate(value: string): string {
@@ -87,6 +93,48 @@ function toCustomers(
     }));
 }
 
+/**
+ * يقرأ صفحات محدودة من profiles ويواصل تجاوز الحسابات المستبعدة
+ * حتى يجمع دفعة عملاء كاملة، أو يصل إلى نهاية النتائج.
+ */
+async function fetchCustomerBatch(
+  startOffset: number,
+  staffIds: Set<string>,
+): Promise<CustomerBatch> {
+  const customers: Customer[] = [];
+  let offset = startOffset;
+
+  while (customers.length < PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, full_name, phone, created_at")
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .range(offset, offset + PAGE_SIZE - 1);
+
+    if (error) throw error;
+
+    const profiles = (data ?? []) as ProfileRow[];
+    customers.push(...toCustomers(profiles, staffIds));
+    offset += profiles.length;
+
+    // الصفحة الأقصر من الحجم المطلوب تعني عدم وجود صفحة أخرى.
+    if (profiles.length < PAGE_SIZE) {
+      return {
+        customers,
+        nextOffset: offset,
+        hasMore: false,
+      };
+    }
+  }
+
+  return {
+    customers,
+    nextOffset: offset,
+    hasMore: true,
+  };
+}
+
 function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -106,22 +154,13 @@ function CustomersPage() {
 
     try {
       const staffIds = await getStaffIdsForAdmin();
+      const batch = await fetchCustomerBatch(0, staffIds);
 
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, full_name, phone, created_at")
-        .order("created_at", { ascending: false })
-        .range(0, PAGE_SIZE - 1);
-
-      if (error) throw error;
-
-      const profiles = (data ?? []) as ProfileRow[];
-      setCustomers(toCustomers(profiles, staffIds));
-      setNextOffset(profiles.length);
-      setHasMore(profiles.length === PAGE_SIZE);
+      setCustomers(batch.customers);
+      setNextOffset(batch.nextOffset);
+      setHasMore(batch.hasMore);
     } catch (error) {
       console.error("تعذر تحميل قائمة العملاء:", error);
-
       setCustomers([]);
       setHasMore(false);
       setLoadError(
@@ -146,22 +185,11 @@ function CustomersPage() {
 
     try {
       const staffIds = await getStaffIdsForAdmin();
+      const batch = await fetchCustomerBatch(nextOffset, staffIds);
 
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, full_name, phone, created_at")
-        .order("created_at", { ascending: false })
-        .range(nextOffset, nextOffset + PAGE_SIZE - 1);
-
-      if (error) throw error;
-
-      const profiles = (data ?? []) as ProfileRow[];
-      setCustomers((current) => [
-        ...current,
-        ...toCustomers(profiles, staffIds),
-      ]);
-      setNextOffset((current) => current + profiles.length);
-      setHasMore(profiles.length === PAGE_SIZE);
+      setCustomers((current) => [...current, ...batch.customers]);
+      setNextOffset(batch.nextOffset);
+      setHasMore(batch.hasMore);
     } catch (error) {
       console.error("تعذر تحميل دفعة أخرى من العملاء:", error);
       setLoadError(
@@ -217,6 +245,7 @@ function CustomersPage() {
             <span className="grid size-11 place-items-center rounded-xl bg-sky-50 text-[#0F4C81]">
               <Users className="size-5" />
             </span>
+
             <div>
               <p className="text-sm font-bold text-slate-600">
                 العملاء المحمّلون
@@ -246,10 +275,10 @@ function CustomersPage() {
           >
             {loadError}
             <p className="mt-2 font-normal">
-              إذا كان الخطأ متعلقًا بالصلاحيات، راجع سياسات RLS على جدولي{" "}
+              إذا كان الخطأ متعلقًا بالصلاحيات، فتحقق من منح المشرف صلاحية
+              قراءة الصفوف المطلوبة في RLS على جدولي{" "}
               <code dir="ltr">profiles</code> و{" "}
-              <code dir="ltr">user_roles</code>، وتأكد أن الوصول مقصور على
-              الإدارة.
+              <code dir="ltr">user_roles</code>.
             </p>
           </div>
         )}
@@ -265,7 +294,7 @@ function CustomersPage() {
                 ? "لا توجد نتائج ضمن العملاء المحمّلين. حمّل المزيد للبحث في دفعات أخرى."
                 : "لا توجد نتائج مطابقة للبحث."
               : hasMore
-                ? "لا يوجد عملاء في هذه الدفعة. حمّل المزيد للتحقق من بقية القائمة."
+                ? "لا يوجد عملاء في الدفعة الحالية. حمّل المزيد للتحقق من بقية القائمة."
                 : "لا توجد حسابات عملاء لعرضها."}
           </div>
         ) : (
@@ -280,6 +309,7 @@ function CustomersPage() {
                     <th className="px-4 py-3">معرّف الحساب</th>
                   </tr>
                 </thead>
+
                 <tbody className="divide-y divide-slate-100">
                   {filteredCustomers.map((customer) => (
                     <tr key={customer.id} className="hover:bg-slate-50">
