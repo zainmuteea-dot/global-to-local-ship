@@ -184,35 +184,85 @@ function detectStore(url: string): Store | null {
 
 const DUP_OPTS = ['نعم', 'لا', 'غير متأكد'] as const
 
-/* دالة مساعدة لجلب الاسم الابتدائي فوراً بدون تأخير */
-function getInitialClientName(urlName?: string): string {
-  if (urlName && urlName.trim()) return urlName.trim()
-  if (typeof window === 'undefined') return ''
-  const direct = localStorage.getItem('sc_name') || sessionStorage.getItem('sc_name')
-  if (direct && direct.trim()) return direct.trim()
+/** يمنع تعبئة حقول العميل بقيمة تبدو كرابط صفحة أو رابط متجر. */
+function isUrlLike(value?: string | null): boolean {
+  const candidate = value?.trim()
+  if (!candidate) return false
+
+  if (
+    /^(?:https?:\/\/|www\.)/i.test(candidate) ||
+    /^\/{1,2}[^\s]/.test(candidate) ||
+    /^(?:[a-z0-9-]+\.)+[a-z]{2,}(?:[/:?#]|$)/i.test(candidate)
+  ) {
+    return true
+  }
+
   try {
+    const parsed = new URL(candidate)
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+function validClientName(value: unknown): string {
+  if (typeof value !== 'string') return ''
+  const candidate = value.trim()
+  return candidate && !isUrlLike(candidate) ? candidate : ''
+}
+
+function validClientPhone(value: unknown): string {
+  if (typeof value !== 'string') return ''
+  const candidate = value.trim()
+  if (!candidate || candidate.includes('@') || isUrlLike(candidate)) return ''
+  return candidate
+}
+
+/* جلب الاسم الابتدائي مع تجاهل الروابط القادمة من الرابط أو التخزين المحلي. */
+function getInitialClientName(urlName?: string): string {
+  const fromUrl = validClientName(urlName)
+  if (fromUrl) return fromUrl
+  if (typeof window === 'undefined') return ''
+
+  try {
+    const fromStorage = validClientName(localStorage.getItem('sc_name')) ||
+      validClientName(sessionStorage.getItem('sc_name'))
+    if (fromStorage) return fromStorage
+
     const raw = localStorage.getItem('alsouk_current_user')
     if (raw) {
-      const p = JSON.parse(raw)
-      if (p.full_name && p.full_name.trim()) return p.full_name.trim()
+      const p: unknown = JSON.parse(raw)
+      if (p && typeof p === 'object' && 'full_name' in p) {
+        return validClientName((p as { full_name?: unknown }).full_name)
+      }
     }
-  } catch {}
+  } catch {
+    // تجاهل التخزين التالف أو غير المتاح؛ يستطيع العميل إدخال بياناته يدويًا.
+  }
   return ''
 }
 
-/* دالة مساعدة لجلب رقم الهاتف الابتدائي فوراً والتأكد أنه رقم وليس بريداً */
+/* جلب رقم الهاتف الابتدائي مع رفض البريد والروابط. */
 function getInitialClientPhone(urlPhone?: string): string {
-  if (urlPhone && urlPhone.trim() && !urlPhone.includes('@')) return urlPhone.trim()
+  const fromUrl = validClientPhone(urlPhone)
+  if (fromUrl) return fromUrl
   if (typeof window === 'undefined') return ''
-  const direct = localStorage.getItem('sc_phone') || sessionStorage.getItem('sc_phone')
-  if (direct && direct.trim() && !direct.includes('@')) return direct.trim()
+
   try {
+    const fromStorage = validClientPhone(localStorage.getItem('sc_phone')) ||
+      validClientPhone(sessionStorage.getItem('sc_phone'))
+    if (fromStorage) return fromStorage
+
     const raw = localStorage.getItem('alsouk_current_user')
     if (raw) {
-      const p = JSON.parse(raw)
-      if (p.phone && p.phone.trim() && !p.phone.includes('@')) return p.phone.trim()
+      const p: unknown = JSON.parse(raw)
+      if (p && typeof p === 'object' && 'phone' in p) {
+        return validClientPhone((p as { phone?: unknown }).phone)
+      }
     }
-  } catch {}
+  } catch {
+    // تجاهل التخزين التالف أو غير المتاح؛ يستطيع العميل إدخال بياناته يدويًا.
+  }
   return ''
 }
 
@@ -235,7 +285,6 @@ function NewOrderPage() {
   const [orderCode, setOrderCode] = useState('')
   const [copied, setCopied] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const recognitionRef = useRef<any>(null)
 
   const selectedStore = useMemo(() => {
@@ -255,52 +304,55 @@ function NewOrderPage() {
     [url, selectedStore],
   )
 
-  // التحقق والتحديث من جلسة Supabase وجدول profiles في الخلفية
+  // يتطلب إنشاء الطلب جلسة عميل، ثم يحمّل بيانات الملف الشخصي للحساب نفسه.
   useEffect(() => {
     let active = true
 
     const syncWithDatabaseProfile = async () => {
       try {
-        // قراءة الجلسة المخزنة فوراً
-        const { data: { session } } = await supabase.auth.getSession()
-        const user = session?.user
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
+        if (authError || !user) {
+          const next = window.location.pathname + window.location.search
+          window.location.replace(`/login?next=${encodeURIComponent(next)}`)
+          return
+        }
 
-        if (user && active) {
-          setCurrentUserId(user.id)
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('full_name, phone')
+          .eq('id', user.id)
+          .maybeSingle()
 
-          // 1. استعلام الملف الشخصي من جدول profiles للمستخدم المسجل الحالي حصراً
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('full_name, phone')
-            .eq('id', user.id)
-            .maybeSingle()
+        if (profileError) {
+          console.warn('تعذر تحميل بيانات الملف الشخصي:', profileError.message)
+        }
 
-          if (profile && active) {
-            if (profile.full_name && profile.full_name.trim()) {
-              setName(profile.full_name.trim())
-              localStorage.setItem('sc_name', profile.full_name.trim())
-            }
-            if (profile.phone && profile.phone.trim() && !profile.phone.includes('@')) {
-              setPhone(profile.phone.trim())
-              localStorage.setItem('sc_phone', profile.phone.trim())
-            }
+        if (profile && active) {
+          const profileName = validClientName(profile.full_name)
+          const profilePhone = validClientPhone(profile.phone)
+          if (profileName) {
+            setName(profileName)
+            localStorage.setItem('sc_name', profileName)
           }
-
-          // 2. فحص metadata إن لم يتوفر في profiles
-          if (active) {
-            const meta = user.user_metadata as Record<string, any> | undefined
-            const metaName = meta?.['full_name'] as string | undefined
-            const metaPhone = (user.phone || meta?.['phone']) as string | undefined
-            if (metaName) setName((prev) => prev || metaName)
-            if (metaPhone && !metaPhone.includes('@')) setPhone((prev) => prev || metaPhone)
+          if (profilePhone) {
+            setPhone(profilePhone)
+            localStorage.setItem('sc_phone', profilePhone)
           }
+        }
+
+        if (active) {
+          const meta = user.user_metadata as Record<string, unknown> | undefined
+          const metaName = validClientName(meta?.['full_name'])
+          const metaPhone = validClientPhone(user.phone || meta?.['phone'] as string | undefined)
+          if (metaName) setName((prev) => prev || metaName)
+          if (metaPhone) setPhone((prev) => prev || metaPhone)
         }
       } catch (err) {
         console.warn('Profile sync notice:', err)
       }
     }
 
-    syncWithDatabaseProfile()
+    void syncWithDatabaseProfile()
     return () => { active = false }
   }, [])
 
@@ -341,7 +393,7 @@ function NewOrderPage() {
     }
   }
 
-  // تقديم الطلب الفعلي وحفظه في جدول orders بقاعدة البيانات
+  // حفظ الطلب وربطه بالحساب المصادق؛ رمز التتبع يولّده trigger قاعدة البيانات.
   const submit = async () => {
     if (status === 'sending') return
     setSbError('')
@@ -354,18 +406,17 @@ function NewOrderPage() {
       setSbError('يرجى كتابة عنوان التوصيل بالتفصيل.')
       return
     }
-    if (!name.trim()) {
-      setSbError('يرجى إدخال اسم المستلم.')
+    if (!name.trim() || isUrlLike(name)) {
+      setSbError('يرجى إدخال اسم المستلم، وليس رابط صفحة.')
       return
     }
-    if (!phone.trim()) {
-      setSbError('يرجى إدخال رقم الهاتف أو الواتساب للتواصل.')
+    if (!phone.trim() || phone.includes('@') || isUrlLike(phone)) {
+      setSbError('يرجى إدخال رقم هاتف صحيح، وليس بريدًا أو رابطًا.')
       return
     }
 
     setStatus('sending')
 
-    const code = 'SHP-' + Math.floor(100000 + Math.random() * 900000)
     const storeLabel = store?.label || 'متجر دولي'
     const notesSummary = [
       address ? `العنوان: ${address.trim()}` : '',
@@ -375,37 +426,47 @@ function NewOrderPage() {
     ].filter(Boolean).join(' | ')
 
     try {
-      // 1. الإدراج المباشر في جدول orders بقاعدة البيانات
-      const { error: insertError } = await supabase.from('orders').insert({
-        customer_name: name.trim(),
-        phone: phone.trim(),
-        product_link: url.trim(),
-        product_name: `طلب ${storeLabel}`,
-        notes: notesSummary,
-        status: 'قيد الشراء والتجهيز',
-        tracking_code: code,
-        user_id: currentUserId,
-      })
+      // أعد التحقق عند الإرسال؛ لا تعتمد على بيانات localStorage أو حالة React.
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      if (authError) throw new Error(`تعذر التحقق من تسجيل الدخول: ${authError.message}`)
+      if (!user) {
+        const next = window.location.pathname + window.location.search
+        window.location.replace(`/login?next=${encodeURIComponent(next)}`)
+        setStatus('idle')
+        return
+      }
+
+      // لا نرسل tracking_code: قاعدة البيانات تنشئه عبر trigger.
+      const { data: savedOrder, error: insertError } = await supabase
+        .from('orders')
+        .insert({
+          customer_name: name.trim(),
+          phone: phone.trim(),
+          product_link: url.trim(),
+          product_name: `طلب ${storeLabel}`,
+          notes: notesSummary,
+          status: 'قيد الشراء والتجهيز',
+          user_id: user.id,
+        })
+        .select('id, tracking_code')
+        .single()
 
       if (insertError) {
-        console.error('Database insert error:', insertError)
+        throw new Error(`تعذر حفظ الطلب: ${insertError.message}`)
+      }
+      if (!savedOrder?.tracking_code) {
+        throw new Error('حُفظ الطلب لكن تعذر قراءة رمز التتبع. لا تعِد الإرسال قبل مراجعة الطلبات.')
       }
 
-      // 2. إدراج إشعار رسمي في جدول notifications
-      if (currentUserId) {
-        await supabase.from('notifications').insert({
-          user_id: currentUserId,
-          title: `تم استلام طلبك برقم ${code}`,
-          body: `طلبك من ${storeLabel} قيد المراجعة والتجهيز وسيتم إفادتك بالسعر النهائي والشحن.`,
-        }).then(() => {}, () => {})
-      }
+      const code = savedOrder.tracking_code
 
-      // 3. تحديث الذاكرة المحلية لتنعكس المؤشرات فوراً في /dashboard
+      // تخزين نسخة محلية للعرض فقط؛ مصدر الحقيقة هو قاعدة البيانات.
       try {
         const localOrdersRaw = localStorage.getItem('alsouk_orders')
-        const currentList = localOrdersRaw ? JSON.parse(localOrdersRaw) : []
+        const parsedOrders: unknown = localOrdersRaw ? JSON.parse(localOrdersRaw) : []
+        const currentList = Array.isArray(parsedOrders) ? parsedOrders : []
         const newRecord = {
-          id: code,
+          id: savedOrder.id,
           tracking_code: code,
           customer_name: name.trim(),
           phone: phone.trim(),
@@ -413,24 +474,26 @@ function NewOrderPage() {
           product_name: `طلب ${storeLabel}`,
           status: 'قيد الشراء والتجهيز',
           created_at: new Date().toISOString(),
+          user_id: user.id,
         }
         localStorage.setItem('alsouk_orders', JSON.stringify([newRecord, ...currentList]))
 
-        // تثبيت اسم ورقم العميل بشكل دائم
         localStorage.setItem(
           'alsouk_current_user',
-          JSON.stringify({ full_name: name.trim(), phone: phone.trim() })
+          JSON.stringify({ full_name: name.trim(), phone: phone.trim(), user_id: user.id })
         )
         localStorage.setItem('sc_name', name.trim())
         localStorage.setItem('sc_phone', phone.trim())
-      } catch {}
+      } catch (storageError) {
+        console.warn('تم حفظ الطلب، لكن تعذر تحديث التخزين المحلي:', storageError)
+      }
 
       setOrderCode(code)
       setStatus('done')
-      if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
-    } catch (err: any) {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    } catch (err: unknown) {
       console.error(err)
-      setSbError(err?.message || 'حدث خطأ أثناء حفظ الطلب. يرجى المحاولة مجدداً.')
+      setSbError(err instanceof Error ? err.message : 'حدث خطأ أثناء حفظ الطلب. يرجى المحاولة مجدداً.')
       setStatus('idle')
     }
   }
