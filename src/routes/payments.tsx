@@ -311,8 +311,8 @@ function PaymentsPage() {
         },
 
         insertCustomerNotice: async (notification) => {
-          // payment_id ties the notice to the approved payment for the RLS check.
-          // The live notifications schema has no `kind` column.
+          // The live notifications schema uses `message` and has no `payment_id`.
+          // This runs only after the conditional payment approval succeeds.
           const { error } = await (supabase.from("notifications") as any)
             .insert(notification);
 
@@ -392,7 +392,7 @@ function PaymentsPage() {
           .insert({
             user_id: payment.user_id,
             title: `لم يتم قبول سند الدفع للطلب ${payment.tracking_code}`,
-            body: "يرجى مراجعة السند أو التواصل مع خدمة العملاء.",
+            message: "يرجى مراجعة السند أو التواصل مع خدمة العملاء.",
           });
 
         if (noticeError) {
