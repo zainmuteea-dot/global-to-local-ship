@@ -33,6 +33,7 @@ type PaymentDraft = {
 };
 
 type PaymentFilter = "pending" | "approved" | "rejected" | "all";
+type PeriodFilter = "all" | "today" | "week" | "month";
 
 export const Route = createFileRoute("/payments")({
   head: () => ({
@@ -94,6 +95,17 @@ function PaymentsPage() {
 
   // تنبيه يظهر داخل صفحة الإدارة عند وصول طلب دفع جديد.
   const [newPaymentAlert, setNewPaymentAlert] = useState<Payment | null>(null);
+
+  // فلتر الفترة الزمنية.
+  const [period, setPeriod] = useState<PeriodFilter>("all");
+
+  // التحديث التلقائي.
+  const [autoRefresh, setAutoRefresh] = useState<boolean>(true);
+  const [refreshIntervalSec] = useState<number>(15);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<Date>(new Date());
+
+  // قائمة جرس الإشعارات.
+  const [showBellMenu, setShowBellMenu] = useState<boolean>(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -178,6 +190,7 @@ function PaymentsPage() {
       );
     } finally {
       setLoading(false);
+      setLastRefreshedAt(new Date());
     }
   }, []);
 
@@ -243,6 +256,17 @@ function PaymentsPage() {
       void supabase.removeChannel(archiveChannel);
     };
   }, [load]);
+
+  // التحديث التلقائي كل refreshIntervalSec ثانية عند تفعيله.
+  useEffect(() => {
+    if (!autoRefresh) return;
+
+    const timer = setInterval(() => {
+      void load();
+    }, refreshIntervalSec * 1000);
+
+    return () => clearInterval(timer);
+  }, [autoRefresh, refreshIntervalSec, load]);
 
   const approve = async (payment: Payment) => {
     setErr("");
@@ -585,21 +609,36 @@ function PaymentsPage() {
     }
   };
 
-  const shown = useMemo(
-    () =>
-      rows.filter((payment) => {
-        const isArchived = archivedIds.has(payment.id);
+  const filtered = useMemo(() => {
+    const now = new Date().getTime();
+    const oneDay = 24 * 60 * 60 * 1000;
+    const oneWeek = 7 * oneDay;
+    const oneMonth = 30 * oneDay;
 
-        if (isArchived !== showArchived) return false;
-        if (filter === "all") return true;
-        if (filter === "pending") {
-          return PENDING_APPROVAL_STATUSES.includes(payment.status);
-        }
+    return rows.filter((payment) => {
+      // فلتر الأرشفة
+      const isArchived = archivedIds.has(payment.id);
+      if (showArchived ? !isArchived : isArchived) return false;
 
-        return payment.status === filter;
-      }),
-    [rows, archivedIds, showArchived, filter],
-  );
+      // فلتر الحالة
+      if (filter === "pending") {
+        if (!PENDING_APPROVAL_STATUSES.includes(payment.status)) return false;
+      } else if (filter !== "all" && payment.status !== filter) {
+        return false;
+      }
+
+      // فلتر الفترة الزمنية
+      if (period !== "all" && payment.created_at) {
+        const itemTime = new Date(payment.created_at).getTime();
+        const diff = now - itemTime;
+        if (period === "today" && diff > oneDay) return false;
+        if (period === "week" && diff > oneWeek) return false;
+        if (period === "month" && diff > oneMonth) return false;
+      }
+
+      return true;
+    });
+  }, [rows, archivedIds, showArchived, filter, period]);
 
   // تشمل الإجماليات كل الدفعات المعتمدة، حتى المؤرشفة.
   const totals = useMemo(() => {
@@ -625,27 +664,128 @@ function PaymentsPage() {
     .filter((payment) => PENDING_APPROVAL_STATUSES.includes(payment.status))
     .reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
 
+  const pendingCount = rows.filter((payment) =>
+    PENDING_APPROVAL_STATUSES.includes(payment.status),
+  ).length;
+
   return (
     <div
       dir="rtl"
       className="min-h-screen bg-slate-50 p-4 font-[Cairo] sm:p-6"
     >
       <div className="mx-auto max-w-6xl">
-        <header className="flex items-center justify-between rounded-2xl bg-gradient-to-l from-[#0A2540] to-[#0F4C81] p-5 text-white shadow">
+        <header className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-gradient-to-l from-[#0A2540] to-[#0F4C81] p-5 text-white shadow">
           <div>
-            <h1 className="text-xl font-black">
-              طلبات الدفع والمحاسبة
-            </h1>
+            <h1 className="text-xl font-black">طلبات الدفع والمحاسبة</h1>
             <p className="mt-1 text-xs text-sky-200">
-              مراجعة وتعديل وأرشفة الطلبات مع حفظ القيود
+              مراجعة وتعديل وأرشفة الطلبات مع التحديث اللحظي
             </p>
           </div>
-          <Link
-            to="/admin"
-            className="rounded-xl bg-white/15 px-4 py-2 text-sm font-bold hover:bg-white/25"
-          >
-            ← لوحة الإدارة
-          </Link>
+
+          <div className="flex items-center gap-3">
+            {/* زر التحديث التلقائي */}
+            <button
+              type="button"
+              onClick={() => setAutoRefresh(!autoRefresh)}
+              className={`flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold transition ${
+                autoRefresh
+                  ? "bg-emerald-500/20 text-emerald-300 border border-emerald-400/40"
+                  : "bg-white/10 text-slate-300 border border-white/10"
+              }`}
+              title={
+                autoRefresh
+                  ? `التحديث التلقائي مفعّل (كل ${refreshIntervalSec} ثانية)`
+                  : "التحديث التلقائي متوقف"
+              }
+            >
+              <span
+                className={`inline-block h-2.5 w-2.5 rounded-full ${
+                  autoRefresh ? "bg-emerald-400 animate-pulse" : "bg-slate-400"
+                }`}
+              />
+              <span>{autoRefresh ? "تحديث تلقائي: نشط" : "تحديث تلقائي: متوقف"}</span>
+            </button>
+
+            {/* جرس الإشعارات */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowBellMenu(!showBellMenu)}
+                className="relative rounded-xl bg-white/15 p-2.5 text-white hover:bg-white/25 transition"
+                aria-label="الإشعارات"
+              >
+                <svg
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+                  />
+                </svg>
+                {pendingCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-[11px] font-black text-white shadow">
+                    {pendingCount}
+                  </span>
+                )}
+              </button>
+
+              {/* القائمة المنسدلة للجرس */}
+              {showBellMenu && (
+                <div className="absolute left-0 mt-2 w-80 rounded-2xl bg-white p-3 text-slate-800 shadow-2xl ring-1 ring-black/10 z-50">
+                  <div className="flex items-center justify-between border-b pb-2">
+                    <span className="text-xs font-black text-[#0A2540]">
+                      طلبات بانتظار الاعتماد
+                    </span>
+                    <span className="text-[10px] text-slate-500">
+                      آخر تحديث: {lastRefreshedAt.toLocaleTimeString("ar-YE")}
+                    </span>
+                  </div>
+                  <div className="mt-2 max-h-60 overflow-y-auto space-y-2">
+                    {rows
+                      .filter((p) =>
+                        PENDING_APPROVAL_STATUSES.includes(p.status),
+                      )
+                      .slice(0, 5)
+                      .map((item) => (
+                        <div
+                          key={item.id}
+                          className="rounded-xl bg-amber-50/70 border border-amber-200 p-2 text-xs"
+                        >
+                          <div className="flex justify-between font-bold text-amber-900">
+                            <span dir="ltr">{item.tracking_code}</span>
+                            <span>
+                              {fmt(Number(item.amount))}{" "}
+                              {item.currency || "ر.ي"}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-slate-600 mt-0.5">
+                            {item.customer_name || "عميل غير مسجل"}
+                          </div>
+                        </div>
+                      ))}
+                    {pendingCount === 0 && (
+                      <p className="py-4 text-center text-xs text-slate-400">
+                        لا توجد طلبات معلقة حالياً
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* رابط لوحة الإدارة */}
+            <Link
+              to="/admin"
+              className="rounded-xl bg-white/15 px-4 py-2 text-sm font-bold hover:bg-white/25 transition"
+            >
+              ← لوحة الإدارة
+            </Link>
+          </div>
         </header>
 
         {err && (
@@ -703,11 +843,7 @@ function PaymentsPage() {
         <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
           <Kpi
             label="بانتظار الاعتماد"
-            value={
-              rows.filter((payment) =>
-                PENDING_APPROVAL_STATUSES.includes(payment.status),
-              ).length
-            }
+            value={pendingCount}
             sub={`${fmt(pendingSum)} ر.ي مطلوب`}
             color="text-amber-600"
           />
@@ -777,9 +913,7 @@ function PaymentsPage() {
                     : "border-slate-200 bg-white text-slate-600"
                 }`}
               >
-                {item === "all"
-                  ? "الكل"
-                  : STATUS[item]?.label}
+                {item === "all" ? "الكل" : STATUS[item]?.label}
               </button>
             ),
           )}
@@ -809,18 +943,42 @@ function PaymentsPage() {
           </button>
         </div>
 
+        {/* أزرار الفلترة الزمنية */}
+        <div className="mt-3 flex flex-wrap items-center gap-2 border-t pt-3 border-slate-200">
+          <span className="text-xs font-bold text-slate-500 ml-1">الفترة:</span>
+          {([
+            { id: "all", label: "كل الأوقات" },
+            { id: "today", label: "طلبات اليوم" },
+            { id: "week", label: "قبل أسبوع" },
+            { id: "month", label: "قبل شهر" },
+          ] as const).map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => setPeriod(p.id as PeriodFilter)}
+              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition ${
+                period === p.id
+                  ? "bg-sky-600 text-white shadow-sm"
+                  : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+
         <div className="mt-3 space-y-3">
           {loading && (
             <p className="text-sm text-slate-500">جارٍ التحميل...</p>
           )}
 
-          {!loading && shown.length === 0 && (
+          {!loading && filtered.length === 0 && (
             <p className="rounded-xl bg-white p-4 text-sm text-slate-500">
               لا توجد طلبات في هذا القسم.
             </p>
           )}
 
-          {shown.map((payment) => {
+          {filtered.map((payment) => {
             const isPending = PENDING_APPROVAL_STATUSES.includes(payment.status);
             const isArchived = archivedIds.has(payment.id);
             const amount = Number(payment.amount || 0);
@@ -1107,9 +1265,7 @@ function PaymentsPage() {
                 onClick={() => void saveEdit()}
                 className="rounded-xl bg-[#0F4C81] px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
               >
-                {busy === editing.id
-                  ? "جارٍ الحفظ…"
-                  : "حفظ التعديلات"}
+                {busy === editing.id ? "جارٍ الحفظ…" : "حفظ التعديلات"}
               </button>
             </div>
           </section>
@@ -1132,6 +1288,7 @@ function PaymentsPage() {
           <img
             src={preview}
             alt="سند الدفع"
+            onClick={(event) => event.stopPropagation()}
             className="max-h-[90vh] max-w-full rounded-xl"
           />
         </div>
