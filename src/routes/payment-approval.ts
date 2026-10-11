@@ -17,9 +17,8 @@ type ApprovedPaymentRow = {
 
 type CustomerNotice = {
   user_id: string;
-  payment_id: string;
   title: string;
-  body: string;
+  message: string;
 };
 
 type ApprovalDependencies = {
@@ -156,9 +155,8 @@ export async function approvePaymentOnce(
   try {
     await dependencies.insertCustomerNotice({
       user_id: payment.user_id,
-      payment_id: payment.id,
       title: `تم اعتماد دفعتك للطلب ${payment.tracking_code}`,
-      body,
+      message: body,
     });
     return { approved: true, notificationSent: true, body };
   } catch {
