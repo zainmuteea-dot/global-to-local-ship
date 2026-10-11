@@ -1,6 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  approvePaymentOnce,
+  PENDING_APPROVAL_STATUSES,
+} from "./payment-approval";
 
 type Payment = {
   id: string;
@@ -46,8 +50,6 @@ export const Route = createFileRoute("/payments")({
 const fmt = (value: number) =>
   Math.round(Number(value || 0)).toLocaleString("en-US");
 
-const PENDING_STATUSES = ["pending", "بانتظار التأكيد"];
-
 const STATUS: Record<string, { label: string; classes: string }> = {
   pending: {
     label: "بانتظار المراجعة",
@@ -76,51 +78,6 @@ const toDraft = (payment: Payment): PaymentDraft => ({
   tracking_code: payment.tracking_code ?? "",
   wallet: payment.wallet ?? "",
 });
-
-function normalizeCurrency(value: string | null | undefined): string {
-  const currency = (value || "ر.ي").trim().toUpperCase();
-
-  if (
-    currency === "YER" ||
-    currency === "ر.ي" ||
-    currency === "ريال يمني"
-  ) {
-    return "YER";
-  }
-
-  return currency;
-}
-
-function getOrderTotal(
-  notes: string | null,
-): { amount: number; currency: string } | null {
-  const match = notes?.match(/السعر المعلن:\s*([\d.]+)\s*([^|]*)/);
-  if (!match) return null;
-
-  const rawAmount = Number(match[1]);
-  const sourceCurrency = (match[2] || "ر.ي").trim();
-
-  if (!Number.isFinite(rawAmount) || rawAmount <= 0) return null;
-
-  if (sourceCurrency.includes("سعودي") || sourceCurrency.includes("ر.س")) {
-    return {
-      amount: Math.round(rawAmount * 142),
-      currency: "YER",
-    };
-  }
-
-  if (sourceCurrency.includes("$") || sourceCurrency.includes("دولار")) {
-    return {
-      amount: Math.round(rawAmount * 535),
-      currency: "YER",
-    };
-  }
-
-  return {
-    amount: Math.round(rawAmount),
-    currency: sourceCurrency,
-  };
-}
 
 function PaymentsPage() {
   const [rows, setRows] = useState<Payment[]>([]);
@@ -239,7 +196,7 @@ function PaymentsPage() {
         (payload) => {
           const payment = payload.new as Payment;
 
-          if (PENDING_STATUSES.includes(payment.status)) {
+          if (PENDING_APPROVAL_STATUSES.includes(payment.status)) {
             setNewPaymentAlert(payment);
             setFilter("pending");
             setShowArchived(false);
@@ -292,7 +249,6 @@ function PaymentsPage() {
     setNotice("");
 
     const amount = Number(payment.amount);
-
     if (!Number.isSafeInteger(amount) || amount <= 0) {
       setErr(
         `لا يمكن اعتماد الطلب ${payment.tracking_code}: المبلغ يجب أن يكون عددًا صحيحًا أكبر من صفر.`,
@@ -311,126 +267,76 @@ function PaymentsPage() {
     setBusy(payment.id);
 
     try {
-      // لا يُرسل إشعار نجاح للعميل إلا بعد نجاح تحديث حالة الدفعة.
-      const { data, error } = await supabase
-        .from("payments")
-        .update({
-          status: "approved",
-          reviewed_at: new Date().toISOString(),
-        })
-        .eq("id", payment.id)
-        .in("status", PENDING_STATUSES)
-        .select("id")
-        .maybeSingle();
+      const result = await approvePaymentOnce(payment, {
+        approvePending: async (paymentId, pendingStatuses) => {
+          // شرط الحالة يمنع الاعتماد المكرر حتى مع ضغط الزر من جلستين.
+          const { data, error } = await supabase
+            .from("payments")
+            .update({
+              status: "approved",
+              reviewed_at: new Date().toISOString(),
+            })
+            .eq("id", paymentId)
+            .in("status", pendingStatuses)
+            .select("id")
+            .maybeSingle();
 
-      if (error) {
-        throw new Error(`تعذر اعتماد الدفعة: ${error.message}`);
-      }
+          if (error) {
+            throw new Error(`تعذر اعتماد الدفعة: ${error.message}`);
+          }
 
-      if (!data) {
+          return Boolean(data);
+        },
+
+        getOrderNotes: async (trackingCode) => {
+          const { data, error } = await supabase
+            .from("orders")
+            .select("notes")
+            .eq("tracking_code", trackingCode)
+            .maybeSingle();
+
+          if (error) throw error;
+          return data?.notes ?? null;
+        },
+
+        listApprovedPayments: async (trackingCode) => {
+          const { data, error } = await supabase
+            .from("payments")
+            .select("id,amount,currency")
+            .eq("tracking_code", trackingCode)
+            .eq("status", "approved");
+
+          if (error) throw error;
+          return data ?? [];
+        },
+
+        insertCustomerNotice: async (notification) => {
+          // payment_id ties the notice to the approved payment for the RLS check.
+          // The live notifications schema has no `kind` column.
+          const { error } = await (supabase.from("notifications") as any)
+            .insert(notification);
+
+          if (error) throw error;
+        },
+      });
+
+      if (!result.approved) {
         throw new Error(
-          "لم يتغير الطلب. ربما تمت مراجعته مسبقًا؛ أعد تحميل البيانات.",
+          result.reason === "already_reviewed"
+            ? "لم يتم اعتماد الدفعة؛ ربما راجعها مسؤول آخر. أعد تحميل البيانات."
+            : "الدفعة ليست بانتظار المراجعة.",
         );
       }
 
-      let warning = "";
-
-      if (!payment.user_id) {
-        warning =
-          " لم يُرسل إشعار للعميل لأن الدفعة لا تحتوي معرّف حسابه.";
-      } else {
-        let body =
-          `تم اعتماد دفعتك وتسجيل ${fmt(amount)} ${payment.currency || "ر.ي"} ` +
-          `للطلب ${payment.tracking_code}. لا يُحتسب المبلغ إلا بعد نجاح الاعتماد.`;
-
-        try {
-          const { data: order, error: orderError } = await supabase
-            .from("orders")
-            .select("notes")
-            .eq("tracking_code", payment.tracking_code)
-            .maybeSingle();
-
-          if (!orderError && order) {
-            const total = getOrderTotal(order.notes);
-
-            if (
-              total &&
-              normalizeCurrency(total.currency) ===
-                normalizeCurrency(payment.currency)
-            ) {
-              const { data: approvedPayments, error: approvedError } =
-                await supabase
-                  .from("payments")
-                  .select("id,amount,currency")
-                  .eq("tracking_code", payment.tracking_code)
-                  .eq("status", "approved");
-
-              if (
-                !approvedError &&
-                approvedPayments &&
-                approvedPayments.some((row) => row.id === payment.id) &&
-                approvedPayments.every(
-                  (row) =>
-                    normalizeCurrency(row.currency) ===
-                    normalizeCurrency(payment.currency),
-                )
-              ) {
-                const paidTotal = approvedPayments.reduce(
-                  (sum, row) => sum + Number(row.amount || 0),
-                  0,
-                );
-
-                const remaining = Math.max(total.amount - paidTotal, 0);
-
-                body =
-                  `تم اعتماد دفعتك وتسجيل ${fmt(amount)} ${payment.currency || "ر.ي"} ` +
-                  `للطلب ${payment.tracking_code}. ` +
-                  `إجمالي الطلب: ${fmt(total.amount)} ر.ي، ` +
-                  `المدفوع حتى الآن: ${fmt(paidTotal)} ر.ي، ` +
-                  `المتبقي عليك: ${fmt(remaining)} ر.ي. ` +
-                  `لا يُحتسب المبلغ إلا بعد نجاح الاعتماد.`;
-              } else {
-                body +=
-                  " تعذر حساب المتبقي بدقة؛ راجع صفحة الدفع.";
-              }
-            } else {
-              body +=
-                " تعذر تحديد إجمالي الطلب لحساب المتبقي؛ راجع صفحة الدفع.";
-            }
-          } else {
-            body +=
-              " تعذر قراءة بيانات الطلب لحساب المتبقي؛ راجع صفحة الدفع.";
-          }
-        } catch (calculationError) {
-          console.error(
-            "تعذر حساب المتبقي لإشعار العميل:",
-            calculationError,
-          );
-          body +=
-            " تعذر حساب المتبقي تلقائيًا؛ راجع صفحة الدفع.";
-        }
-
-        const { error: noticeError } = await supabase
-          .from("notifications")
-          .insert({
-            user_id: payment.user_id,
-            title: `تم اعتماد دفعتك للطلب ${payment.tracking_code}`,
-            body,
-          });
-
-        if (noticeError) {
-          console.error(
-            "تم اعتماد الدفعة لكن تعذر إنشاء الإشعار:",
-            noticeError,
-          );
-          warning = " تم الاعتماد لكن تعذر إنشاء إشعار العميل.";
-        }
-      }
+      const warning = result.notificationSent
+        ? ""
+        : result.reason === "missing_user"
+          ? " تم الاعتماد، لكن لم يُرسل إشعار لعدم ربط الدفعة بحساب العميل."
+          : " تم الاعتماد، لكن تعذر إنشاء إشعار العميل.";
 
       setNotice(
-        `تم اعتماد مبلغ ${fmt(amount)} للطلب ${payment.tracking_code}.${warning}`,
+        `تم اعتماد الدفعة ${payment.tracking_code}.${warning}`,
       );
-
       await load();
     } catch (cause) {
       setErr(
@@ -464,7 +370,7 @@ function PaymentsPage() {
           reviewed_at: new Date().toISOString(),
         })
         .eq("id", payment.id)
-        .in("status", PENDING_STATUSES)
+        .in("status", PENDING_APPROVAL_STATUSES)
         .select("id")
         .maybeSingle();
 
@@ -687,7 +593,7 @@ function PaymentsPage() {
         if (isArchived !== showArchived) return false;
         if (filter === "all") return true;
         if (filter === "pending") {
-          return PENDING_STATUSES.includes(payment.status);
+          return PENDING_APPROVAL_STATUSES.includes(payment.status);
         }
 
         return payment.status === filter;
@@ -716,7 +622,7 @@ function PaymentsPage() {
   );
 
   const pendingSum = rows
-    .filter((payment) => PENDING_STATUSES.includes(payment.status))
+    .filter((payment) => PENDING_APPROVAL_STATUSES.includes(payment.status))
     .reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
 
   return (
@@ -799,7 +705,7 @@ function PaymentsPage() {
             label="بانتظار الاعتماد"
             value={
               rows.filter((payment) =>
-                PENDING_STATUSES.includes(payment.status),
+                PENDING_APPROVAL_STATUSES.includes(payment.status),
               ).length
             }
             sub={`${fmt(pendingSum)} ر.ي مطلوب`}
@@ -915,7 +821,7 @@ function PaymentsPage() {
           )}
 
           {shown.map((payment) => {
-            const isPending = PENDING_STATUSES.includes(payment.status);
+            const isPending = PENDING_APPROVAL_STATUSES.includes(payment.status);
             const isArchived = archivedIds.has(payment.id);
             const amount = Number(payment.amount || 0);
 
