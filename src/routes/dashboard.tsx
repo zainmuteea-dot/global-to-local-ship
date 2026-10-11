@@ -170,11 +170,11 @@ export default function DashboardPage() {
   };
 
   const platforms = [
-    { name: 'TEMU', color: 'text-[#FA6400]', border: 'hover:border-[#FA6400]/40' },
-    { name: 'TrendYol', color: 'text-[#F27A1A]', border: 'hover:border-[#F27A1A]/40' },
-    { name: 'SHEIN', color: 'text-zinc-900', border: 'hover:border-zinc-800/40' },
-    { name: 'Amazon', color: 'text-[#FF9900]', border: 'hover:border-[#FF9900]/40' },
-    { name: 'AliExpress', color: 'text-[#FF4747]', border: 'hover:border-[#FF4747]/40' },
+    { key: 'temu', name: 'TEMU', color: 'text-[#FA6400]', border: 'hover:border-[#FA6400]/40' },
+    { key: 'trendyol', name: 'TrendYol', color: 'text-[#F27A1A]', border: 'hover:border-[#F27A1A]/40' },
+    { key: 'shein', name: 'SHEIN', color: 'text-zinc-900', border: 'hover:border-zinc-800/40' },
+    { key: 'amazon', name: 'Amazon', color: 'text-[#FF9900]', border: 'hover:border-[#FF9900]/40' },
+    { key: 'aliexpress', name: 'AliExpress', color: 'text-[#FF4747]', border: 'hover:border-[#FF4747]/40' },
   ];
 
   const steps = [
@@ -525,8 +525,9 @@ export default function DashboardPage() {
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
           {platforms.map((p, idx) => (
             <Link
-              key={idx}
+              key={p.key}
               to="/new-order"
+              search={{ store: p.key }}
               className={`bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80 flex items-center justify-center font-black text-lg transition hover:shadow-md ${p.color} ${p.border}`}
             >
               {p.name}
