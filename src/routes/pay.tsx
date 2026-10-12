@@ -66,9 +66,9 @@ const CSS = `
 .notif-list{max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:8px}
 .notif-item{display:block;width:100%;text-align:right;font-family:inherit;background:var(--bg);padding:10px 12px;border-radius:12px;font-size:12px;border-right:3.5px solid var(--blue-500);transition:.15s;cursor:pointer}
 .notif-item:hover{filter:brightness(.98)}
-.notif-item.approved{border-right-color:#f97316;background:#fff7ed}
-.notif-item-title{font-weight:800;color:#1e40af;margin-bottom:2px;display:flex;align-items:center;justify-content:space-between}
-.notif-item-desc{color:#f97316;line-height:1.5}
+.notif-item.approved{border-right-color:var(--green);background:var(--green-bg)}
+.notif-item-title{font-weight:800;color:var(--ink);margin-bottom:2px;display:flex;align-items:center;justify-content:space-between}
+.notif-item-desc{color:var(--muted);line-height:1.4}
 .notif-item-time{font-size:10px;color:#94a3b8;margin-top:4px}
 .notif-empty{padding:24px 10px;text-align:center;color:var(--muted);font-size:12.5px}
 .notif-error{margin-bottom:8px;padding:8px 10px;border-radius:10px;background:#fff1f2;color:#be123c;font-size:11px}
@@ -76,17 +76,17 @@ const CSS = `
 /* Top Floating Banner Toast */
 .pay-banner-wrap{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:9999;
   width:92%;max-width:540px;animation:slideDownBanner .38s cubic-bezier(0.16,1,0.3,1)}
-.pay-banner{background:#fff;color:#1e40af;border:2px solid #1e40af;
-  border-radius:16px;padding:14px 16px;box-shadow:0 14px 34px -8px rgba(30,64,175,0.28);
+.pay-banner{background:linear-gradient(135deg,#059669 0%,#10b981 100%);color:#fff;
+  border-radius:16px;padding:14px 16px;box-shadow:0 14px 34px -8px rgba(16,185,129,0.55),0 0 0 1px rgba(255,255,255,0.2);
   display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;transition:transform .2s,box-shadow .2s}
-.pay-banner:hover{transform:translateY(-2px);box-shadow:0 18px 40px -8px rgba(30,64,175,0.38)}
+.pay-banner:hover{transform:translateY(-2px);box-shadow:0 18px 40px -8px rgba(16,185,129,0.65)}
 .pay-banner-body{display:flex;align-items:center;gap:12px}
-.pay-banner-icon{font-size:24px;flex:0 0 auto;display:grid;place-items:center;color:#1e40af;background:#eff6ff;width:42px;height:42px;border-radius:12px}
-.pay-banner-title{font-size:14.5px;font-weight:900;letter-spacing:.2px;color:#1e40af}
-.pay-banner-sub{font-size:12px;color:#f97316;opacity:1;margin-top:2px;line-height:1.5}
+.pay-banner-icon{font-size:24px;flex:0 0 auto;display:grid;place-items:center;background:rgba(255,255,255,0.22);width:42px;height:42px;border-radius:12px}
+.pay-banner-title{font-size:14.5px;font-weight:900;letter-spacing:.2px}
+.pay-banner-sub{font-size:12px;opacity:0.95;margin-top:2px;line-height:1.4}
 .pay-banner-actions{display:flex;align-items:center;gap:8px}
-.pay-banner-close{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;border-radius:50%;width:28px;height:28px;cursor:pointer;display:grid;place-items:center;font-size:13px;transition:.2s}
-.pay-banner-close:hover{background:#dbeafe}
+.pay-banner-close{background:rgba(255,255,255,0.25);border:none;color:#fff;border-radius:50%;width:28px;height:28px;cursor:pointer;display:grid;place-items:center;font-size:13px;transition:.2s}
+.pay-banner-close:hover{background:rgba(255,255,255,0.4)}
 
 @keyframes slideDownBanner{
   0%{opacity:0;transform:translate(-50%,-24px) scale(0.96)}
@@ -282,6 +282,24 @@ function PayPage() {
   const audioContextRef = useRef<AudioContext | null>(null)
 
   const remaining = Math.max(total - paid, 0)
+
+  // يعرض المتبقي الحالي المحسوب من بيانات الطلب، بدل الرقم القديم الموجود في نص الإشعار.
+  const formatNotificationMessage = (notice: any) => {
+    const original = String(
+      notice?.message ?? notice?.body ?? 'تم تأكيد استلام المبلغ بنجاح!',
+    )
+    if (loading) return original
+
+    const remainingText = `المتبقي عليك حالياً: ${fmt(remaining)} ${currency}`
+    const remainingPattern = /المتبقي(?:\s+(?:عليكم|عليك))?[^0-9٠-٩\n]*[0-9٠-٩][0-9٠-٩,٬.٫]*(?:\s*(?:ر\.ي\.?|ريال(?:\s*يمني)?))?/i
+
+    if (remainingPattern.test(original)) {
+      return original.replace(remainingPattern, remainingText)
+    }
+
+    return `${original} • ${remainingText} • الطلب: ${orderNo}`
+  }
+
   const isPaid = /مدفوع|مكتمل|paid|complete/i.test(status) && !/غير|جزئي/i.test(status)
 
   // دالة قراءة تفاصيل الطلب والدفعات بدقة من Supabase
@@ -748,7 +766,7 @@ function PayPage() {
               <div className="pay-banner-icon">🎉</div>
               <div>
                 <div className="pay-banner-title">{activeBanner.title || 'تم اعتماد دفعتك بنجاح ✓'}</div>
-                <div className="pay-banner-sub">{activeBanner.body || activeBanner.message || 'تم تأكيد استلام المبلغ بنجاح!'}</div>
+                <div className="pay-banner-sub">{formatNotificationMessage(activeBanner)}</div>
               </div>
             </div>
             <div className="pay-banner-actions">
@@ -848,7 +866,7 @@ function PayPage() {
                               <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444', display: 'inline-block' }} />
                             )}
                           </div>
-                          <div className="notif-item-desc">{n.message}</div>
+                          <div className="notif-item-desc">{formatNotificationMessage(n)}</div>
                           <div className="notif-item-time">
                             {n.created_at
                               ? new Date(n.created_at).toLocaleTimeString('ar-YE', { hour: '2-digit', minute: '2-digit' })
