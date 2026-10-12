@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useEffect, useMemo, useState, useRef } from 'react'
+import { useEffect, useMemo, useState, useRef, useCallback } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 
 export const Route = createFileRoute('/pay')({
@@ -22,24 +22,89 @@ const CSS = `
 .pay-root{font-family:'Cairo',system-ui,sans-serif;min-height:100vh;color:var(--ink);line-height:1.6;
   direction:rtl;padding:24px 14px 60px;-webkit-font-smoothing:antialiased;
   background:radial-gradient(1200px 500px at 100% -10%,rgba(62,134,196,.12),transparent 60%),
-    radial-gradient(1000px 500px at 0% 110%,rgba(245,166,35,.10),transparent 55%),var(--bg);}
+    radial-gradient(1000px 500px at 0% 110%,rgba(245,166,35,.10),transparent 55%),var(--bg);
+  position:relative;}
 .pay-wrap{max-width:620px;margin:0 auto}
+
+/* Header Topbar */
 .pay-topbar{background:linear-gradient(135deg,var(--blue-800) 0%,var(--blue-900) 55%,#06284a 100%);
-  border-radius:22px;padding:18px 20px;color:#fff;box-shadow:var(--shadow);position:relative;
-  overflow:hidden;display:flex;align-items:center;gap:14px}
-.pay-topbar::after{content:'';position:absolute;inset:0;
+  border-radius:22px;padding:16px 20px;color:#fff;box-shadow:var(--shadow);position:relative;
+  overflow:visible;display:flex;align-items:center;gap:14px}
+.pay-topbar::after{content:'';position:absolute;inset:0;border-radius:22px;pointer-events:none;
   background:radial-gradient(140px 140px at 10% 120%,rgba(245,166,35,.35),transparent 70%)}
-.pay-badge{width:52px;height:52px;border-radius:15px;flex:0 0 auto;
+.pay-badge{width:50px;height:50px;border-radius:15px;flex:0 0 auto;
   background:linear-gradient(145deg,#fff,#eaf2fb);display:grid;place-items:center;position:relative;z-index:1;
   box-shadow:0 6px 16px -6px rgba(0,0,0,.4)}
-.pay-badge svg{width:34px;height:34px}
-.pay-brand{z-index:1}
-.pay-brand h1{font-size:19px;font-weight:900;letter-spacing:.3px;line-height:1.2}
+.pay-badge svg{width:32px;height:32px}
+.pay-brand{z-index:1;flex:1}
+.pay-brand h1{font-size:18px;font-weight:900;letter-spacing:.3px;line-height:1.2}
 .pay-brand h1 b{color:var(--orange-400)}
-.pay-brand p{font-size:12px;color:#bcd3ec;font-weight:600;margin-top:2px}
-.pay-arrow{margin-inline-start:auto;z-index:1;width:38px;height:38px;border-radius:11px;
-  display:grid;place-items:center;background:rgba(255,255,255,.12);color:#fff;cursor:pointer;transition:.2s;border:none}
-.pay-arrow:hover{background:rgba(255,255,255,.22)}
+.pay-brand p{font-size:11.5px;color:#bcd3ec;font-weight:600;margin-top:2px}
+
+.pay-top-actions{margin-inline-start:auto;display:flex;align-items:center;gap:8px;z-index:2;position:relative}
+.pay-arrow{width:38px;height:38px;border-radius:11px;
+  display:grid;place-items:center;background:rgba(255,255,255,.14);color:#fff;cursor:pointer;transition:.2s;border:none}
+.pay-arrow:hover{background:rgba(255,255,255,.24)}
+
+/* Notification Bell Button */
+.pay-bell-btn{width:38px;height:38px;border-radius:11px;
+  display:grid;place-items:center;background:rgba(255,255,255,.14);color:#fff;cursor:pointer;transition:.2s;border:none;position:relative}
+.pay-bell-btn:hover{background:rgba(255,255,255,.24)}
+.pay-bell-btn.shake{animation:bellShake 0.6s cubic-bezier(.36,.07,.19,.97) both}
+.pay-bell-badge{position:absolute;top:-4px;right:-4px;background:#ef4444;color:#fff;font-size:10.5px;
+  font-weight:900;border-radius:10px;padding:1px 6px;min-width:18px;height:18px;display:grid;place-items:center;
+  box-shadow:0 0 10px rgba(239,68,68,0.85);border:2px solid #004A8D;animation:badgePulse 1.8s infinite}
+
+/* Notification Dropdown Menu */
+.pay-notif-menu{position:absolute;top:48px;left:0;width:310px;background:#ffffff;border-radius:18px;
+  box-shadow:0 20px 45px -10px rgba(15,36,64,.35),0 0 0 1px rgba(0,74,141,.08);color:var(--ink);
+  padding:14px;z-index:100;text-align:right;direction:rtl;animation:menuPop .25s ease-out}
+.notif-menu-header{display:flex;align-items:center;justify-content:space-between;padding-bottom:10px;border-bottom:1px solid #f1f5f9;margin-bottom:10px}
+.notif-menu-title{font-size:13.5px;font-weight:900;color:var(--blue-900);display:flex;align-items:center;gap:6px}
+.notif-mark-read{font-size:11px;color:var(--blue-600);background:none;border:none;cursor:pointer;font-weight:700;padding:2px 6px;border-radius:6px}
+.notif-mark-read:hover{background:var(--blue-50)}
+.notif-list{max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:8px}
+.notif-item{background:var(--bg);padding:10px 12px;border-radius:12px;font-size:12px;border-right:3.5px solid var(--blue-500);transition:.15s}
+.notif-item.approved{border-right-color:var(--green);background:var(--green-bg)}
+.notif-item-title{font-weight:800;color:var(--ink);margin-bottom:2px;display:flex;align-items:center;justify-content:space-between}
+.notif-item-desc{color:var(--muted);line-height:1.4}
+.notif-item-time{font-size:10px;color:#94a3b8;margin-top:4px}
+.notif-empty{padding:24px 10px;text-align:center;color:var(--muted);font-size:12.5px}
+
+/* Top Floating Banner Toast */
+.pay-banner-wrap{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:9999;
+  width:92%;max-width:540px;animation:slideDownBanner .38s cubic-bezier(0.16,1,0.3,1)}
+.pay-banner{background:linear-gradient(135deg,#059669 0%,#10b981 100%);color:#fff;
+  border-radius:16px;padding:14px 16px;box-shadow:0 14px 34px -8px rgba(16,185,129,0.55),0 0 0 1px rgba(255,255,255,0.2);
+  display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;transition:transform .2s,box-shadow .2s}
+.pay-banner:hover{transform:translateY(-2px);box-shadow:0 18px 40px -8px rgba(16,185,129,0.65)}
+.pay-banner-body{display:flex;align-items:center;gap:12px}
+.pay-banner-icon{font-size:24px;flex:0 0 auto;display:grid;place-items:center;background:rgba(255,255,255,0.22);width:42px;height:42px;border-radius:12px}
+.pay-banner-title{font-size:14.5px;font-weight:900;letter-spacing:.2px}
+.pay-banner-sub{font-size:12px;opacity:0.95;margin-top:2px;line-height:1.4}
+.pay-banner-actions{display:flex;align-items:center;gap:8px}
+.pay-banner-close{background:rgba(255,255,255,0.25);border:none;color:#fff;border-radius:50%;width:28px;height:28px;cursor:pointer;display:grid;place-items:center;font-size:13px;transition:.2s}
+.pay-banner-close:hover{background:rgba(255,255,255,0.4)}
+
+@keyframes slideDownBanner{
+  0%{opacity:0;transform:translate(-50%,-24px) scale(0.96)}
+  100%{opacity:1;transform:translate(-50%,0) scale(1)}
+}
+@keyframes bellShake{
+  0%,100%{transform:rotate(0)}
+  20%,60%{transform:rotate(14deg)}
+  40%,80%{transform:rotate(-14deg)}
+}
+@keyframes badgePulse{
+  0%,100%{transform:scale(1)}
+  50%{transform:scale(1.15)}
+}
+@keyframes menuPop{
+  0%{opacity:0;transform:translateY(-8px) scale(0.97)}
+  100%{opacity:1;transform:translateY(0) scale(1)}
+}
+
+/* Original Cards & Form */
 .pay-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
   padding:18px;margin-top:16px;box-shadow:var(--shadow-sm)}
 .pay-head{display:flex;align-items:center;gap:10px;margin-bottom:14px}
@@ -64,7 +129,7 @@ const CSS = `
 .pay-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
 .stat{background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:12px 10px;text-align:center}
 .stat .lab{font-size:11px;color:var(--muted);font-weight:700;margin-bottom:4px}
-.stat .num{font-size:20px;font-weight:900;line-height:1.2}
+.stat .num{font-size:19px;font-weight:900;line-height:1.2}
 .stat .cur{font-size:11px;color:var(--muted);font-weight:700}
 .stat.total .num{color:var(--blue-900)}
 .stat.paid .num{color:var(--green)}
@@ -110,14 +175,14 @@ const CSS = `
 
 /* ===================== Icons ===================== */
 const Hash = () => (<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>)
-const Receipt = () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1z"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="12" y2="14"/></svg>)
+const Receipt = () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1z"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="12" y2="14"/></svg>)
 const Wallet = () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M20 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M16 3H4a2 2 0 0 0-2 2v2"/><circle cx="16" cy="14" r="1.5"/></svg>)
 const Card = () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>)
 const Info = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>)
 const CheckIc = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>)
 const Copy = () => (<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>)
 const Arrow = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>)
-const Bell = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>)
+const Bell = () => (<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>)
 const Camera = () => (<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>)
 
 const Logo = () => (
@@ -183,111 +248,204 @@ function PayPage() {
   const [receiptImg, setReceiptImg] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Notifications State & Realtime Banner
+  const [notifications, setNotifications] = useState<any[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [activeBanner, setActiveBanner] = useState<any | null>(null)
+  const [showBellMenu, setShowBellMenu] = useState(false)
+  const [bellShake, setBellShake] = useState(false)
+
   const remaining = Math.max(total - paid, 0)
   const isPaid = /مدفوع|مكتمل|paid|complete/i.test(status) && !/غير|جزئي/i.test(status)
 
-  // قراءة تفاصيل الطلب والدفعات بدقة من Supabase
+  // دالة قراءة تفاصيل الطلب والدفعات بدقة من Supabase
+  const loadOrderData = useCallback(async () => {
+    try {
+      // 1. استعلام الطلب بجميع حقول المبالغ والحالة
+      const orderQuery = supabase
+        .from('orders')
+        .select('id, tracking_code, customer_name, phone, product_name, notes, status, created_at, user_id, total_cost_yer, paid_amount, remaining_amount, payment_status')
+
+      const { data: dbOrder } = await (isUuid(orderNo)
+        ? orderQuery.or(`tracking_code.eq.${orderNo},id.eq.${orderNo}`)
+        : orderQuery.eq('tracking_code', orderNo)
+      ).maybeSingle()
+
+      // 2. استعلام الدفعات المعتمدة والمعلقة للطلب
+      const { data: paymentsList } = await supabase
+        .from('payments')
+        .select('id, amount, status, receipt_image')
+        .eq('order_tracking', orderNo)
+
+      let totalApprovedPaid = 0
+      let hasPendingPayment = false
+      let latestReceipt = ''
+
+      if (paymentsList && paymentsList.length > 0) {
+        paymentsList.forEach((p: any) => {
+          if (p.status === 'approved') {
+            totalApprovedPaid += Number(p.amount) || 0
+          } else if (p.status === 'pending' || p.status === 'بانتظار التأكيد') {
+            hasPendingPayment = true
+            if (p.receipt_image) latestReceipt = p.receipt_image
+          }
+        })
+      }
+
+      if (dbOrder) {
+        setCustomer(dbOrder.customer_name || '')
+        setPhone(dbOrder.phone || '')
+        setProductName(dbOrder.product_name || 'طلب متجر دولي')
+
+        let calculatedTotal = Number(dbOrder.total_cost_yer) || 0
+        if (!calculatedTotal) {
+          const notesText = dbOrder.notes || ''
+          const priceMatch = notesText.match(/السعر المعلن:\s*([\d.]+)\s*([^|]*)/)
+          if (priceMatch) {
+            const rawPrice = parseFloat(priceMatch[1] ?? '0') || 0
+            const rawCur = priceMatch[2]?.trim() || ''
+
+            if (rawCur.includes('سعودي') || rawCur.includes('ر.س')) {
+              calculatedTotal = Math.round(rawPrice * 142)
+            } else if (rawCur.includes('$') || rawCur.includes('دولار')) {
+              calculatedTotal = Math.round(rawPrice * 535)
+            } else if (rawPrice > 0) {
+              calculatedTotal = Math.round(rawPrice)
+            }
+          }
+        }
+
+        if (!calculatedTotal) calculatedTotal = 42458
+        setTotal(calculatedTotal)
+        setCurrency('ر.ي')
+
+        // حساب المدفوع: الأعلى بين paid_amount ومجموع الدفعات المعتمدة
+        const orderPaid = Number(dbOrder.paid_amount) || 0
+        const finalPaid = Math.max(orderPaid, totalApprovedPaid)
+        setPaid(finalPaid)
+
+        // تحديد حالة الدفع
+        if (finalPaid >= calculatedTotal && calculatedTotal > 0) {
+          setStatus('مدفوع بالكامل')
+          setIsNotified(false)
+        } else if (finalPaid > 0) {
+          setStatus(hasPendingPayment ? 'قيد مراجعة الدفعة الإضافية' : 'مدفوع جزئياً')
+          setIsNotified(hasPendingPayment)
+        } else if (hasPendingPayment) {
+          setStatus('قيد مراجعة الدفع والتأكيد')
+          setIsNotified(true)
+        } else {
+          setStatus(dbOrder.status || 'بانتظار الدفع')
+          setIsNotified(false)
+        }
+
+        if (latestReceipt) {
+          setReceiptImg(latestReceipt)
+        }
+      }
+    } catch (err) {
+      console.warn('Order fetch error:', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [orderNo])
+
+  // تحميل البيانات الأولية
   useEffect(() => {
-    let active = true
+    loadOrderData()
+  }, [loadOrderData])
 
-    const loadOrderData = async () => {
-      setLoading(true)
+  // جلب الإشعارات والاستماع اللحظي (Supabase Realtime)
+  useEffect(() => {
+    if (!orderNo) return
 
+    const fetchNotifications = async () => {
       try {
-        // 1. استعلام الطلب بجميع حقول المبالغ والحالة
-        const orderQuery = supabase
-          .from('orders')
-          .select('id, tracking_code, customer_name, phone, product_name, notes, status, created_at, user_id, total_cost_yer, paid_amount, remaining_amount, payment_status')
+        const { data } = await supabase
+          .from('notifications')
+          .select('*')
+          .ilike('message', `%${orderNo}%`)
+          .order('created_at', { ascending: false })
+          .limit(15)
 
-        const { data: dbOrder } = await (isUuid(orderNo)
-          ? orderQuery.or(`tracking_code.eq.${orderNo},id.eq.${orderNo}`)
-          : orderQuery.eq('tracking_code', orderNo)
-        ).maybeSingle()
-
-        // 2. استعلام الدفعات المعتمدة والمعلقة للطلب
-        const { data: paymentsList } = await supabase
-          .from('payments')
-          .select('id, amount, status, receipt_image')
-          .eq('order_tracking', orderNo)
-
-        let totalApprovedPaid = 0
-        let hasPendingPayment = false
-        let latestReceipt = ''
-
-        if (paymentsList && paymentsList.length > 0) {
-          paymentsList.forEach((p: any) => {
-            if (p.status === 'approved') {
-              totalApprovedPaid += Number(p.amount) || 0
-            } else if (p.status === 'pending' || p.status === 'بانتظار التأكيد') {
-              hasPendingPayment = true
-              if (p.receipt_image) latestReceipt = p.receipt_image
-            }
-          })
+        if (data) {
+          setNotifications(data)
+          const unread = data.filter((n: any) => !n.is_read).length
+          setUnreadCount(unread)
         }
-
-        if (dbOrder && active) {
-          setCustomer(dbOrder.customer_name || '')
-          setPhone(dbOrder.phone || '')
-          setProductName(dbOrder.product_name || 'طلب متجر دولي')
-
-          // حساب الإجمالي: الاعتماد أولاً على total_cost_yer من قاعدة البيانات
-          let calculatedTotal = Number(dbOrder.total_cost_yer) || 0
-
-          if (!calculatedTotal) {
-            const notesText = dbOrder.notes || ''
-            const priceMatch = notesText.match(/السعر المعلن:\s*([\d.]+)\s*([^|]*)/)
-            if (priceMatch) {
-              const rawPrice = parseFloat(priceMatch[1] ?? '0') || 0
-              const rawCur = priceMatch[2]?.trim() || ''
-
-              if (rawCur.includes('سعودي') || rawCur.includes('ر.س')) {
-                calculatedTotal = Math.round(rawPrice * 142)
-              } else if (rawCur.includes('$') || rawCur.includes('دولار')) {
-                calculatedTotal = Math.round(rawPrice * 535)
-              } else if (rawPrice > 0) {
-                calculatedTotal = Math.round(rawPrice)
-              }
-            }
-          }
-
-          if (!calculatedTotal) calculatedTotal = 42458
-          setTotal(calculatedTotal)
-          setCurrency('ر.ي')
-
-          // حساب المدفوع: الأعلى بين paid_amount ومجموع الدفعات المعتمدة
-          const orderPaid = Number(dbOrder.paid_amount) || 0
-          const finalPaid = Math.max(orderPaid, totalApprovedPaid)
-          setPaid(finalPaid)
-
-          // تحديد حالة الدفع
-          if (finalPaid >= calculatedTotal && calculatedTotal > 0) {
-            setStatus('مدفوع بالكامل')
-            setIsNotified(false)
-          } else if (finalPaid > 0) {
-            setStatus(hasPendingPayment ? 'قيد مراجعة الدفعة الإضافية' : 'مدفوع جزئياً')
-            setIsNotified(hasPendingPayment)
-          } else if (hasPendingPayment) {
-            setStatus('قيد مراجعة الدفع والتأكيد')
-            setIsNotified(true)
-          } else {
-            setStatus(dbOrder.status || 'بانتظار الدفع')
-            setIsNotified(false)
-          }
-
-          if (latestReceipt) {
-            setReceiptImg(latestReceipt)
-          }
-        }
-      } catch (err) {
-        console.warn('Order fetch error:', err)
-      } finally {
-        if (active) setLoading(false)
+      } catch (e) {
+        console.warn('Fetch notifications error:', e)
       }
     }
 
-    loadOrderData()
-    return () => { active = false }
-  }, [orderNo])
+    fetchNotifications()
+
+    // 1. الاستماع لجدول الإشعارات
+    const notifChannel = supabase
+      .channel(`realtime-notif-${orderNo}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications' },
+        (payload) => {
+          const newN = payload.new as any
+          if (newN && newN.message && newN.message.includes(orderNo)) {
+            setNotifications((prev) => [newN, ...prev])
+            setUnreadCount((prev) => prev + 1)
+            setActiveBanner(newN)
+            setBellShake(true)
+            setTimeout(() => setBellShake(false), 1200)
+            loadOrderData()
+          }
+        }
+      )
+      .subscribe()
+
+    // 2. الاستماع لتحديثات الدفعات والطلب في نفس اللحظة
+    const paymentsChannel = supabase
+      .channel(`realtime-payments-${orderNo}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'payments', filter: `order_tracking=eq.${orderNo}` },
+        () => {
+          loadOrderData()
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'orders', filter: `tracking_code=eq.${orderNo}` },
+        () => {
+          loadOrderData()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(notifChannel)
+      supabase.removeChannel(paymentsChannel)
+    }
+  }, [orderNo, loadOrderData])
+
+  // عند الضغط على الشريط المنبثق في رأس الصفحة: يختفي وينتقل ليفتح جرس الإشعارات
+  const handleBannerClick = () => {
+    setActiveBanner(null)
+    setShowBellMenu(true)
+    setBellShake(true)
+    setTimeout(() => setBellShake(false), 600)
+  }
+
+  // تعليم جميع الإشعارات كمقروءة
+  const handleMarkAllRead = async () => {
+    setUnreadCount(0)
+    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })))
+    try {
+      const ids = notifications.filter((n) => !n.is_read).map((n) => n.id)
+      if (ids.length > 0) {
+        await (supabase.from('notifications') as any).update({ is_read: true }).in('id', ids)
+      }
+    } catch (e) {
+      console.warn('Mark read error:', e)
+    }
+  }
 
   const handleNotifyAdmin = async () => {
     if (isNotified || notifying) return
@@ -361,7 +519,7 @@ function PayPage() {
         .insert({
           user_id: user.id,
           title: 'طلب الدفع',
-          message: 'تم استلام طلب الدفع للمراجعة',
+          message: `تم استلام طلب الدفع للمراجعة للطلب (${orderNo})`,
           payment_id: savedPayment.id,
         })
 
@@ -404,17 +562,116 @@ function PayPage() {
     <div className="pay-root">
       <style>{CSS}</style>
       <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+      {/* الشريط التنبيهي العائم في رأس الصفحة */}
+      {activeBanner && (
+        <div className="pay-banner-wrap">
+          <div className="pay-banner" onClick={handleBannerClick} title="انقر لعرض الإشعار في السجل">
+            <div className="pay-banner-body">
+              <div className="pay-banner-icon">🎉</div>
+              <div>
+                <div className="pay-banner-title">{activeBanner.title || 'تم اعتماد دفعتك بنجاح ✓'}</div>
+                <div className="pay-banner-sub">{activeBanner.message || 'تم تأكيد استلام المبلغ بنجاح!'}</div>
+              </div>
+            </div>
+            <div className="pay-banner-actions">
+              <button
+                type="button"
+                className="pay-banner-close"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setActiveBanner(null)
+                }}
+                title="إغلاق"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="pay-wrap">
 
+        {/* الهيدر العلوي مع جرس الإشعارات وزر الرجوع */}
         <header className="pay-topbar">
           <div className="pay-badge"><Logo /></div>
           <div className="pay-brand">
             <h1>SHOPPING <b>AL SHAMEL</b></h1>
             <p>طرق الدفع • أودِع بأمان</p>
           </div>
-          <button className="pay-arrow" type="button" title="رجوع" onClick={() => navigate({ to: '/' })}>
-            <Arrow />
-          </button>
+
+          <div className="pay-top-actions">
+            {/* جرس الإشعارات */}
+            <div style={{ position: 'relative' }}>
+              <button
+                type="button"
+                className={`pay-bell-btn ${bellShake ? 'shake' : ''}`}
+                title="سجل الإشعارات"
+                onClick={() => {
+                  setShowBellMenu(!showBellMenu)
+                  if (!showBellMenu && unreadCount > 0) {
+                    setUnreadCount(0)
+                  }
+                }}
+              >
+                <Bell />
+                {unreadCount > 0 && (
+                  <span className="pay-bell-badge">{unreadCount}</span>
+                )}
+              </button>
+
+              {/* القائمة المنسدلة للإشعارات */}
+              {showBellMenu && (
+                <div className="pay-notif-menu">
+                  <div className="notif-menu-header">
+                    <div className="notif-menu-title">
+                      <span>🔔</span>
+                      <span>سجل الإشعارات</span>
+                    </div>
+                    {notifications.length > 0 && (
+                      <button type="button" className="notif-mark-read" onClick={handleMarkAllRead}>
+                        تعليم كمقروء
+                      </button>
+                    )}
+                  </div>
+
+                  {notifications.length === 0 ? (
+                    <div className="notif-empty">
+                      لا توجد إشعارات جديدة حالياً
+                    </div>
+                  ) : (
+                    <div className="notif-list">
+                      {notifications.map((n) => (
+                        <div
+                          key={n.id}
+                          className={`notif-item ${/اعتماد|approved/i.test(n.title + n.message) ? 'approved' : ''}`}
+                        >
+                          <div className="notif-item-title">
+                            <span>{n.title}</span>
+                            {!n.is_read && (
+                              <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444', display: 'inline-block' }} />
+                            )}
+                          </div>
+                          <div className="notif-item-desc">{n.message}</div>
+                          <div className="notif-item-time">
+                            {n.created_at
+                              ? new Date(n.created_at).toLocaleTimeString('ar-YE', { hour: '2-digit', minute: '2-digit' })
+                              : 'الآن'}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* زر الرجوع */}
+            <button className="pay-arrow" type="button" title="رجوع" onClick={() => navigate({ to: '/' })}>
+              <Arrow />
+            </button>
+          </div>
         </header>
 
         {/* تفاصيل الطلب */}
