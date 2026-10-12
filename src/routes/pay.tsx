@@ -64,12 +64,14 @@ const CSS = `
 .notif-mark-read{font-size:11px;color:var(--blue-600);background:none;border:none;cursor:pointer;font-weight:700;padding:2px 6px;border-radius:6px}
 .notif-mark-read:hover{background:var(--blue-50)}
 .notif-list{max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:8px}
-.notif-item{background:var(--bg);padding:10px 12px;border-radius:12px;font-size:12px;border-right:3.5px solid var(--blue-500);transition:.15s}
+.notif-item{display:block;width:100%;text-align:right;font-family:inherit;background:var(--bg);padding:10px 12px;border-radius:12px;font-size:12px;border-right:3.5px solid var(--blue-500);transition:.15s;cursor:pointer}
+.notif-item:hover{filter:brightness(.98)}
 .notif-item.approved{border-right-color:var(--green);background:var(--green-bg)}
 .notif-item-title{font-weight:800;color:var(--ink);margin-bottom:2px;display:flex;align-items:center;justify-content:space-between}
 .notif-item-desc{color:var(--muted);line-height:1.4}
 .notif-item-time{font-size:10px;color:#94a3b8;margin-top:4px}
 .notif-empty{padding:24px 10px;text-align:center;color:var(--muted);font-size:12.5px}
+.notif-error{margin-bottom:8px;padding:8px 10px;border-radius:10px;background:#fff1f2;color:#be123c;font-size:11px}
 
 /* Top Floating Banner Toast */
 .pay-banner-wrap{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:9999;
@@ -270,7 +272,9 @@ function PayPage() {
 
   // Notifications State & Realtime Banner
   const [notifications, setNotifications] = useState<any[]>([])
-  const [unreadCount, setUnreadCount] = useState(0)
+  const [readNotificationIds, setReadNotificationIds] = useState<Set<string>>(new Set())
+  const [notificationUserId, setNotificationUserId] = useState<string | null>(null)
+  const [notificationError, setNotificationError] = useState('')
   const [activeBanner, setActiveBanner] = useState<any | null>(null)
   const [showBellMenu, setShowBellMenu] = useState(false)
   const [bellShake, setBellShake] = useState(false)
@@ -407,7 +411,7 @@ function PayPage() {
     }
   }
 
-  // إشعارات اعتماد دفعات العميل: مخطط المشروع يستخدم kind/body لا type/message.
+  // إشعارات اعتماد دفعات العميل، مع حفظ القراءة في notification_reads.
   useEffect(() => {
     if (!orderNo) return
 
@@ -418,19 +422,16 @@ function PayPage() {
     const isApprovalNoticeForOrder = (notice: any, userId: string) => {
       if (!notice || notice.user_id !== userId) return false
 
-      const category = String(notice.kind ?? notice.type ?? '').toLowerCase()
+      const category = String(notice.type ?? '').toLowerCase()
       const title = String(notice.title ?? '')
-      const body = String(notice.body ?? notice.message ?? '')
-      const searchableText = `${category} ${title} ${body} ${notice.href ?? ''}`
+      const message = String(notice.message ?? '')
+      const searchableText = `${category} ${title} ${message}`
 
-      // إشعار إرسال دفعة للمراجعة يخص الإدارة، وليس إشعار اعتماد للعميل.
+      // إشعار إرسال دفعة للمراجعة ليس إشعار اعتماد موجهاً للعميل.
       const isPendingOrRejected =
         /new_payment_submitted|pending|بانتظار|قيد المراجعة|مراجعة الدفع|دفعة جديدة|طلب سداد|rejected|رفض|لم يتم قبول|غير مقبول/i.test(searchableText)
-
-      // لا نعتبر كلمة payment وحدها دليلاً على اعتماد الدفعة.
       const isApproved =
         /payment_approved|approved_payment|تم اعتماد|اعتماد دفعتك|اعتمدت دفعتك|approved/i.test(searchableText)
-
       const belongsToThisOrder = searchableText.includes(orderNo)
 
       return isApproved && !isPendingOrRejected && belongsToThisOrder
@@ -447,44 +448,49 @@ function PayPage() {
 
         if (!user) {
           if (isActive) {
+            setNotificationUserId(null)
             setNotifications([])
-            setUnreadCount(0)
+            setReadNotificationIds(new Set())
+            setNotificationError('')
           }
           return null
         }
 
-        // لا نطلب أعمدة غير موجودة في مخطط notifications الحالي.
-        const { data, error } = await (supabase.from('notifications') as any)
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(100)
+        const [notificationResult, readResult] = await Promise.all([
+          (supabase.from('notifications') as any)
+            .select('id,user_id,title,message,type,created_at,payment_id')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(100),
+          supabase
+            .from('notification_reads')
+            .select('notification_id')
+            .eq('user_id', user.id),
+        ])
 
-        if (error) throw error
+        if (notificationResult.error) throw notificationResult.error
+        if (readResult.error) throw readResult.error
 
-        const orderNotices = (data || [])
-          .filter((notice: any) => notice.is_active !== false)
-          .filter((notice: any) => isApprovalNoticeForOrder(notice, user.id))
-          .map((notice: any) => ({
-            ...notice,
-            kind: notice.kind ?? notice.type ?? 'payment_approved',
-            message: notice.body ?? notice.message ?? '',
-          }))
+        const readIds = new Set<string>((readResult.data ?? []).map((row) => row.notification_id))
+        const orderNotices = ((notificationResult.data ?? []) as any[])
+          .filter((notice) => isApprovalNoticeForOrder(notice, user.id))
 
         if (isActive) {
+          setNotificationUserId(user.id)
           setNotifications(orderNotices.slice(0, 30))
-          // بعض إصدارات المخطط لا تملك is_read؛ في هذه الحالة لا يمكن حساب غير المقروء بدقة.
-          setUnreadCount(orderNotices.filter((notice: any) => notice.is_read === false).length)
+          setReadNotificationIds(readIds)
+          setNotificationError('')
         }
 
         return user
       } catch (error) {
         console.warn('Fetch customer approval notifications error:', error)
+        if (isActive) setNotificationError('تعذر تحميل الإشعارات أو حالة قراءتها. حاول تحديث الصفحة.')
         return null
       }
     }
 
-    const setupNotificationListener = async () => {
+  const setupNotificationListener = async () => {
       const user = await fetchNotifications()
       if (!user || !isActive) return
 
@@ -502,12 +508,10 @@ function PayPage() {
             const rawNotice = payload.new as any
 
             if (!isApprovalNoticeForOrder(rawNotice, user.id)) return
-            if (rawNotice.is_active === false) return
 
             const newNotice = {
               ...rawNotice,
-              kind: rawNotice.kind ?? rawNotice.type ?? 'payment_approved',
-              message: rawNotice.body ?? rawNotice.message ?? '',
+              message: rawNotice.message ?? '',
             }
 
             setNotifications((previous) =>
@@ -585,18 +589,49 @@ function PayPage() {
     setTimeout(() => setBellShake(false), 600)
   }
 
-  // تعليم جميع الإشعارات كمقروءة
-  const handleMarkAllRead = async () => {
-    setUnreadCount(0)
-    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })))
-    try {
-      const ids = notifications.filter((n) => !n.is_read).map((n) => n.id)
-      if (ids.length > 0) {
-        await (supabase.from('notifications') as any).update({ is_read: true }).in('id', ids)
-      }
-    } catch (e) {
-      console.warn('Mark read error:', e)
+  // عداد الجرس مشتق من سجلات notification_reads المحفوظة للمستخدم.
+  const unreadCount = notifications.filter((notice) => !readNotificationIds.has(notice.id)).length
+
+  const handleMarkRead = async (notificationId: string) => {
+    if (!notificationUserId || readNotificationIds.has(notificationId)) return
+
+    const { error } = await (supabase.from('notification_reads' as never) as any).upsert(
+      { notification_id: notificationId, user_id: notificationUserId },
+      { onConflict: 'notification_id,user_id' },
+    )
+
+    if (error) {
+      console.warn('Mark notification read error:', error)
+      setNotificationError('تعذر حفظ حالة قراءة الإشعار. حاول مجددًا.')
+      return
     }
+
+    setReadNotificationIds((current) => new Set(current).add(notificationId))
+    setNotificationError('')
+  }
+
+  const handleMarkAllRead = async () => {
+    if (!notificationUserId) return
+    const unread = notifications.filter((notice) => !readNotificationIds.has(notice.id))
+    if (unread.length === 0) return
+
+    const { error } = await (supabase.from('notification_reads' as never) as any).upsert(
+      unread.map((notice) => ({ notification_id: notice.id, user_id: notificationUserId })),
+      { onConflict: 'notification_id,user_id' },
+    )
+
+    if (error) {
+      console.warn('Mark all notifications read error:', error)
+      setNotificationError('تعذر حفظ حالة قراءة الإشعارات. حاول مجددًا.')
+      return
+    }
+
+    setReadNotificationIds((current) => {
+      const next = new Set(current)
+      unread.forEach((notice) => next.add(notice.id))
+      return next
+    })
+    setNotificationError('')
   }
 
   const handleNotifyAdmin = async () => {
@@ -763,9 +798,6 @@ function PayPage() {
                 title="سجل الإشعارات"
                 onClick={() => {
                   setShowBellMenu(!showBellMenu)
-                  if (!showBellMenu && unreadCount > 0) {
-                    setUnreadCount(0)
-                  }
                 }}
               >
                 <Bell />
@@ -789,6 +821,7 @@ function PayPage() {
                     )}
                   </div>
 
+                  {notificationError && <div className="notif-error" role="alert">{notificationError}</div>}
                   {notifications.length === 0 ? (
                     <div className="notif-empty">
                       لا توجد إشعارات جديدة حالياً
@@ -798,15 +831,24 @@ function PayPage() {
                       {notifications.map((n) => (
                         <div
                           key={n.id}
-                          className={`notif-item ${/اعتماد|approved/i.test(n.title + (n.body || n.message || '')) ? 'approved' : ''}`}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => void handleMarkRead(n.id)}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault()
+                              void handleMarkRead(n.id)
+                            }
+                          }}
+                          className={`notif-item ${/اعتماد|approved/i.test(n.title + (n.message || '')) ? 'approved' : ''} ${!readNotificationIds.has(n.id) ? 'notif-unread' : ''}`}
                         >
                           <div className="notif-item-title">
                             <span>{n.title}</span>
-                            {!n.is_read && (
+                            {!readNotificationIds.has(n.id) && (
                               <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444', display: 'inline-block' }} />
                             )}
                           </div>
-                          <div className="notif-item-desc">{n.body || n.message}</div>
+                          <div className="notif-item-desc">{n.message}</div>
                           <div className="notif-item-time">
                             {n.created_at
                               ? new Date(n.created_at).toLocaleTimeString('ar-YE', { hour: '2-digit', minute: '2-digit' })
