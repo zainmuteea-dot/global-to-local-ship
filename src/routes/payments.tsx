@@ -224,26 +224,11 @@ function PaymentsPage() {
         throw new Error("الحساب لا يحمل دور admin أو staff.");
       }
 
+      // Read the existing production row shape without naming optional columns.
+      // This avoids PostgREST failing when requested_amount or similar columns
+      // are not present in the connected production database.
       const { data, error } = await (supabase.from("payments") as any)
-        .select(
-          [
-            "id",
-            "amount",
-            "requested_amount",
-            "received_amount",
-            "remaining_amount",
-            "created_at",
-            "customer_name",
-            "receipt_image",
-            "reviewed_at",
-            "status",
-            "tracking_code",
-            "updated_at",
-            "user_id",
-            "wallet",
-          ].join(","),
-        )
-        .order("created_at", { ascending: false });
+        .select("*");
 
       if (error) {
         throw new Error(
@@ -255,15 +240,13 @@ function PaymentsPage() {
 
       const nextRows: PaymentRecord[] = (data ?? []).map((row: any) => {
         const status = normalizeStatus(row.status);
+        const baseAmount = Number(row.amount ?? 0);
         const requestedAmount =
           row.requested_amount == null
-            ? null
+            ? baseAmount
             : Number(row.requested_amount);
         const receivedAmount =
           row.received_amount == null ? null : Number(row.received_amount);
-        const baseAmount = Number(row.amount ?? 0);
-
-        // في الدفعات المعتمدة، amount في الإحصاءات يمثل المقبوض الفعلي.
         const amount =
           status === "approved"
             ? receivedAmount ?? baseAmount
@@ -271,11 +254,17 @@ function PaymentsPage() {
 
         return {
           id: String(row.id),
-          tracking: String(row.tracking_code ?? ""),
-          customer: String(row.customer_name ?? "عميل"),
+          tracking: String(
+            row.tracking_code ?? row.order_tracking ?? row.tracking ?? "",
+          ),
+          customer: String(
+            row.customer_name ?? row.name ?? row.phone ?? "عميل",
+          ),
           amount,
-          method: String(row.wallet ?? "غير محدد"),
-          createdAt: String(row.created_at ?? ""),
+          method: String(
+            row.wallet ?? row.payment_method ?? row.method ?? "غير محدد",
+          ),
+          createdAt: String(row.created_at ?? row.updated_at ?? ""),
           status,
           archived: false,
           requestedAmount,
@@ -284,10 +273,17 @@ function PaymentsPage() {
             row.remaining_amount == null
               ? null
               : Number(row.remaining_amount),
-          receiptImage: row.receipt_image ?? null,
+          receiptImage:
+            row.receipt_image ?? row.receipt_url ?? row.proof_url ?? null,
           reviewedAt: row.reviewed_at ?? null,
           userId: row.user_id ?? null,
         };
+      }).sort((a: PaymentRecord, b: PaymentRecord) => {
+        const aTime = Date.parse(a.createdAt);
+        const bTime = Date.parse(b.createdAt);
+        if (!Number.isFinite(aTime)) return 1;
+        if (!Number.isFinite(bTime)) return -1;
+        return bTime - aTime;
       });
 
       setRows(nextRows);
@@ -419,10 +415,7 @@ function PaymentsPage() {
     try {
       const { error } = await supabase
         .from("payments")
-        .update({
-          status: "rejected",
-          reviewed_at: new Date().toISOString(),
-        })
+        .update({ status: "rejected" })
         .eq("id", payment.id)
         .in("status", ["pending", "بانتظار التأكيد"]);
 
