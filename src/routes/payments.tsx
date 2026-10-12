@@ -375,16 +375,29 @@ function PaymentsPage() {
     setBusy(payment.id);
 
     try {
-      const { error } = await (supabase as any).rpc(
-        "approve_payment_received",
-        {
-          _payment_id: payment.id,
-          _received_amount: received,
-        },
-      );
+      // Production has no approve_payment_received RPC. The payments AFTER UPDATE
+      // trigger handles the receipt, fund balance, order totals, and customer notice
+      // when status changes to approved. This conditional update is the single
+      // atomic approval action; keeping the pending filter prevents double approval.
+      const { data: approvedRow, error } = await (supabase.from("payments") as any)
+        .update({
+          amount: received,
+          status: "approved",
+          reviewed_at: new Date().toISOString(),
+        })
+        .eq("id", payment.id)
+        .in("status", ["pending", "بانتظار التأكيد"])
+        .select("id")
+        .maybeSingle();
 
       if (error) {
         throw new Error(error.message || "تعذر اعتماد الدفعة.");
+      }
+
+      if (!approvedRow) {
+        throw new Error(
+          "لم يتم الاعتماد: الدفعة لم تعد معلّقة، أو لا تسمح صلاحيات قاعدة البيانات بتحديثها.",
+        );
       }
 
       await load();
