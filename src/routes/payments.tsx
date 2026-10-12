@@ -1104,9 +1104,6 @@ function PaymentsPage() {
 
               {!loading &&
                 filtered.map((payment) => {
-                  const isPending = PENDING_APPROVAL_STATUSES.includes(
-                    payment.status,
-                  );
                   const isArchived = archivedIds.has(payment.id);
                   const amount = Number(payment.amount || 0);
 
@@ -1197,60 +1194,36 @@ function PaymentsPage() {
                         </span>
                       </td>
 
-                      {/* التفاصيل / الإجراءات */}
+                      {/* التفاصيل — أيقونة العين تفتح نافذة التعديل (البيانات والمبلغ) */}
                       <td className="p-3">
-                        <div className="flex flex-wrap gap-1.5">
-                          <button
-                            type="button"
-                            disabled={busy === payment.id}
-                            onClick={() => startEdit(payment)}
-                            className="rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-1.5 text-[11px] font-bold text-sky-800 disabled:opacity-50"
+                        <button
+                          type="button"
+                          disabled={busy === payment.id}
+                          onClick={() => startEdit(payment)}
+                          className="grid h-9 w-9 place-items-center rounded-full bg-slate-100 text-slate-600 transition hover:bg-slate-200 hover:text-[#0F4C81] disabled:opacity-50"
+                          aria-label="عرض وتعديل تفاصيل الطلب"
+                          title="عرض وتعديل بيانات الطلب والمبلغ"
+                        >
+                          <svg
+                            className="h-5 w-5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
                           >
-                            تعديل
-                          </button>
-
-                          {!isArchived && isPending && (
-                            <>
-                              <button
-                                type="button"
-                                disabled={busy === payment.id}
-                                onClick={() => void approve(payment)}
-                                className="rounded-lg bg-emerald-600 px-2.5 py-1.5 text-[11px] font-bold text-white disabled:opacity-50"
-                              >
-                                {busy === payment.id ? "جارٍ…" : "اعتماد ✓"}
-                              </button>
-
-                              <button
-                                type="button"
-                                disabled={busy === payment.id}
-                                onClick={() => void reject(payment)}
-                                className="rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-[11px] font-bold text-red-700 disabled:opacity-50"
-                              >
-                                رفض
-                              </button>
-                            </>
-                          )}
-
-                          {isArchived ? (
-                            <button
-                              type="button"
-                              disabled={busy === payment.id}
-                              onClick={() => void restore(payment)}
-                              className="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-[11px] font-bold text-emerald-800 disabled:opacity-50"
-                            >
-                              استعادة
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              disabled={busy === payment.id}
-                              onClick={() => void archive(payment)}
-                              className="rounded-lg border border-slate-300 bg-slate-100 px-2.5 py-1.5 text-[11px] font-bold text-slate-700 disabled:opacity-50"
-                            >
-                              أرشفة
-                            </button>
-                          )}
-                        </div>
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                            />
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                            />
+                          </svg>
+                        </button>
                       </td>
                     </tr>
                   );
@@ -1403,6 +1376,72 @@ function PaymentsPage() {
                   />
                 </Field>
               </div>
+            </div>
+
+            {/* إجراءات الطلب: اعتماد / رفض / أرشفة / استعادة */}
+            <div className="mt-4 flex flex-wrap gap-2 border-t pt-4">
+              {!archivedIds.has(editing.id) &&
+                PENDING_APPROVAL_STATUSES.includes(editing.status) && (
+                  <>
+                    <button
+                      type="button"
+                      disabled={busy === editing.id}
+                      onClick={() => {
+                        const target = editing;
+                        setEditing(null);
+                        setDraft(null);
+                        if (target) void approve(target);
+                      }}
+                      className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
+                    >
+                      اعتماد الدفعة ✓
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={busy === editing.id}
+                      onClick={() => {
+                        const target = editing;
+                        setEditing(null);
+                        setDraft(null);
+                        if (target) void reject(target);
+                      }}
+                      className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-bold text-red-700 disabled:opacity-50"
+                    >
+                      رفض السند
+                    </button>
+                  </>
+                )}
+
+              {archivedIds.has(editing.id) ? (
+                <button
+                  type="button"
+                  disabled={busy === editing.id}
+                  onClick={() => {
+                    const target = editing;
+                    setEditing(null);
+                    setDraft(null);
+                    if (target) void restore(target);
+                  }}
+                  className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-800 disabled:opacity-50"
+                >
+                  استعادة من الأرشيف
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={busy === editing.id}
+                  onClick={() => {
+                    const target = editing;
+                    setEditing(null);
+                    setDraft(null);
+                    if (target) void archive(target);
+                  }}
+                  className="rounded-xl border border-slate-300 bg-slate-100 px-4 py-2 text-sm font-bold text-slate-700 disabled:opacity-50"
+                >
+                  أرشفة الطلب
+                </button>
+              )}
             </div>
 
             <div className="mt-5 flex justify-end gap-2">
