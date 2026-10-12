@@ -407,12 +407,26 @@ function PayPage() {
     }
   }
 
-  // إشعارات اعتماد دفعات العميل فقط، مع تحديث لحظي للطلب والدفعات.
+  // إشعارات اعتماد دفعات العميل: مخطط المشروع يستخدم kind/body لا type/message.
   useEffect(() => {
     if (!orderNo) return
 
     let isActive = true
     let notifChannel: any = null
+    let paymentsChannel: any = null
+
+    const isApprovalNoticeForOrder = (notice: any, userId: string) => {
+      if (!notice || notice.user_id !== userId) return false
+      const category = String(notice.kind ?? notice.type ?? '').toLowerCase()
+      const title = String(notice.title ?? '')
+      const body = String(notice.body ?? notice.message ?? '')
+      const searchableText = `${title} ${body} ${notice.href ?? ''}`
+      const isPaymentApproval =
+        category.includes('payment') ||
+        /اعتماد|اعتمد|approved/i.test(`${title} ${body}`)
+
+      return isPaymentApproval && searchableText.includes(orderNo)
+    }
 
     const fetchNotifications = async () => {
       try {
@@ -431,25 +445,33 @@ function PayPage() {
           return null
         }
 
-        const { data, error } = await supabase
-          .from('notifications')
+        // لا نطلب أعمدة غير موجودة في مخطط notifications الحالي.
+        const { data, error } = await (supabase.from('notifications') as any)
           .select('*')
           .eq('user_id', user.id)
-          .eq('type', 'payment_approved')
-          .ilike('message', `%${orderNo}%`)
           .order('created_at', { ascending: false })
-          .limit(10)
+          .limit(100)
 
         if (error) throw error
 
-        if (isActive && data) {
-          setNotifications(data)
-          setUnreadCount(data.filter((n: any) => !n.is_read).length)
+        const orderNotices = (data || [])
+          .filter((notice: any) => notice.is_active !== false)
+          .filter((notice: any) => isApprovalNoticeForOrder(notice, user.id))
+          .map((notice: any) => ({
+            ...notice,
+            kind: notice.kind ?? notice.type ?? 'payment_approved',
+            message: notice.body ?? notice.message ?? '',
+          }))
+
+        if (isActive) {
+          setNotifications(orderNotices.slice(0, 30))
+          // بعض إصدارات المخطط لا تملك is_read؛ في هذه الحالة لا يمكن حساب غير المقروء بدقة.
+          setUnreadCount(orderNotices.filter((notice: any) => notice.is_read === false).length)
         }
 
         return user
       } catch (error) {
-        console.warn('Fetch notifications error:', error)
+        console.warn('Fetch customer approval notifications error:', error)
         return null
       }
     }
@@ -469,71 +491,72 @@ function PayPage() {
             filter: `user_id=eq.${user.id}`,
           },
           (payload) => {
-            const newN = payload.new as any
+            const rawNotice = payload.new as any
 
-            // لا نعرض إلا إشعار اعتماد الدفعة الموجّه لهذا العميل ولهذا الطلب.
-            if (
-              !newN ||
-              newN.user_id !== user.id ||
-              newN.type !== 'payment_approved' ||
-              typeof newN.message !== 'string' ||
-              !newN.message.includes(orderNo)
-            ) {
-              return
+            if (!isApprovalNoticeForOrder(rawNotice, user.id)) return
+            if (rawNotice.is_active === false) return
+
+            const newNotice = {
+              ...rawNotice,
+              kind: rawNotice.kind ?? rawNotice.type ?? 'payment_approved',
+              message: rawNotice.body ?? rawNotice.message ?? '',
             }
 
-            setNotifications((prev) =>
-              [newN, ...prev.filter((n: any) => n.id !== newN.id)].slice(0, 10),
+            setNotifications((previous) =>
+              [newNotice, ...previous.filter((notice: any) => notice.id !== newNotice.id)].slice(0, 30),
             )
-
-            if (!newN.is_read) {
-              setUnreadCount((prev) => prev + 1)
-            }
-
-            setActiveBanner(newN)
+            setActiveBanner(newNotice)
             setBellShake(true)
             window.setTimeout(() => setBellShake(false), 1200)
             playNotificationTone()
             void loadOrderData()
           },
         )
-        .subscribe()
+        .subscribe((status: string) => {
+          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            console.warn('Customer notification Realtime status:', status)
+          }
+        })
+
+      paymentsChannel = supabase
+        .channel(`realtime-payments-${orderNo}-${user.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'payments',
+            filter: `tracking_code=eq.${orderNo}`,
+          },
+          () => {
+            void loadOrderData()
+          },
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'orders',
+            filter: `tracking_code=eq.${orderNo}`,
+          },
+          () => {
+            void loadOrderData()
+          },
+        )
+        .subscribe((status: string) => {
+          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            console.warn('Order Realtime status:', status)
+          }
+        })
     }
 
     void setupNotificationListener()
 
-    const paymentsChannel = supabase
-      .channel(`realtime-payments-${orderNo}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'payments',
-          filter: `order_tracking=eq.${orderNo}`,
-        },
-        () => {
-          void loadOrderData()
-        },
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'orders',
-          filter: `tracking_code=eq.${orderNo}`,
-        },
-        () => {
-          void loadOrderData()
-        },
-      )
-      .subscribe()
-
     return () => {
       isActive = false
       if (notifChannel) void supabase.removeChannel(notifChannel)
-      void supabase.removeChannel(paymentsChannel)
+      if (paymentsChannel) void supabase.removeChannel(paymentsChannel)
     }
   }, [orderNo, loadOrderData, playNotificationTone])
 
@@ -682,7 +705,7 @@ function PayPage() {
               <div className="pay-banner-icon">🎉</div>
               <div>
                 <div className="pay-banner-title">{activeBanner.title || 'تم اعتماد دفعتك بنجاح ✓'}</div>
-                <div className="pay-banner-sub">{activeBanner.message || 'تم تأكيد استلام المبلغ بنجاح!'}</div>
+                <div className="pay-banner-sub">{activeBanner.body || activeBanner.message || 'تم تأكيد استلام المبلغ بنجاح!'}</div>
               </div>
             </div>
             <div className="pay-banner-actions">
@@ -767,7 +790,7 @@ function PayPage() {
                       {notifications.map((n) => (
                         <div
                           key={n.id}
-                          className={`notif-item ${/اعتماد|approved/i.test(n.title + n.message) ? 'approved' : ''}`}
+                          className={`notif-item ${/اعتماد|approved/i.test(n.title + (n.body || n.message || '')) ? 'approved' : ''}`}
                         >
                           <div className="notif-item-title">
                             <span>{n.title}</span>
@@ -775,7 +798,7 @@ function PayPage() {
                               <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444', display: 'inline-block' }} />
                             )}
                           </div>
-                          <div className="notif-item-desc">{n.message}</div>
+                          <div className="notif-item-desc">{n.body || n.message}</div>
                           <div className="notif-item-time">
                             {n.created_at
                               ? new Date(n.created_at).toLocaleTimeString('ar-YE', { hour: '2-digit', minute: '2-digit' })
