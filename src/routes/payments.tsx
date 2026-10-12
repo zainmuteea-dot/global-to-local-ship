@@ -131,6 +131,25 @@ export const Route = createFileRoute("/payments")({
 
 const fmt = (value: number) => Math.round(value).toLocaleString("en-US");
 
+function playPaymentTone(context: AudioContext) {
+  [880, 1174].forEach((frequency, index) => {
+    const startAt = context.currentTime + index * 0.18;
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(frequency, startAt);
+    gain.gain.setValueAtTime(0.0001, startAt);
+    gain.gain.exponentialRampToValueAtTime(0.16, startAt + 0.025);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startAt + 0.14);
+
+    oscillator.connect(gain);
+    gain.connect(context.destination);
+    oscillator.start(startAt);
+    oscillator.stop(startAt + 0.15);
+  });
+}
+
 const STATUS_LABELS: Record<PaymentFilter, string> = {
   pending: "بانتظار المراجعة",
   approved: "معتمدة",
@@ -182,8 +201,40 @@ function PaymentsPage() {
   // يعرض شاشة التحميل الكاملة عند أول تحميل فقط.
   // في التحديثات التالية تبقى الطلبات الحالية ظاهرة.
   const hasLoadedOnceRef = useRef(false);
+  // null تعني أن أول قراءة ناجحة لم تنتهِ بعد؛ هذه القراءة تهيّئ baseline بصمت.
+  const knownPendingIdsRef = useRef<Set<string> | null>(null);
+  const loadSequenceRef = useRef(0);
+  const soundEnabledRef = useRef(false);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const [soundEnabled, setSoundEnabled] = useState(false);
+  const [incomingAlert, setIncomingAlert] = useState("");
+
+  const togglePaymentSound = useCallback(async () => {
+    if (soundEnabledRef.current) {
+      soundEnabledRef.current = false;
+      setSoundEnabled(false);
+      return;
+    }
+
+    try {
+      const context =
+        audioContextRef.current && audioContextRef.current.state !== "closed"
+          ? audioContextRef.current
+          : new window.AudioContext();
+
+      audioContextRef.current = context;
+      await context.resume();
+      playPaymentTone(context);
+      soundEnabledRef.current = true;
+      setSoundEnabled(true);
+    } catch (cause) {
+      console.error("تعذر تفعيل صوت تنبيهات الدفع:", cause);
+      setErr("تعذر تفعيل الصوت. جرّب الضغط على زر تفعيل الصوت مرة أخرى.");
+    }
+  }, []);
 
   const load = useCallback(async () => {
+    const requestSequence = ++loadSequenceRef.current;
     if (!hasLoadedOnceRef.current) {
       setLoading(true);
     }
@@ -241,6 +292,9 @@ function PaymentsPage() {
         );
       }
 
+      // تجاهل نتائج الطلبات الأقدم إذا اكتمل طلب تحديث أحدث قبلها.
+      if (requestSequence !== loadSequenceRef.current) return;
+
       const nextRows: PaymentRecord[] = (data ?? []).map((row: any) => {
         const status = normalizeStatus(row.status);
         const baseAmount = Number(row.amount ?? 0);
@@ -289,6 +343,48 @@ function PaymentsPage() {
         return bTime - aTime;
       });
 
+      const nextPendingIds = new Set(
+        nextRows
+          .filter((payment) => payment.status === "pending")
+          .map((payment) => payment.id),
+      );
+      const previouslyKnownIds = knownPendingIdsRef.current;
+
+      if (previouslyKnownIds === null) {
+        // لا تنبّه على دفعات قديمة موجودة عند فتح الصفحة؛ نهيئ المقارنة فقط.
+        knownPendingIdsRef.current = nextPendingIds;
+      } else {
+        const newPendingPayments = nextRows.filter(
+          (payment) =>
+            payment.status === "pending" &&
+            !previouslyKnownIds.has(payment.id),
+        );
+
+        // حدّث baseline قبل إصدار التنبيه لمنع تكراره عند أحداث Realtime المتقاربة.
+        knownPendingIdsRef.current = nextPendingIds;
+
+        if (newPendingPayments.length > 0) {
+          const newestPayment = newPendingPayments[0];
+          setIncomingAlert(
+            `وصل ${newPendingPayments.length} طلب دفع جديد${
+              newestPayment.tracking
+                ? ` • رقم الطلب ${newestPayment.tracking}`
+                : ""
+            }`,
+          );
+
+          const context = audioContextRef.current;
+          if (soundEnabledRef.current && context) {
+            void context
+              .resume()
+              .then(() => playPaymentTone(context))
+              .catch((cause) =>
+                console.error("تعذر تشغيل نغمة الدفعة الجديدة:", cause),
+              );
+          }
+        }
+      }
+
       setRows(nextRows);
 
       setReceivedInputs((previous) => {
@@ -305,14 +401,18 @@ function PaymentsPage() {
         return next;
       });
     } catch (cause) {
-      console.error("تعذر تحميل طلبات الدفع:", cause);
-      setErr(
-        cause instanceof Error ? cause.message : "تعذر تحميل طلبات الدفع.",
-      );
+      if (requestSequence === loadSequenceRef.current) {
+        console.error("تعذر تحميل طلبات الدفع:", cause);
+        setErr(
+          cause instanceof Error ? cause.message : "تعذر تحميل طلبات الدفع.",
+        );
+      }
     } finally {
-      hasLoadedOnceRef.current = true;
-      setLoading(false);
-      setRefreshing(false);
+      if (requestSequence === loadSequenceRef.current) {
+        hasLoadedOnceRef.current = true;
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, []);
 
@@ -364,6 +464,13 @@ function PaymentsPage() {
     return () => {
       window.clearInterval(intervalId);
       void supabase.removeChannel(channel);
+      const context = audioContextRef.current;
+      audioContextRef.current = null;
+      if (context && context.state !== "closed") {
+        void context.close().catch((cause) =>
+          console.error("تعذر إغلاق سياق الصوت:", cause),
+        );
+      }
     };
   }, [load]);
 
@@ -573,9 +680,19 @@ function PaymentsPage() {
             <h1 className="mt-1 text-xl font-black sm:text-2xl">طلبات الدفع والمحاسبة</h1>
             <p className="mt-1 text-xs text-sky-200">مراجعة الدفعات واعتماد المقبوض الفعلي</p>
           </div>
-          <Link to="/admin" className="rounded-xl bg-white/15 px-4 py-2 text-sm font-bold hover:bg-white/25">
-            ← لوحة الإدارة
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void togglePaymentSound()}
+              aria-pressed={soundEnabled}
+              className="rounded-xl bg-white/15 px-4 py-2 text-sm font-bold hover:bg-white/25"
+            >
+              {soundEnabled ? "🔔 الصوت مفعّل" : "🔕 تفعيل صوت التنبيه"}
+            </button>
+            <Link to="/admin" className="rounded-xl bg-white/15 px-4 py-2 text-sm font-bold hover:bg-white/25">
+              ← لوحة الإدارة
+            </Link>
+          </div>
         </header>
 
         {err && (
@@ -584,6 +701,23 @@ function PaymentsPage() {
             <p className="mt-1 break-words">{err}</p>
             <button type="button" onClick={() => void load()} className="mt-2 rounded-lg bg-red-100 px-3 py-1.5 font-bold">
               إعادة تحميل البيانات
+            </button>
+          </div>
+        )}
+
+        {incomingAlert && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold text-emerald-800"
+          >
+            <span>🔔 {incomingAlert}</span>
+            <button
+              type="button"
+              onClick={() => setIncomingAlert("")}
+              className="rounded-lg px-3 py-1 hover:bg-emerald-100"
+            >
+              إخفاء
             </button>
           </div>
         )}
