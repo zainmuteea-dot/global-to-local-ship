@@ -219,6 +219,26 @@ function fmt(n: number) {
   return Number(Math.round(n)).toLocaleString('en-US')
 }
 
+// نغمة قصيرة من Web Audio API، لا تحتاج إلى ملف صوت خارجي.
+function playApprovalTone(context: AudioContext) {
+  const now = context.currentTime
+  const oscillator = context.createOscillator()
+  const gain = context.createGain()
+
+  oscillator.type = 'sine'
+  oscillator.frequency.setValueAtTime(880, now)
+  oscillator.frequency.setValueAtTime(1174, now + 0.13)
+  gain.gain.setValueAtTime(0.0001, now)
+  gain.gain.exponentialRampToValueAtTime(0.16, now + 0.025)
+  gain.gain.setValueAtTime(0.16, now + 0.16)
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.42)
+
+  oscillator.connect(gain)
+  gain.connect(context.destination)
+  oscillator.start(now)
+  oscillator.stop(now + 0.43)
+}
+
 function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
 }
@@ -254,6 +274,8 @@ function PayPage() {
   const [activeBanner, setActiveBanner] = useState<any | null>(null)
   const [showBellMenu, setShowBellMenu] = useState(false)
   const [bellShake, setBellShake] = useState(false)
+  const [notificationSoundEnabled, setNotificationSoundEnabled] = useState(false)
+  const audioContextRef = useRef<AudioContext | null>(null)
 
   const remaining = Math.max(total - paid, 0)
   const isPaid = /مدفوع|مكتمل|paid|complete/i.test(status) && !/غير|جزئي/i.test(status)
@@ -355,75 +377,174 @@ function PayPage() {
     loadOrderData()
   }, [loadOrderData])
 
-  // جلب الإشعارات والاستماع اللحظي (Supabase Realtime)
+  const playNotificationTone = useCallback(() => {
+    if (!notificationSoundEnabled) return
+
+    const context = audioContextRef.current
+    if (!context || context.state === 'closed') return
+
+    void context.resume()
+      .then(() => playApprovalTone(context))
+      .catch((error) => console.warn('Notification sound error:', error))
+  }, [notificationSoundEnabled])
+
+  const toggleNotificationSound = async () => {
+    if (notificationSoundEnabled) {
+      setNotificationSoundEnabled(false)
+      return
+    }
+
+    try {
+      const context = audioContextRef.current ?? new window.AudioContext()
+      audioContextRef.current = context
+      await context.resume()
+      setNotificationSoundEnabled(true)
+      // نغمة اختبار قصيرة بعد ضغط المستخدم لتأكيد أن الصوت يعمل.
+      playApprovalTone(context)
+    } catch (error) {
+      console.warn('Could not enable notification sound:', error)
+      setNotificationSoundEnabled(false)
+    }
+  }
+
+  // إشعارات اعتماد دفعات العميل فقط، مع تحديث لحظي للطلب والدفعات.
   useEffect(() => {
     if (!orderNo) return
 
+    let isActive = true
+    let notifChannel: any = null
+
     const fetchNotifications = async () => {
       try {
-        const { data } = await supabase
+        const {
+          data: { user },
+          error: authError,
+        } = await supabase.auth.getUser()
+
+        if (authError) throw authError
+
+        if (!user) {
+          if (isActive) {
+            setNotifications([])
+            setUnreadCount(0)
+          }
+          return null
+        }
+
+        const { data, error } = await supabase
           .from('notifications')
           .select('*')
+          .eq('user_id', user.id)
+          .eq('type', 'payment_approved')
           .ilike('message', `%${orderNo}%`)
           .order('created_at', { ascending: false })
-          .limit(15)
+          .limit(10)
 
-        if (data) {
+        if (error) throw error
+
+        if (isActive && data) {
           setNotifications(data)
-          const unread = data.filter((n: any) => !n.is_read).length
-          setUnreadCount(unread)
+          setUnreadCount(data.filter((n: any) => !n.is_read).length)
         }
-      } catch (e) {
-        console.warn('Fetch notifications error:', e)
+
+        return user
+      } catch (error) {
+        console.warn('Fetch notifications error:', error)
+        return null
       }
     }
 
-    fetchNotifications()
+    const setupNotificationListener = async () => {
+      const user = await fetchNotifications()
+      if (!user || !isActive) return
 
-    // 1. الاستماع لجدول الإشعارات
-    const notifChannel = supabase
-      .channel(`realtime-notif-${orderNo}`)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'notifications' },
-        (payload) => {
-          const newN = payload.new as any
-          if (newN && newN.message && newN.message.includes(orderNo)) {
-            setNotifications((prev) => [newN, ...prev])
-            setUnreadCount((prev) => prev + 1)
+      notifChannel = supabase
+        .channel(`client-notif-${orderNo}-${user.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`,
+          },
+          (payload) => {
+            const newN = payload.new as any
+
+            // لا نعرض إلا إشعار اعتماد الدفعة الموجّه لهذا العميل ولهذا الطلب.
+            if (
+              !newN ||
+              newN.user_id !== user.id ||
+              newN.type !== 'payment_approved' ||
+              typeof newN.message !== 'string' ||
+              !newN.message.includes(orderNo)
+            ) {
+              return
+            }
+
+            setNotifications((prev) =>
+              [newN, ...prev.filter((n: any) => n.id !== newN.id)].slice(0, 10),
+            )
+
+            if (!newN.is_read) {
+              setUnreadCount((prev) => prev + 1)
+            }
+
             setActiveBanner(newN)
             setBellShake(true)
-            setTimeout(() => setBellShake(false), 1200)
-            loadOrderData()
-          }
-        }
-      )
-      .subscribe()
+            window.setTimeout(() => setBellShake(false), 1200)
+            playNotificationTone()
+            void loadOrderData()
+          },
+        )
+        .subscribe()
+    }
 
-    // 2. الاستماع لتحديثات الدفعات والطلب في نفس اللحظة
+    void setupNotificationListener()
+
     const paymentsChannel = supabase
       .channel(`realtime-payments-${orderNo}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'payments', filter: `order_tracking=eq.${orderNo}` },
+        {
+          event: '*',
+          schema: 'public',
+          table: 'payments',
+          filter: `order_tracking=eq.${orderNo}`,
+        },
         () => {
-          loadOrderData()
-        }
+          void loadOrderData()
+        },
       )
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'orders', filter: `tracking_code=eq.${orderNo}` },
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'orders',
+          filter: `tracking_code=eq.${orderNo}`,
+        },
         () => {
-          loadOrderData()
-        }
+          void loadOrderData()
+        },
       )
       .subscribe()
 
     return () => {
-      supabase.removeChannel(notifChannel)
-      supabase.removeChannel(paymentsChannel)
+      isActive = false
+      if (notifChannel) void supabase.removeChannel(notifChannel)
+      void supabase.removeChannel(paymentsChannel)
     }
-  }, [orderNo, loadOrderData])
+  }, [orderNo, loadOrderData, playNotificationTone])
+
+  useEffect(() => {
+    return () => {
+      const context = audioContextRef.current
+      if (context && context.state !== 'closed') {
+        void context.close()
+      }
+    }
+  }, [])
 
   // عند الضغط على الشريط المنبثق في رأس الصفحة: يختفي وينتقل ليفتح جرس الإشعارات
   const handleBannerClick = () => {
@@ -506,22 +627,12 @@ function PayPage() {
         account_number: UNIFIED_PHONE,
       }
 
-      const { data: savedPayment, error: payErr } = await (supabase.from('payments') as any)
+      const { error: payErr } = await (supabase.from('payments') as any)
         .insert(paymentPayload)
-        .select('id')
-        .single()
 
       if (payErr) {
         throw new Error(`تعذر حفظ الدفعة: ${payErr.message}`)
       }
-
-      await (supabase.from('notifications') as any)
-        .insert({
-          user_id: user.id,
-          title: 'طلب الدفع',
-          message: `تم استلام طلب الدفع للمراجعة للطلب (${orderNo})`,
-          payment_id: savedPayment.id,
-        })
 
       setPaymentSaved(true)
       setStatus('قيد مراجعة الدفع والتأكيد')
@@ -602,6 +713,17 @@ function PayPage() {
           </div>
 
           <div className="pay-top-actions">
+            <button
+              type="button"
+              className="pay-bell-btn"
+              title={notificationSoundEnabled ? 'إيقاف صوت الإشعارات' : 'تفعيل صوت الإشعارات'}
+              aria-label={notificationSoundEnabled ? 'إيقاف صوت الإشعارات' : 'تفعيل صوت الإشعارات'}
+              aria-pressed={notificationSoundEnabled}
+              onClick={() => void toggleNotificationSound()}
+              style={{ fontSize: 18 }}
+            >
+              {notificationSoundEnabled ? '🔊' : '🔇'}
+            </button>
             {/* جرس الإشعارات */}
             <div style={{ position: 'relative' }}>
               <button
