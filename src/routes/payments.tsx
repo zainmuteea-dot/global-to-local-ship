@@ -176,6 +176,7 @@ function PaymentsPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [err, setErr] = useState("");
   const [preview, setPreview] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
 
   // يعرض شاشة التحميل الكاملة عند أول تحميل فقط.
@@ -228,7 +229,9 @@ function PaymentsPage() {
       // This avoids PostgREST failing when requested_amount or similar columns
       // are not present in the connected production database.
       const { data, error } = await (supabase.from("payments") as any)
-        .select("*");
+        .select(
+          "id, order_tracking, customer_name, method, amount, status, created_at, currency, phone, tracking_code, payment_method, user_id, wallet, reviewed_at, updated_at, remaining_amount",
+        );
 
       if (error) {
         throw new Error(
@@ -273,8 +276,8 @@ function PaymentsPage() {
             row.remaining_amount == null
               ? null
               : Number(row.remaining_amount),
-          receiptImage:
-            row.receipt_image ?? row.receipt_url ?? row.proof_url ?? null,
+          // لا نحمل صورة السند ضمن القائمة لتقليل حجم التحديث الدوري.
+          receiptImage: null,
           reviewedAt: row.reviewed_at ?? null,
           userId: row.user_id ?? null,
         };
@@ -312,6 +315,34 @@ function PaymentsPage() {
       setRefreshing(false);
     }
   }, []);
+
+  const openReceipt = async (paymentId: string) => {
+    setPreviewLoading(true);
+    setErr("");
+
+    try {
+      const { data, error } = await (supabase.from("payments") as any)
+        .select("receipt_image")
+        .eq("id", paymentId)
+        .single();
+
+      if (error) {
+        throw new Error(error.message || "تعذر تحميل السند.");
+      }
+
+      const receipt = data?.receipt_image;
+      if (typeof receipt !== "string" || !receipt.trim()) {
+        throw new Error("لا يوجد سند محفوظ لهذه الدفعة.");
+      }
+
+      setPreview(receipt);
+    } catch (cause) {
+      console.error("تعذر تحميل سند الدفع:", cause);
+      setErr(cause instanceof Error ? cause.message : "تعذر تحميل السند.");
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
 
   useEffect(() => {
     void load();
@@ -715,11 +746,14 @@ function PaymentsPage() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex flex-wrap items-center gap-2">
-                            {payment.receiptImage && (
-                              <button type="button" onClick={() => setPreview(payment.receiptImage)} className="rounded-lg border border-slate-200 px-3 py-2 font-bold text-slate-700 hover:bg-slate-50">
-                                عرض السند
-                              </button>
-                            )}
+                            <button
+                              type="button"
+                              disabled={previewLoading}
+                              onClick={() => void openReceipt(payment.id)}
+                              className="rounded-lg border border-slate-200 px-3 py-2 font-bold text-slate-700 hover:bg-slate-50 disabled:cursor-wait disabled:opacity-50"
+                            >
+                              {previewLoading ? "جارٍ تحميل السند…" : "عرض السند"}
+                            </button>
                             {isPending && (
                               <>
                                 <button type="button" disabled={busy === payment.id} onClick={() => void approve(payment)} className="whitespace-nowrap rounded-lg bg-emerald-600 px-3 py-2 font-bold text-white hover:bg-emerald-700 disabled:opacity-50">
@@ -730,7 +764,6 @@ function PaymentsPage() {
                                 </button>
                               </>
                             )}
-                            {!payment.receiptImage && !isPending && <span className="text-slate-400">لا يوجد سند</span>}
                           </div>
                         </td>
                       </tr>
