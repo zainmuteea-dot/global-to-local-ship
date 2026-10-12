@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   approvePaymentOnce,
@@ -35,6 +35,32 @@ type PaymentDraft = {
 type PaymentFilter = "pending" | "approved" | "rejected" | "all";
 type PeriodFilter = "all" | "today" | "week" | "month";
 
+const isWithinPeriod = (dateStr: string, period: PeriodFilter): boolean => {
+  if (period === "all") return true;
+  const created = new Date(dateStr).getTime();
+  const now = Date.now();
+  if (isNaN(created)) return true;
+
+  if (period === "today") {
+    // بداية اليوم الحالي بتوقيت الرياض (UTC+3) أو خلال آخر 24 ساعة
+    const riyadhNow = new Date(now + 3 * 3600 * 1000);
+    const startOfRiyadhToday = Date.UTC(
+      riyadhNow.getUTCFullYear(),
+      riyadhNow.getUTCMonth(),
+      riyadhNow.getUTCDate(),
+      -3, 0, 0, 0
+    );
+    return created >= startOfRiyadhToday || (now - created) <= 24 * 3600 * 1000;
+  }
+  if (period === "week") {
+    return (now - created) <= 7 * 24 * 3600 * 1000;
+  }
+  if (period === "month") {
+    return (now - created) <= 30 * 24 * 3600 * 1000;
+  }
+  return true;
+};
+
 export const Route = createFileRoute("/payments")({
   head: () => ({
     meta: [
@@ -50,17 +76,6 @@ export const Route = createFileRoute("/payments")({
 
 const fmt = (value: number) =>
   Math.round(Number(value || 0)).toLocaleString("en-US");
-
-// توحيد تسمية العملة مع قيمة افتراضية للريال اليمني.
-const normCur = (currency: string | null | undefined) =>
-  (currency || "").trim() || "ر.ي";
-
-// صياغة سطر مختصر متعدد العملات: "320,000 ر.ي · 1,200 SAR".
-const fmtByCurrency = (record: Record<string, number>) => {
-  const entries = Object.entries(record);
-  if (entries.length === 0) return "0";
-  return entries.map(([cur, val]) => `${fmt(val)} ${cur}`).join(" · ");
-};
 
 const STATUS: Record<string, { label: string; classes: string }> = {
   pending: {
@@ -95,9 +110,9 @@ function PaymentsPage() {
   const [rows, setRows] = useState<Payment[]>([]);
   const [archivedIds, setArchivedIds] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState<PaymentFilter>("pending");
+  const [period, setPeriod] = useState<PeriodFilter>("all");
   const [showArchived, setShowArchived] = useState(false);
   const [loading, setLoading] = useState(true);
-  const hasLoadedOnceRef = useRef(false);
   const [err, setErr] = useState("");
   const [notice, setNotice] = useState("");
   const [preview, setPreview] = useState<string | null>(null);
@@ -105,28 +120,17 @@ function PaymentsPage() {
   const [editing, setEditing] = useState<Payment | null>(null);
   const [draft, setDraft] = useState<PaymentDraft | null>(null);
 
-  // تنبيه يظهر داخل صفحة الإدارة عند وصول طلب دفع جديد.
+  // التحديث التلقائي وجرس الإشعارات
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [countdown, setCountdown] = useState(15);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<string>("");
+  const [showNotificationsMenu, setShowNotificationsMenu] = useState(false);
+
+  // تنبيه يظهر داخل صفحة الإدارة عند وصول طلب دفع جديد
   const [newPaymentAlert, setNewPaymentAlert] = useState<Payment | null>(null);
 
-  // فلتر الفترة الزمنية.
-  const [period, setPeriod] = useState<PeriodFilter>("all");
-
-  // التحديث التلقائي.
-  const [autoRefresh, setAutoRefresh] = useState<boolean>(true);
-  const [refreshIntervalSec] = useState<number>(15);
-  const [lastRefreshedAt, setLastRefreshedAt] = useState<Date>(new Date());
-
-  // قائمة جرس الإشعارات.
-  const [showBellMenu, setShowBellMenu] = useState<boolean>(false);
-
-  // البحث برقم الطلب أو اسم العميل.
-  const [search, setSearch] = useState<string>("");
-
   const load = useCallback(async () => {
-    // Keep the current payment list visible during refreshes.
-    if (!hasLoadedOnceRef.current) {
-      setLoading(true);
-    }
+    setLoading(true);
     setErr("");
 
     try {
@@ -208,8 +212,14 @@ function PaymentsPage() {
       );
     } finally {
       setLoading(false);
-      hasLoadedOnceRef.current = true;
-      setLastRefreshedAt(new Date());
+      setLastRefreshedAt(
+        new Date().toLocaleTimeString("ar-SA", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        }),
+      );
+      setCountdown(15);
     }
   }, []);
 
@@ -276,32 +286,32 @@ function PaymentsPage() {
     };
   }, [load]);
 
-  // التحديث التلقائي كل refreshIntervalSec ثانية عند تفعيله.
+  // مؤقت التحديث التلقائي كل 15 ثانية مع عداد تنازلي
   useEffect(() => {
     if (!autoRefresh) return;
 
     const timer = setInterval(() => {
-      void load();
-    }, refreshIntervalSec * 1000);
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          void load();
+          return 15;
+        }
+        return prev - 1;
+      });
+    }, 1000);
 
     return () => clearInterval(timer);
-  }, [autoRefresh, refreshIntervalSec, load]);
+  }, [autoRefresh, load]);
 
   const approve = async (payment: Payment) => {
     setErr("");
     setNotice("");
 
-    const amount = Number(payment.amount);
-    if (!Number.isSafeInteger(amount) || amount <= 0) {
-      setErr(
-        `لا يمكن اعتماد الطلب ${payment.tracking_code}: المبلغ يجب أن يكون عددًا صحيحًا أكبر من صفر.`,
-      );
-      return;
-    }
-
     if (
       !window.confirm(
-        `اعتماد مبلغ ${fmt(amount)} ${payment.currency || "ر.ي"} للطلب ${payment.tracking_code}؟`,
+        `اعتماد الدفعة بمبلغ ${fmt(Number(payment.amount))} ${
+          payment.currency
+        } للطلب ${payment.tracking_code}؟\nسيتم تسجيل سند قبض، وتحديث الصندوق، وتحديث حالة الطلب وإرسال إشعار للعميل.`,
       )
     ) {
       return;
@@ -312,7 +322,6 @@ function PaymentsPage() {
     try {
       const result = await approvePaymentOnce(payment, {
         approvePending: async (paymentId, pendingStatuses) => {
-          // شرط الحالة يمنع الاعتماد المكرر حتى مع ضغط الزر من جلستين.
           const { data, error } = await supabase
             .from("payments")
             .update({
@@ -354,8 +363,6 @@ function PaymentsPage() {
         },
 
         insertCustomerNotice: async (notification) => {
-          // The live notifications schema uses `message` and has no `payment_id`.
-          // This runs only after the conditional payment approval succeeds.
           const { error } = await (supabase.from("notifications") as any)
             .insert(notification);
 
@@ -377,9 +384,7 @@ function PaymentsPage() {
           ? " تم الاعتماد، لكن لم يُرسل إشعار لعدم ربط الدفعة بحساب العميل."
           : " تم الاعتماد، لكن تعذر إنشاء إشعار العميل.";
 
-      setNotice(
-        `تم اعتماد الدفعة ${payment.tracking_code}.${warning}`,
-      );
+      setNotice(`تم اعتماد الدفعة ${payment.tracking_code}.${warning}`);
       await load();
     } catch (cause) {
       setErr(
@@ -418,28 +423,26 @@ function PaymentsPage() {
         .maybeSingle();
 
       if (error) {
-        throw new Error(`تعذر رفض الدفعة: ${error.message}`);
+        throw new Error(`تعذر رفض السند: ${error.message}`);
       }
 
       if (!data) {
-        throw new Error(
-          "لم يتغير الطلب. ربما تمت مراجعته مسبقًا؛ أعد تحميل البيانات.",
-        );
+        throw new Error("لم يتم التحديث؛ قد تكون راجعتها سابقاً.");
       }
 
       let warning = "";
-
       if (payment.user_id) {
-        const { error: noticeError } = await supabase
-          .from("notifications")
-          .insert({
-            user_id: payment.user_id,
-            title: `لم يتم قبول سند الدفع للطلب ${payment.tracking_code}`,
-            message: "يرجى مراجعة السند أو التواصل مع خدمة العملاء.",
-          });
+        const { error: noticeError } = await (
+          supabase.from("notifications") as any
+        ).insert({
+          user_id: payment.user_id,
+          title: "تم رفض سند السداد",
+          message: `تم رفض سند السداد للطلب ${payment.tracking_code}. يرجى التحقق من صحة السند والمحاولة مجدداً أو التواصل مع الإدارة.`,
+          type: "payment_rejected",
+        });
 
         if (noticeError) {
-          warning = " تعذر إنشاء إشعار العميل.";
+          warning = " (تم الرفض، لكن تعذر إرسال الإشعار للعميل)";
         }
       }
 
@@ -628,102 +631,75 @@ function PaymentsPage() {
     }
   };
 
-  const filtered = useMemo(() => {
-    const now = new Date().getTime();
-    const oneDay = 24 * 60 * 60 * 1000;
-    const oneWeek = 7 * oneDay;
-    const oneMonth = 30 * oneDay;
+  const shown = useMemo(
+    () =>
+      rows.filter((payment) => {
+        const isArchived = archivedIds.has(payment.id);
 
-    return rows.filter((payment) => {
-      // فلتر الأرشفة
-      const isArchived = archivedIds.has(payment.id);
-      if (showArchived ? !isArchived : isArchived) return false;
+        if (isArchived !== showArchived) return false;
+        if (!isWithinPeriod(payment.created_at, period)) return false;
 
-      // فلتر الحالة
-      if (filter === "pending") {
-        if (!PENDING_APPROVAL_STATUSES.includes(payment.status)) return false;
-      } else if (filter !== "all" && payment.status !== filter) {
-        return false;
-      }
+        if (filter === "all") return true;
+        if (filter === "pending") {
+          return PENDING_APPROVAL_STATUSES.includes(payment.status);
+        }
 
-      // فلتر الفترة الزمنية
-      if (period !== "all" && payment.created_at) {
-        const itemTime = new Date(payment.created_at).getTime();
-        const diff = now - itemTime;
-        if (period === "today" && diff > oneDay) return false;
-        if (period === "week" && diff > oneWeek) return false;
-        if (period === "month" && diff > oneMonth) return false;
-      }
+        return payment.status === filter;
+      }),
+    [rows, archivedIds, showArchived, filter, period],
+  );
 
-      // فلتر البحث (رقم الطلب أو اسم العميل)
-      const term = search.trim().toLowerCase();
-      if (term) {
-        const haystack = `${payment.tracking_code ?? ""} ${
-          payment.customer_name ?? ""
-        } ${payment.phone ?? ""}`.toLowerCase();
-        if (!haystack.includes(term)) return false;
-      }
+  const pendingPayments = useMemo(
+    () =>
+      rows.filter((payment) =>
+        PENDING_APPROVAL_STATUSES.includes(payment.status),
+      ),
+    [rows],
+  );
 
-      return true;
-    });
-  }, [rows, archivedIds, showArchived, filter, period, search]);
+  const pendingCount = pendingPayments.length;
 
-  // الإجماليات المعتمدة مفصولة حسب وسيلة الدفع ثم العملة (تشمل المؤرشف).
+  const countsByPeriod = useMemo(() => {
+    const todayCount = rows.filter((p) =>
+      isWithinPeriod(p.created_at, "today"),
+    ).length;
+    const weekCount = rows.filter((p) =>
+      isWithinPeriod(p.created_at, "week"),
+    ).length;
+    const monthCount = rows.filter((p) =>
+      isWithinPeriod(p.created_at, "month"),
+    ).length;
+
+    return {
+      all: rows.length,
+      today: todayCount,
+      week: weekCount,
+      month: monthCount,
+    };
+  }, [rows]);
+
   const totals = useMemo(() => {
-    const byWallet: Record<string, Record<string, number>> = {};
+    const byWallet: Record<string, number> = {};
 
     rows
       .filter((payment) => payment.status === "approved")
       .forEach((payment) => {
-        const wallet = payment.wallet || "غير محدد";
-        const cur = normCur(payment.currency);
-        byWallet[wallet] = byWallet[wallet] ?? {};
-        byWallet[wallet][cur] =
-          (byWallet[wallet][cur] ?? 0) + Number(payment.amount || 0);
+        byWallet[payment.wallet] =
+          (byWallet[payment.wallet] ?? 0) +
+          Number(payment.amount || 0);
       });
 
     return byWallet;
   }, [rows]);
 
-  // إجمالي المقبوض المعتمد لكل عملة على حدة.
-  const totalApprovedByCurrency = useMemo(() => {
-    const byCur: Record<string, number> = {};
+  const totalApproved = Object.values(totals).reduce(
+    (sum, value) => sum + value,
+    0,
+  );
 
-    rows
-      .filter((payment) => payment.status === "approved")
-      .forEach((payment) => {
-        const cur = normCur(payment.currency);
-        byCur[cur] = (byCur[cur] ?? 0) + Number(payment.amount || 0);
-      });
-
-    return byCur;
-  }, [rows]);
-
-  // المبالغ المعلّقة (بانتظار الاعتماد) لكل عملة على حدة.
-  const pendingByCurrency = useMemo(() => {
-    const byCur: Record<string, number> = {};
-
-    rows
-      .filter((payment) => PENDING_APPROVAL_STATUSES.includes(payment.status))
-      .forEach((payment) => {
-        const cur = normCur(payment.currency);
-        byCur[cur] = (byCur[cur] ?? 0) + Number(payment.amount || 0);
-      });
-
-    return byCur;
-  }, [rows]);
-
-  const pendingCount = rows.filter((payment) =>
-    PENDING_APPROVAL_STATUSES.includes(payment.status),
-  ).length;
-
-  const approvedCount = rows.filter(
-    (payment) => payment.status === "approved",
-  ).length;
-
-  const rejectedCount = rows.filter(
-    (payment) => payment.status === "rejected",
-  ).length;
+  const pendingSum = rows
+    .filter((payment) => PENDING_APPROVAL_STATUSES.includes(payment.status))
+    .reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
 
   return (
     <div
@@ -731,114 +707,204 @@ function PaymentsPage() {
       className="min-h-screen bg-slate-50 p-4 font-[Cairo] sm:p-6"
     >
       <div className="mx-auto max-w-6xl">
-        <header className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-gradient-to-l from-[#0A2540] to-[#0F4C81] p-5 text-white shadow">
+        <header className="flex flex-col gap-4 rounded-2xl bg-gradient-to-l from-[#0A2540] to-[#0F4C81] p-5 text-white shadow sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-xl font-black">طلبات الدفع والمحاسبة</h1>
+            <h1 className="text-xl font-black">
+              طلبات الدفع والمحاسبة
+            </h1>
             <p className="mt-1 text-xs text-sky-200">
-              مراجعة وتعديل وأرشفة الطلبات مع التحديث اللحظي
+              مراجعة وتعديل وأرشفة الطلبات مع حفظ القيود
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2">
             {/* زر التحديث التلقائي */}
             <button
               type="button"
-              onClick={() => setAutoRefresh(!autoRefresh)}
-              className={`flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold transition ${
+              onClick={() => setAutoRefresh((prev) => !prev)}
+              className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-bold transition ${
                 autoRefresh
-                  ? "bg-emerald-500/20 text-emerald-300 border border-emerald-400/40"
-                  : "bg-white/10 text-slate-300 border border-white/10"
+                  ? "border-emerald-400/50 bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30"
+                  : "border-white/20 bg-white/10 text-slate-300 hover:bg-white/15"
               }`}
               title={
                 autoRefresh
-                  ? `التحديث التلقائي مفعّل (كل ${refreshIntervalSec} ثانية)`
-                  : "التحديث التلقائي متوقف"
+                  ? "انقر لإيقاف التحديث التلقائي"
+                  : "انقر لتفعيل التحديث التلقائي"
               }
             >
               <span
-                className={`inline-block h-2.5 w-2.5 rounded-full ${
-                  autoRefresh ? "bg-emerald-400 animate-pulse" : "bg-slate-400"
+                className={`inline-block h-2 w-2 rounded-full ${
+                  autoRefresh
+                    ? "animate-pulse bg-emerald-400"
+                    : "bg-slate-400"
                 }`}
               />
-              <span>{autoRefresh ? "تحديث تلقائي: نشط" : "تحديث تلقائي: متوقف"}</span>
+              <span>
+                {autoRefresh
+                  ? `تحديث تلقائي (${countdown}ث)`
+                  : "تحديث متوقف"}
+              </span>
             </button>
 
-            {/* جرس الإشعارات */}
+            {/* زر تحديث يدوي فوري */}
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => void load()}
+              className="flex items-center gap-1 rounded-xl bg-white/15 px-3 py-2 text-xs font-bold text-white transition hover:bg-white/25 disabled:opacity-50"
+              title="تحديث البيانات الآن"
+            >
+              <svg
+                className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth="2.5"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+              <span>تحديث</span>
+            </button>
+
+            {/* جرس الإشعارات مع القائمة المنسدلة */}
             <div className="relative">
               <button
                 type="button"
-                onClick={() => setShowBellMenu(!showBellMenu)}
-                className="relative rounded-xl bg-white/15 p-2.5 text-white hover:bg-white/25 transition"
-                aria-label="الإشعارات"
+                onClick={() =>
+                  setShowNotificationsMenu((prev) => !prev)
+                }
+                className="relative flex items-center justify-center rounded-xl bg-white/15 p-2 text-white transition hover:bg-white/25 focus:outline-none"
+                aria-label="قائمة الإشعارات والطلبات المعلقة"
               >
                 <svg
                   className="h-5 w-5"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
+                  strokeWidth="2"
                 >
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    strokeWidth="2"
                     d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
                   />
                 </svg>
+
                 {pendingCount > 0 && (
-                  <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-[11px] font-black text-white shadow">
+                  <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[11px] font-black text-white shadow-md ring-2 ring-[#0A2540]">
                     {pendingCount}
                   </span>
                 )}
               </button>
 
-              {/* القائمة المنسدلة للجرس */}
-              {showBellMenu && (
-                <div className="absolute left-0 mt-2 w-80 rounded-2xl bg-white p-3 text-slate-800 shadow-2xl ring-1 ring-black/10 z-50">
-                  <div className="flex items-center justify-between border-b pb-2">
-                    <span className="text-xs font-black text-[#0A2540]">
-                      طلبات بانتظار الاعتماد
-                    </span>
-                    <span className="text-[10px] text-slate-500">
-                      آخر تحديث: {lastRefreshedAt.toLocaleTimeString("ar-YE")}
-                    </span>
+              {/* القائمة المنسدلة للإشعارات */}
+              {showNotificationsMenu && (
+                <div
+                  className="absolute left-0 z-50 mt-2 w-80 rounded-2xl border border-slate-200 bg-white p-3 text-slate-800 shadow-2xl sm:w-96"
+                  style={{ minWidth: "290px" }}
+                >
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-100 text-xs font-bold text-amber-800">
+                        {pendingCount}
+                      </span>
+                      <span className="text-xs font-black text-slate-800">
+                        الطلبات بانتظار المراجعة
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowNotificationsMenu(false)}
+                      className="text-xs font-bold text-slate-400 hover:text-slate-600"
+                    >
+                      إغلاق ✕
+                    </button>
                   </div>
-                  <div className="mt-2 max-h-60 overflow-y-auto space-y-2">
-                    {rows
-                      .filter((p) =>
-                        PENDING_APPROVAL_STATUSES.includes(p.status),
-                      )
-                      .slice(0, 5)
-                      .map((item) => (
-                        <div
+
+                  {pendingPayments.length === 0 ? (
+                    <div className="py-6 text-center text-xs text-slate-500">
+                      ✓ لا توجد طلبات معلقة حالياً، الحسابات كلها محدثة!
+                    </div>
+                  ) : (
+                    <div className="mt-2 max-h-72 space-y-2 overflow-y-auto">
+                      {pendingPayments.slice(0, 6).map((item) => (
+                        <button
                           key={item.id}
-                          className="rounded-xl bg-amber-50/70 border border-amber-200 p-2 text-xs"
+                          type="button"
+                          onClick={() => {
+                            setFilter("pending");
+                            setShowArchived(false);
+                            setShowNotificationsMenu(false);
+                          }}
+                          className="flex w-full items-start justify-between rounded-xl border border-amber-100 bg-amber-50/60 p-2.5 text-right transition hover:bg-amber-100/70"
                         >
-                          <div className="flex justify-between font-bold text-amber-900">
-                            <span dir="ltr">{item.tracking_code}</span>
-                            <span>
-                              {fmt(Number(item.amount))}{" "}
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-bold text-slate-900">
+                                {item.customer_name || "عميل"}
+                              </span>
+                              <span
+                                dir="ltr"
+                                className="rounded border bg-white px-1.5 py-0.5 font-mono text-[10px] font-bold text-slate-700"
+                              >
+                                {item.tracking_code}
+                              </span>
+                            </div>
+                            <div className="mt-1 text-[11px] text-slate-500">
+                              عبر {item.wallet} •{" "}
+                              {new Date(
+                                item.created_at,
+                              ).toLocaleTimeString("ar-SA", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </div>
+                          </div>
+
+                          <div className="text-left">
+                            <span className="text-xs font-black text-amber-900">
+                              {fmt(Number(item.amount || 0))}
+                            </span>
+                            <span className="mr-1 text-[10px] text-slate-500">
                               {item.currency || "ر.ي"}
                             </span>
                           </div>
-                          <div className="text-[11px] text-slate-600 mt-0.5">
-                            {item.customer_name || "عميل غير مسجل"}
-                          </div>
-                        </div>
+                        </button>
                       ))}
-                    {pendingCount === 0 && (
-                      <p className="py-4 text-center text-xs text-slate-400">
-                        لا توجد طلبات معلقة حالياً
-                      </p>
-                    )}
-                  </div>
+
+                      {pendingPayments.length > 6 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFilter("pending");
+                            setShowArchived(false);
+                            setShowNotificationsMenu(false);
+                          }}
+                          className="w-full rounded-xl bg-slate-100 py-2 text-center text-xs font-bold text-[#0F4C81] hover:bg-slate-200"
+                        >
+                          عرض كل الطلبات المعلقة ({pendingCount})
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {lastRefreshedAt && (
+                    <div className="mt-2 border-t border-slate-100 pt-2 text-center text-[10px] text-slate-400">
+                      آخر تحديث للبيانات: {lastRefreshedAt}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
-            {/* رابط لوحة الإدارة */}
             <Link
               to="/admin"
-              className="rounded-xl bg-white/15 px-4 py-2 text-sm font-bold hover:bg-white/25 transition"
+              className="rounded-xl bg-white/15 px-4 py-2 text-sm font-bold hover:bg-white/25"
             >
               ← لوحة الإدارة
             </Link>
@@ -900,31 +966,18 @@ function PaymentsPage() {
         <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
           <Kpi
             label="بانتظار الاعتماد"
-            value={pendingCount}
-            sub={`${fmtByCurrency(pendingByCurrency)} مطلوب`}
+            value={
+              rows.filter((payment) =>
+                PENDING_APPROVAL_STATUSES.includes(payment.status),
+              ).length
+            }
+            sub={`${fmt(pendingSum)} ر.ي مطلوب`}
             color="text-amber-600"
           />
           <Kpi
             label="المقبوض المعتمد"
-            value={
-              Object.keys(totalApprovedByCurrency).length === 0 ? (
-                "0"
-              ) : (
-                <div className="space-y-0.5">
-                  {Object.entries(totalApprovedByCurrency).map(
-                    ([cur, val]) => (
-                      <div key={cur} className="leading-tight">
-                        {fmt(val)}{" "}
-                        <span className="text-xs font-bold text-slate-400">
-                          {cur}
-                        </span>
-                      </div>
-                    ),
-                  )}
-                </div>
-              )
-            }
-            sub="لكل عملة · يشمل المؤرشف"
+            value={fmt(totalApproved)}
+            sub="ر.ي، يشمل المؤرشف"
             color="text-emerald-600"
           />
           <Kpi
@@ -956,7 +1009,7 @@ function PaymentsPage() {
             </p>
           ) : (
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-              {Object.entries(totals).map(([wallet, byCur]) => (
+              {Object.entries(totals).map(([wallet, value]) => (
                 <div
                   key={wallet}
                   className="rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-center"
@@ -964,288 +1017,266 @@ function PaymentsPage() {
                   <div className="text-xs font-bold text-slate-600">
                     {wallet}
                   </div>
-                  <div className="mt-1 space-y-1">
-                    {Object.entries(byCur).map(([cur, val]) => (
-                      <div key={cur} className="leading-tight">
-                        <span className="text-lg font-black text-emerald-700">
-                          {fmt(val)}
-                        </span>{" "}
-                        <span className="text-[10px] text-slate-500">
-                          {cur}
-                        </span>
-                      </div>
-                    ))}
+                  <div className="mt-1 text-lg font-black text-emerald-700">
+                    {fmt(value)}
                   </div>
+                  <div className="text-[10px] text-slate-500">ر.ي</div>
                 </div>
               ))}
             </div>
           )}
         </section>
 
-        <div className="mt-4 relative">
-          <input
-            type="search"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="ابحث برقم الطلب أو اسم العميل…"
-            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 pr-10 text-sm outline-none focus:border-[#0F4C81]"
-          />
-          <svg
-            className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M21 21l-4.35-4.35M11 18a7 7 0 100-14 7 7 0 000 14z"
-            />
-          </svg>
-        </div>
-
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          {(["all", "pending", "approved", "rejected"] as const).map(
-            (item) => (
+        {/* فلاتر الفترة الزمنية وفلاتر الحالات */}
+        <div className="mt-4 space-y-3">
+          {/* فلتر الفترات: الكل، اليوم، قبل أسبوع، قبل شهر */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="ml-1 text-xs font-bold text-slate-500">
+              الفترة:
+            </span>
+            {(
+              [
+                {
+                  id: "all",
+                  label: "كل الأوقات",
+                  count: countsByPeriod.all,
+                },
+                {
+                  id: "today",
+                  label: "طلبات اليوم",
+                  count: countsByPeriod.today,
+                },
+                {
+                  id: "week",
+                  label: "قبل أسبوع",
+                  count: countsByPeriod.week,
+                },
+                {
+                  id: "month",
+                  label: "قبل شهر",
+                  count: countsByPeriod.month,
+                },
+              ] as const
+            ).map((item) => (
               <button
-                key={item}
+                key={item.id}
                 type="button"
-                onClick={() => setFilter(item)}
-                className={`rounded-xl border px-4 py-2 text-xs font-bold ${
-                  filter === item
-                    ? "border-[#0F4C81] bg-[#0F4C81] text-white"
-                    : "border-slate-200 bg-white text-slate-600"
+                onClick={() => setPeriod(item.id)}
+                className={`rounded-xl border px-3.5 py-1.5 text-xs font-bold transition ${
+                  period === item.id
+                    ? "border-[#0A2540] bg-[#0A2540] text-white shadow-sm"
+                    : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
                 }`}
               >
-                {item === "all"
-                  ? `الكل (${rows.length})`
-                  : item === "pending"
-                    ? `بانتظار المراجعة (${pendingCount})`
-                    : item === "approved"
-                      ? `معتمد (${approvedCount})`
-                      : `مرفوض (${rejectedCount})`}
+                <span>{item.label}</span>
+                <span
+                  className={`mr-1.5 rounded-full px-1.5 py-0.5 font-mono text-[10px] ${
+                    period === item.id
+                      ? "bg-white/20 text-white"
+                      : "bg-slate-100 text-slate-500"
+                  }`}
+                >
+                  {item.count}
+                </span>
               </button>
-            ),
-          )}
+            ))}
+          </div>
 
-          <button
-            type="button"
-            onClick={() => setShowArchived(false)}
-            className={`rounded-xl border px-4 py-2 text-xs font-bold ${
-              !showArchived
-                ? "border-slate-700 bg-slate-700 text-white"
-                : "border-slate-200 bg-white text-slate-600"
-            }`}
-          >
-            القائمة الرئيسية
-          </button>
+          {/* فلتر الحالات والأرشيف */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="ml-1 text-xs font-bold text-slate-500">
+              الحالة:
+            </span>
+            {(["pending", "approved", "rejected", "all"] as const).map(
+              (item) => (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => setFilter(item)}
+                  className={`rounded-xl border px-3.5 py-1.5 text-xs font-bold transition ${
+                    filter === item
+                      ? "border-[#0F4C81] bg-[#0F4C81] text-white shadow-sm"
+                      : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                  }`}
+                >
+                  {item === "all"
+                    ? "الكل"
+                    : STATUS[item]?.label}
+                </button>
+              ),
+            )}
 
-          <button
-            type="button"
-            onClick={() => setShowArchived(true)}
-            className={`rounded-xl border px-4 py-2 text-xs font-bold ${
-              showArchived
-                ? "border-slate-700 bg-slate-700 text-white"
-                : "border-slate-200 bg-white text-slate-600"
-            }`}
-          >
-            الأرشيف ({archivedIds.size})
-          </button>
-        </div>
+            <span className="mx-1 hidden h-4 w-px bg-slate-300 sm:inline-block" />
 
-        {/* أزرار الفلترة الزمنية */}
-        <div className="mt-3 flex flex-wrap items-center gap-2 border-t pt-3 border-slate-200">
-          <span className="text-xs font-bold text-slate-500 ml-1">الفترة:</span>
-          {([
-            { id: "all", label: "كل الأوقات" },
-            { id: "today", label: "طلبات اليوم" },
-            { id: "week", label: "قبل أسبوع" },
-            { id: "month", label: "قبل شهر" },
-          ] as const).map((p) => (
             <button
-              key={p.id}
               type="button"
-              onClick={() => setPeriod(p.id as PeriodFilter)}
-              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition ${
-                period === p.id
-                  ? "bg-sky-600 text-white shadow-sm"
-                  : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
+              onClick={() => setShowArchived(false)}
+              className={`rounded-xl border px-3.5 py-1.5 text-xs font-bold transition ${
+                !showArchived
+                  ? "border-slate-700 bg-slate-700 text-white shadow-sm"
+                  : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
               }`}
             >
-              {p.label}
+              القائمة الرئيسية
             </button>
-          ))}
+
+            <button
+              type="button"
+              onClick={() => setShowArchived(true)}
+              className={`rounded-xl border px-3.5 py-1.5 text-xs font-bold transition ${
+                showArchived
+                  ? "border-slate-700 bg-slate-700 text-white shadow-sm"
+                  : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+              }`}
+            >
+              الأرشيف ({archivedIds.size})
+            </button>
+          </div>
         </div>
 
-        <div className="mt-3 overflow-x-auto rounded-2xl border border-slate-200 bg-white">
-          <table className="w-full min-w-[760px] text-right text-sm">
-            <thead>
-              <tr className="border-b border-slate-200 bg-slate-50 text-xs font-bold text-slate-500">
-                <th className="p-3">الطلب / العميل</th>
-                <th className="p-3">وسيلة الدفع</th>
-                <th className="p-3">المبلغ</th>
-                <th className="p-3">التاريخ</th>
-                <th className="p-3">الحالة</th>
-                <th className="p-3">التفاصيل</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading && (
-                <tr>
-                  <td colSpan={6} className="p-6 text-center text-sm text-slate-500">
-                    جارٍ التحميل...
-                  </td>
-                </tr>
-              )}
+        <div className="mt-3 space-y-3">
+          {loading && (
+            <p className="text-sm text-slate-500">جارٍ التحميل...</p>
+          )}
 
-              {!loading && filtered.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="p-6 text-center text-sm text-slate-500">
-                    لا توجد طلبات في هذا القسم.
-                  </td>
-                </tr>
-              )}
+          {!loading && shown.length === 0 && (
+            <p className="rounded-xl bg-white p-4 text-sm text-slate-500">
+              لا توجد طلبات في هذا القسم.
+            </p>
+          )}
 
-              {!loading &&
-                filtered.map((payment) => {
-                  const isArchived = archivedIds.has(payment.id);
-                  const amount = Number(payment.amount || 0);
+          {shown.map((payment) => {
+            const isPending = PENDING_APPROVAL_STATUSES.includes(payment.status);
+            const isArchived = archivedIds.has(payment.id);
+            const amount = Number(payment.amount || 0);
 
-                  return (
-                    <tr
-                      key={payment.id}
-                      className="border-b border-slate-100 last:border-0 hover:bg-slate-50"
+            return (
+              <article
+                key={payment.id}
+                className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-4 sm:flex-row"
+              >
+                {payment.receipt_image ? (
+                  <button
+                    type="button"
+                    onClick={() => setPreview(payment.receipt_image)}
+                    className="shrink-0"
+                    aria-label="معاينة سند الدفع"
+                  >
+                    <img
+                      src={payment.receipt_image}
+                      alt="سند الدفع"
+                      className="h-24 w-24 rounded-xl border object-cover"
+                    />
+                  </button>
+                ) : (
+                  <div className="grid h-24 w-24 shrink-0 place-items-center rounded-xl border border-dashed text-xs text-slate-400">
+                    بدون سند
+                  </div>
+                )}
+
+                <div className="min-w-0 flex-1 text-sm">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-black text-[#0A2540]">
+                      {payment.customer_name || "عميل"}
+                    </span>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
+                        STATUS[payment.status]?.classes ??
+                        "bg-slate-100 text-slate-700"
+                      }`}
                     >
-                      {/* الطلب / العميل */}
-                      <td className="p-3">
-                        <div className="flex items-center gap-2">
-                          {payment.receipt_image ? (
-                            <button
-                              type="button"
-                              onClick={() => setPreview(payment.receipt_image)}
-                              className="shrink-0"
-                              aria-label="معاينة سند الدفع"
-                            >
-                              <img
-                                src={payment.receipt_image}
-                                alt="سند الدفع"
-                                className="h-10 w-10 rounded-lg border object-cover"
-                              />
-                            </button>
-                          ) : (
-                            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-dashed text-[9px] text-slate-400">
-                              بلا سند
-                            </div>
-                          )}
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-black text-[#0A2540]">
-                                {payment.customer_name || "عميل"}
-                              </span>
-                              {isArchived && (
-                                <span className="rounded-full bg-slate-200 px-1.5 py-0.5 text-[9px] font-bold text-slate-700">
-                                  مؤرشف
-                                </span>
-                              )}
-                            </div>
-                            <div
-                              className="text-xs text-slate-500"
-                              dir="ltr"
-                            >
-                              {payment.tracking_code}
-                            </div>
-                            {payment.phone && (
-                              <div
-                                className="text-[11px] text-slate-400"
-                                dir="ltr"
-                              >
-                                {payment.phone}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </td>
+                      {STATUS[payment.status]?.label ?? payment.status}
+                    </span>
+                    {isArchived && (
+                      <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-bold text-slate-700">
+                        مؤرشف
+                      </span>
+                    )}
+                  </div>
 
-                      {/* وسيلة الدفع */}
-                      <td className="p-3 font-bold text-slate-700">
-                        {payment.wallet || "—"}
-                      </td>
+                  <div className="mt-1 text-xs text-slate-600">
+                    الطلب{" "}
+                    <b dir="ltr">{payment.tracking_code}</b>
+                    {" • "}عبر <b>{payment.wallet}</b>
+                    {" • "}
+                    {new Date(payment.created_at).toLocaleString("ar")}
+                  </div>
 
-                      {/* المبلغ */}
-                      <td className="p-3">
-                        <span className="font-black text-[#0A2540]">
-                          {fmt(amount)}
-                        </span>{" "}
-                        <span className="text-[11px] text-slate-500">
-                          {payment.currency || "ر.ي"}
-                        </span>
-                      </td>
+                  {payment.phone && (
+                    <div className="mt-1 text-xs text-slate-600">
+                      الهاتف: <b dir="ltr">{payment.phone}</b>
+                    </div>
+                  )}
 
-                      {/* التاريخ */}
-                      <td className="p-3 text-xs text-slate-600">
-                        {new Date(payment.created_at).toLocaleDateString("ar")}
-                      </td>
+                  <p className="mt-3 text-sm font-bold">
+                    المبلغ: {fmt(amount)} {payment.currency || "ر.ي"}
+                  </p>
 
-                      {/* الحالة */}
-                      <td className="p-3">
-                        <span
-                          className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-bold ${
-                            STATUS[payment.status]?.classes ??
-                            "bg-slate-100 text-slate-700"
-                          }`}
-                        >
-                          {STATUS[payment.status]?.label ?? payment.status}
-                        </span>
-                      </td>
+                  {payment.reviewed_at && (
+                    <p className="mt-1 text-xs text-slate-500">
+                      تاريخ المراجعة:{" "}
+                      {new Date(payment.reviewed_at).toLocaleString("ar")}
+                    </p>
+                  )}
+                </div>
 
-                      {/* التفاصيل — أيقونة العين تفتح نافذة التعديل (البيانات والمبلغ) */}
-                      <td className="p-3">
-                        <button
-                          type="button"
-                          disabled={busy === payment.id}
-                          onClick={() => startEdit(payment)}
-                          className="grid h-9 w-9 place-items-center rounded-full bg-slate-100 text-slate-600 transition hover:bg-slate-200 hover:text-[#0F4C81] disabled:opacity-50"
-                          aria-label="عرض وتعديل تفاصيل الطلب"
-                          title="عرض وتعديل بيانات الطلب والمبلغ"
-                        >
-                          <svg
-                            className="h-5 w-5"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="2"
-                              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                            />
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="2"
-                              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                            />
-                          </svg>
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-            </tbody>
-          </table>
-        </div>
+                <div className="flex shrink-0 flex-wrap gap-2 sm:w-52 sm:flex-col">
+                  <button
+                    type="button"
+                    disabled={busy === payment.id}
+                    onClick={() => startEdit(payment)}
+                    className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-bold text-sky-800 disabled:opacity-50"
+                  >
+                    تعديل البيانات
+                  </button>
 
-        <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
-          <span>عرض {filtered.length} طلب</span>
-          <button
-            type="button"
-            onClick={() => void load()}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 font-bold text-slate-600 hover:bg-slate-50"
-          >
-            تحديث الصفحة
-          </button>
+                  {isArchived ? (
+                    <button
+                      type="button"
+                      disabled={busy === payment.id}
+                      onClick={() => void restore(payment)}
+                      className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800 disabled:opacity-50"
+                    >
+                      استعادة من الأرشيف
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={busy === payment.id}
+                      onClick={() => void archive(payment)}
+                      className="rounded-xl border border-slate-300 bg-slate-100 px-3 py-2 text-xs font-bold text-slate-700 disabled:opacity-50"
+                    >
+                      أرشفة
+                    </button>
+                  )}
+
+                  {!isArchived && isPending && (
+                    <>
+                      <button
+                        type="button"
+                        disabled={busy === payment.id}
+                        onClick={() => void approve(payment)}
+                        className="rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
+                      >
+                        {busy === payment.id
+                          ? "جارٍ التنفيذ…"
+                          : "اعتماد الدفعة ✓"}
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={busy === payment.id}
+                        onClick={() => void reject(payment)}
+                        className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-700 disabled:opacity-50"
+                      >
+                        رفض السند
+                      </button>
+                    </>
+                  )}
+                </div>
+              </article>
+            );
+          })}
         </div>
       </div>
 
@@ -1383,75 +1414,92 @@ function PaymentsPage() {
               </div>
             </div>
 
-            {/* إجراءات الطلب: اعتماد / رفض / أرشفة / استعادة */}
-            <div className="mt-4 flex flex-wrap gap-2 border-t pt-4">
-              {!archivedIds.has(editing.id) &&
-                PENDING_APPROVAL_STATUSES.includes(editing.status) && (
-                  <>
-                    <button
-                      type="button"
-                      disabled={busy === editing.id}
-                      onClick={() => {
-                        const target = editing;
-                        setEditing(null);
-                        setDraft(null);
-                        if (target) void approve(target);
-                      }}
-                      className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
-                    >
-                      اعتماد الدفعة ✓
-                    </button>
-
-                    <button
-                      type="button"
-                      disabled={busy === editing.id}
-                      onClick={() => {
-                        const target = editing;
-                        setEditing(null);
-                        setDraft(null);
-                        if (target) void reject(target);
-                      }}
-                      className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-bold text-red-700 disabled:opacity-50"
-                    >
-                      رفض السند
-                    </button>
-                  </>
-                )}
-
-              {archivedIds.has(editing.id) ? (
-                <button
-                  type="button"
-                  disabled={busy === editing.id}
-                  onClick={() => {
-                    const target = editing;
-                    setEditing(null);
-                    setDraft(null);
-                    if (target) void restore(target);
-                  }}
-                  className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-800 disabled:opacity-50"
-                >
-                  استعادة من الأرشيف
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  disabled={busy === editing.id}
-                  onClick={() => {
-                    const target = editing;
-                    setEditing(null);
-                    setDraft(null);
-                    if (target) void archive(target);
-                  }}
-                  className="rounded-xl border border-slate-300 bg-slate-100 px-4 py-2 text-sm font-bold text-slate-700 disabled:opacity-50"
-                >
-                  أرشفة الطلب
-                </button>
-              )}
-            </div>
-
             <div className="mt-5 flex justify-end gap-2">
               <button
                 type="button"
-                onClick={() =
+                onClick={() => {
+                  setEditing(null);
+                  setDraft(null);
+                }}
+                className="rounded-xl border px-4 py-2 text-sm font-bold"
+              >
+                إلغاء
+              </button>
 
-... [truncated — file is 53447 bytes, showing first 51200]
+              <button
+                type="button"
+                disabled={busy === editing.id}
+                onClick={() => void saveEdit()}
+                className="rounded-xl bg-[#0F4C81] px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
+              >
+                {busy === editing.id
+                  ? "جارٍ الحفظ…"
+                  : "حفظ التعديلات"}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {preview && (
+        <div
+          role="presentation"
+          onClick={() => setPreview(null)}
+          className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4"
+        >
+          <button
+            type="button"
+            onClick={() => setPreview(null)}
+            className="absolute right-4 top-4 rounded-lg bg-white px-3 py-2 font-bold"
+          >
+            إغلاق
+          </button>
+          <img
+            src={preview}
+            alt="سند الدفع"
+            className="max-h-[90vh] max-w-full rounded-xl"
+          />
+        </div>
+      )}
+
+      <style>
+        {`.input{width:100%;margin-top:.35rem;border:1px solid #cbd5e1;border-radius:.75rem;padding:.65rem .8rem;font-size:.9rem}.input:disabled{background:#f1f5f9;color:#64748b}`}
+      </style>
+    </div>
+  );
+}
+
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="block text-xs font-bold text-slate-700">
+      {label}
+      {children}
+    </label>
+  );
+}
+
+function Kpi({
+  label,
+  value,
+  sub,
+  color,
+}: {
+  label: string;
+  value: string | number;
+  sub: string;
+  color: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-sky-100 bg-white p-4">
+      <div className="text-xs font-bold text-slate-500">{label}</div>
+      <div className={`mt-1 text-2xl font-black ${color}`}>{value}</div>
+      <div className="text-[11px] text-slate-400">{sub}</div>
+    </div>
+  );
+}
