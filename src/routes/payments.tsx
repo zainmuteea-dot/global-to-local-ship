@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   approvePaymentOnce,
@@ -97,6 +97,7 @@ function PaymentsPage() {
   const [filter, setFilter] = useState<PaymentFilter>("pending");
   const [showArchived, setShowArchived] = useState(false);
   const [loading, setLoading] = useState(true);
+  const hasLoadedOnceRef = useRef(false);
   const [err, setErr] = useState("");
   const [notice, setNotice] = useState("");
   const [preview, setPreview] = useState<string | null>(null);
@@ -122,7 +123,10 @@ function PaymentsPage() {
   const [search, setSearch] = useState<string>("");
 
   const load = useCallback(async () => {
-    setLoading(true);
+    // Keep the current payment list visible during refreshes.
+    if (!hasLoadedOnceRef.current) {
+      setLoading(true);
+    }
     setErr("");
 
     try {
@@ -204,6 +208,7 @@ function PaymentsPage() {
       );
     } finally {
       setLoading(false);
+      hasLoadedOnceRef.current = true;
       setLastRefreshedAt(new Date());
     }
   }, []);
@@ -1447,88 +1452,6 @@ function PaymentsPage() {
             <div className="mt-5 flex justify-end gap-2">
               <button
                 type="button"
-                onClick={() => {
-                  setEditing(null);
-                  setDraft(null);
-                }}
-                className="rounded-xl border px-4 py-2 text-sm font-bold"
-              >
-                إلغاء
-              </button>
+                onClick={() =
 
-              <button
-                type="button"
-                disabled={busy === editing.id}
-                onClick={() => void saveEdit()}
-                className="rounded-xl bg-[#0F4C81] px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
-              >
-                {busy === editing.id ? "جارٍ الحفظ…" : "حفظ التعديلات"}
-              </button>
-            </div>
-          </section>
-        </div>
-      )}
-
-      {preview && (
-        <div
-          role="presentation"
-          onClick={() => setPreview(null)}
-          className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4"
-        >
-          <button
-            type="button"
-            onClick={() => setPreview(null)}
-            className="absolute right-4 top-4 rounded-lg bg-white px-3 py-2 font-bold"
-          >
-            إغلاق
-          </button>
-          <img
-            src={preview}
-            alt="سند الدفع"
-            onClick={(event) => event.stopPropagation()}
-            className="max-h-[90vh] max-w-full rounded-xl"
-          />
-        </div>
-      )}
-
-      <style>
-        {`.input{width:100%;margin-top:.35rem;border:1px solid #cbd5e1;border-radius:.75rem;padding:.65rem .8rem;font-size:.9rem}.input:disabled{background:#f1f5f9;color:#64748b}`}
-      </style>
-    </div>
-  );
-}
-
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="block text-xs font-bold text-slate-700">
-      {label}
-      {children}
-    </label>
-  );
-}
-
-function Kpi({
-  label,
-  value,
-  sub,
-  color,
-}: {
-  label: string;
-  value: React.ReactNode;
-  sub: React.ReactNode;
-  color: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-sky-100 bg-white p-4">
-      <div className="text-xs font-bold text-slate-500">{label}</div>
-      <div className={`mt-1 text-2xl font-black ${color}`}>{value}</div>
-      <div className="text-[11px] text-slate-400">{sub}</div>
-    </div>
-  );
-}
+... [truncated — file is 53447 bytes, showing first 51200]
