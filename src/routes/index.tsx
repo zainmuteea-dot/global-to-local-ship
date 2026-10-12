@@ -34,11 +34,13 @@ import { supabase } from "@/integrations/supabase/client";
 
 type HomeNotification = {
   id: string;
+  user_id: string | null;
   title: string;
-  body: string | null;
-  kind: string;
-  href: string | null;
+  message: string | null;
+  type: string;
+  is_read: boolean | null;
   created_at: string;
+  payment_id: string | null;
 };
 
 const notificationTone: Record<string, string> = {
@@ -47,12 +49,15 @@ const notificationTone: Record<string, string> = {
   offer: 'bg-amber-100 text-amber-700',
   support: 'bg-emerald-100 text-emerald-700',
   system: 'bg-slate-100 text-slate-700',
+  payment_approved: 'bg-emerald-100 text-emerald-700',
 };
 
-const notificationIcon = (kind: string) => {
-  if (kind === 'shipment') return PackageCheck;
-  if (kind === 'purchase') return ShoppingBag;
-  if (kind === 'offer') return Sparkles;
+const notificationIcon = (type: string) => {
+  if (type === 'shipment') return PackageCheck;
+  if (type === 'purchase') return ShoppingBag;
+  if (type === 'offer') return Sparkles;
+  if (type === 'payment_approved') return CircleDollarSign;
+  if (type === 'support') return ShieldCheck;
   return Bell;
 };
 
@@ -372,45 +377,81 @@ export function HomePage() {
   const [readNotificationIds, setReadNotificationIds] = useState<Set<string>>(new Set());
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [showNotificationToast, setShowNotificationToast] = useState(false);
+  const [notificationError, setNotificationError] = useState<string | null>(null);
 
   useEffect(() => {
-    // جلب المستخدم من Supabase إن وجد
-    supabase.auth.getUser().then(({ data }) => {
-      if (data?.user) {
-        setUser(data.user);
-      }
+    let alive = true;
+
+    // أبقِ حالة تسجيل الدخول متزامنة عند الدخول أو الخروج دون إعادة تحميل الصفحة.
+    void supabase.auth.getUser().then(({ data, error }) => {
+      if (!alive) return;
+      if (error) console.error('تعذر قراءة جلسة المستخدم:', error);
+      setUser(data?.user ?? null);
     });
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => {
+      alive = false;
+      authListener.subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
     if (!user) {
       setNotifications([]);
       setReadNotificationIds(new Set());
+      setNotificationError(null);
       return;
     }
 
     let alive = true;
     const loadNotifications = async () => {
-      const [{ data: notificationRows }, { data: readRows }] = await Promise.all([
-        (supabase
-          .from('notifications') as any)
-          .select('id,title,body,kind,href,created_at')
-          .eq('is_active', true)
+      const [notificationResult, readResult] = await Promise.all([
+        (supabase.from('notifications') as any)
+          .select('id,user_id,title,message,type,is_read,created_at,payment_id')
+          .eq('user_id', user.id)
           .order('created_at', { ascending: false })
           .limit(20),
-        (supabase.from('notification_reads' as never) as any).select('notification_id').eq('user_id', user.id),
+        (supabase.from('notification_reads' as never) as any)
+          .select('notification_id')
+          .eq('user_id', user.id),
       ]);
       if (!alive) return;
-      setNotifications((notificationRows ?? []) as HomeNotification[]);
-      setReadNotificationIds(new Set((readRows ?? []).map((row: any) => row.notification_id)));
+
+      if (notificationResult.error) {
+        console.error('تعذر تحميل الإشعارات:', notificationResult.error);
+        setNotificationError('تعذر تحميل الإشعارات الآن. حاول تحديث الصفحة.');
+        setNotifications([]);
+        return;
+      }
+
+      if (readResult.error) {
+        console.error('تعذر تحميل سجل قراءة الإشعارات:', readResult.error);
+        setNotificationError('ظهرت الإشعارات، لكن تعذر تحميل حالة قراءتها.');
+      } else {
+        setNotificationError(null);
+      }
+
+      // إشعار new_payment_submitted مخصص للإدارة، وليس جرس العميل.
+      const customerRows = ((notificationResult.data ?? []) as HomeNotification[]).filter(
+        (notification) => notification.type !== 'new_payment_submitted',
+      );
+      setNotifications(customerRows);
+      if (!readResult.error) {
+        setReadNotificationIds(new Set((readResult.data ?? []).map((row: any) => row.notification_id)));
+      }
     };
 
     void loadNotifications();
     const channel = supabase
       .channel(`customer-notifications-${user.id}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
-        const notification = payload.new as HomeNotification & { is_active: boolean; user_id: string | null };
-        if (!notification.is_active || (notification.user_id && notification.user_id !== user.id)) return;
+        const notification = payload.new as HomeNotification;
+        // لا تعرض إشعارات الإدارة أو الإشعارات العامة/غير المرتبطة بهذا المستخدم.
+        if (notification.user_id !== user.id || notification.type === 'new_payment_submitted') return;
         setNotifications((current) => [notification, ...current.filter((item) => item.id !== notification.id)].slice(0, 20));
         setShowNotificationToast(true);
       })
@@ -425,23 +466,53 @@ export function HomePage() {
   const activeNotification = notifications[0] ?? null;
   const unreadCount = notifications.filter((notification) => !readNotificationIds.has(notification.id)).length;
 
-  const markNotificationRead = async (notificationId: string) => {
-    if (!user || readNotificationIds.has(notificationId)) return;
-    const { error } = await supabase.from('notification_reads' as never).upsert(
-      { notification_id: notificationId, user_id: user.id } as never,
+  const markNotificationRead = async (notificationId: string): Promise<boolean> => {
+    if (!user) return false;
+    if (readNotificationIds.has(notificationId)) return true;
+
+    const { error } = await (supabase.from('notification_reads' as never) as any).upsert(
+      { notification_id: notificationId, user_id: user.id },
       { onConflict: 'notification_id,user_id' },
     );
-    if (!error) setReadNotificationIds((current) => new Set(current).add(notificationId));
+
+    if (error) {
+      console.error('تعذر حفظ قراءة الإشعار:', error);
+      setNotificationError('تعذر حفظ حالة القراءة. تحقق من الاتصال ثم حاول مجددًا.');
+      return false;
+    }
+
+    setReadNotificationIds((current) => new Set(current).add(notificationId));
+    setNotificationError(null);
+    return true;
   };
 
   const markAllNotificationsRead = async () => {
     if (!user) return;
     const unread = notifications.filter((notification) => !readNotificationIds.has(notification.id));
-    const { error } = await supabase.from('notification_reads' as never).upsert(
-      unread.map((notification) => ({ notification_id: notification.id, user_id: user.id })) as never,
+    if (unread.length === 0) return;
+
+    const { error } = await (supabase.from('notification_reads' as never) as any).upsert(
+      unread.map((notification) => ({ notification_id: notification.id, user_id: user.id })),
       { onConflict: 'notification_id,user_id' },
     );
-    if (!error) setReadNotificationIds(new Set(notifications.map((notification) => notification.id)));
+
+    if (error) {
+      console.error('تعذر حفظ قراءة الإشعارات:', error);
+      setNotificationError('تعذر حفظ حالة القراءة. تحقق من الاتصال ثم حاول مجددًا.');
+      return;
+    }
+
+    setReadNotificationIds((current) => {
+      const next = new Set(current);
+      unread.forEach((notification) => next.add(notification.id));
+      return next;
+    });
+    setNotificationError(null);
+  };
+
+  const openNotification = async (notificationId: string) => {
+    const saved = await markNotificationRead(notificationId);
+    if (saved) window.location.assign('/notifications');
   };
   const heroCircles = [
     { label: user ? 'حسابي' : 'التسجيل', icon: UserRound, href: '/my-account' },
@@ -482,8 +553,8 @@ export function HomePage() {
           <div className="mx-auto flex max-w-5xl items-center gap-2 text-xs">
             <span className="relative flex size-2.5 shrink-0"><span className="absolute inline-flex size-full rounded-full bg-orange-400 opacity-75" /><span className="relative inline-flex size-2.5 rounded-full bg-orange-500" /></span>
             <span className="hidden rounded-full bg-orange-100 px-2.5 py-1 font-black text-orange-700 sm:inline">إشعار من الإدارة</span>
-            <div className="min-w-0 flex-1 truncate text-right"><span className="font-black text-[#0A2540]">{activeNotification.title}</span><span className="mr-2 hidden text-slate-500 md:inline">{activeNotification.body}</span></div>
-            {activeNotification.href && <a href={activeNotification.href} onClick={() => void markNotificationRead(activeNotification.id)} className="hidden shrink-0 items-center gap-1 rounded-xl bg-[#0F4C81] px-3 py-1.5 font-black text-white transition hover:bg-[#0A2540] sm:inline-flex">تتبع الشحنة <ChevronLeft className="size-3.5" /></a>}
+            <div className="min-w-0 flex-1 truncate text-right"><span className="font-black text-[#0A2540]">{activeNotification.title}</span><span className="mr-2 hidden text-slate-500 md:inline">{activeNotification.message}</span></div>
+            <button type="button" onClick={() => void openNotification(activeNotification.id)} className="hidden shrink-0 items-center gap-1 rounded-xl bg-[#0F4C81] px-3 py-1.5 font-black text-white transition hover:bg-[#0A2540] sm:inline-flex">عرض الإشعارات <ChevronLeft className="size-3.5" /></button>
             <button onClick={() => setNotifications((current) => current.slice(1))} className="grid size-7 shrink-0 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700" aria-label="إغلاق الإشعار"><X className="size-4" /></button>
           </div>
         </div>
@@ -516,7 +587,8 @@ export function HomePage() {
           {isNotificationOpen && (
             <div className="absolute left-0 top-14 z-50 w-[min(calc(100vw-32px),340px)] overflow-hidden rounded-2xl border border-sky-100 bg-white p-2 text-right shadow-2xl">
               <div className="flex items-center justify-between border-b border-slate-100 px-2 pb-2"><span className="text-xs font-black text-[#0A2540]">إشعارات الإدارة</span><button onClick={() => setIsNotificationOpen(false)} className="text-[10px] font-bold text-slate-400 hover:text-slate-700">إغلاق</button></div>
-              {notifications.length === 0 ? <p className="px-2 py-5 text-center text-xs text-slate-400">لا توجد إشعارات جديدة</p> : <div className="space-y-1 pt-2">{notifications.map((notification) => { const Icon = notificationIcon(notification.kind); return <a key={notification.id} href={notification.href || '/notifications'} onClick={() => void markNotificationRead(notification.id)} className="flex items-start gap-2 rounded-xl p-2 transition hover:bg-slate-50"><span className={`grid size-8 shrink-0 place-items-center rounded-lg ${notificationTone[notification.kind] ?? notificationTone['system']}`}><Icon className="size-4" /></span><span className="min-w-0"><span className="block text-xs font-black text-[#0A2540]">{notification.title}</span><span className="mt-0.5 block text-[10px] leading-4 text-slate-500">{notification.body}</span></span></a>; })}</div>}
+              {notificationError && <p role="alert" className="mx-2 mt-2 rounded-lg bg-amber-50 px-2 py-1.5 text-[10px] text-amber-800">{notificationError}</p>}
+              {notifications.length === 0 ? <p className="px-2 py-5 text-center text-xs text-slate-400">لا توجد إشعارات</p> : <div className="space-y-1 pt-2">{notifications.map((notification) => { const Icon = notificationIcon(notification.type); const isRead = readNotificationIds.has(notification.id); return <button type="button" key={notification.id} onClick={() => void openNotification(notification.id)} className={`flex w-full items-start gap-2 rounded-xl p-2 text-right transition hover:bg-slate-50 ${isRead ? 'opacity-70' : 'bg-sky-50/70'}`}><span className={`grid size-8 shrink-0 place-items-center rounded-lg ${notificationTone[notification.type] ?? notificationTone['system']}`}><Icon className="size-4" /></span><span className="min-w-0 flex-1"><span className="block text-xs font-black text-[#0A2540]">{notification.title}</span><span className="mt-0.5 block text-[10px] leading-4 text-slate-500">{notification.message}</span></span>{!isRead && <span className="mt-1 size-2 shrink-0 rounded-full bg-orange-500" aria-label="غير مقروء" />}</button>; })}</div>}
               <div className="mt-2 grid grid-cols-2 gap-1.5 border-t border-slate-100 pt-2"><button onClick={() => void markAllNotificationsRead()} className="rounded-xl bg-[#0F4C81] px-2 py-2 text-[10px] font-black text-white">تحديد الكل كمقروء</button><button onClick={() => setIsNotificationOpen(false)} className="rounded-xl bg-slate-100 px-2 py-2 text-[10px] font-black text-slate-600">إغلاق</button></div>
             </div>
           )}
@@ -541,9 +613,9 @@ export function HomePage() {
 
       {showNotificationToast && activeNotification && (
         <div className="fixed left-4 right-4 top-16 z-30 mx-auto flex max-w-md items-center gap-3 rounded-2xl border border-orange-200 bg-white p-3 text-right shadow-2xl animate-in slide-in-from-top-3">
-          {(() => { const Icon = notificationIcon(activeNotification.kind); return <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${notificationTone[activeNotification.kind] ?? notificationTone['system']}`}><Icon className="size-5" /></span>; })()}
-          <div className="min-w-0 flex-1"><p className="truncate text-xs font-black text-[#0A2540]">{activeNotification.title}</p><p className="mt-0.5 truncate text-[10px] text-slate-500">{activeNotification.body}</p></div>
-          {activeNotification.href && <a href={activeNotification.href} onClick={() => void markNotificationRead(activeNotification.id)} className="shrink-0 rounded-xl bg-orange-500 px-2.5 py-2 text-[10px] font-black text-white">تتبع</a>}
+          {(() => { const Icon = notificationIcon(activeNotification.type); return <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${notificationTone[activeNotification.type] ?? notificationTone['system']}`}><Icon className="size-5" /></span>; })()}
+          <div className="min-w-0 flex-1"><p className="truncate text-xs font-black text-[#0A2540]">{activeNotification.title}</p><p className="mt-0.5 truncate text-[10px] text-slate-500">{activeNotification.message}</p></div>
+          <button type="button" onClick={() => void openNotification(activeNotification.id)} className="shrink-0 rounded-xl bg-orange-500 px-2.5 py-2 text-[10px] font-black text-white">عرض</button>
           <button onClick={() => setShowNotificationToast(false)} aria-label="إغلاق التنبيه"><X className="size-4 text-slate-400" /></button>
         </div>
       )}
