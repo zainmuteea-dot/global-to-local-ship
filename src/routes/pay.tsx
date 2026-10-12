@@ -417,15 +417,23 @@ function PayPage() {
 
     const isApprovalNoticeForOrder = (notice: any, userId: string) => {
       if (!notice || notice.user_id !== userId) return false
+
       const category = String(notice.kind ?? notice.type ?? '').toLowerCase()
       const title = String(notice.title ?? '')
       const body = String(notice.body ?? notice.message ?? '')
-      const searchableText = `${title} ${body} ${notice.href ?? ''}`
-      const isPaymentApproval =
-        category.includes('payment') ||
-        /اعتماد|اعتمد|approved/i.test(`${title} ${body}`)
+      const searchableText = `${category} ${title} ${body} ${notice.href ?? ''}`
 
-      return isPaymentApproval && searchableText.includes(orderNo)
+      // إشعار إرسال دفعة للمراجعة يخص الإدارة، وليس إشعار اعتماد للعميل.
+      const isPendingOrRejected =
+        /new_payment_submitted|pending|بانتظار|قيد المراجعة|مراجعة الدفع|دفعة جديدة|طلب سداد|rejected|رفض|لم يتم قبول|غير مقبول/i.test(searchableText)
+
+      // لا نعتبر كلمة payment وحدها دليلاً على اعتماد الدفعة.
+      const isApproved =
+        /payment_approved|approved_payment|تم اعتماد|اعتماد دفعتك|اعتمدت دفعتك|approved/i.test(searchableText)
+
+      const belongsToThisOrder = searchableText.includes(orderNo)
+
+      return isApproved && !isPendingOrRejected && belongsToThisOrder
     }
 
     const fetchNotifications = async () => {
