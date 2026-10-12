@@ -190,15 +190,15 @@ const Camera = () => (<svg width="19" height="19" viewBox="0 0 24 24" fill="none
 const Logo = () => (
   <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
     <defs>
-      <linearGradient id="gBlue" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#3E86C4"/><stop offset="1" stopColor="#004A8D"/></linearGradient>
-      <linearGradient id="gOr" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stopColor="#D86616"/><stop offset="1" stopColor="#F5A623"/></linearGradient>
+      <linearGradient id="gBlue" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#1D5FD1"/><stop offset="55%" stopColor="#0647A6"/><stop offset="100%" stopColor="#002B69"/></linearGradient>
+      <linearGradient id="gOr" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stopColor="#E85D04"/><stop offset="55%" stopColor="#F97316"/><stop offset="100%" stopColor="#FF9F1C"/></linearGradient>
     </defs>
     <path d="M22 12 L34 44 H18 L30 12 Z" fill="url(#gBlue)"/>
     <path d="M40 14 c7 0 7 9 0 9 c-7 0 -7 9 0 9" stroke="url(#gBlue)" strokeWidth={5} strokeLinecap="round" fill="none"/>
     <path d="M14 46 H46 L50 32 H20" stroke="url(#gOr)" strokeWidth={4.5} strokeLinecap="round" strokeLinejoin="round" fill="none"/>
     <circle cx="22" cy="54" r="4" fill="url(#gOr)"/>
     <circle cx="42" cy="54" r="4" fill="url(#gOr)"/>
-    <path d="M50 10 l1.6 3.4 L55 15 l-3.4 1.6 L50 20 l-1.6-3.4 L45 15 l3.4-1.6 Z" fill="#F5A623"/>
+    <path d="M50 10 l1.6 3.4 L55 15 l-3.4 1.6 L50 20 l-1.6-3.4 L45 15 l3.4-1.6 Z" fill="#F97316"/>
   </svg>
 )
 
