@@ -521,106 +521,52 @@ function PaymentsPage() {
     );
 
   return (
-    <div
-      dir="rtl"
-      className="min-h-screen bg-slate-50 p-4 font-[Cairo] sm:p-6"
-    >
-      <div className="mx-auto max-w-6xl">
-        <header className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-gradient-to-l from-[#0A2540] to-[#0F4C81] p-5 text-white shadow">
+    <main dir="rtl" className="min-h-screen bg-slate-50 p-3 font-[Cairo] sm:p-6">
+      <div className="mx-auto max-w-7xl space-y-5">
+        <header className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-gradient-to-l from-[#0A2540] to-[#0F4C81] p-5 text-white shadow-md">
           <div>
-            <p className="text-xs font-bold text-sky-200">
-              لوحة الإدارة / المحاسبة
-            </p>
-            <h1 className="mt-1 text-xl font-black">
-              طلبات الدفع والمحاسبة
-            </h1>
-            <p className="mt-1 text-xs text-sky-200">
-              مراجعة الدفعات واعتماد المقبوض الفعلي
-            </p>
+            <p className="text-xs font-bold text-sky-200">لوحة الإدارة / المحاسبة</p>
+            <h1 className="mt-1 text-xl font-black sm:text-2xl">طلبات الدفع والمحاسبة</h1>
+            <p className="mt-1 text-xs text-sky-200">مراجعة الدفعات واعتماد المقبوض الفعلي</p>
           </div>
-
-          <Link
-            to="/admin"
-            className="rounded-xl bg-white/15 px-4 py-2 text-sm font-bold hover:bg-white/25"
-          >
+          <Link to="/admin" className="rounded-xl bg-white/15 px-4 py-2 text-sm font-bold hover:bg-white/25">
             ← لوحة الإدارة
           </Link>
         </header>
 
         {err && (
-          <div
-            role="alert"
-            className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800"
-          >
-            <p className="font-black">
-              تعذر تنفيذ العملية أو تحميل البيانات
-            </p>
+          <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+            <p className="font-black">تعذر تنفيذ العملية أو تحميل البيانات</p>
             <p className="mt-1 break-words">{err}</p>
-            <button
-              type="button"
-              onClick={() => void load()}
-              className="mt-2 rounded-lg bg-red-100 px-3 py-1.5 font-bold"
-            >
+            <button type="button" onClick={() => void load()} className="mt-2 rounded-lg bg-red-100 px-3 py-1.5 font-bold">
               إعادة تحميل البيانات
             </button>
           </div>
         )}
 
-        <section className="mt-4">
-          <h2 className="mb-3 text-lg font-black text-[#0A2540]">
-            ملخص المدفوعات
-          </h2>
-
+        <section>
+          <h2 className="mb-3 text-lg font-black text-[#0A2540]">ملخص المدفوعات</h2>
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <Kpi
-              label="بانتظار الاعتماد"
-              value={totals.pending}
-              sub={`${fmt(pendingAmount)} ر.ي مطلوب`}
-              color="text-amber-600"
-            />
-            <Kpi
-              label="المقبوض المعتمد"
-              value={fmt(totals.received)}
-              sub="ر.ي"
-              color="text-emerald-600"
-            />
-            <Kpi
-              label="دفعات معتمدة"
-              value={totals.approved}
-              sub="عملية"
-              color="text-[#0F4C81]"
-            />
-            <Kpi
-              label="مرفوضة"
-              value={totals.rejected}
-              sub="عملية"
-              color="text-red-600"
-            />
+            <Kpi label="بانتظار الاعتماد" value={totals.pending} sub={`${fmt(pendingAmount)} ر.ي مطلوب`} color="text-amber-600" />
+            <Kpi label="المقبوض المعتمد" value={fmt(totals.received)} sub="ر.ي" color="text-emerald-600" />
+            <Kpi label="دفعات معتمدة" value={totals.approved} sub="عملية" color="text-[#0F4C81]" />
+            <Kpi label="مرفوضة" value={totals.rejected} sub="عملية" color="text-red-600" />
           </div>
         </section>
 
-        <section className="mt-4 rounded-2xl border border-sky-100 bg-white p-4">
-          <h2 className="mb-3 text-sm font-black text-[#0A2540]">
-            إجمالي المقبوض حسب وسيلة الدفع
-          </h2>
-
+        <section className="rounded-2xl border border-sky-100 bg-white p-4 shadow-sm">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-black text-[#0A2540]">إجمالي المقبوض حسب وسيلة الدفع</h2>
+            <span className="text-xs text-slate-500">الدفعات المعتمدة فقط</span>
+          </div>
           {Object.keys(ledger).length === 0 ? (
-            <p className="text-xs text-slate-500">
-              لا توجد مقبوضات معتمدة.
-            </p>
+            <p className="text-xs text-slate-500">لا توجد مقبوضات معتمدة.</p>
           ) : (
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
               {Object.entries(ledger).map(([method, value]) => (
-                <div
-                  key={method}
-                  className="rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-center"
-                >
-                  <div className="text-xs font-bold text-slate-600">
-                    {method}
-                  </div>
-                  <div className="mt-1 text-lg font-black text-emerald-700">
-                    {fmt(value)}
-                  </div>
+                <div key={method} className="rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-center">
+                  <div className="text-xs font-bold text-slate-600">{method}</div>
+                  <div className="mt-1 text-lg font-black text-emerald-700">{fmt(value)}</div>
                   <div className="text-[10px] text-slate-500">ر.ي</div>
                 </div>
               ))}
@@ -628,271 +574,169 @@ function PaymentsPage() {
           )}
         </section>
 
-        <section className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
-          <div className="flex flex-col gap-3 sm:flex-row">
+        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <label className="flex-1">
-              <span className="mb-1 block text-xs font-bold text-slate-600">
-                البحث
-              </span>
+              <span className="mb-1 block text-xs font-bold text-slate-600">البحث</span>
               <input
                 type="search"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="ابحث باسم العميل أو رقم الطلب أو وسيلة الدفع..."
-                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#0F4C81] focus:ring-2 focus:ring-sky-100"
+                className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-[#0F4C81] focus:ring-2 focus:ring-sky-100"
               />
             </label>
-
-            <div className="flex items-end">
-              <button
-                type="button"
-                onClick={() => void load()}
-                disabled={refreshing}
-                className="w-full rounded-xl bg-[#0F4C81] px-4 py-2 text-sm font-bold text-white hover:bg-[#0A2540] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
-              >
-                {refreshing ? "جارٍ التحديث…" : "تحديث البيانات"}
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => void load()}
+              disabled={refreshing}
+              className="rounded-xl bg-[#0F4C81] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#0A2540] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {refreshing ? "جارٍ التحديث…" : "⟳ تحديث البيانات"}
+            </button>
           </div>
 
-          <div className="mt-4">
-            <p className="mb-2 text-xs font-black text-slate-700">
-              الفترة الزمنية
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {PERIOD_OPTIONS.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => setPeriod(option.value)}
-                  className={`rounded-xl border px-3 py-2 text-xs font-bold ${
-                    period === option.value
-                      ? "border-[#0F4C81] bg-[#0F4C81] text-white"
-                      : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                  }`}
-                >
-                  {option.label}
-                </button>
-              ))}
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            <div>
+              <p className="mb-2 text-xs font-black text-slate-700">الفترة الزمنية</p>
+              <div className="flex flex-wrap gap-2">
+                {PERIOD_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setPeriod(option.value)}
+                    className={`rounded-xl border px-3 py-2 text-xs font-bold ${period === option.value ? "border-[#0F4C81] bg-[#0F4C81] text-white" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="mb-2 text-xs font-black text-slate-700">حالة الدفع</p>
+              <div className="flex flex-wrap gap-2">
+                {STATUS_OPTIONS.map((status) => (
+                  <button
+                    key={status}
+                    type="button"
+                    onClick={() => setFilter(status)}
+                    className={`rounded-xl border px-3 py-2 text-xs font-bold ${filter === status ? "border-[#0F4C81] bg-[#0F4C81] text-white" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}
+                  >
+                    {STATUS_LABELS[status]}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
-
-          <div className="mt-4">
-            <p className="mb-2 text-xs font-black text-slate-700">
-              حالة الدفع
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {STATUS_OPTIONS.map((status) => (
-                <button
-                  key={status}
-                  type="button"
-                  onClick={() => setFilter(status)}
-                  className={`rounded-xl border px-3 py-2 text-xs font-bold ${
-                    filter === status
-                      ? "border-[#0F4C81] bg-[#0F4C81] text-white"
-                      : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                  }`}
-                >
-                  {STATUS_LABELS[status]}
-                </button>
-              ))}
-            </div>
-          </div>
-
           <p className="mt-3 text-xs text-slate-500" aria-live="polite">
             المعروض: {filteredRows.length} من {rows.length}
-            {refreshing && hasLoadedOnceRef.current
-              ? " • يجري التحديث في الخلفية"
-              : ""}
-            {" • "}
-            التحديث التلقائي كل {AUTO_REFRESH_SECONDS} ثانية
+            {refreshing && hasLoadedOnceRef.current ? " • يجري التحديث في الخلفية" : ""}
+            {" • "}التحديث التلقائي كل {AUTO_REFRESH_SECONDS} ثانية
           </p>
         </section>
 
-        <section className="mt-3 space-y-3">
-          {loading && !hasLoadedOnceRef.current && (
-            <p className="rounded-xl bg-white p-4 text-sm text-slate-500">
-              جارٍ تحميل طلبات الدفع…
-            </p>
+        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-3">
+            <h2 className="font-black text-[#0A2540]">سجل طلبات الدفع</h2>
+            <span className="text-xs text-slate-500">{filteredRows.length} طلب</span>
+          </div>
+          {loading && !hasLoadedOnceRef.current ? (
+            <p className="p-5 text-sm text-slate-500">جارٍ تحميل طلبات الدفع…</p>
+          ) : filteredRows.length === 0 ? (
+            <p className="p-5 text-sm text-slate-500">لا توجد طلبات تطابق البحث والفلاتر المحددة.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[1050px] border-collapse text-right text-xs">
+                <thead className="bg-slate-50 text-slate-600">
+                  <tr>
+                    <th className="whitespace-nowrap border-b px-4 py-3 font-black">رقم الطلب / العميل</th>
+                    <th className="whitespace-nowrap border-b px-4 py-3 font-black">وسيلة الدفع</th>
+                    <th className="whitespace-nowrap border-b px-4 py-3 font-black">المبلغ</th>
+                    <th className="whitespace-nowrap border-b px-4 py-3 font-black">التاريخ</th>
+                    <th className="whitespace-nowrap border-b px-4 py-3 font-black">الحالة</th>
+                    <th className="whitespace-nowrap border-b px-4 py-3 font-black">السند والإجراءات</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRows.map((payment) => {
+                    const requested = Number(payment.requestedAmount ?? payment.amount);
+                    const entered = Number(receivedInputs[payment.id] ?? requested);
+                    const remainingPreview = Number.isFinite(entered) ? Math.max(0, requested - entered) : requested;
+                    const isPending = payment.status === "pending";
+                    const actualReceived = payment.receivedAmount ?? payment.amount;
+                    const validDate = payment.createdAt && !Number.isNaN(Date.parse(payment.createdAt));
+
+                    return (
+                      <tr key={payment.id} className="border-b last:border-0 hover:bg-slate-50/70">
+                        <td className="px-4 py-3">
+                          <div className="font-black text-[#0A2540]" dir="ltr">{payment.tracking || payment.id.slice(0, 8)}</div>
+                          <div className="mt-1 text-slate-500">{payment.customer || "عميل"}</div>
+                        </td>
+                        <td className="px-4 py-3 font-semibold text-slate-700">{payment.method}</td>
+                        <td className="px-4 py-3">
+                          <div className="font-black text-slate-800">المطلوب: {fmt(requested)} ر.ي</div>
+                          {isPending ? (
+                            <div className="mt-2 w-40">
+                              <label className="block text-[11px] font-bold text-slate-500">المقبوض فعليًا</label>
+                              <input
+                                type="number"
+                                min="1"
+                                max={requested}
+                                step="1"
+                                inputMode="numeric"
+                                value={receivedInputs[payment.id] ?? String(requested)}
+                                onChange={(event) => setReceivedInputs((previous) => ({ ...previous, [payment.id]: event.target.value }))}
+                                className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm font-bold"
+                              />
+                              <div className="mt-1 text-[11px] font-bold text-amber-700">المتبقي: {fmt(remainingPreview)} ر.ي</div>
+                            </div>
+                          ) : payment.status === "approved" ? (
+                            <div className="mt-1 text-[11px] text-emerald-700">المقبوض: {fmt(actualReceived)} ر.ي{payment.remainingAmount != null ? ` • المتبقي: ${fmt(payment.remainingAmount)} ر.ي` : ""}</div>
+                          ) : null}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3 text-slate-600">{validDate ? new Date(payment.createdAt).toLocaleString("ar") : "—"}</td>
+                        <td className="px-4 py-3">
+                          <span className={`whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-bold ${STATUS_STYLES[payment.status]}`}>
+                            {payment.status === "pending" ? "بانتظار المراجعة" : payment.status === "approved" ? "معتمد ✓" : "مرفوض"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap items-center gap-2">
+                            {payment.receiptImage && (
+                              <button type="button" onClick={() => setPreview(payment.receiptImage)} className="rounded-lg border border-slate-200 px-3 py-2 font-bold text-slate-700 hover:bg-slate-50">
+                                عرض السند
+                              </button>
+                            )}
+                            {isPending && (
+                              <>
+                                <button type="button" disabled={busy === payment.id} onClick={() => void approve(payment)} className="whitespace-nowrap rounded-lg bg-emerald-600 px-3 py-2 font-bold text-white hover:bg-emerald-700 disabled:opacity-50">
+                                  {busy === payment.id ? "جارٍ التنفيذ…" : "اعتماد"}
+                                </button>
+                                <button type="button" disabled={busy === payment.id} onClick={() => void reject(payment)} className="whitespace-nowrap rounded-lg border border-red-200 bg-red-50 px-3 py-2 font-bold text-red-700 hover:bg-red-100 disabled:opacity-50">
+                                  رفض
+                                </button>
+                              </>
+                            )}
+                            {!payment.receiptImage && !isPending && <span className="text-slate-400">لا يوجد سند</span>}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
-
-          {hasLoadedOnceRef.current && filteredRows.length === 0 && (
-            <p className="rounded-xl bg-white p-4 text-sm text-slate-500">
-              لا توجد طلبات تطابق البحث والفلاتر المحددة.
-            </p>
-          )}
-
-          {filteredRows.map((payment) => {
-            const requested = Number(
-              payment.requestedAmount ?? payment.amount,
-            );
-            const entered = Number(
-              receivedInputs[payment.id] ?? requested,
-            );
-            const remainingPreview = Number.isFinite(entered)
-              ? Math.max(0, requested - entered)
-              : requested;
-            const isPending = payment.status === "pending";
-            const actualReceived =
-              payment.receivedAmount ?? payment.amount;
-
-            return (
-              <article
-                key={payment.id}
-                className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-4 sm:flex-row"
-              >
-                {payment.receiptImage ? (
-                  <button
-                    type="button"
-                    onClick={() => setPreview(payment.receiptImage)}
-                    className="shrink-0"
-                    aria-label="معاينة سند الدفع"
-                  >
-                    <img
-                      src={payment.receiptImage}
-                      alt="سند الدفع"
-                      className="h-24 w-24 rounded-xl border object-cover"
-                    />
-                  </button>
-                ) : (
-                  <div className="grid h-24 w-24 shrink-0 place-items-center rounded-xl border border-dashed text-xs text-slate-400">
-                    بدون سند
-                  </div>
-                )}
-
-                <div className="min-w-0 flex-1 text-sm">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-black text-[#0A2540]">
-                      {payment.customer || "عميل"}
-                    </span>
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${STATUS_STYLES[payment.status]}`}
-                    >
-                      {payment.status === "pending"
-                        ? "بانتظار المراجعة"
-                        : payment.status === "approved"
-                          ? "معتمد ✓"
-                          : "مرفوض"}
-                    </span>
-                  </div>
-
-                  <div className="mt-1 text-xs text-slate-600">
-                    الطلب <b dir="ltr">{payment.tracking}</b>
-                    {" • "}عبر <b>{payment.method}</b>
-                    {" • "}
-                    {new Date(payment.createdAt).toLocaleString("ar")}
-                  </div>
-
-                  {isPending ? (
-                    <>
-                      <div className="mt-3 text-sm font-bold">
-                        المبلغ المطلوب: {fmt(requested)} ر.ي
-                      </div>
-
-                      <label className="mt-2 block max-w-xs text-xs font-bold text-slate-700">
-                        المبلغ المقبوض فعليًا
-                        <div className="mt-1 flex items-center gap-2">
-                          <input
-                            type="number"
-                            min="1"
-                            max={requested}
-                            step="1"
-                            inputMode="numeric"
-                            value={
-                              receivedInputs[payment.id] ??
-                              String(requested)
-                            }
-                            onChange={(event) =>
-                              setReceivedInputs((previous) => ({
-                                ...previous,
-                                [payment.id]: event.target.value,
-                              }))
-                            }
-                            className="w-full rounded-xl border border-slate-300 px-3 py-2 text-base font-black"
-                          />
-                          <span>ر.ي</span>
-                        </div>
-                      </label>
-
-                      <p className="mt-2 text-xs font-bold text-amber-700">
-                        المتبقي على العميل عند التسليم:{" "}
-                        {fmt(remainingPreview)} ر.ي
-                      </p>
-
-                      <p className="mt-1 text-[11px] text-slate-500">
-                        تأكد من السند قبل الاعتماد.
-                      </p>
-                    </>
-                  ) : (
-                    <div className="mt-3 space-y-1 text-sm">
-                      <p>
-                        المبلغ المطلوب: {fmt(requested)} ر.ي
-                      </p>
-                      {payment.status === "approved" && (
-                        <>
-                          <p className="font-black text-emerald-700">
-                            المقبوض والمعتمد: {fmt(actualReceived)} ر.ي
-                          </p>
-                          <p className="font-bold text-amber-700">
-                            المتبقي عند التسليم:{" "}
-                            {fmt(payment.remainingAmount ?? 0)} ر.ي
-                          </p>
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {isPending && (
-                  <div className="flex shrink-0 flex-col gap-2 sm:w-48">
-                    <button
-                      type="button"
-                      disabled={busy === payment.id}
-                      onClick={() => void approve(payment)}
-                      className="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
-                    >
-                      {busy === payment.id
-                        ? "جارٍ الاعتماد…"
-                        : "اعتماد المقبوض ✓"}
-                    </button>
-
-                    <button
-                      type="button"
-                      disabled={busy === payment.id}
-                      onClick={() => void reject(payment)}
-                      className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-xs font-bold text-red-700 hover:bg-red-100 disabled:opacity-50"
-                    >
-                      رفض السند
-                    </button>
-                  </div>
-                )}
-              </article>
-            );
-          })}
         </section>
       </div>
 
       {preview && (
-        <div
-          role="presentation"
-          onClick={() => setPreview(null)}
-          className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4"
-        >
-          <button
-            type="button"
-            onClick={() => setPreview(null)}
-            className="absolute right-4 top-4 rounded-lg bg-white px-3 py-2 font-bold"
-          >
-            إغلاق
-          </button>
-          <img
-            src={preview}
-            alt="سند الدفع"
-            className="max-h-[90vh] max-w-full rounded-xl"
-          />
+        <div role="presentation" onClick={() => setPreview(null)} className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4">
+          <button type="button" onClick={() => setPreview(null)} className="absolute right-4 top-4 rounded-lg bg-white px-3 py-2 font-bold">إغلاق</button>
+          <img src={preview} alt="سند الدفع" className="max-h-[90vh] max-w-full rounded-xl" />
         </div>
       )}
-    </div>
+    </main>
   );
 }
 
