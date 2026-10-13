@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState, type FormEvent, type SyntheticEvent } from 'react';
 import {
   ArrowRight,
   ExternalLink,
@@ -12,6 +12,8 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { AdminRouteGuard } from '@/components/admin/AdminRouteGuard';
 
+// نستخدم any لأن مخطط قاعدة البيانات المحلي قد لا يحتوي بعد على image_url وproduct_url.
+// لا تضع service_role أو أي مفتاح سري في هذا الملف.
 const db = supabase as any;
 
 type ProductRow = {
@@ -64,28 +66,35 @@ function ProductsManager() {
   const [draft, setDraft] = useState<ProductDraft>(blankDraft);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
+    setError('');
 
-    const { data, error: loadError } = await db
-      .from('products')
-      .select(
-        'id,name,sku,store_id,quantity,sell_price,image_url,product_url,created_at',
-      )
-      .order('created_at', { ascending: false });
+    try {
+      const { data, error: loadError } = await db
+        .from('products')
+        .select(
+          'id,name,sku,store_id,quantity,sell_price,image_url,product_url,created_at',
+        )
+        .order('created_at', { ascending: false });
 
-    if (loadError) {
-      setError(`تعذر تحميل المنتجات: ${loadError.message}`);
-    } else {
-      setError('');
+      if (loadError) {
+        setError(`تعذر تحميل المنتجات: ${loadError.message}`);
+        return;
+      }
+
       setProducts((data ?? []) as ProductRow[]);
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : 'خطأ غير معروف';
+      setError(`تعذر الاتصال بقاعدة البيانات: ${message}`);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -96,15 +105,24 @@ function ProductsManager() {
     setDraft((current) => ({ ...current, [key]: value }));
   };
 
+  const isValidHttpsUrl = (value: string) => {
+    if (!value) return true;
+    try {
+      return new URL(value).protocol === 'https:';
+    } catch {
+      return false;
+    }
+  };
+
   const saveProduct = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (busy) return;
 
     const name = draft.name.trim();
     const quantity = Number(draft.quantity);
     const sellPrice = Number(draft.sell_price);
     const imageUrl = draft.image_url.trim();
     const productUrl = draft.product_url.trim();
-    const validHttps = (value: string) => !value || /^https:\/\/\S+$/i.test(value);
 
     if (
       !name ||
@@ -114,11 +132,13 @@ function ProductsManager() {
       sellPrice < 0
     ) {
       setError('تحقق من الاسم والكمية وسعر البيع. يجب أن تكون الأرقام غير سالبة.');
+      setNotice('');
       return;
     }
 
-    if (!validHttps(imageUrl) || !validHttps(productUrl)) {
-      setError('رابط الصورة ورابط المنتج يجب أن يبدآ بـ https://');
+    if (!isValidHttpsUrl(imageUrl) || !isValidHttpsUrl(productUrl)) {
+      setError('رابط الصورة ورابط المنتج يجب أن يكونا رابطين صحيحين ويبدآ بـ https://');
+      setNotice('');
       return;
     }
 
@@ -135,38 +155,45 @@ function ProductsManager() {
       product_url: productUrl || null,
     };
 
-    const result = editingId
-      ? await db
-          .from('products')
-          .update(values)
-          .eq('id', editingId)
-          .select('id')
-          .maybeSingle()
-      : await db.from('products').insert(values).select('id').single();
+    try {
+      const result = editingId
+        ? await db
+            .from('products')
+            .update(values)
+            .eq('id', editingId)
+            .select('id')
+            .maybeSingle()
+        : await db.from('products').insert(values).select('id').single();
 
-    setBusy(false);
+      if (result.error) {
+        setError(`تعذر حفظ المنتج: ${result.error.message}`);
+        return;
+      }
 
-    if (result.error) {
-      setError(`تعذر حفظ المنتج: ${result.error.message}`);
-      return;
+      if (!result.data) {
+        setError(
+          'لم يتم الحفظ. تحقق من دور المدير وسياسات RLS وصلاحيات القراءة بعد التعديل.',
+        );
+        return;
+      }
+
+      const wasEditing = Boolean(editingId);
+      setDraft(blankDraft);
+      setEditingId(null);
+      setNotice(wasEditing ? 'تم تحديث بطاقة المنتج.' : 'تمت إضافة بطاقة المنتج.');
+      await loadProducts();
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : 'خطأ غير معروف';
+      setError(`حدث خطأ أثناء حفظ المنتج: ${message}`);
+    } finally {
+      setBusy(false);
     }
-
-    if (!result.data) {
-      setError('لم يتم الحفظ. تحقق من دور المدير وسياسات RLS وصلاحيات الأعمدة.');
-      return;
-    }
-
-    const wasEditing = Boolean(editingId);
-    setDraft(blankDraft);
-    setEditingId(null);
-    setNotice(wasEditing ? 'تم تحديث بطاقة المنتج.' : 'تمت إضافة بطاقة المنتج.');
-    await loadProducts();
   };
 
   const beginEdit = (product: ProductRow) => {
     setEditingId(product.id);
     setDraft({
-      name: product.name,
+      name: product.name ?? '',
       sku: product.sku ?? '',
       quantity: String(product.quantity ?? 0),
       sell_price: String(product.sell_price ?? 0),
@@ -186,46 +213,57 @@ function ProductsManager() {
   };
 
   const deleteProduct = async (product: ProductRow) => {
+    if (busy || deletingId) return;
     if (!window.confirm(`تأكيد حذف «${product.name}»؟ لا يمكن التراجع عن الحذف.`)) {
       return;
     }
 
+    setDeletingId(product.id);
     setError('');
     setNotice('');
 
-    const { data, error: deleteError } = await db
-      .from('products')
-      .delete()
-      .eq('id', product.id)
-      .select('id')
-      .maybeSingle();
+    try {
+      const { data, error: deleteError } = await db
+        .from('products')
+        .delete()
+        .eq('id', product.id)
+        .select('id')
+        .maybeSingle();
 
-    if (deleteError) {
-      setError(`تعذر حذف المنتج: ${deleteError.message}`);
-      return;
+      if (deleteError) {
+        setError(`تعذر حذف المنتج: ${deleteError.message}`);
+        return;
+      }
+
+      if (!data) {
+        setError('لم يُحذف المنتج. تحقق من دور المدير وسياسة الحذف في RLS.');
+        return;
+      }
+
+      setNotice('تم حذف المنتج.');
+      if (editingId === product.id) cancelEdit();
+      await loadProducts();
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : 'خطأ غير معروف';
+      setError(`حدث خطأ أثناء حذف المنتج: ${message}`);
+    } finally {
+      setDeletingId(null);
     }
+  };
 
-    if (!data) {
-      setError('لم يُحذف المنتج. تحقق من دور المدير وسياسات RLS.');
-      return;
-    }
-
-    setNotice('تم حذف المنتج.');
-    await loadProducts();
+  const handleImageError = (event: SyntheticEvent<HTMLImageElement>) => {
+    event.currentTarget.onerror = null;
+    event.currentTarget.src = FALLBACK_IMAGE;
   };
 
   return (
-    <main
-      dir="rtl"
-      className="min-h-screen bg-slate-50 px-4 py-6 text-slate-900 sm:px-8"
-    >
+    <main dir="rtl" className="min-h-screen bg-slate-50 px-4 py-6 text-slate-900 sm:px-8">
       <div className="mx-auto max-w-6xl space-y-6">
         <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-white p-4 shadow-sm">
           <div>
             <h1 className="text-2xl font-black">إدارة المنتجات</h1>
             <p className="mt-1 text-sm text-slate-500">
-              أضف البطاقات وروابطها أو عدّلها واحذفها. المنتجات المحفوظة تظهر
-              للعميل.
+              أضف البطاقات وروابطها أو عدّلها واحذفها. المنتجات المحفوظة تظهر للعميل.
             </p>
           </div>
 
@@ -249,18 +287,11 @@ function ProductsManager() {
 
         <section className="rounded-2xl border bg-white p-4 shadow-sm sm:p-6">
           <h2 className="mb-4 flex items-center gap-2 text-lg font-black">
-            {editingId ? (
-              <Pencil className="size-5" />
-            ) : (
-              <Plus className="size-5" />
-            )}
+            {editingId ? <Pencil className="size-5" /> : <Plus className="size-5" />}
             {editingId ? 'تعديل بطاقة' : 'إضافة بطاقة جديدة'}
           </h2>
 
-          <form
-            onSubmit={saveProduct}
-            className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
-          >
+          <form onSubmit={saveProduct} className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <input
               required
               maxLength={200}
@@ -284,10 +315,9 @@ function ProductsManager() {
                 type="number"
                 min="0"
                 step="1"
+                required
                 value={draft.quantity}
-                onChange={(event) =>
-                  updateDraft('quantity', event.target.value)
-                }
+                onChange={(event) => updateDraft('quantity', event.target.value)}
                 className="mt-1 w-full rounded-xl border p-3 text-sm font-normal text-slate-900"
               />
             </label>
@@ -298,10 +328,9 @@ function ProductsManager() {
                 type="number"
                 min="0"
                 step="0.01"
+                required
                 value={draft.sell_price}
-                onChange={(event) =>
-                  updateDraft('sell_price', event.target.value)
-                }
+                onChange={(event) => updateDraft('sell_price', event.target.value)}
                 className="mt-1 w-full rounded-xl border p-3 text-sm font-normal text-slate-900"
               />
             </label>
@@ -311,9 +340,7 @@ function ProductsManager() {
               <input
                 type="url"
                 value={draft.image_url}
-                onChange={(event) =>
-                  updateDraft('image_url', event.target.value)
-                }
+                onChange={(event) => updateDraft('image_url', event.target.value)}
                 placeholder="https://..."
                 className="mt-1 w-full rounded-xl border p-3 text-sm font-normal text-slate-900"
               />
@@ -324,9 +351,7 @@ function ProductsManager() {
               <input
                 type="url"
                 value={draft.product_url}
-                onChange={(event) =>
-                  updateDraft('product_url', event.target.value)
-                }
+                onChange={(event) => updateDraft('product_url', event.target.value)}
                 placeholder="https://..."
                 className="mt-1 w-full rounded-xl border p-3 text-sm font-normal text-slate-900"
               />
@@ -334,22 +359,19 @@ function ProductsManager() {
 
             <div className="flex flex-wrap gap-2 sm:col-span-2 lg:col-span-3">
               <button
-                disabled={busy}
+                disabled={busy || Boolean(deletingId)}
                 type="submit"
-                className="inline-flex items-center gap-2 rounded-xl bg-[#005696] px-5 py-3 text-sm font-black text-white disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-xl bg-[#005696] px-5 py-3 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {busy
-                  ? 'جارٍ الحفظ…'
-                  : editingId
-                    ? 'حفظ التعديل'
-                    : 'إضافة البطاقة'}
+                {busy ? 'جارٍ الحفظ…' : editingId ? 'حفظ التعديل' : 'إضافة البطاقة'}
               </button>
 
               {editingId && (
                 <button
                   type="button"
+                  disabled={busy}
                   onClick={cancelEdit}
-                  className="inline-flex items-center gap-2 rounded-xl bg-slate-100 px-5 py-3 text-sm font-bold"
+                  className="inline-flex items-center gap-2 rounded-xl bg-slate-100 px-5 py-3 text-sm font-bold disabled:opacity-50"
                 >
                   <X className="size-4" />
                   إلغاء
@@ -358,10 +380,11 @@ function ProductsManager() {
 
               <button
                 type="button"
+                disabled={loading || busy || Boolean(deletingId)}
                 onClick={() => void loadProducts()}
-                className="mr-auto inline-flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-bold"
+                className="mr-auto inline-flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-bold disabled:opacity-50"
               >
-                <RefreshCw className="size-4" />
+                <RefreshCw className={`size-4 ${loading ? 'animate-spin' : ''}`} />
                 تحديث
               </button>
             </div>
@@ -372,26 +395,17 @@ function ProductsManager() {
               src={draft.image_url}
               alt="معاينة صورة المنتج"
               className="mt-4 size-28 rounded-xl border object-cover"
-              onError={(event) => {
-                event.currentTarget.src = FALLBACK_IMAGE;
-              }}
+              onError={handleImageError}
             />
           )}
 
           {error && (
-            <p
-              role="alert"
-              className="mt-4 rounded-xl bg-red-50 p-3 text-sm font-bold text-red-800"
-            >
+            <p role="alert" className="mt-4 rounded-xl bg-red-50 p-3 text-sm font-bold text-red-800">
               {error}
             </p>
           )}
-
           {notice && (
-            <p
-              role="status"
-              className="mt-4 rounded-xl bg-emerald-50 p-3 text-sm font-bold text-emerald-800"
-            >
+            <p role="status" className="mt-4 rounded-xl bg-emerald-50 p-3 text-sm font-bold text-emerald-800">
               {notice}
             </p>
           )}
@@ -400,19 +414,13 @@ function ProductsManager() {
         <section className="overflow-hidden rounded-2xl border bg-white shadow-sm">
           <div className="flex items-center justify-between border-b p-4">
             <h2 className="font-black">بطاقات المنتجات</h2>
-            <span className="text-sm text-slate-500">
-              {products.length} منتج
-            </span>
+            <span className="text-sm text-slate-500">{products.length} منتج</span>
           </div>
 
           {loading ? (
-            <p role="status" className="p-6 text-sm text-slate-500">
-              جارٍ تحميل المنتجات…
-            </p>
+            <p role="status" className="p-6 text-sm text-slate-500">جارٍ تحميل المنتجات…</p>
           ) : products.length === 0 ? (
-            <p className="p-6 text-sm text-slate-500">
-              لا توجد بطاقات محفوظة بعد.
-            </p>
+            <p className="p-6 text-sm text-slate-500">لا توجد بطاقات محفوظة بعد.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[950px] text-right text-sm">
@@ -427,7 +435,6 @@ function ProductsManager() {
                     <th className="p-3">الإجراءات</th>
                   </tr>
                 </thead>
-
                 <tbody>
                   {products.map((product) => (
                     <tr key={product.id} className="border-t">
@@ -436,48 +443,44 @@ function ProductsManager() {
                           src={product.image_url || FALLBACK_IMAGE}
                           alt={product.name}
                           className="size-14 rounded-lg border object-cover"
-                          onError={(event) => {
-                            event.currentTarget.src = FALLBACK_IMAGE;
-                          }}
+                          onError={handleImageError}
                         />
                       </td>
                       <td className="p-3 font-bold">{product.name}</td>
                       <td className="p-3">{product.sku || '—'}</td>
                       <td className="p-3">{product.quantity ?? 0}</td>
-                      <td className="p-3">
-                        {Number(product.sell_price ?? 0).toLocaleString()}
-                      </td>
+                      <td className="p-3">{Number(product.sell_price ?? 0).toLocaleString()}</td>
                       <td className="p-3">
                         {product.product_url ? (
                           <a
                             href={product.product_url}
                             target="_blank"
-                            rel="noreferrer"
+                            rel="noopener noreferrer"
                             className="font-bold text-blue-700 underline"
                           >
                             فتح الرابط
                           </a>
-                        ) : (
-                          '—'
-                        )}
+                        ) : '—'}
                       </td>
                       <td className="p-3">
                         <div className="flex gap-2">
                           <button
                             type="button"
+                            disabled={busy || Boolean(deletingId)}
                             onClick={() => beginEdit(product)}
-                            className="inline-flex items-center gap-1 rounded-lg bg-amber-100 px-3 py-2 text-xs font-bold text-amber-900"
+                            className="inline-flex items-center gap-1 rounded-lg bg-amber-100 px-3 py-2 text-xs font-bold text-amber-900 disabled:opacity-50"
                           >
                             <Pencil className="size-3.5" />
                             تعديل
                           </button>
                           <button
                             type="button"
+                            disabled={busy || Boolean(deletingId)}
                             onClick={() => void deleteProduct(product)}
-                            className="inline-flex items-center gap-1 rounded-lg bg-rose-100 px-3 py-2 text-xs font-bold text-rose-800"
+                            className="inline-flex items-center gap-1 rounded-lg bg-rose-100 px-3 py-2 text-xs font-bold text-rose-800 disabled:opacity-50"
                           >
                             <Trash2 className="size-3.5" />
-                            حذف
+                            {deletingId === product.id ? 'جارٍ الحذف…' : 'حذف'}
                           </button>
                         </div>
                       </td>
