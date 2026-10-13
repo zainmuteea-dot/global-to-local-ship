@@ -310,6 +310,49 @@ function PaymentsPage() {
         throw new Error("الحساب لا يحمل دور admin أو staff.");
       }
 
+      // في فلتر الدفع الجزئي، مصدر الإجمالي والمتبقي هو الطلب نفسه.
+      // نقرأ الطلبات المدفوعة جزئيًا على دفعات حتى يشمل الفلتر كل الطلبات.
+      const partialRemainingByTracking = new Map<string, number>();
+
+      if (filter === "partial") {
+        const batchSize = 500;
+        let from = 0;
+
+        while (true) {
+          const { data: orderRows, error: ordersError } = await (
+            supabase.from("orders") as any
+          )
+            .select("tracking_code, paid_amount, remaining_amount")
+            .gt("paid_amount", 0)
+            .gt("remaining_amount", 0)
+            .not("tracking_code", "is", null)
+            .order("tracking_code", { ascending: true })
+            .range(from, from + batchSize - 1);
+
+          if (ordersError) {
+            throw new Error(
+              `تعذر تحميل الطلبات المدفوعة جزئيًا: ${ordersError.message}${
+                ordersError.code ? ` (${ordersError.code})` : ""
+              }`,
+            );
+          }
+
+          const batch = orderRows ?? [];
+          for (const order of batch) {
+            const tracking = String(order.tracking_code ?? "").trim();
+            const remaining = Number(order.remaining_amount);
+
+            // أرقام التتبع تكون عادةً مثل SQ-123456 أو SHP-123456.
+            if (/^[A-Za-z0-9_-]+$/.test(tracking) && Number.isFinite(remaining) && remaining > 0) {
+              partialRemainingByTracking.set(tracking, remaining);
+            }
+          }
+
+          if (batch.length < batchSize) break;
+          from += batchSize;
+        }
+      }
+
       // جلب صفحة واحدة من قاعدة البيانات مع العدد الدقيق لكل نتائج البحث والفلاتر.
       const query = (supabase.from("payments") as any)
         .select(
@@ -320,7 +363,19 @@ function PaymentsPage() {
       if (filter === "pending" || filter === "approved" || filter === "rejected") {
         query.eq("status", filter);
       } else if (filter === "partial") {
-        query.eq("status", "approved").gt("remaining_amount", 0);
+        query.eq("status", "approved");
+        const trackingCodes = Array.from(partialRemainingByTracking.keys());
+
+        if (trackingCodes.length > 0) {
+          // بعض الدفعات تربط الطلب عبر order_tracking وبعضها عبر tracking_code.
+          const inList = `(${trackingCodes.join(",")})`;
+          query.or(
+            `order_tracking.in.${inList},tracking_code.in.${inList}`,
+          );
+        } else {
+          // لا توجد طلبات دفع جزئي، فلا نعرض نتائج غير مطابقة.
+          query.eq("id", "00000000-0000-0000-0000-000000000000");
+        }
       }
 
       const bounds = getPeriodBounds(period, new Date());
@@ -386,9 +441,13 @@ function PaymentsPage() {
           requestedAmount,
           receivedAmount,
           remainingAmount:
-            row.remaining_amount == null
-              ? null
-              : Number(row.remaining_amount),
+            filter === "partial"
+              ? partialRemainingByTracking.get(
+                  String(row.order_tracking ?? row.tracking_code ?? "").trim(),
+                ) ?? (row.remaining_amount == null ? null : Number(row.remaining_amount))
+              : row.remaining_amount == null
+                ? null
+                : Number(row.remaining_amount),
           // لا نحمل صورة السند ضمن القائمة لتقليل حجم التحديث الدوري.
           receiptImage: null,
           reviewedAt: row.reviewed_at ?? null,
