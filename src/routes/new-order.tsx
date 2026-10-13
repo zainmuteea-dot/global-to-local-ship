@@ -7,10 +7,12 @@ export const Route = createFileRoute('/new-order')({
     name?: string
     phone?: string
     store?: string
+    productName?: string
   } => ({
     name: typeof search['name'] === 'string' ? search['name'] : undefined,
     phone: typeof search['phone'] === 'string' ? search['phone'] : undefined,
     store: typeof search['store'] === 'string' ? search['store'] : undefined,
+    productName: typeof search['productName'] === 'string' ? search['productName'] : undefined,
   }),
   component: NewOrderPage,
 })
@@ -275,6 +277,7 @@ function NewOrderPage() {
   const [phone, setPhone] = useState<string>(() => getInitialClientPhone(search.phone))
   
   const [url, setUrl] = useState('')
+  const [productName, setProductName] = useState<string>(() => search.productName?.trim() ?? '')
   const [address, setAddress] = useState('')
   const [price, setPrice] = useState('')
   const [currency, setCurrency] = useState('ر.س سعودي')
@@ -443,7 +446,7 @@ function NewOrderPage() {
           customer_name: name.trim(),
           phone: phone.trim(),
           product_link: url.trim(),
-          product_name: `طلب ${storeLabel}`,
+          product_name: productName.trim() || `طلب ${storeLabel}`,
           notes: notesSummary,
           status: 'قيد الشراء والتجهيز',
           user_id: user.id,
@@ -471,7 +474,7 @@ function NewOrderPage() {
           customer_name: name.trim(),
           phone: phone.trim(),
           product_link: url.trim(),
-          product_name: `طلب ${storeLabel}`,
+          product_name: productName.trim() || `طلب ${storeLabel}`,
           status: 'قيد الشراء والتجهيز',
           created_at: new Date().toISOString(),
           user_id: user.id,
@@ -629,6 +632,15 @@ function NewOrderPage() {
                 <Flash />
               </div>
             )}
+          </div>
+          <div className="no-field">
+            <label className="no-lbl">اسم المنتج</label>
+            <input
+              type="text"
+              value={productName}
+              onChange={(event) => setProductName(event.target.value)}
+              placeholder="اسم المنتج المطلوب"
+            />
           </div>
           <div className="no-q">هل توجد منتجات مكررة؟ <span className="no-req">*</span></div>
           <div className="no-choices">
