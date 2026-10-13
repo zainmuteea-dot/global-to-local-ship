@@ -106,7 +106,7 @@ type CatalogProduct = {
 
 interface ProductsRouteProps {
   onBack?: () => void;
-  onNavigateToOrder?: (storeCode?: string) => void;
+  onNavigateToOrder?: (storeCode?: string, productName?: string) => void;
   onNavigateToTracker?: () => void;
   onNavigateToAdmin?: () => void;
 }
@@ -133,6 +133,19 @@ export const ProductsPage: React.FC<ProductsRouteProps> = ({
   const [copiedAccount, setCopiedAccount] = useState<string | null>(null);
   const [cartItems, setCartItems] = useState<{ product: ProductItem; quantity: number }[]>([]);
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
+
+  const goToOrder = (storeCode?: string, productName?: string) => {
+    if (onNavigateToOrder) {
+      onNavigateToOrder(storeCode, productName);
+      return;
+    }
+
+    const params = new URLSearchParams();
+    if (storeCode) params.set('store', storeCode);
+    if (productName) params.set('productName', productName);
+    const query = params.toString();
+    window.location.assign(`/new-order${query ? `?${query}` : ''}`);
+  };
 
   type CatalogProduct = {
     id: string;
@@ -473,7 +486,7 @@ export const ProductsPage: React.FC<ProductsRouteProps> = ({
       `▪️ طريقة الدفع المختارة: ${paymentMethod}\n\nيرجى تأكيد الحساب للتحويل والمباشرة بالطلب. شكراً!`;
 
     const encoded = encodeURIComponent(message);
-    window.open(`https://wa.me/967770000000?text=${encoded}`, '_blank');
+    window.open(`https://wa.me/967773370041?text=${encoded}`, '_blank');
   };
 
   return (
@@ -500,7 +513,7 @@ export const ProductsPage: React.FC<ProductsRouteProps> = ({
             )}
             <button
               type="button"
-              onClick={() => onNavigateToOrder ? onNavigateToOrder('SHEIN') : window.location.assign('/new-order?store=SHEIN')}
+              onClick={() => goToOrder('SHEIN')}
               className="inline-flex items-center gap-2 rounded-lg bg-[#005696] px-4 py-2.5 text-sm font-black text-white shadow-sm transition hover:bg-[#0F4C81]"
             >
               اطلب الآن <ArrowLeft className="h-4 w-4" />
@@ -670,7 +683,7 @@ export const ProductsPage: React.FC<ProductsRouteProps> = ({
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onNavigateToOrder?.(plat.code);
+                      goToOrder(plat.code);
                     }}
                     className="w-full py-1 px-1 rounded-lg bg-[#005696] hover:bg-[#084273] text-white text-[10px] font-black transition cursor-pointer"
                   >
@@ -977,8 +990,9 @@ export const ProductsPage: React.FC<ProductsRouteProps> = ({
               <button
                 type="button"
                 onClick={() => {
+                  const product = selectedProductForOrder;
                   setSelectedProductForOrder(null);
-                  onNavigateToOrder?.(selectedProductForOrder.store);
+                  if (product) goToOrder(product.store, product.title);
                 }}
                 className="py-3 px-3.5 rounded-xl bg-[#005696] hover:bg-[#084273] text-white font-black text-xs transition cursor-pointer"
               >
@@ -1061,8 +1075,13 @@ export const ProductsPage: React.FC<ProductsRouteProps> = ({
                 <button
                   type="button"
                   onClick={() => {
+                    if (cartItems.length !== 1) {
+                      window.alert('نموذج الطلب الحالي يستقبل منتجًا واحدًا. أرسل كل منتج كطلب مستقل حتى لا تُحذف عناصر من السلة.');
+                      return;
+                    }
+                    const item = cartItems[0];
                     setIsCartOpen(false);
-                    onNavigateToOrder?.('SHEIN');
+                    goToOrder(item.product.store, item.product.title);
                   }}
                   className="w-full py-3 rounded-xl bg-[#005696] hover:bg-[#084273] text-white font-black text-xs transition cursor-pointer"
                 >
