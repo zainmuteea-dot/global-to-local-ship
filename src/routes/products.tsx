@@ -1,5 +1,29 @@
 import React, { useState, useMemo } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
+
+const playTone = (frequency: number) => {
+  if (typeof window === 'undefined') return;
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const context = new AudioContextClass();
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.frequency.value = frequency;
+    gain.gain.setValueAtTime(0.035, context.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.12);
+    oscillator.connect(gain);
+    gain.connect(context.destination);
+    oscillator.start();
+    oscillator.stop(context.currentTime + 0.12);
+    oscillator.onended = () => { void context.close(); };
+  } catch {
+    // تجاهل منع المتصفح لتشغيل الصوت.
+  }
+};
+
+const playPhoneNotificationSound = () => playTone(880);
+const playDismissClickSound = () => playTone(520);
 import {
   ShoppingBag,
   Search,
@@ -31,8 +55,6 @@ import {
   Calculator,
   RotateCcw
 } from 'lucide-react';
-import { AlShamelShoppingHeader } from '../components/AlShamelShoppingHeader';
-import { playPhoneNotificationSound, playDismissClickSound } from '../utils/soundEffects';
 
 // =========================================================================
 // 🌟 أنواع البيانات لصفحة المنتجات وبوابات الشراء الست
@@ -396,11 +418,34 @@ export const ProductsPage: React.FC<ProductsRouteProps> = ({
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans selection:bg-[#005696] selection:text-white pb-24" dir="rtl">
       
       {/* 🌟 1. رأس الصفحة الرسمي */}
-      <AlShamelShoppingHeader
-        onOrderNow={() => onNavigateToOrder?.('SHEIN')}
-        onTrackOrder={onNavigateToTracker}
-        onNavigateToAdmin={onNavigateToAdmin}
-      />
+      <header className="border-b border-slate-200 bg-white px-3 py-3 sm:px-6" dir="rtl">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
+          <a href="/products" className="flex items-center gap-2.5" aria-label="الشامل للتسوق - الصفحة الرئيسية">
+            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-sky-50 text-[#005696]">
+              <ShoppingCart className="h-6 w-6" />
+            </span>
+            <span>
+              <span className="block text-lg font-black text-[#005696] sm:text-xl">الشامل للتسوق</span>
+              <span className="block text-[9px] font-bold tracking-[0.2em] text-[#005696]">AL SHAMEL SHOPPING</span>
+            </span>
+          </a>
+          <div className="flex items-center gap-2">
+            {onNavigateToTracker && (
+              <button type="button" onClick={onNavigateToTracker} className="hidden rounded-lg px-3 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100 sm:inline-flex">تتبع الطلب</button>
+            )}
+            {onNavigateToAdmin && (
+              <button type="button" onClick={onNavigateToAdmin} className="hidden rounded-lg px-3 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100 sm:inline-flex">الإدارة</button>
+            )}
+            <button
+              type="button"
+              onClick={() => onNavigateToOrder ? onNavigateToOrder('SHEIN') : window.location.assign('/new-order?store=SHEIN')}
+              className="inline-flex items-center gap-2 rounded-lg bg-[#005696] px-4 py-2.5 text-sm font-black text-white shadow-sm transition hover:bg-[#0F4C81]"
+            >
+              اطلب الآن <ArrowLeft className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      </header>
 
       {/* 🌟 2. شريط البحث والعملة وأزرار الفلترة السريعة */}
       <section className="bg-white border-b border-slate-200/90 px-3 sm:px-6 py-3.5 sticky top-0 z-30 shadow-2xs">
