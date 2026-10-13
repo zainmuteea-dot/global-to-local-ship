@@ -25,9 +25,10 @@ type PaymentRecord = Payment & {
   userId: string | null;
 };
 
-type PaymentFilter = PaymentStatus | "all";
+type PaymentFilter = PaymentStatus | "partial" | "all";
 
 export const AUTO_REFRESH_SECONDS = 30;
+const PAGE_SIZE = 10;
 
 export function matchesPeriod(
   createdAt: string,
@@ -151,7 +152,8 @@ function playPaymentTone(context: AudioContext) {
 }
 
 const STATUS_LABELS: Record<PaymentFilter, string> = {
-  pending: "بانتظار المراجعة",
+  pending: "بانتظار مراجعة الدفع",
+  partial: "دفعوا جزءًا",
   approved: "معتمدة",
   rejected: "مرفوضة",
   all: "الكل",
@@ -172,6 +174,7 @@ const PERIOD_OPTIONS: { value: Period; label: string }[] = [
 
 const STATUS_OPTIONS: PaymentFilter[] = [
   "pending",
+  "partial",
   "approved",
   "rejected",
   "all",
@@ -191,6 +194,7 @@ function PaymentsPage() {
   const [filter, setFilter] = useState<PaymentFilter>("pending");
   const [period, setPeriod] = useState<Period>("all");
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [err, setErr] = useState("");
@@ -610,7 +614,12 @@ function PaymentsPage() {
 
     return rows.filter((payment) => {
       const matchesStatus =
-        filter === "all" || payment.status === filter;
+        filter === "all"
+          ? true
+          : filter === "partial"
+            ? payment.status === "approved" &&
+              (payment.remainingAmount ?? 0) > 0
+            : payment.status === filter;
 
       const matchesDate = matchesPeriod(
         payment.createdAt,
@@ -637,6 +646,21 @@ function PaymentsPage() {
       );
     });
   }, [rows, filter, period, search]);
+
+  // ترقيم صفحات محلي بعد تطبيق البحث والفلاتر على الصفوف المحمّلة.
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
+  const paginatedRows = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return filteredRows.slice(start, start + PAGE_SIZE);
+  }, [filteredRows, page]);
+
+  useEffect(() => {
+    setPage((current) => Math.min(current, totalPages));
+  }, [totalPages]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [filter, period, search]);
 
   const totals = useMemo(
     () => paymentTotals(rows.filter((payment) => !payment.archived)),
@@ -793,16 +817,31 @@ function PaymentsPage() {
             <div>
               <p className="mb-2 text-xs font-black text-slate-700">حالة الدفع</p>
               <div className="flex flex-wrap gap-2">
-                {STATUS_OPTIONS.map((status) => (
-                  <button
-                    key={status}
-                    type="button"
-                    onClick={() => setFilter(status)}
-                    className={`rounded-xl border px-3 py-2 text-xs font-bold ${filter === status ? "border-[#0F4C81] bg-[#0F4C81] text-white" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}
-                  >
-                    {STATUS_LABELS[status]}
-                  </button>
-                ))}
+                {STATUS_OPTIONS.map((status) => {
+                  const activeColor =
+                    status === "partial"
+                      ? "border-emerald-700 bg-emerald-700 text-white"
+                      : status === "pending"
+                        ? "border-amber-600 bg-amber-600 text-white"
+                        : "border-[#0F4C81] bg-[#0F4C81] text-white";
+                  const idleColor =
+                    status === "partial"
+                      ? "border-emerald-200 bg-white text-emerald-800 hover:bg-emerald-50"
+                      : status === "pending"
+                        ? "border-amber-200 bg-white text-amber-800 hover:bg-amber-50"
+                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50";
+                  return (
+                    <button
+                      key={status}
+                      type="button"
+                      aria-pressed={filter === status}
+                      onClick={() => setFilter(status)}
+                      className={`rounded-xl border px-3 py-2 text-xs font-bold ${filter === status ? activeColor : idleColor}`}
+                    >
+                      {STATUS_LABELS[status]}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -836,7 +875,7 @@ function PaymentsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredRows.map((payment) => {
+                  {paginatedRows.map((payment) => {
                     const requested = Number(payment.requestedAmount ?? payment.amount);
                     const entered = Number(receivedInputs[payment.id] ?? requested);
                     const remainingPreview = Number.isFinite(entered) ? Math.max(0, requested - entered) : requested;
@@ -906,6 +945,35 @@ function PaymentsPage() {
                 </tbody>
               </table>
             </div>
+          )}
+          {filteredRows.length > 0 && (
+            <nav
+              aria-label="ترقيم صفحات طلبات الدفع"
+              className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-4 py-3"
+              dir="rtl"
+            >
+              <span className="text-xs text-slate-600">
+                صفحة {page} من {totalPages} • يعرض {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filteredRows.length)} من {filteredRows.length}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPage((current) => Math.max(1, current - 1))}
+                  disabled={page <= 1}
+                  className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  السابقة
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                  disabled={page >= totalPages}
+                  className="rounded-lg bg-[#0F4C81] px-3 py-2 text-xs font-bold text-white hover:bg-[#0A2540] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  التالية
+                </button>
+              </div>
+            </nav>
           )}
         </section>
       </div>
