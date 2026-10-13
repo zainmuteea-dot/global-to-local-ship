@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { createFileRoute } from '@tanstack/react-router';
 import {
   ShoppingBag,
   Search,
@@ -966,5 +967,9 @@ export const ProductsPage: React.FC<ProductsRouteProps> = ({
     </div>
   );
 };
+
+export const Route = createFileRoute('/products')({
+  component: ProductsPage,
+});
 
 export default ProductsPage;
