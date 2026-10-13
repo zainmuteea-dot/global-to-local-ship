@@ -608,6 +608,7 @@ export default function AdminOperationsPage() {
             { label: "الموظفون", icon: UserCheck, path: "/employees" },
             { label: "الموردون", icon: Truck, path: "/suppliers" },
             { label: "الإشعارات", icon: Bell, path: "/notifications" },
+            { label: "القطع الفورية", icon: Zap, path: "/products" },
           ].map(({ label, icon: Icon, path }) => (
             <button
               key={label}
