@@ -20,6 +20,7 @@ function MyAccountRoute() {
   return (
     <MyAccountPage
       onNavigateToCreateAccount={() => navigate({ to: '/signup' })}
+      onNavigateToProducts={() => navigate({ to: '/products' })}
       onNavigateToNewOrder={() => navigate({ to: '/new-order' })}
       onNavigateToTracker={(orderNumber) =>
         orderNumber
@@ -66,6 +67,7 @@ import { OrderItem } from '@/types/orders';
 interface MyAccountProps {
   onNavigateToCreateAccount?: () => void;
   onNavigateToNewOrder?: () => void;
+  onNavigateToProducts?: () => void;
   onNavigateToTracker?: (orderNumber?: string) => void;
   onNavigateToDashboard?: () => void;
 }
@@ -73,6 +75,7 @@ interface MyAccountProps {
 export const MyAccountPage: React.FC<MyAccountProps> = ({
   onNavigateToCreateAccount,
   onNavigateToNewOrder,
+  onNavigateToProducts,
   onNavigateToTracker,
   onNavigateToDashboard
 }) => {
@@ -276,8 +279,8 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
           {/* 4. زر القطع الفورية */}
           <button
             onClick={() => {
-              if (onNavigateToNewOrder) onNavigateToNewOrder();
-              else if (typeof window !== 'undefined') window.location.href = '/new-order';
+              if (onNavigateToProducts) onNavigateToProducts();
+              else if (typeof window !== 'undefined') window.location.href = '/products';
             }}
             className="w-full bg-white hover:bg-gradient-to-r hover:from-white hover:to-amber-50/60 border-2 border-slate-200/80 hover:border-amber-500 rounded-2xl p-3.5 sm:p-4 shadow-xs hover:shadow-md transition-all duration-200 flex items-center justify-between cursor-pointer group active:scale-[0.99]"
           >
