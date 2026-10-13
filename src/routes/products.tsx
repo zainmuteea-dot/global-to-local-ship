@@ -94,6 +94,16 @@ export interface StorePlatform {
   features: string[];
 }
 
+type CatalogProduct = {
+    id: string;
+    name: string;
+    sku: string | null;
+    store_id: string | null;
+    quantity: number | null;
+    sell_price: number | null;
+    created_at: string | null;
+};
+
 interface ProductsRouteProps {
   onBack?: () => void;
   onNavigateToOrder?: (storeCode?: string) => void;
@@ -134,16 +144,8 @@ export const ProductsPage: React.FC<ProductsRouteProps> = ({
     created_at: string | null;
   };
 
-  const [isAdmin, setIsAdmin] = useState(false);
   const [catalogProducts, setCatalogProducts] = useState<CatalogProduct[]>([]);
   const [catalogError, setCatalogError] = useState('');
-  const [editingProductId, setEditingProductId] = useState<string | null>(null);
-  const [productDraft, setProductDraft] = useState({
-    name: '',
-    sku: '',
-    quantity: '0',
-    sell_price: '0',
-  });
 
   const loadCatalogProducts = useCallback(async () => {
     const { data, error } = await db
@@ -161,97 +163,8 @@ export const ProductsPage: React.FC<ProductsRouteProps> = ({
   }, []);
 
   useEffect(() => {
-    let active = true;
-
-    void (async () => {
-      const { data: { user }, error } = await supabase.auth.getUser();
-      if (!active) return;
-      if (error || !user) {
-        setIsAdmin(false);
-        return;
-      }
-
-      const { data: hasAdminRole, error: roleError } = await supabase.rpc('has_role', {
-        _user_id: user.id,
-        _role: 'admin',
-      });
-      if (active) setIsAdmin(!roleError && hasAdminRole === true);
-    })();
-
     void loadCatalogProducts();
-    return () => { active = false; };
   }, [loadCatalogProducts]);
-
-  const saveCatalogProduct = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!isAdmin) {
-      setCatalogError('ليس لديك صلاحية إدارة المنتجات.');
-      return;
-    }
-
-    const name = productDraft.name.trim();
-    const quantity = Number(productDraft.quantity);
-    const sellPrice = Number(productDraft.sell_price);
-    if (!name || !Number.isInteger(quantity) || quantity < 0 || !Number.isFinite(sellPrice) || sellPrice < 0) {
-      setCatalogError('أدخل اسمًا صحيحًا وكمية صحيحة وسعر بيع غير سالب.');
-      return;
-    }
-
-    const values = {
-      name,
-      sku: productDraft.sku.trim() || null,
-      quantity,
-      sell_price: sellPrice,
-      store_id: null,
-    };
-
-    const result = editingProductId
-      ? await db.from('products').update(values).eq('id', editingProductId).select('id').maybeSingle()
-      : await db.from('products').insert(values).select('id').single();
-
-    if (result.error || !result.data) {
-      setCatalogError(result.error?.message ?? 'لم يتم حفظ المنتج. تحقق من صلاحيات قاعدة البيانات.');
-      return;
-    }
-
-    setCatalogError('');
-    setEditingProductId(null);
-    setProductDraft({ name: '', sku: '', quantity: '0', sell_price: '0' });
-    await loadCatalogProducts();
-  };
-
-  const editCatalogProduct = (productId: string) => {
-    const product = catalogProducts.find((item) => item.id === productId);
-    if (!product || !isAdmin) return;
-
-    setEditingProductId(product.id);
-    setProductDraft({
-      name: product.name,
-      sku: product.sku ?? '',
-      quantity: String(product.quantity ?? 0),
-      sell_price: String(product.sell_price ?? 0),
-    });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const deleteCatalogProduct = async (productId: string) => {
-    if (!isAdmin || !window.confirm('هل تريد حذف هذه البطاقة؟')) return;
-
-    const { data, error } = await db
-      .from('products')
-      .delete()
-      .eq('id', productId)
-      .select('id')
-      .maybeSingle();
-
-    if (error || !data) {
-      setCatalogError(error?.message ?? 'لم يتم حذف المنتج. تحقق من صلاحيات قاعدة البيانات.');
-      return;
-    }
-
-    setCatalogError('');
-    await loadCatalogProducts();
-  };
 
   // أسعار الصرف التقريبية في السوق اليمني
   const exchangeRates = {
@@ -788,31 +701,9 @@ export const ProductsPage: React.FC<ProductsRouteProps> = ({
         ))}
       </section>
 
-      {isAdmin && (
-        <section className="max-w-6xl mx-auto px-3 sm:px-6 pt-4" dir="rtl">
-          <form onSubmit={saveCatalogProduct} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <h2 className="sm:col-span-2 lg:col-span-5 font-black text-slate-900">
-              {editingProductId ? 'تعديل بطاقة المنتج' : 'إضافة بطاقة جديدة'}
-            </h2>
-            <input required value={productDraft.name} onChange={(e) => setProductDraft({ ...productDraft, name: e.target.value })} placeholder="اسم المنتج" className="rounded-xl border border-slate-200 p-3 text-sm" />
-            <input value={productDraft.sku} onChange={(e) => setProductDraft({ ...productDraft, sku: e.target.value })} placeholder="كود المنتج (اختياري)" className="rounded-xl border border-slate-200 p-3 text-sm" />
-            <input type="number" min="0" step="1" value={productDraft.quantity} onChange={(e) => setProductDraft({ ...productDraft, quantity: e.target.value })} placeholder="الكمية" className="rounded-xl border border-slate-200 p-3 text-sm" />
-            <input type="number" min="0" step="0.01" value={productDraft.sell_price} onChange={(e) => setProductDraft({ ...productDraft, sell_price: e.target.value })} placeholder="سعر البيع" className="rounded-xl border border-slate-200 p-3 text-sm" />
-            <button type="submit" className="rounded-xl bg-[#005696] p-3 text-sm font-black text-white hover:bg-[#0F4C81]">
-              {editingProductId ? 'حفظ التعديل' : 'إضافة البطاقة'}
-            </button>
-            {editingProductId && (
-              <button type="button" onClick={() => { setEditingProductId(null); setProductDraft({ name: '', sku: '', quantity: '0', sell_price: '0' }); }} className="rounded-xl bg-slate-100 p-3 text-sm font-bold text-slate-700">
-                إلغاء التعديل
-              </button>
-            )}
-            {catalogError && <p role="alert" className="sm:col-span-2 lg:col-span-5 text-sm font-bold text-red-700">{catalogError}</p>}
-          </form>
-        </section>
-      )}
-
       {/* 🌟 5. شبكة المنتجات (Products Grid) */}
       <main className="max-w-6xl mx-auto px-3 sm:px-6 pt-3 space-y-4">
+        {catalogError && <p role="status" className="rounded-xl bg-amber-50 p-3 text-sm font-bold text-amber-800">{catalogError}</p>}
         <div className="flex items-center justify-between text-xs text-slate-500 font-bold">
           <span>عرض {filteredProducts.length} منتج متوفر للشحن الفوري</span>
           {selectedStoreFilter !== 'all' && (
@@ -897,16 +788,7 @@ export const ProductsPage: React.FC<ProductsRouteProps> = ({
                     </button>
                   </div>
 
-                  {isAdmin && prod.inventoryProduct && (
-                    <div className="mt-2 grid grid-cols-2 gap-2">
-                      <button type="button" onClick={() => editCatalogProduct(prod.id)} className="rounded-lg bg-amber-100 px-3 py-2 text-xs font-bold text-amber-900 hover:bg-amber-200">
-                        تعديل
-                      </button>
-                      <button type="button" onClick={() => void deleteCatalogProduct(prod.id)} className="rounded-lg bg-rose-100 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-200">
-                        حذف
-                      </button>
-                    </div>
-                  )}
+
 
                 </div>
               </div>
