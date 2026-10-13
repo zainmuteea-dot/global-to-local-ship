@@ -9,6 +9,68 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { AlShamelLogo } from './index';
 
+type DashboardNotification = {
+  id: string;
+  user_id: string | null;
+  title: string;
+  message: string | null;
+  type: string;
+  created_at: string;
+  payment_id: string | null;
+};
+
+function getDashboardOrderStats(orders: Array<{ status: string | null }>) {
+  const normalize = (status: string | null) => (status ?? "").trim().toLowerCase();
+  const deliveredStatuses = new Set([
+    "delivered",
+    "تم التسليم",
+    "تم الاستلام",
+    "استلم العميل",
+    "تم التوصيل",
+    "وصل",
+    "وصل للعميل",
+    "مستلم",
+  ]);
+  const cancelledStatuses = new Set(["cancelled", "canceled", "ملغي", "ملغى", "ملغية", "ملغاه"]);
+  const shippingStatuses = new Set([
+    "shipped",
+    "international_ship",
+    "local_warehouse",
+    "out_for_delivery",
+    "تم الشحن",
+    "شحن دولي",
+    "قيد التوصيل",
+    "مع المندوب",
+    "وصلت اليمن وجارٍ التوزيع مع المندوب",
+    "وصلت اليمن وجاري التوزيع مع المندوب",
+  ]);
+
+  const delivered = orders.filter((order) => deliveredStatuses.has(normalize(order.status))).length;
+  const inProgress = orders.filter((order) => {
+    const status = normalize(order.status);
+    return !deliveredStatuses.has(status) &&
+      !cancelledStatuses.has(status) &&
+      !/ملغ|إلغاء|الغاء/.test(status);
+  }).length;
+
+  return {
+    total: orders.length,
+    inProgress,
+    shipping: orders.filter((order) => shippingStatuses.has(normalize(order.status))).length,
+    delivered,
+  };
+}
+
+function formatNotificationTime(createdAt: string) {
+  const timestamp = new Date(createdAt).getTime();
+  if (!Number.isFinite(timestamp)) return "";
+  const seconds = Math.max(0, Math.floor((Date.now() - timestamp) / 1000));
+  if (seconds < 60) return "الآن";
+  if (seconds < 3600) return `منذ ${Math.floor(seconds / 60)} دقيقة` ;
+  if (seconds < 86400) return `منذ ${Math.floor(seconds / 3600)} ساعة` ;
+  return `منذ ${Math.floor(seconds / 86400)} يوم` ;
+}
+
 export const Route = createFileRoute('/dashboard')({
   head: () => ({
     meta: [
@@ -49,14 +111,12 @@ export default function DashboardPage() {
   ];
   const [currentTicker, setCurrentTicker] = useState(0);
 
-  // قائمة إشعارات العميل للجرس
-  const [notifications, setNotifications] = useState([
-    { id: '1', title: 'تم تأكيد طلبك بنجاح', desc: 'تم استلام طلبك وجاري مراجعته من فريق المشتريات', time: 'منذ 10 دقائق', read: false },
-    { id: '2', title: 'تحديث حالة الشحنة', desc: 'تم شحن الطرد الدولي برقم تتبع خاص بك', time: 'منذ ساعتين', read: false },
-    { id: '3', title: 'عرض ترويجي جديد', desc: 'استمتع بالشحن المجاني للطلبات فوق 100$', time: 'منذ يوم', read: false },
-  ]);
-
-  const unreadCount = notifications.filter(n => !n.read).length;
+  // إشعارات حقيقية من قاعدة البيانات، وحالة القراءة محفوظة في notification_reads.
+  const [notifications, setNotifications] = useState<DashboardNotification[]>([]);
+  const [readNotificationIds, setReadNotificationIds] = useState<Set<string>>(new Set());
+  const [notificationError, setNotificationError] = useState<string | null>(null);
+  const [connectionState, setConnectionState] = useState<boolean | null>(null);
+  const unreadCount = notifications.filter((notification) => !readNotificationIds.has(notification.id)).length;
 
   // دوران شريط الإشعارات تلقائياً كل 5.5 ثوانٍ
   useEffect(() => {
@@ -66,85 +126,136 @@ export default function DashboardPage() {
     return () => clearInterval(timer);
   }, [tickerItems.length]);
 
-  // جلب جلسة العميل واسمه الحقيقي وطلباته
+  // جلب الجلسة والطلبات والإشعارات الحقيقية للمستخدم المسجل.
   useEffect(() => {
-    const loadUserDataAndOrders = async () => {
+    let active = true;
+    let notificationChannel: ReturnType<typeof supabase.channel> | null = null;
+
+    const loadUserData = async () => {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (!active) return;
+      if (sessionError) console.error("تعذر التحقق من جلسة المستخدم:", sessionError);
+
+      const authUser = session?.user ?? null;
+      setUserId(authUser?.id ?? null);
+      setConnectionState(Boolean(authUser));
+
+      let localName = "";
+      let localPhone = "";
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        // 1. فحص بيانات الحساب المحفوظة محلياً (alsouk_current_user)
-        let localName = '';
-        let localPhone = '';
-        try {
-          const stored = localStorage.getItem('alsouk_current_user');
-          if (stored) {
-            const parsed = JSON.parse(stored);
-            if (parsed.full_name) localName = parsed.full_name;
-            if (parsed.phone) localPhone = parsed.phone;
-          }
-        } catch {}
-
-        // 2. فحص بيانات الجلسة من Supabase
-        const metaName = session?.user?.user_metadata?.['full_name'];
-        const sessionPhone = session?.user?.phone || session?.user?.user_metadata?.['phone'] || '';
-        const phone = sessionPhone || localPhone || sessionStorage.getItem('sc_phone') || localStorage.getItem('sc_phone') || '';
-
-        // 3. فحص جدول profiles إن كان مسجلاً
-        let profileName = '';
-        if (session?.user?.id) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('full_name, phone')
-            .eq('id', session.user.id)
-            .maybeSingle();
-          if (profile?.full_name) profileName = profile.full_name;
+        const stored = localStorage.getItem("alsouk_current_user");
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          localName = parsed.full_name ?? "";
+          localPhone = parsed.phone ?? "";
         }
-
-        const finalName = profileName || metaName || localName || (phone ? `عميل (${phone.slice(-4)})` : 'عميلنا العزيز');
-        setUserName(finalName);
-        setUserPhone(phone);
-        if (session?.user?.id) setUserId(session.user.id);
-
-        // 4. جلب طلبات هذا العميل فقط لحساب مؤشراته
-        let query = supabase.from('orders').select('id, status, customer_name, phone');
-        if (session?.user?.id) {
-          query = query.eq('user_id', session.user.id);
-        } else if (phone) {
-          query = query.eq('phone', phone);
-        }
-
-        const { data: userOrders, error } = await query;
-
-        if (!error && userOrders && userOrders.length > 0) {
-          const total = userOrders.length;
-          const delivered = userOrders.filter(o => o.status === 'تم التسليم' || o.status === 'delivered').length;
-          const shipping = userOrders.filter(o => o.status === 'تم الشحن' || o.status === 'شحن دولي' || o.status === 'shipped').length;
-          const inProgress = Math.max(0, total - delivered);
-
-          setOrderStats({ total, inProgress, shipping, delivered });
-        } else {
-          // قراءة احتياطية من التخزين المحلي
-          const raw = localStorage.getItem('alsouk_orders');
-          if (raw) {
-            try {
-              const parsed = JSON.parse(raw);
-              if (Array.isArray(parsed)) {
-                setOrderStats({
-                  total: parsed.length,
-                  inProgress: parsed.filter((o: any) => o.status !== 'تم التسليم').length,
-                  shipping: parsed.filter((o: any) => o.status === 'تم الشحن').length,
-                  delivered: parsed.filter((o: any) => o.status === 'تم التسليم').length,
-                });
-              }
-            } catch {}
-          }
-        }
-      } catch (err) {
-        console.error('Error loading client dashboard data:', err);
+      } catch {
+        // تجاهل بيانات محلية غير صالحة.
       }
+
+      const profileResult = authUser
+        ? await supabase
+            .from("profiles")
+            .select("full_name, phone")
+            .eq("id", authUser.id)
+            .maybeSingle()
+        : null;
+
+      if (!active) return;
+
+      const phone =
+        authUser?.phone ||
+        authUser?.user_metadata?.["phone"] ||
+        profileResult?.data?.phone ||
+        localPhone ||
+        sessionStorage.getItem("sc_phone") ||
+        localStorage.getItem("sc_phone") ||
+        "";
+      const finalName =
+        profileResult?.data?.full_name ||
+        authUser?.user_metadata?.["full_name"] ||
+        localName ||
+        (phone ? `عميل (${phone.slice(-4)})` : "زائر");
+
+      setUserName(finalName);
+      setUserPhone(phone);
+
+      // الطلبات لا تُجلب إلا باستخدام UID من جلسة Supabase، وليس بهوية محلية قابلة للتزوير.
+      if (!authUser) {
+        setOrderStats({ total: 0, inProgress: 0, shipping: 0, delivered: 0 });
+        setNotifications([]);
+        setReadNotificationIds(new Set());
+        setNotificationError(null);
+        return;
+      }
+
+      const [ordersResult, notificationsResult, readsResult] = await Promise.all([
+        supabase
+          .from("orders")
+          .select("id, status")
+          .eq("user_id", authUser.id),
+        supabase
+          .from("notifications")
+          .select("id, user_id, title, message, type, created_at, payment_id")
+          .or(`user_id.is.null,user_id.eq.${authUser.id}`)
+          .neq("type", "new_payment_submitted")
+          .order("created_at", { ascending: false })
+          .limit(50),
+        supabase
+          .from("notification_reads")
+          .select("notification_id")
+          .eq("user_id", authUser.id),
+      ]);
+
+      if (!active) return;
+
+      if (ordersResult.error) {
+        console.error("تعذر تحميل طلبات العميل:", ordersResult.error);
+        setOrderStats({ total: 0, inProgress: 0, shipping: 0, delivered: 0 });
+      } else {
+        setOrderStats(getDashboardOrderStats(ordersResult.data ?? []));
+      }
+
+      if (notificationsResult.error) {
+        console.error("تعذر تحميل إشعارات العميل:", notificationsResult.error);
+        setNotificationError("تعذر تحميل الإشعارات. تحقق من الاتصال والصلاحيات.");
+      } else {
+        setNotifications(notificationsResult.data ?? []);
+        setNotificationError(null);
+      }
+
+      if (readsResult.error) {
+        console.error("تعذر تحميل حالة قراءة الإشعارات:", readsResult.error);
+        setNotificationError((current) => current ?? "تعذر تحميل حالة قراءة الإشعارات.");
+      } else {
+        setReadNotificationIds(new Set((readsResult.data ?? []).map((row) => row.notification_id)));
+      }
+
+      notificationChannel = supabase
+        .channel(`dashboard-notifications-${authUser.id}`)
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications" }, (payload) => {
+          const notification = payload.new as DashboardNotification;
+          if (notification.user_id && notification.user_id !== authUser.id) return;
+          if (notification.type === "new_payment_submitted") return;
+          setNotifications((current) =>
+            [notification, ...current.filter((item) => item.id !== notification.id)].slice(0, 50),
+          );
+        })
+        .subscribe();
     };
 
-    loadUserDataAndOrders();
+    void loadUserData().catch((error) => {
+      console.error("حدث خطأ أثناء تحميل لوحة العميل:", error);
+      if (active) {
+        setConnectionState(false);
+        setNotificationError("تعذر تحميل بيانات الحساب حاليًا.");
+      }
+    });
+
+    return () => {
+      active = false;
+      if (notificationChannel) void supabase.removeChannel(notificationChannel);
+    };
   }, []);
 
   // دالة تسجيل الخروج الرسمية
@@ -157,6 +268,10 @@ export default function DashboardPage() {
         localStorage.removeItem('sc_phone');
         localStorage.removeItem('sc_name');
         localStorage.removeItem('alsouk_customer_logged_in');
+        setConnectionState(false);
+        setUserId(null);
+        setNotifications([]);
+        setReadNotificationIds(new Set());
         navigate({ to: '/login' });
       } catch (e) {
         navigate({ to: '/login' });
@@ -164,9 +279,44 @@ export default function DashboardPage() {
     }
   };
 
-  // تحديد الكل كمقروء
-  const handleMarkAllAsRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  // حفظ القراءة فعليًا في جدول notification_reads.
+  const handleMarkAllAsRead = async () => {
+    if (!userId) return;
+    const unread = notifications.filter((notification) => !readNotificationIds.has(notification.id));
+    if (unread.length === 0) return;
+
+    const { error } = await supabase.from("notification_reads").upsert(
+      unread.map((notification) => ({ notification_id: notification.id, user_id: userId })),
+      { onConflict: "notification_id,user_id" },
+    );
+
+    if (error) {
+      console.error("تعذر حفظ قراءة الإشعارات:", error);
+      setNotificationError("لم تُحفظ القراءة. حاول مرة أخرى.");
+      return;
+    }
+
+    setReadNotificationIds((current) => {
+      const next = new Set(current);
+      unread.forEach((notification) => next.add(notification.id));
+      return next;
+    });
+    setNotificationError(null);
+  };
+
+  const handleMarkNotificationAsRead = async (notificationId: string) => {
+    if (!userId || readNotificationIds.has(notificationId)) return;
+    const { error } = await supabase.from("notification_reads").upsert(
+      { notification_id: notificationId, user_id: userId },
+      { onConflict: "notification_id,user_id" },
+    );
+    if (error) {
+      console.error("تعذر حفظ قراءة الإشعار:", error);
+      setNotificationError("تعذر حفظ قراءة الإشعار. حاول مرة أخرى.");
+      return;
+    }
+    setReadNotificationIds((current) => new Set(current).add(notificationId));
+    setNotificationError(null);
   };
 
   const platforms = [
@@ -247,19 +397,21 @@ export default function DashboardPage() {
 
         {/* اليسار: كبسولة العميل + زر إدارة حسابي + زر الخروج + الجرس + زر اطلب الآن */}
         <div className="flex items-center gap-2 sm:gap-2.5">
-          {/* كبسولة العميل متصل (بالنقطة الخضراء النابضة) */}
+          {/* حالة الاتصال معروضة حسب جلسة Supabase الفعلية */}
           <Link
             to="/my-account"
-            className="flex items-center gap-2 bg-white border border-emerald-300 hover:border-emerald-500 rounded-full px-3.5 py-1.5 shadow-xs text-xs font-black transition group"
+            className={`flex items-center gap-2 bg-white rounded-full px-3.5 py-1.5 shadow-xs text-xs font-black transition group border ${connectionState ? "border-emerald-300 hover:border-emerald-500" : "border-slate-200 hover:border-slate-300"}`}
             title="عرض ملفي الشخصي"
           >
             <span className="relative flex size-2.5 shrink-0">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex rounded-full size-2.5 bg-emerald-500" />
+              {connectionState && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />}
+              <span className={`relative inline-flex rounded-full size-2.5 ${connectionState ? "bg-emerald-500" : "bg-slate-400"}`} />
             </span>
             <span className="text-slate-800 group-hover:text-[#0F4C81] max-w-[120px] truncate">{userName}</span>
             <span className="text-slate-300">|</span>
-            <span className="text-emerald-600 font-extrabold">متصل</span>
+            <span className={`font-extrabold ${connectionState ? "text-emerald-600" : "text-slate-500"}`}>
+              {connectionState === null ? "جارٍ التحقق" : connectionState ? "متصل" : "غير متصل"}
+            </span>
           </Link>
 
           {/* 🌟 زر إدارة حسابي المطلوب بشكل واضح ومباشر */}
@@ -318,21 +470,36 @@ export default function DashboardPage() {
                   )}
                 </div>
 
+                {notificationError && (
+                  <p className="mt-3 rounded-xl bg-rose-50 p-2 text-xs font-bold text-rose-700">
+                    {notificationError}
+                  </p>
+                )}
+
                 <div className="divide-y divide-slate-100 max-h-72 overflow-y-auto my-2">
-                  {notifications.map((notif) => (
-                    <div
-                      key={notif.id}
-                      className={`p-3 rounded-2xl transition hover:bg-sky-50/60 cursor-pointer ${
-                        notif.read ? 'opacity-70' : 'bg-orange-50/40'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-black text-xs text-[#0A2540]">{notif.title}</span>
-                        <span className="text-[10px] text-slate-400 font-medium">{notif.time}</span>
-                      </div>
-                      <p className="text-xs text-slate-600 mt-1 font-medium leading-relaxed">{notif.desc}</p>
-                    </div>
-                  ))}
+                  {notifications.length === 0 ? (
+                    <p className="py-6 text-center text-xs font-bold text-slate-500">
+                      {connectionState ? "لا توجد إشعارات حاليًا." : "سجّل الدخول لعرض إشعارات حسابك."}
+                    </p>
+                  ) : (
+                    notifications.map((notif) => {
+                      const isRead = readNotificationIds.has(notif.id);
+                      return (
+                        <button
+                          key={notif.id}
+                          type="button"
+                          onClick={() => void handleMarkNotificationAsRead(notif.id)}
+                          className={`w-full rounded-2xl p-3 text-right transition hover:bg-sky-50 ${isRead ? "opacity-70" : "bg-orange-50/40"}`}
+                        >
+                          <span className="flex items-center justify-between">
+                            <span className="font-black text-xs text-[#0A2540]">{notif.title}</span>
+                            <span className="text-[10px] text-slate-400 font-medium">{formatNotificationTime(notif.created_at)}</span>
+                          </span>
+                          <span className="mt-1 block text-xs leading-relaxed text-slate-600">{notif.message ?? ""}</span>
+                        </button>
+                      );
+                    })
+                  )}
                 </div>
 
                 <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
