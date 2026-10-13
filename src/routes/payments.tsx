@@ -58,6 +58,35 @@ export function matchesPeriod(
   return now.getTime() - created.getTime() <= days * 86400000;
 }
 
+function getPeriodBounds(period: Period, now: Date) {
+  if (period === "all") return null;
+  if (period === "today") {
+    const riyadhDate = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Riyadh",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(now);
+    const start = new Date(`${riyadhDate}T00:00:00+03:00`);
+    return {
+      start: start.toISOString(),
+      end: new Date(start.getTime() + 86400000).toISOString(),
+    };
+  }
+  const days = period === "week" ? 7 : 30;
+  return {
+    start: new Date(now.getTime() - days * 86400000).toISOString(),
+    end: now.toISOString(),
+  };
+}
+
+function escapePostgrestSearch(value: string) {
+  return value
+    .trim()
+    .replace(/[^A-Za-z0-9\u0600-\u06FF\s_-]/g, " ")
+    .replace(/\s+/g, " ");
+}
+
 export function paymentTotals(payments: Payment[]) {
   return {
     pending: payments.filter((payment) => payment.status === "pending").length,
@@ -195,6 +224,7 @@ function PaymentsPage() {
   const [period, setPeriod] = useState<Period>("all");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [err, setErr] = useState("");
@@ -280,17 +310,41 @@ function PaymentsPage() {
         throw new Error("الحساب لا يحمل دور admin أو staff.");
       }
 
-      // Read the existing production row shape without naming optional columns.
-      // This avoids PostgREST failing when requested_amount or similar columns
-      // are not present in the connected production database.
-      const { data, error } = await (supabase.from("payments") as any)
+      // جلب صفحة واحدة من قاعدة البيانات مع العدد الدقيق لكل نتائج البحث والفلاتر.
+      const query = (supabase.from("payments") as any)
         .select(
           "id, order_tracking, customer_name, method, amount, status, created_at, currency, phone, tracking_code, payment_method, user_id, wallet, reviewed_at, updated_at, remaining_amount",
+          { count: "exact" },
         );
+
+      if (filter === "pending" || filter === "approved" || filter === "rejected") {
+        query.eq("status", filter);
+      } else if (filter === "partial") {
+        query.eq("status", "approved").gt("remaining_amount", 0);
+      }
+
+      const bounds = getPeriodBounds(period, new Date());
+      if (bounds) {
+        query.gte("created_at", bounds.start).lt("created_at", bounds.end);
+      }
+
+      const safeSearch = escapePostgrestSearch(search);
+      if (safeSearch) {
+        const pattern = `*${safeSearch}*`;
+        query.or(
+          `customer_name.ilike.${pattern},order_tracking.ilike.${pattern},tracking_code.ilike.${pattern},phone.ilike.${pattern},method.ilike.${pattern},payment_method.ilike.${pattern},wallet.ilike.${pattern}`,
+        );
+      }
+
+      const start = (page - 1) * PAGE_SIZE;
+      const { data, error, count } = await query
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: true })
+        .range(start, start + PAGE_SIZE - 1);
 
       if (error) {
         throw new Error(
-          `تعذر تحميل طلبات الدفع: ${error.message}${
+          `تعذر تحميل صفحة الدفعات: ${error.message}${
             error.code ? ` (${error.code})` : ""
           }`,
         );
@@ -298,6 +352,7 @@ function PaymentsPage() {
 
       // تجاهل نتائج الطلبات الأقدم إذا اكتمل طلب تحديث أحدث قبلها.
       if (requestSequence !== loadSequenceRef.current) return;
+      setTotalCount(count ?? 0);
 
       const nextRows: PaymentRecord[] = (data ?? []).map((row: any) => {
         const status = normalizeStatus(row.status);
@@ -347,44 +402,46 @@ function PaymentsPage() {
         return bTime - aTime;
       });
 
-      const nextPendingIds = new Set(
-        nextRows
-          .filter((payment) => payment.status === "pending")
-          .map((payment) => payment.id),
-      );
-      const previouslyKnownIds = knownPendingIdsRef.current;
-
-      if (previouslyKnownIds === null) {
-        // لا تنبّه على دفعات قديمة موجودة عند فتح الصفحة؛ نهيئ المقارنة فقط.
-        knownPendingIdsRef.current = nextPendingIds;
-      } else {
-        const newPendingPayments = nextRows.filter(
-          (payment) =>
-            payment.status === "pending" &&
-            !previouslyKnownIds.has(payment.id),
+      if (filter === "pending" && page === 1) {
+        const nextPendingIds = new Set(
+          nextRows
+            .filter((payment) => payment.status === "pending")
+            .map((payment) => payment.id),
         );
+        const previouslyKnownIds = knownPendingIdsRef.current;
 
-        // حدّث baseline قبل إصدار التنبيه لمنع تكراره عند أحداث Realtime المتقاربة.
-        knownPendingIdsRef.current = nextPendingIds;
-
-        if (newPendingPayments.length > 0) {
-          const newestPayment = newPendingPayments[0];
-          setIncomingAlert(
-            `وصل ${newPendingPayments.length} طلب دفع جديد${
-              newestPayment.tracking
-                ? ` • رقم الطلب ${newestPayment.tracking}`
-                : ""
-            }`,
+        if (previouslyKnownIds === null) {
+          // لا تنبّه على الدفعات القديمة عند فتح الصفحة؛ نهيئ المقارنة فقط.
+          knownPendingIdsRef.current = nextPendingIds;
+        } else {
+          const newPendingPayments = nextRows.filter(
+            (payment) =>
+              payment.status === "pending" &&
+              !previouslyKnownIds.has(payment.id),
           );
 
-          const context = audioContextRef.current;
-          if (soundEnabledRef.current && context) {
-            void context
-              .resume()
-              .then(() => playPaymentTone(context))
-              .catch((cause) =>
-                console.error("تعذر تشغيل نغمة الدفعة الجديدة:", cause),
-              );
+          // حدّث خط الأساس قبل إصدار التنبيه لمنع التكرار.
+          knownPendingIdsRef.current = nextPendingIds;
+
+          if (newPendingPayments.length > 0) {
+            const newestPayment = newPendingPayments[0];
+            setIncomingAlert(
+              `وصل ${newPendingPayments.length} طلب دفع جديد${
+                newestPayment.tracking
+                  ? ` • رقم الطلب ${newestPayment.tracking}`
+                  : ""
+              }`,
+            );
+
+            const context = audioContextRef.current;
+            if (soundEnabledRef.current && context) {
+              void context
+                .resume()
+                .then(() => playPaymentTone(context))
+                .catch((cause) =>
+                  console.error("تعذر تشغيل نغمة الدفعة الجديدة:", cause),
+                );
+            }
           }
         }
       }
@@ -418,7 +475,7 @@ function PaymentsPage() {
         setRefreshing(false);
       }
     }
-  }, []);
+  }, [filter, page, period, search]);
 
   const openReceipt = async (paymentId: string) => {
     setPreviewLoading(true);
@@ -468,6 +525,12 @@ function PaymentsPage() {
     return () => {
       window.clearInterval(intervalId);
       void supabase.removeChannel(channel);
+    };
+  }, [load]);
+
+  // احتفظ بسياق الصوت أثناء تبديل الفلاتر والصفحات، وأغلقه عند مغادرة الصفحة فقط.
+  useEffect(() => {
+    return () => {
       const context = audioContextRef.current;
       audioContextRef.current = null;
       if (context && context.state !== "closed") {
@@ -476,7 +539,7 @@ function PaymentsPage() {
         );
       }
     };
-  }, [load]);
+  }, []);
 
   const approve = async (payment: PaymentRecord) => {
     setErr("");
@@ -608,51 +671,10 @@ function PaymentsPage() {
     }
   };
 
-  const filteredRows = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase();
-    const now = new Date();
-
-    return rows.filter((payment) => {
-      const matchesStatus =
-        filter === "all"
-          ? true
-          : filter === "partial"
-            ? payment.status === "approved" &&
-              (payment.remainingAmount ?? 0) > 0
-            : payment.status === filter;
-
-      const matchesDate = matchesPeriod(
-        payment.createdAt,
-        period,
-        now,
-      );
-
-      const searchableText = [
-        payment.customer,
-        payment.tracking,
-        payment.method,
-        payment.id,
-      ]
-        .join(" ")
-        .toLocaleLowerCase();
-
-      const matchesSearch = !query || searchableText.includes(query);
-
-      return (
-        matchesStatus &&
-        matchesDate &&
-        matchesSearch &&
-        !payment.archived
-      );
-    });
-  }, [rows, filter, period, search]);
-
-  // ترقيم صفحات محلي بعد تطبيق البحث والفلاتر على الصفوف المحمّلة.
-  const totalPages = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
-  const paginatedRows = useMemo(() => {
-    const start = (page - 1) * PAGE_SIZE;
-    return filteredRows.slice(start, start + PAGE_SIZE);
-  }, [filteredRows, page]);
+  // الصفوف المعروضة هي الصفحة التي جلبناها من قاعدة البيانات بالفعل.
+  const filteredRows = rows;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const paginatedRows = rows;
 
   useEffect(() => {
     setPage((current) => Math.min(current, totalPages));
@@ -747,7 +769,8 @@ function PaymentsPage() {
         )}
 
         <section>
-          <h2 className="mb-3 text-lg font-black text-[#0A2540]">ملخص المدفوعات</h2>
+          <h2 className="mb-1 text-lg font-black text-[#0A2540]">ملخص الصفحة الحالية</h2>
+          <p className="mb-3 text-xs text-slate-500">الأعداد والمبالغ أدناه تخص السجلات المحمّلة في هذه الصفحة فقط.</p>
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <Kpi label="بانتظار الاعتماد" value={totals.pending} sub={`${fmt(pendingAmount)} ر.ي مطلوب`} color="text-amber-600" />
             <Kpi label="المقبوض المعتمد" value={fmt(totals.received)} sub="ر.ي" color="text-emerald-600" />
@@ -758,8 +781,8 @@ function PaymentsPage() {
 
         <section className="rounded-2xl border border-sky-100 bg-white p-4 shadow-sm">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-sm font-black text-[#0A2540]">إجمالي المقبوض حسب وسيلة الدفع</h2>
-            <span className="text-xs text-slate-500">الدفعات المعتمدة فقط</span>
+            <h2 className="text-sm font-black text-[#0A2540]">المقبوض حسب وسيلة الدفع في هذه الصفحة</h2>
+            <span className="text-xs text-slate-500">الدفعات المعتمدة الظاهرة حاليًا فقط</span>
           </div>
           {Object.keys(ledger).length === 0 ? (
             <p className="text-xs text-slate-500">لا توجد مقبوضات معتمدة.</p>
@@ -846,7 +869,7 @@ function PaymentsPage() {
             </div>
           </div>
           <p className="mt-3 text-xs text-slate-500" aria-live="polite">
-            المعروض: {filteredRows.length} من {rows.length}
+            الصفحة الحالية: {filteredRows.length} سجل • إجمالي النتائج: {totalCount}
             {refreshing && hasLoadedOnceRef.current ? " • يجري التحديث في الخلفية" : ""}
             {" • "}التحديث التلقائي كل {AUTO_REFRESH_SECONDS} ثانية
           </p>
@@ -855,11 +878,11 @@ function PaymentsPage() {
         <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-3">
             <h2 className="font-black text-[#0A2540]">سجل طلبات الدفع</h2>
-            <span className="text-xs text-slate-500">{filteredRows.length} طلب</span>
+            <span className="text-xs text-slate-500">{totalCount} طلب في النتائج</span>
           </div>
           {loading && !hasLoadedOnceRef.current ? (
             <p className="p-5 text-sm text-slate-500">جارٍ تحميل طلبات الدفع…</p>
-          ) : filteredRows.length === 0 ? (
+          ) : totalCount === 0 ? (
             <p className="p-5 text-sm text-slate-500">لا توجد طلبات تطابق البحث والفلاتر المحددة.</p>
           ) : (
             <div className="overflow-x-auto">
@@ -946,14 +969,14 @@ function PaymentsPage() {
               </table>
             </div>
           )}
-          {filteredRows.length > 0 && (
+          {totalCount > 0 && (
             <nav
               aria-label="ترقيم صفحات طلبات الدفع"
               className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-4 py-3"
               dir="rtl"
             >
               <span className="text-xs text-slate-600">
-                صفحة {page} من {totalPages} • يعرض {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filteredRows.length)} من {filteredRows.length}
+                صفحة {page} من {totalPages} • يعرض {totalCount === 0 ? 0 : (page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, totalCount)} من {totalCount}
               </span>
               <div className="flex items-center gap-2">
                 <button
