@@ -321,6 +321,7 @@ function NewOrderPage() {
   const [status, setStatus] = useState<'idle' | 'sending' | 'done'>('idle')
   const [sbError, setSbError] = useState('')
   const [orderCode, setOrderCode] = useState('')
+  const [trackingUnavailable, setTrackingUnavailable] = useState(false)
   const [copied, setCopied] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
   const recognitionRef = useRef<any>(null)
@@ -492,11 +493,11 @@ function NewOrderPage() {
       if (insertError) {
         throw new Error(`تعذر حفظ الطلب: ${insertError.message}`)
       }
-      if (!savedOrder?.tracking_code) {
-        throw new Error('حُفظ الطلب لكن تعذر قراءة رمز التتبع. لا تعِد الإرسال قبل مراجعة الطلبات.')
+      if (!savedOrder?.id) {
+        throw new Error('لم تصل نتيجة تأكيد الحفظ من قاعدة البيانات. لا تعِد الإرسال الآن؛ تحقق من صفحة طلباتي أولاً لتجنب تكرار الطلب.')
       }
 
-      const code = savedOrder.tracking_code
+      const code = savedOrder.tracking_code || ''
 
       // تخزين نسخة محلية للعرض فقط؛ مصدر الحقيقة هو قاعدة البيانات.
       try {
@@ -505,7 +506,7 @@ function NewOrderPage() {
         const currentList = Array.isArray(parsedOrders) ? parsedOrders : []
         const newRecord = {
           id: savedOrder.id,
-          tracking_code: code,
+          tracking_code: code || null,
           customer_name: name.trim(),
           phone: phone.trim(),
           product_link: url.trim(),
@@ -526,7 +527,14 @@ function NewOrderPage() {
         console.warn('تم حفظ الطلب، لكن تعذر تحديث التخزين المحلي:', storageError)
       }
 
-      setOrderCode(code)
+      if (!code) {
+        // تم إنشاء السجل بالفعل؛ لا تُعد حالة النموذج إلى idle كي لا يرسل العميل طلباً مكرراً.
+        setTrackingUnavailable(true)
+        setSbError('تم حفظ طلبك، لكن لم يصل رمز التتبع من قاعدة البيانات. لا تعِد تقديم الطلب؛ افتح «طلباتي» أو تواصل مع الدعم للتحقق.')
+      } else {
+        setTrackingUnavailable(false)
+        setOrderCode(code)
+      }
       setStatus('done')
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch (err: unknown) {
@@ -543,6 +551,7 @@ function NewOrderPage() {
     setNotes('')
     setDup('لا')
     setOrderCode('')
+    setTrackingUnavailable(false)
     setStatus('idle')
     setSbError('')
   }
@@ -585,32 +594,45 @@ function NewOrderPage() {
             <div className="no-scheck">
               <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
             </div>
-            <h2>تم إرسال واستلام طلبك بنجاح! 🎉</h2>
-            <p className="desc">تم تسجيل طلبك فوراً في لوحة عمليات السوق الشامل وسيتواصل معك مندوبنا لتأكيد السعر وموعد الاستلام.</p>
-            <div className="no-codebox">
-              <div className="lab">رقم تتبع طلبك المباشر:</div>
-              <div className="code">
-                <span>{orderCode}</span>
-                <button className={'no-copy' + (copied ? ' ok' : '')} type="button" onClick={copyCode} title="نسخ الكود">
-                  {copied
-                    ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
-                    : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>}
-                </button>
+            <h2>{trackingUnavailable ? 'تم حفظ طلبك، لكن تعذّر جلب رقم التتبع' : 'تم إرسال واستلام طلبك بنجاح! 🎉'}</h2>
+            <p className="desc">{trackingUnavailable
+              ? 'الطلب محفوظ. لا تقدّم الطلب مرة أخرى؛ افتح «طلباتي» للتحقق من حالته أو تواصل مع الدعم.'
+              : 'تم تسجيل طلبك في النظام. احتفظ برقم التتبع لمراجعة الطلب والدفع.'}</p>
+            {trackingUnavailable ? (
+              <div className="no-warn" role="status" aria-live="polite">
+                <Flash />
+                <span>{sbError}</span>
               </div>
-            </div>
+            ) : (
+              <div className="no-codebox">
+                <div className="lab">رقم تتبع طلبك:</div>
+                <div className="code">
+                  <span>{orderCode}</span>
+                  <button className={'no-copy' + (copied ? ' ok' : '')} type="button" onClick={copyCode} title="نسخ الكود">
+                    {copied
+                      ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
+                      : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>}
+                  </button>
+                </div>
+              </div>
+            )}
             <div className="no-sbtns">
-              <button className="no-btn no-gold" type="button" onClick={resetForm}>
-                <span>طلب منتج آخر</span>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-              </button>
-              <button 
-                className="no-btn no-primary" 
-                type="button" 
-                onClick={() => navigate({ to: '/pay', search: { order: orderCode } as any })}
-              >
-                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" /><line x1="1" y1="10" x2="23" y2="10" /></svg>
-                <span>طرق الدفع</span>
-              </button>
+              {trackingUnavailable ? (
+                <button className="no-btn no-primary" type="button" onClick={() => navigate({ to: '/account/orders' })}>
+                  <span>فتح طلباتي</span><Arrow />
+                </button>
+              ) : (
+                <>
+                  <button className="no-btn no-gold" type="button" onClick={resetForm}>
+                    <span>طلب منتج آخر</span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                  </button>
+                  <button className="no-btn no-primary" type="button" onClick={() => navigate({ to: '/pay', search: { order: orderCode } as any })}>
+                    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" /><line x1="1" y1="10" x2="23" y2="10" /></svg>
+                    <span>طرق الدفع</span>
+                  </button>
+                </>
+              )}
             </div>
           </section>
           <div className="no-foot">
