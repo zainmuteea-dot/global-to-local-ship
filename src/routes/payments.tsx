@@ -363,7 +363,8 @@ function PaymentsPage() {
       if (filter === "pending" || filter === "approved" || filter === "rejected") {
         query.eq("status", filter);
       } else if (filter === "partial") {
-        query.eq("status", "approved");
+        // اعرض الدفعات المعلقة والمعتمدة للطلبات المدفوعة جزئيًا، واستبعد المرفوضة.
+        query.neq("status", "rejected");
         const trackingCodes = Array.from(partialRemainingByTracking.keys());
 
         if (trackingCodes.length > 0) {
@@ -422,6 +423,13 @@ function PaymentsPage() {
           status === "approved"
             ? receivedAmount ?? baseAmount
             : baseAmount;
+        const orderTracking = String(row.order_tracking ?? "").trim();
+        const paymentTracking = String(
+          row.tracking_code ?? row.tracking ?? "",
+        ).trim();
+        const partialRemaining =
+          partialRemainingByTracking.get(orderTracking) ??
+          partialRemainingByTracking.get(paymentTracking);
 
         return {
           id: String(row.id),
@@ -442,9 +450,10 @@ function PaymentsPage() {
           receivedAmount,
           remainingAmount:
             filter === "partial"
-              ? partialRemainingByTracking.get(
-                  String(row.order_tracking ?? row.tracking_code ?? "").trim(),
-                ) ?? (row.remaining_amount == null ? null : Number(row.remaining_amount))
+              ? partialRemaining ??
+                (row.remaining_amount == null
+                  ? null
+                  : Number(row.remaining_amount))
               : row.remaining_amount == null
                 ? null
                 : Number(row.remaining_amount),
