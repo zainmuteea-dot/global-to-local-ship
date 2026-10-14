@@ -30,6 +30,7 @@ function MyAccountRoute() {
       onNavigateToDashboard={() => navigate({ to: '/dashboard' })}
       onNavigateToOrders={() => navigate({ to: '/account/orders' })}
       onNavigateToInvoices={() => navigate({ to: '/account/invoices' })}
+      onNavigateToAddresses={() => navigate({ to: '/account/addresses' })}
     />
   );
 }
@@ -75,6 +76,7 @@ interface MyAccountProps {
   onNavigateToDashboard?: () => void;
   onNavigateToOrders?: () => void;
   onNavigateToInvoices?: () => void;
+  onNavigateToAddresses?: () => void;
 }
 
 export const MyAccountPage: React.FC<MyAccountProps> = ({
@@ -84,7 +86,8 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
   onNavigateToTracker,
   onNavigateToDashboard,
   onNavigateToOrders,
-  onNavigateToInvoices
+  onNavigateToInvoices,
+  onNavigateToAddresses
 }) => {
   const { session, user, loading: isLoading } = useSession(false);
   const [orders, setOrders] = useState<OrderItem[]>([]);
@@ -410,9 +413,12 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
             </div>
           </button>
 
-          {/* 5. زر العناوين */}
+          {/* 5. زر العناوين المحفوظة */}
           <button
-            onClick={() => setActiveModal('address')}
+            onClick={() => {
+              if (onNavigateToAddresses) onNavigateToAddresses();
+              else if (typeof window !== 'undefined') window.location.href = '/account/addresses';
+            }}
             className="w-full bg-white hover:bg-gradient-to-r hover:from-white hover:to-emerald-50/60 border-2 border-slate-200/80 hover:border-emerald-600 rounded-2xl p-3.5 sm:p-4 shadow-xs hover:shadow-md transition-all duration-200 flex items-center justify-between cursor-pointer group active:scale-[0.99]"
           >
             <div className="flex items-center gap-3.5">
