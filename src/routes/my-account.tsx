@@ -111,6 +111,8 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [editSuccess, setEditSuccess] = useState(false);
+  const [logoutLoading, setLogoutLoading] = useState(false);
+  const [logoutError, setLogoutError] = useState('');
 
   // تحميل بيانات الحساب المسجل أولًا، وعدم استخدام بيانات محلية تخص حسابًا آخر.
   useEffect(() => {
@@ -295,12 +297,37 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
   };
 
   const handleLogout = async () => {
-    const { supabase } = await import('@/integrations/supabase/client');
-    await supabase.auth.signOut();
-    if (onNavigateToCreateAccount) {
-      onNavigateToCreateAccount();
-    } else if (typeof window !== 'undefined') {
-      window.location.href = '/create-account';
+    if (logoutLoading) return;
+
+    setLogoutLoading(true);
+    setLogoutError('');
+
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+
+      // Remove only the app's cached customer identity, not unrelated site data.
+      try {
+        const localKeys = [
+          'alsouk_customer_logged_in',
+          'alsouk_current_user',
+          'sc_phone',
+          'sc_name',
+        ];
+        localKeys.forEach((key) => window.localStorage.removeItem(key));
+        ['sc_phone', 'sc_name'].forEach((key) => window.sessionStorage.removeItem(key));
+      } catch (storageError) {
+        // A browser may block storage access; the Supabase session is still signed out.
+        console.warn('Could not clear cached customer details:', storageError);
+      }
+
+      // The application has a /login route; replace prevents returning to this
+      // authenticated account page via the browser's Back button.
+      window.location.replace('/login');
+    } catch (error) {
+      console.error('Sign out failed:', error);
+      setLogoutError('تعذر تسجيل الخروج الآن. تحقق من اتصال الإنترنت وحاول مرة أخرى.');
+      setLogoutLoading(false);
     }
   };
 
@@ -641,14 +668,26 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
 
           {/* 13. زر تسجيل الخروج الفاخر باللون الأحمر */}
           <button
+            type="button"
             onClick={handleLogout}
-            className="w-full bg-rose-50/70 hover:bg-rose-100 border-2 border-rose-200 hover:border-rose-400 rounded-2xl p-3.5 sm:p-4 shadow-xs transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer group active:scale-[0.99] mt-3"
+            disabled={logoutLoading}
+            aria-busy={logoutLoading}
+            className="w-full bg-rose-50/70 hover:bg-rose-100 border-2 border-rose-200 hover:border-rose-400 rounded-2xl p-3.5 sm:p-4 shadow-xs transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer group active:scale-[0.99] mt-3 disabled:cursor-wait disabled:opacity-70"
           >
-            <LogOut className="w-4.5 h-4.5 text-rose-600 group-hover:-translate-x-1 transition-transform" />
+            {logoutLoading ? (
+              <Loader2 className="w-4.5 h-4.5 text-rose-600 animate-spin" />
+            ) : (
+              <LogOut className="w-4.5 h-4.5 text-rose-600 group-hover:-translate-x-1 transition-transform" />
+            )}
             <span className="text-sm font-black text-rose-600 group-hover:text-rose-700">
-              تسجيل الخروج
+              {logoutLoading ? 'جارٍ تسجيل الخروج…' : 'تسجيل الخروج'}
             </span>
           </button>
+          {logoutError && (
+            <p role="alert" className="mt-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-center text-xs font-bold text-rose-700">
+              {logoutError}
+            </p>
+          )}
 
         </div>
       </main>
