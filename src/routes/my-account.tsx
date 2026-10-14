@@ -60,7 +60,8 @@ import {
   Mail, 
   CheckCircle2, 
   Loader2,
-  Sparkles
+  Sparkles,
+  Camera
 } from 'lucide-react';
 import { useSession } from '@/hooks/use-session';
 import { OrdersService } from '@/services/supabaseOrders';
@@ -89,8 +90,11 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
   const [orders, setOrders] = useState<OrderItem[]>([]);
   
   // بيانات الملف الشخصي
-  const [customerName, setCustomerName] = useState('zain muteea');
-  const [customerPhone, setCustomerPhone] = useState('772399744');
+  const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState('');
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarMessage, setAvatarMessage] = useState('');
   const [customerCity, setCustomerCity] = useState('صنعاء');
   const [customerAddress, setCustomerAddress] = useState('');
 
@@ -99,25 +103,86 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
   const [copiedLink, setCopiedLink] = useState(false);
   const [editSuccess, setEditSuccess] = useState(false);
 
-  // تحميل بيانات المستخدم والطلبات
+  // تحميل بيانات الحساب المسجل أولًا، وعدم استخدام بيانات محلية تخص حسابًا آخر.
   useEffect(() => {
     try {
       const stored = localStorage.getItem('alsouk_current_user');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed.full_name) setCustomerName(parsed.full_name);
-        if (parsed.phone) setCustomerPhone(parsed.phone);
-        if (parsed.city) setCustomerCity(parsed.city);
-        if (parsed.address) setCustomerAddress(parsed.address);
-      } else if (user) {
-        if (user.user_metadata?.['full_name']) setCustomerName(user.user_metadata['full_name']);
-        if (user.user_metadata?.['phone']) setCustomerPhone(user.user_metadata['phone']);
-      }
+      const parsed = stored ? JSON.parse(stored) : {};
+      const metadata = user?.user_metadata ?? {};
+      const localBelongsToUser = !user || parsed.id === user.id;
+
+      setCustomerName(
+        metadata.full_name || (localBelongsToUser ? parsed.full_name : '') ||
+        (user?.email ? user.email.split('@')[0] : 'عميل')
+      );
+      setCustomerPhone(metadata.phone || (localBelongsToUser ? parsed.phone : '') || '');
+      setCustomerCity((localBelongsToUser ? parsed.city : '') || 'صنعاء');
+      setCustomerAddress((localBelongsToUser ? parsed.address : '') || '');
+      setAvatarUrl(metadata.avatar_url || (localBelongsToUser ? parsed.avatar_url : '') || '');
       setOrders(OrdersService.getLocalOrders());
     } catch (e) {
       console.warn(e);
+      setCustomerName(user?.email ? user.email.split('@')[0] : 'عميل');
     }
   }, [user]);
+
+  const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    if (!user) {
+      setAvatarMessage('سجّل الدخول أولًا لتغيير صورة الحساب.');
+      input.value = '';
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      setAvatarMessage('اختر ملف صورة صالحًا.');
+      input.value = '';
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setAvatarMessage('حجم الصورة يجب ألا يتجاوز 5 ميغابايت.');
+      input.value = '';
+      return;
+    }
+
+    setAvatarUploading(true);
+    setAvatarMessage('');
+    try {
+      const { supabase } = await import('@/integrations/supabase/client');
+      const extension = file.name.split('.').pop()?.replace(/[^a-zA-Z0-9]/g, '') || 'jpg';
+      const filePath = `${user.id}/${Date.now()}.${extension}`;
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { contentType: file.type, upsert: false });
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const publicUrl = data.publicUrl;
+      const { error: metadataError } = await supabase.auth.updateUser({
+        data: { avatar_url: publicUrl },
+      });
+      if (metadataError) throw metadataError;
+
+      const stored = localStorage.getItem('alsouk_current_user');
+      const parsed = stored ? JSON.parse(stored) : {};
+      localStorage.setItem('alsouk_current_user', JSON.stringify({
+        ...(parsed.id === user.id ? parsed : {}),
+        id: user.id,
+        full_name: customerName,
+        avatar_url: publicUrl,
+      }));
+      setAvatarUrl(publicUrl);
+      setAvatarMessage('تم تحديث صورة الحساب.');
+    } catch (error) {
+      console.error('Avatar upload failed:', error);
+      setAvatarMessage('تعذر رفع الصورة. تحقق من إعداد bucket avatars وسياسات التخزين.');
+    } finally {
+      setAvatarUploading(false);
+      input.value = '';
+    }
+  };
 
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,6 +193,7 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
         phone: customerPhone,
         city: customerCity,
         address: customerAddress,
+        avatar_url: avatarUrl,
         updatedAt: new Date().toISOString()
       };
       localStorage.setItem('alsouk_current_user', JSON.stringify(updated));
@@ -214,15 +280,41 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
             </button>
           </div>
 
-          <div className="relative shrink-0">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#0F4C81] via-[#0284C7] to-[#0F4C81] text-white flex items-center justify-center font-black text-2xl shadow-md shadow-[#0F4C81]/30 ring-4 ring-sky-100">
-              {customerName.charAt(0).toUpperCase()}
-            </div>
-            <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[#FF7A00] border-2 border-white flex items-center justify-center text-white" title="موثق">
-              <Sparkles className="w-3 h-3" />
-            </span>
+          <div className="flex shrink-0 flex-col items-center gap-2">
+            <label
+              className="relative block cursor-pointer"
+              title="اضغط لتغيير صورة الحساب"
+            >
+              <input
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                aria-label="تغيير صورة الحساب"
+                disabled={avatarUploading}
+                onChange={handleAvatarChange}
+              />
+              <div className="w-16 h-16 overflow-hidden rounded-2xl bg-gradient-to-br from-[#0F4C81] via-[#0284C7] to-[#0F4C81] text-white flex items-center justify-center font-black text-2xl shadow-md shadow-[#0F4C81]/30 ring-4 ring-sky-100">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt={`صورة ${customerName || 'العميل'}`} className="h-full w-full object-cover" />
+                ) : (
+                  (customerName.trim().charAt(0) || user?.email?.trim().charAt(0) || 'ع').toUpperCase()
+                )}
+              </div>
+              <span className="absolute -bottom-1 -left-1 w-6 h-6 rounded-full bg-[#FF7A00] border-2 border-white flex items-center justify-center text-white" title="تغيير الصورة">
+                {avatarUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
+              </span>
+              <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[#FF7A00] border-2 border-white flex items-center justify-center text-white" title="حساب العميل">
+                <Sparkles className="w-3 h-3" />
+              </span>
+            </label>
+            <span className="text-[10px] font-bold text-slate-500">تغيير الصورة</span>
           </div>
         </div>
+        {avatarMessage && (
+          <p role="status" className="text-center text-xs font-bold text-[#0F4C81]">
+            {avatarMessage}
+          </p>
+        )}
 
         {/* 🌟 3. قائمة الأزرار المطورة بألوان الشعار وتأثيرات تفاعلية راقية */}
         <div className="space-y-2.5">
