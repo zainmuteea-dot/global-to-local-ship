@@ -31,23 +31,10 @@ import {
   Database,
   X
 } from "lucide-react";
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
 
-// ==========================================
-// 1. SUPABASE CLIENT & CONFIGURATION
-// ==========================================
-const SUPABASE_PROJECT_ID = "ihqijxikvfvubfqffezb";
-const SUPABASE_URL = (import.meta as any).env?.VITE_SUPABASE_URL || `https://${SUPABASE_PROJECT_ID}.supabase.co`;
-const SUPABASE_ANON_KEY = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlocWlqeGlrdmZ2dWJmcWZmZXpiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI5OTM4MTUsImV4cCI6MjA1ODU2OTgxNX0.eW_t_TqjWwQ75903o4q3s0Xk7uB723qW_yE1iP";
-
-let supabaseClientInstance: any = null;
-try {
-  if (SUPABASE_URL && SUPABASE_ANON_KEY) {
-    supabaseClientInstance = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  }
-} catch (e) {
-  console.warn("Supabase init note:", e);
-}
+// Use the shared Supabase client configured for this application.
+const supabaseClientInstance: any = supabase;
 
 // ==========================================
 // 2. DATA TYPES
