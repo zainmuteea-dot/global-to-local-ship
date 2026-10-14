@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { supabase } from '@/integrations/supabase/client';
 
 export const Route = createFileRoute('/my-account')({
   head: () => ({
@@ -91,6 +92,8 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
 }) => {
   const { session, user, loading: isLoading } = useSession(false);
   const [orders, setOrders] = useState<OrderItem[]>([]);
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
+  const [walletLoading, setWalletLoading] = useState(true);
   
   // بيانات الملف الشخصي
   const [customerName, setCustomerName] = useState('');
@@ -128,6 +131,55 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
       setCustomerName(user?.email ? user.email.split('@')[0] : 'عميل');
     }
   }, [user]);
+
+  // تحميل الرصيد من معاملات المستخدم الحالي فقط.
+  useEffect(() => {
+    let alive = true;
+
+    const loadWalletBalance = async () => {
+      if (!user) {
+        setWalletBalance(null);
+        setWalletLoading(false);
+        return;
+      }
+
+      setWalletLoading(true);
+      const { data, error } = await supabase
+        .from('wallet_transactions')
+        .select('amount')
+        .eq('user_id', user.id);
+
+      if (!alive) return;
+
+      if (error) {
+        console.error('تعذر تحميل رصيد المحفظة:', error);
+        setWalletBalance(null);
+      } else {
+        const balance = (data ?? []).reduce(
+          (sum, transaction) => sum + Number(transaction.amount || 0),
+          0,
+        );
+        setWalletBalance(balance);
+      }
+
+      setWalletLoading(false);
+    };
+
+    void loadWalletBalance();
+
+    return () => {
+      alive = false;
+    };
+  }, [user]);
+
+  const walletBalanceText = walletLoading
+    ? 'جارٍ التحميل…'
+    : walletBalance === null
+      ? 'تعذر التحميل'
+      : `${walletBalance.toLocaleString('ar-YE', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })} ر.ي`;
 
   const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const input = event.currentTarget;
@@ -447,7 +499,7 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
             </div>
             <div className="flex items-center gap-2">
               <span className="font-mono text-xs font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
-                0.00 ر.ي
+                {walletBalanceText}
               </span>
               <ChevronLeft className="w-4 h-4 text-slate-400 group-hover:text-[#EA580C] group-hover:-translate-x-1 transition-transform" />
             </div>
@@ -727,7 +779,7 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
                 </div>
                 <div>
                   <span className="text-xs font-bold text-slate-500">الرصيد المتاح حالياً</span>
-                  <div className="text-2xl font-black text-[#0F4C81] mt-1 font-mono">0.00 ر.ي</div>
+                  <div className="text-2xl font-black text-[#0F4C81] mt-1 font-mono">{walletBalanceText}</div>
                   <p className="text-xs text-slate-500 mt-1">يمكنك استخدام الرصيد لدفع تكاليف الشحن والسلع مباشرة</p>
                 </div>
                 <button
