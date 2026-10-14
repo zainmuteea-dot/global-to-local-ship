@@ -32,6 +32,7 @@ function MyAccountRoute() {
       onNavigateToOrders={() => navigate({ to: '/account/orders' })}
       onNavigateToInvoices={() => navigate({ to: '/account/invoices' })}
       onNavigateToAddresses={() => navigate({ to: '/account/addresses' })}
+      onNavigateToNotifications={() => navigate({ to: '/notifications' })}
     />
   );
 }
@@ -78,6 +79,7 @@ interface MyAccountProps {
   onNavigateToOrders?: () => void;
   onNavigateToInvoices?: () => void;
   onNavigateToAddresses?: () => void;
+  onNavigateToNotifications?: () => void;
 }
 
 export const MyAccountPage: React.FC<MyAccountProps> = ({
@@ -88,7 +90,8 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
   onNavigateToDashboard,
   onNavigateToOrders,
   onNavigateToInvoices,
-  onNavigateToAddresses
+  onNavigateToAddresses,
+  onNavigateToNotifications
 }) => {
   const { session, user, loading: isLoading } = useSession(false);
   const [orders, setOrders] = useState<OrderItem[]>([]);
@@ -523,7 +526,13 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
 
           {/* 8. زر الإشعارات */}
           <button
-            onClick={() => setActiveModal('notifications')}
+            onClick={() => {
+              if (onNavigateToNotifications) {
+                onNavigateToNotifications();
+              } else {
+                window.location.assign('/notifications');
+              }
+            }}
             className="w-full bg-white hover:bg-gradient-to-r hover:from-white hover:to-orange-50/60 border-2 border-slate-200/80 hover:border-[#FF7A00] rounded-2xl p-3.5 sm:p-4 shadow-xs hover:shadow-md transition-all duration-200 flex items-center justify-between cursor-pointer group active:scale-[0.99]"
           >
             <div className="flex items-center gap-3.5">
@@ -635,7 +644,6 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
                 {activeModal === 'address' && <span>عناوين التوصيل والاستلام</span>}
                 {activeModal === 'wallet' && <span>رصيد الحساب والمحفظة</span>}
                 {activeModal === 'support' && <span>خدمة العملاء والدعم الفني</span>}
-                {activeModal === 'notifications' && <span>مركز الإشعارات</span>}
                 {activeModal === 'terms' && <span>شروط الاستخدام</span>}
                 {activeModal === 'privacy' && <span>سياسة الخصوصية والأمان</span>}
                 {activeModal === 'about' && <span>عن السوق الشامل (AL SHAMEL)</span>}
@@ -829,7 +837,7 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
             )}
 
             {/* محتوى: الشروط والمعلومات والخصوصية */}
-            {(activeModal === 'terms' || activeModal === 'privacy' || activeModal === 'about' || activeModal === 'invoices' || activeModal === 'notifications') && (
+            {(activeModal === 'terms' || activeModal === 'privacy' || activeModal === 'about' || activeModal === 'invoices') && (
               <div className="text-xs text-slate-700 leading-relaxed space-y-2">
                 <p className="font-bold text-[#0F4C81]">
                   منصة السوق الشامل (AL SHAMEL SHOPPING) بوابتك الأولى للتسوق والشحن الدولي من كبرى المتاجر العالمية (شي إن، أمازون، علي إكسبرس) مباشرة إلى باب منزلك في الجمهورية اليمنية.
