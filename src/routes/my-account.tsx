@@ -795,29 +795,36 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
             {activeModal === 'support' && (
               <div className="space-y-3 text-xs">
                 <p className="text-slate-600 leading-relaxed font-bold">
-                  فريق دعم عملاء السوق الشامل متواجد على مدار الساعة لخدمتكم والإجابة عن كافة الاستفسارات:
+                  تواصل مع فريق خدمة عملاء السوق الشامل عبر واتساب أو البريد الإلكتروني:
                 </p>
-                <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+                <a
+                  href="https://wa.me/967773370041"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="مراسلة خدمة العملاء عبر واتساب على الرقم +967 773 370 041"
+                  className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-between gap-3 hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 transition"
+                >
+                  <span className="flex items-center gap-2">
                     <Phone className="w-4 h-4 text-emerald-600" />
-                    <span className="font-bold text-emerald-950">خدمة الواتساب المباشرة:</span>
-                  </div>
-                  <a
-                    href="https://wa.me/967773370041"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-mono font-bold text-emerald-700 bg-white px-2.5 py-1 rounded-lg border border-emerald-200"
-                  >
-                    773370041
-                  </a>
-                </div>
-                <div className="p-3.5 rounded-2xl bg-sky-50 border border-sky-200 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-emerald-950">واتساب خدمة العملاء</span>
+                  </span>
+                  <span dir="ltr" className="font-mono font-bold text-emerald-700 bg-white px-2.5 py-1 rounded-lg border border-emerald-200">
+                    +967 773 370 041
+                  </span>
+                </a>
+                <a
+                  href="mailto:support@alshamel.ye"
+                  aria-label="إرسال بريد إلكتروني إلى support@alshamel.ye"
+                  className="p-3.5 rounded-2xl bg-sky-50 border border-sky-200 flex items-center justify-between gap-3 hover:bg-sky-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 transition"
+                >
+                  <span className="flex items-center gap-2">
                     <Mail className="w-4 h-4 text-[#0F4C81]" />
-                    <span className="font-bold text-[#0F4C81]">البريد الإلكتروني:</span>
-                  </div>
-                  <span className="font-mono text-slate-700 text-[11px]">support@alshamel.ye</span>
-                </div>
+                    <span className="font-bold text-[#0F4C81]">البريد الإلكتروني</span>
+                  </span>
+                  <span dir="ltr" className="font-mono text-slate-700 text-[11px]">
+                    support@alshamel.ye
+                  </span>
+                </a>
               </div>
             )}
 
