@@ -93,6 +93,7 @@ export default function DashboardPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+  const [logoutLoading, setLogoutLoading] = useState(false);
 
   // مؤشرات طلبات العميل الشخصية
   const [orderStats, setOrderStats] = useState({
@@ -274,24 +275,44 @@ export default function DashboardPage() {
     };
   }, []);
 
-  // دالة تسجيل الخروج الرسمية
+  // تسجيل الخروج: لا نمسح بيانات المتصفح أو نوجّه المستخدم إذا رفض Supabase الخروج.
   const handleSignOut = async () => {
-    if (confirm('هل ترغب بتسجيل الخروج من حسابك؟')) {
+    if (logoutLoading || !window.confirm('هل ترغب بتسجيل الخروج من حسابك؟')) return;
+
+    setLogoutLoading(true);
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+
+      // إزالة مفاتيح هوية المنصة المعروفة فقط، دون مسح تخزين الموقع أو التطبيقات الأخرى.
+      const appSessionKeys = [
+        'alsouk_customer_logged_in',
+        'alsouk_current_user',
+        'sc_user',
+        'sc_phone',
+        'sc_name',
+      ];
       try {
-        await supabase.auth.signOut();
-        sessionStorage.clear();
-        localStorage.removeItem('sc_user');
-        localStorage.removeItem('sc_phone');
-        localStorage.removeItem('sc_name');
-        localStorage.removeItem('alsouk_customer_logged_in');
-        setConnectionState(false);
-        setUserId(null);
-        setNotifications([]);
-        setReadNotificationIds(new Set());
-        navigate({ to: '/login' });
-      } catch (e) {
-        navigate({ to: '/login' });
+        appSessionKeys.forEach((key) => {
+          window.localStorage.removeItem(key);
+          window.sessionStorage.removeItem(key);
+        });
+      } catch (storageError) {
+        // فشل تنظيف بيانات التخزين لا يلغي نجاح تسجيل الخروج من Supabase.
+        console.warn('تعذر تنظيف بعض بيانات الجلسة المحلية:', storageError);
       }
+
+      setConnectionState(false);
+      setUserId(null);
+      setNotifications([]);
+      setReadNotificationIds(new Set());
+      setIsNotifOpen(false);
+      await navigate({ to: '/login', replace: true });
+    } catch (error) {
+      console.error('تعذر تسجيل الخروج:', error);
+      window.alert('تعذر تسجيل الخروج الآن. لم يتم مسح بيانات الجلسة. تحقق من الاتصال وحاول مرة أخرى.');
+    } finally {
+      setLogoutLoading(false);
     }
   };
 
@@ -442,9 +463,12 @@ export default function DashboardPage() {
 
           {/* 🔴 زر تسجيل الخروج */}
           <button
+            type="button"
             onClick={handleSignOut}
-            className="grid size-11 place-items-center rounded-2xl bg-white text-rose-600 hover:text-white hover:bg-rose-600 ring-1 ring-rose-200 shadow-xs transition active:scale-95 cursor-pointer group"
-            title="تسجيل الخروج"
+            disabled={logoutLoading}
+            aria-busy={logoutLoading}
+            className="grid size-11 place-items-center rounded-2xl bg-white text-rose-600 hover:text-white hover:bg-rose-600 ring-1 ring-rose-200 shadow-xs transition active:scale-95 cursor-pointer group disabled:opacity-60 disabled:cursor-wait"
+            title={logoutLoading ? 'جارٍ تسجيل الخروج' : 'تسجيل الخروج'}
           >
             <LogOut className="size-5 transition-transform group-hover:-translate-x-0.5" />
           </button>
@@ -520,11 +544,11 @@ export default function DashboardPage() {
 
                 <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
                   <Link
-                    to="/my-account"
+                    to="/notifications"
                     onClick={() => setIsNotifOpen(false)}
                     className="text-xs font-black text-[#0F4C81] hover:underline"
                   >
-                    عرض كل الإشعارات والطلبات ←
+                    عرض كل الإشعارات ←
                   </Link>
                   <button
                     onClick={() => setIsNotifOpen(false)}
@@ -863,11 +887,14 @@ export default function DashboardPage() {
             {/* زر تسجيل الخروج */}
             <div className="pt-4 border-t border-slate-100">
               <button
+                type="button"
                 onClick={handleSignOut}
-                className="w-full flex items-center justify-center gap-2 bg-rose-50 hover:bg-rose-100 text-rose-600 font-black text-sm py-3 rounded-2xl transition"
+                disabled={logoutLoading}
+                aria-busy={logoutLoading}
+                className="w-full flex items-center justify-center gap-2 bg-rose-50 hover:bg-rose-100 text-rose-600 font-black text-sm py-3 rounded-2xl transition disabled:opacity-60 disabled:cursor-wait"
               >
                 <LogOut className="size-4" />
-                <span>تسجيل الخروج</span>
+                <span>{logoutLoading ? 'جارٍ تسجيل الخروج…' : 'تسجيل الخروج'}</span>
               </button>
             </div>
           </div>
