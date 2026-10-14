@@ -79,10 +79,34 @@ function getInitialTrackingCode(): string {
   return (params.get('tracking') || params.get('order') || '').trim();
 }
 
+function getFriendlySearchError(error: unknown): string {
+  const value = error as { code?: string; message?: string } | null;
+  const code = value?.code ?? '';
+  const message = (value?.message ?? '').toLowerCase();
+
+  if (code === '42501') {
+    return 'تعذّر البحث بسبب صلاحيات قاعدة البيانات. حاول مرة أخرى، وإذا استمرت المشكلة تواصل مع خدمة العملاء.';
+  }
+
+  if (code === '42P01' || code === '42703' || code.startsWith('PGRST')) {
+    return 'تعذّر إكمال البحث بسبب مشكلة في إعداد بيانات التتبع. حاول لاحقًا أو تواصل مع خدمة العملاء.';
+  }
+
+  if (
+    error instanceof TypeError ||
+    /fetch|network|connection|internet|timeout|timed out|failed to load/.test(message)
+  ) {
+    return 'تعذّر الاتصال بخدمة التتبع. تحقق من اتصال الإنترنت ثم اضغط «إعادة المحاولة».';
+  }
+
+  return 'حدث خطأ أثناء البحث عن الطلب. حاول مرة أخرى، وإذا استمرت المشكلة تواصل مع خدمة العملاء.';
+}
+
 export function TrackPage() {
   const [orderQuery, setOrderQuery] = useState<string>(() => getInitialTrackingCode());
   const [phoneQuery, setPhoneQuery] = useState<string>(() => getInitialClientPhone());
   const [order, setOrder] = useState<OrderItem | null>(null);
+  const [orderResults, setOrderResults] = useState<OrderItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
@@ -158,51 +182,67 @@ export function TrackPage() {
   const handleSearch = useCallback(async (overrideOrder?: string, overridePhone?: string) => {
     const oQuery = (overrideOrder !== undefined ? overrideOrder : orderQuery).trim().toUpperCase();
     const pQuery = (overridePhone !== undefined ? overridePhone : phoneQuery).trim();
-    if (!oQuery && !pQuery) return;
+    if (!oQuery && !pQuery) {
+      setHasSearched(true);
+      setErrorMessage('أدخل رقم التتبع أو رقم الهاتف المسجل للبحث عن طلبك.');
+      setOrder(null);
+      setOrderResults([]);
+      return;
+    }
 
     setLoading(true);
     setHasSearched(true);
     setErrorMessage('');
+    setOrder(null);
+    setOrderResults([]);
 
     try {
-      let query = supabase.from('orders').select('*');
+      // اطلب الأعمدة التي تستخدمها الصفحة فقط.
+      let query = supabase
+        .from('orders')
+        .select('id,tracking_code,customer_name,phone,product_link,product_name,status,created_at,updated_at');
 
       if (oQuery && pQuery) {
-        query = query.or(`tracking_code.ilike.%${oQuery}%,phone.ilike.%${pQuery}%`);
+        // عند إدخال الرقمين يجب أن يطابقا السجل نفسه معًا.
+        query = query.ilike('tracking_code', oQuery).eq('phone', pQuery);
       } else if (oQuery) {
-        query = query.ilike('tracking_code', `%${oQuery}%`);
+        // رقم التتبع يتغير لكل طلب، لذلك تتم مطابقته بالكامل.
+        query = query.ilike('tracking_code', oQuery);
       } else if (pQuery) {
-        query = query.ilike('phone', `%${pQuery}%`);
+        // الهاتف قد يرتبط بطلبات كثيرة؛ أعد جميع الطلبات الأحدث بدل اختيار واحد بصمت.
+        query = query.eq('phone', pQuery);
       }
 
-      const { data, error } = await query.order('created_at', { ascending: false }).limit(1);
+      const { data, error } = await query
+        .order('created_at', { ascending: false })
+        .limit(100);
 
       if (error) throw error;
 
-      if (data && data.length > 0) {
-        const row = data[0] as any;
-        setOrder({
-          id: row.id,
-          orderNumber: row.tracking_code || 'ORD-001',
-          intlTrackingNumber: row.tracking_code || 'ORD-001',
-          customerName: row.customer_name || 'عميل السوق الشامل',
-          customerPhone: row.phone || pQuery,
-          customerCity: 'اليمن',
-          customerAddress: '',
-          storeName: 'المتجر الدولي',
-          productUrl: row.product_link,
-          productTitle: row.product_name || 'طلب وسيط شراء دولي',
-          quantity: 1,
-          status: (row.status as OrderStatus) || 'new',
-          createdAt: row.created_at || new Date().toISOString(),
-          updatedAt: row.updated_at,
-        });
-      } else {
-        setOrder(null);
-      }
-    } catch (err: any) {
-      setErrorMessage(err.message || 'تعذر الاتصال بقاعدة البيانات');
+      const results: OrderItem[] = (data ?? []).map((row: any) => ({
+        id: row.id,
+        orderNumber: row.tracking_code || 'بدون رقم تتبع',
+        intlTrackingNumber: row.tracking_code || undefined,
+        customerName: row.customer_name || 'عميل السوق الشامل',
+        customerPhone: row.phone || pQuery,
+        customerCity: 'اليمن',
+        customerAddress: '',
+        storeName: 'المتجر الدولي',
+        productUrl: row.product_link || undefined,
+        productTitle: row.product_name || 'طلب وسيط شراء دولي',
+        quantity: 1,
+        status: (row.status as OrderStatus) || 'new',
+        createdAt: row.created_at || new Date().toISOString(),
+        updatedAt: row.updated_at || undefined,
+      }));
+
+      setOrderResults(results);
+      // افتح تلقائيًا فقط عند وجود نتيجة واحدة. إذا تعددت، يختار العميل الطلب المقصود.
+      if (results.length === 1) setOrder(results[0]);
+    } catch (err: unknown) {
+      setErrorMessage(getFriendlySearchError(err));
       setOrder(null);
+      setOrderResults([]);
     } finally {
       setLoading(false);
     }
@@ -397,15 +437,20 @@ export function TrackPage() {
               </div>
             </div>
 
-            {hasSearched && !order && !loading && (
-              <div className="p-3.5 bg-rose-50 border-2 border-rose-200 rounded-2xl space-y-1">
-                <p className="text-xs sm:text-sm font-black text-rose-700 text-center flex items-center justify-center gap-1.5">
-                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-                  <span>لم يتم العثور على شحنة مطابقة في قاعدة البيانات</span>
+            {hasSearched && orderResults.length === 0 && !loading && !errorMessage && (
+              <div role="status" className="p-4 bg-amber-50 border-2 border-amber-200 rounded-2xl space-y-1.5">
+                <p className="text-xs sm:text-sm font-black text-amber-900 text-center flex items-center justify-center gap-1.5">
+                  <AlertCircle className="w-4 h-4 text-amber-700 shrink-0" />
+                  <span>لم نعثر على طلب مطابق لبيانات البحث</span>
                 </p>
-                <div className="text-[11px] text-slate-600 text-center">
-                  يرجى التأكد من كتابة كود التتبع أو رقم الهاتف المسجل بشكل صحيح
+                <div className="text-[11px] leading-relaxed text-slate-700 text-center">
+                  {orderQuery.trim() && phoneQuery.trim()
+                    ? 'تأكد أن رقم التتبع والهاتف صحيحان وينتميان إلى الطلب نفسه.'
+                    : orderQuery.trim()
+                      ? 'تحقق من رقم التتبع كاملًا؛ لكل طلب رقم تتبع خاص به.'
+                      : 'لم نعثر على طلب بهذا الهاتف. تحقق من كتابة رقم الهاتف المسجل مع مفتاح الدولة.'}
                 </div>
+                <p className="text-[11px] text-slate-600 text-center">إذا استمرت المشكلة، تواصل مع خدمة العملاء للمساعدة.</p>
               </div>
             )}
 
@@ -429,11 +474,66 @@ export function TrackPage() {
           </form>
         </div>
 
+        {/* قائمة الطلبات عند البحث برقم هاتف مرتبط بأكثر من طلب */}
+        {orderResults.length > 1 && (
+          <section className="bg-white/95 border-2 border-sky-100 rounded-3xl p-4 sm:p-5 shadow-md space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="font-black text-[#0F4C81] text-sm">اختر الطلب الذي تريد تتبعه</h3>
+              <span className="rounded-full bg-sky-50 border border-sky-100 px-2.5 py-1 text-[11px] font-bold text-sky-800">
+                {orderResults.length} طلبات
+              </span>
+            </div>
+            <p className="text-xs leading-relaxed text-slate-600">
+              هذا الرقم مرتبط بأكثر من طلب. اختر رقم التتبع الصحيح، أو أدخل رقم التتبع والهاتف معًا للبحث عن طلب محدد.
+            </p>
+            <div className="space-y-2">
+              {orderResults.map((result) => {
+                const selected = order?.id === result.id;
+                return (
+                  <button
+                    key={result.id}
+                    type="button"
+                    onClick={() => setOrder(result)}
+                    aria-pressed={selected}
+                    className={`w-full rounded-2xl border p-3 text-right transition ${selected ? 'border-[#0F4C81] bg-sky-50 ring-2 ring-sky-100' : 'border-slate-200 bg-white hover:border-sky-300 hover:bg-slate-50'}`}
+                  >
+                    <span className="flex items-center justify-between gap-3">
+                      <span className="font-mono font-black text-sm text-[#0F4C81]" dir="ltr">
+                        {result.orderNumber}
+                      </span>
+                      {selected && <Check className="size-4 shrink-0 text-emerald-600" />}
+                    </span>
+                    <span className="mt-1 block text-xs font-bold text-slate-700">{result.productTitle}</span>
+                    <span className="mt-1 block text-[11px] text-slate-500">
+                      {new Date(result.createdAt).toLocaleDateString('ar-YE', { year: 'numeric', month: 'long', day: 'numeric' })}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            {orderResults.length === 100 && (
+              <p className="text-[11px] text-slate-500">تظهر أحدث 100 نتيجة فقط. أدخل رقم تتبع محددًا للوصول إلى طلب أقدم.</p>
+            )}
+          </section>
+        )}
+
         {/* رسائل التنبيه */}
         {errorMessage && (
-          <div className="p-4 bg-rose-50 border-2 border-rose-300 rounded-2xl flex items-center justify-center gap-2 text-xs sm:text-sm font-black text-rose-900 shadow-md">
-            <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
-            <span>{errorMessage}</span>
+          <div role="alert" aria-live="assertive" className="p-4 bg-rose-50 border-2 border-rose-300 rounded-2xl flex flex-col sm:flex-row items-center justify-center gap-3 text-xs sm:text-sm font-black text-rose-900 shadow-md">
+            <div className="flex items-center justify-center gap-2 text-center">
+              <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
+              <span>{errorMessage}</span>
+            </div>
+            {orderQuery.trim() || phoneQuery.trim() ? (
+              <button
+                type="button"
+                onClick={() => void handleSearch()}
+                disabled={loading}
+                className="shrink-0 rounded-xl bg-rose-700 px-3 py-2 text-xs font-black text-white transition hover:bg-rose-800 disabled:opacity-60"
+              >
+                {loading ? 'جارٍ البحث...' : 'إعادة المحاولة'}
+              </button>
+            ) : null}
           </div>
         )}
 
