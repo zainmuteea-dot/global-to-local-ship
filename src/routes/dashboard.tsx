@@ -748,13 +748,11 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
           {steps.map((st, i) => {
             const Icon = st.icon;
-            return (
-              <div
-                key={i}
-                className={`bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs flex items-center justify-between gap-4 transition hover:shadow-md ${
-                  i === 4 ? 'md:col-span-2 md:w-2/3 md:mx-auto' : ''
-                }`}
-              >
+            const cardClass = `bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs flex items-center justify-between gap-4 transition hover:shadow-md hover:-translate-y-0.5 cursor-pointer text-right text-inherit no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F97316] focus-visible:ring-offset-2 ${
+              i === 4 ? 'md:col-span-2 md:w-2/3 md:mx-auto' : ''
+            }`;
+            const content = (
+              <>
                 <div className="space-y-1 text-right">
                   <div className="flex items-center gap-2">
                     <span className="font-black text-sm text-[#0A2540]">{st.title}</span>
@@ -767,8 +765,23 @@ export default function DashboardPage() {
                 <div className="size-11 rounded-2xl bg-sky-50 grid place-items-center shrink-0 border border-sky-100">
                   <Icon className={`size-5 ${st.color}`} />
                 </div>
-              </div>
+              </>
             );
+            const ariaLabel = `${st.title}: ${st.desc}`;
+
+            if (i === 0) {
+              return <a key={i} href="/new-order?step=link" className={cardClass} aria-label={ariaLabel}>{content}</a>;
+            }
+            if (i === 1) {
+              return <a key={i} href="/new-order?step=price" className={cardClass} aria-label={ariaLabel}>{content}</a>;
+            }
+            if (i === 2) {
+              return <a key={i} href="/new-order?step=buy" className={cardClass} aria-label={ariaLabel}>{content}</a>;
+            }
+            if (i === 3) {
+              return <Link key={i} to="/track" className={cardClass} aria-label={ariaLabel}>{content}</Link>;
+            }
+            return <Link key={i} to="/account/orders" className={cardClass} aria-label={ariaLabel}>{content}</Link>;
           })}
         </div>
 
