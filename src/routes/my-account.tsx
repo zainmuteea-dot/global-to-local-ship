@@ -263,12 +263,34 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
     } catch {}
   };
 
-  const handleSharePlatform = () => {
-    const url = typeof window !== 'undefined' ? window.location.origin : 'https://alshamel-shopping.com';
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(url);
+  const handleSharePlatform = async () => {
+    const url = 'https://alsouq-alshamel.vercel.app';
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        // Fallback for browsers that do not expose the Clipboard API.
+        const input = document.createElement('textarea');
+        input.value = url;
+        input.setAttribute('readonly', '');
+        input.style.position = 'fixed';
+        input.style.opacity = '0';
+        document.body.appendChild(input);
+        input.select();
+        const copied = document.execCommand('copy');
+        document.body.removeChild(input);
+
+        if (!copied) {
+          throw new Error('Clipboard copy was not successful');
+        }
+      }
+
       setCopiedLink(true);
-      setTimeout(() => setCopiedLink(false), 2500);
+      window.setTimeout(() => setCopiedLink(false), 2500);
+    } catch (error) {
+      console.error('Could not copy platform link:', error);
+      window.alert(`تعذر نسخ الرابط. يمكنك نسخه يدويًا: ${url}`);
     }
   };
 
