@@ -286,6 +286,27 @@ function PayPage() {
   const remaining = Math.max(total - paid, 0)
   const isPaid = /مدفوع|مكتمل|paid|complete/i.test(status) && !/غير|جزئي/i.test(status)
 
+  // اعرض الرصيد الحالي للطلب بدل المبلغ القديم المخزّن داخل نص الإشعار.
+  const notificationMessage = (notice: any) => {
+    const original = String(
+      notice?.body ?? notice?.message ?? 'تم تأكيد استلام المبلغ بنجاح!',
+    )
+    const currentRemaining = loading || loadError
+      ? 'المتبقي عليك حالياً قيد التحقق'
+      : `المتبقي عليك حالياً: ${fmt(remaining)} ${currency}`
+
+    const remainingPattern =
+      /((?:المتبقي|متبقي|الباقي|باقي)(?:\s+(?:عليكم|عليك|علي|لكم|لك))?(?:\s+(?:حالياً|حاليًا))?\s*[:：]?\s*)(?:[٠-٩0-9][٠-٩0-9٬,،.]*\s*(?:ر\.?\s*ي|ريال(?:\s+يمني)?|YER)?|صفر|لا\s+يوجد)/iu
+    const replacement = `المتبقي عليك حالياً: ${loading || loadError ? 'قيد التحقق' : `${fmt(remaining)} ${currency}`}`
+    const updated = original.replace(remainingPattern, replacement)
+    const hasOrder = original.includes(orderNo)
+
+    if (updated !== original) {
+      return hasOrder || !orderNo ? updated : `${updated} • الطلب: ${orderNo}`
+    }
+    return `${original} • ${currentRemaining}${hasOrder || !orderNo ? '' : ` • الطلب: ${orderNo}`}`
+  }
+
   // تحميل تفاصيل الطلب والدفعات من Supabase، مع إظهار الخطأ بدلاً من عرض مبالغ افتراضية.
   const loadOrderData = useCallback(async () => {
     setLoading(true)
@@ -779,7 +800,7 @@ function PayPage() {
               <div className="pay-banner-icon">🎉</div>
               <div>
                 <div className="pay-banner-title">{activeBanner.title || 'تم اعتماد دفعتك بنجاح ✓'}</div>
-                <div className="pay-banner-sub">{activeBanner.body || activeBanner.message || 'تم تأكيد استلام المبلغ بنجاح!'}</div>
+                <div className="pay-banner-sub">{notificationMessage(activeBanner)}</div>
               </div>
             </div>
             <div className="pay-banner-actions">
@@ -879,7 +900,7 @@ function PayPage() {
                               <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444', display: 'inline-block' }} />
                             )}
                           </div>
-                          <div className="notif-item-desc">{n.message}</div>
+                          <div className="notif-item-desc">{notificationMessage(n)}</div>
                           <div className="notif-item-time">
                             {n.created_at
                               ? new Date(n.created_at).toLocaleTimeString('ar-YE', { hour: '2-digit', minute: '2-digit' })
