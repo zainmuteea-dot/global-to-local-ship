@@ -172,6 +172,7 @@ const CSS = `
 .pay-primary:hover{transform:translateY(-2px)}
 .pay-primary:disabled{opacity:.5;cursor:not-allowed;transform:none}
 .pay-error{margin-top:10px;background:var(--red-bg);color:var(--red);padding:10px 14px;border-radius:10px;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:space-between}
+.pay-success{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--green-bg);color:#087443;font-size:13px;font-weight:800;line-height:1.65}
 .pay-retry{background:var(--red);color:#fff;border:none;border-radius:8px;padding:4px 10px;cursor:pointer;font-family:inherit;font-size:12px}
 `
 
@@ -190,15 +191,15 @@ const Camera = () => (<svg width="19" height="19" viewBox="0 0 24 24" fill="none
 const Logo = () => (
   <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
     <defs>
-      <linearGradient id="gBlue" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#1D5FD1"/><stop offset="55%" stopColor="#0647A6"/><stop offset="100%" stopColor="#002B69"/></linearGradient>
-      <linearGradient id="gOr" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stopColor="#E85D04"/><stop offset="55%" stopColor="#F97316"/><stop offset="100%" stopColor="#FF9F1C"/></linearGradient>
+      <linearGradient id="gBlue" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#3E86C4"/><stop offset="1" stopColor="#004A8D"/></linearGradient>
+      <linearGradient id="gOr" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stopColor="#D86616"/><stop offset="1" stopColor="#F5A623"/></linearGradient>
     </defs>
     <path d="M22 12 L34 44 H18 L30 12 Z" fill="url(#gBlue)"/>
     <path d="M40 14 c7 0 7 9 0 9 c-7 0 -7 9 0 9" stroke="url(#gBlue)" strokeWidth={5} strokeLinecap="round" fill="none"/>
     <path d="M14 46 H46 L50 32 H20" stroke="url(#gOr)" strokeWidth={4.5} strokeLinecap="round" strokeLinejoin="round" fill="none"/>
     <circle cx="22" cy="54" r="4" fill="url(#gOr)"/>
     <circle cx="42" cy="54" r="4" fill="url(#gOr)"/>
-    <path d="M50 10 l1.6 3.4 L55 15 l-3.4 1.6 L50 20 l-1.6-3.4 L45 15 l3.4-1.6 Z" fill="#F97316"/>
+    <path d="M50 10 l1.6 3.4 L55 15 l-3.4 1.6 L50 20 l-1.6-3.4 L45 15 l3.4-1.6 Z" fill="#F5A623"/>
   </svg>
 )
 
@@ -250,9 +251,10 @@ function PayPage() {
   const { order } = Route.useSearch()
   const navigate = useNavigate()
 
-  const orderNo = order || 'SHP-885120'
+  const orderNo = order || ''
 
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
   const [customer, setCustomer] = useState('')
   const [phone, setPhone] = useState('')
   const [productName, setProductName] = useState('')
@@ -282,113 +284,106 @@ function PayPage() {
   const audioContextRef = useRef<AudioContext | null>(null)
 
   const remaining = Math.max(total - paid, 0)
-
-  // يعرض المتبقي الحالي المحسوب من بيانات الطلب، بدل الرقم القديم الموجود في نص الإشعار.
-  const formatNotificationMessage = (notice: any) => {
-    const original = String(
-      notice?.message ?? notice?.body ?? 'تم تأكيد استلام المبلغ بنجاح!',
-    )
-    if (loading) return original
-
-    const remainingText = `المتبقي عليك حالياً: ${fmt(remaining)} ${currency}`
-    const remainingPattern = /المتبقي(?:\s+(?:عليكم|عليك))?[^0-9٠-٩\n]*[0-9٠-٩][0-9٠-٩,٬.٫]*(?:\s*(?:ر\.ي\.?|ريال(?:\s*يمني)?))?/i
-
-    if (remainingPattern.test(original)) {
-      return original.replace(remainingPattern, remainingText)
-    }
-
-    return `${original} • ${remainingText} • الطلب: ${orderNo}`
-  }
-
   const isPaid = /مدفوع|مكتمل|paid|complete/i.test(status) && !/غير|جزئي/i.test(status)
 
-  // دالة قراءة تفاصيل الطلب والدفعات بدقة من Supabase
+  // تحميل تفاصيل الطلب والدفعات من Supabase، مع إظهار الخطأ بدلاً من عرض مبالغ افتراضية.
   const loadOrderData = useCallback(async () => {
+    setLoading(true)
+    setLoadError('')
+
+    if (!orderNo) {
+      setLoadError('لم يصل رقم الطلب إلى صفحة الدفع. ارجع إلى طلباتي وافتح الدفع من الطلب الصحيح.')
+      setLoading(false)
+      return
+    }
+
     try {
-      // 1. استعلام الطلب بجميع حقول المبالغ والحالة
       const orderQuery = supabase
         .from('orders')
         .select('id, tracking_code, customer_name, phone, product_name, notes, status, created_at, user_id, total_cost_yer, paid_amount, remaining_amount, payment_status')
 
-      const { data: dbOrder } = await (isUuid(orderNo)
+      const { data: dbOrder, error: orderError } = await (isUuid(orderNo)
         ? orderQuery.or(`tracking_code.eq.${orderNo},id.eq.${orderNo}`)
         : orderQuery.eq('tracking_code', orderNo)
       ).maybeSingle()
 
-      // 2. استعلام الدفعات المعتمدة والمعلقة للطلب
-      const { data: paymentsList } = await supabase
+      if (orderError) throw new Error(`تعذر تحميل بيانات الطلب: ${orderError.message}`)
+      if (!dbOrder) {
+        setLoadError('لم نعثر على هذا الطلب. تحقق من رقم التتبع أو افتح الدفع من صفحة طلباتي.')
+        return
+      }
+
+      const trackingCode = dbOrder.tracking_code || orderNo
+      const { data: paymentsList, error: paymentsError } = await supabase
         .from('payments')
         .select('id, amount, status, receipt_image')
-        .eq('order_tracking', orderNo)
+        .eq('order_tracking', trackingCode)
+
+      if (paymentsError) throw new Error(`تعذر تحميل سجل الدفعات: ${paymentsError.message}`)
 
       let totalApprovedPaid = 0
       let hasPendingPayment = false
       let latestReceipt = ''
 
-      if (paymentsList && paymentsList.length > 0) {
-        paymentsList.forEach((p: any) => {
-          if (p.status === 'approved') {
-            totalApprovedPaid += Number(p.amount) || 0
-          } else if (p.status === 'pending' || p.status === 'بانتظار التأكيد') {
-            hasPendingPayment = true
-            if (p.receipt_image) latestReceipt = p.receipt_image
-          }
-        })
-      }
-
-      if (dbOrder) {
-        setCustomer(dbOrder.customer_name || '')
-        setPhone(dbOrder.phone || '')
-        setProductName(dbOrder.product_name || 'طلب متجر دولي')
-
-        let calculatedTotal = Number(dbOrder.total_cost_yer) || 0
-        if (!calculatedTotal) {
-          const notesText = dbOrder.notes || ''
-          const priceMatch = notesText.match(/السعر المعلن:\s*([\d.]+)\s*([^|]*)/)
-          if (priceMatch) {
-            const rawPrice = parseFloat(priceMatch[1] ?? '0') || 0
-            const rawCur = priceMatch[2]?.trim() || ''
-
-            if (rawCur.includes('سعودي') || rawCur.includes('ر.س')) {
-              calculatedTotal = Math.round(rawPrice * 142)
-            } else if (rawCur.includes('$') || rawCur.includes('دولار')) {
-              calculatedTotal = Math.round(rawPrice * 535)
-            } else if (rawPrice > 0) {
-              calculatedTotal = Math.round(rawPrice)
-            }
-          }
-        }
-
-        if (!calculatedTotal) calculatedTotal = 42458
-        setTotal(calculatedTotal)
-        setCurrency('ر.ي')
-
-        // حساب المدفوع: الأعلى بين paid_amount ومجموع الدفعات المعتمدة
-        const orderPaid = Number(dbOrder.paid_amount) || 0
-        const finalPaid = Math.max(orderPaid, totalApprovedPaid)
-        setPaid(finalPaid)
-
-        // تحديد حالة الدفع
-        if (finalPaid >= calculatedTotal && calculatedTotal > 0) {
-          setStatus('مدفوع بالكامل')
-          setIsNotified(false)
-        } else if (finalPaid > 0) {
-          setStatus(hasPendingPayment ? 'قيد مراجعة الدفعة الإضافية' : 'مدفوع جزئياً')
-          setIsNotified(hasPendingPayment)
-        } else if (hasPendingPayment) {
-          setStatus('قيد مراجعة الدفع والتأكيد')
-          setIsNotified(true)
-        } else {
-          setStatus(dbOrder.status || 'بانتظار الدفع')
-          setIsNotified(false)
-        }
-
-        if (latestReceipt) {
-          setReceiptImg(latestReceipt)
+      for (const payment of paymentsList ?? []) {
+        if (payment.status === 'approved') {
+          totalApprovedPaid += Number(payment.amount) || 0
+        } else if (payment.status === 'pending' || payment.status === 'بانتظار التأكيد') {
+          hasPendingPayment = true
+          if (payment.receipt_image) latestReceipt = payment.receipt_image
         }
       }
-    } catch (err) {
-      console.warn('Order fetch error:', err)
+
+      setCustomer(dbOrder.customer_name || '')
+      setPhone(dbOrder.phone || '')
+      setProductName(dbOrder.product_name || 'طلب متجر دولي')
+
+      let calculatedTotal = Number(dbOrder.total_cost_yer) || 0
+      if (!calculatedTotal) {
+        const notesText = dbOrder.notes || ''
+        const priceMatch = notesText.match(/السعر المعلن:\s*([\d.]+)\s*([^|]*)/)
+        if (priceMatch) {
+          const rawPrice = parseFloat(priceMatch[1] ?? '0') || 0
+          const rawCurrency = priceMatch[2]?.trim() || ''
+          if (rawCurrency.includes('سعودي') || rawCurrency.includes('ر.س')) {
+            calculatedTotal = Math.round(rawPrice * 142)
+          } else if (rawCurrency.includes('$') || rawCurrency.includes('دولار')) {
+            calculatedTotal = Math.round(rawPrice * 535)
+          } else if (rawPrice > 0) {
+            calculatedTotal = Math.round(rawPrice)
+          }
+        }
+      }
+
+      setTotal(calculatedTotal)
+      setCurrency('ر.ي')
+      const orderPaid = Number(dbOrder.paid_amount) || 0
+      const finalPaid = Math.max(orderPaid, totalApprovedPaid)
+      setPaid(finalPaid)
+
+      if (calculatedTotal <= 0) {
+        setLoadError('تم تحميل الطلب، لكن لم يُسجل إجمالي يمكن التحقق منه. لا تحوّل مبلغاً من هذه الصفحة؛ تواصل مع الإدارة لتأكيد المبلغ.')
+      }
+
+      if (calculatedTotal > 0 && finalPaid >= calculatedTotal) {
+        setStatus('مدفوع بالكامل')
+        setIsNotified(false)
+      } else if (finalPaid > 0) {
+        setStatus(hasPendingPayment ? 'قيد مراجعة الدفعة الإضافية' : 'مدفوع جزئياً')
+        setIsNotified(hasPendingPayment)
+      } else if (hasPendingPayment) {
+        setStatus('قيد مراجعة الدفع والتأكيد')
+        setIsNotified(true)
+      } else {
+        setStatus(dbOrder.status || 'بانتظار الدفع')
+        setIsNotified(false)
+      }
+
+      if (latestReceipt) setReceiptImg(latestReceipt)
+    } catch (error) {
+      console.error('Order/payment data load failed:', error)
+      const message = error instanceof Error ? error.message : 'تعذر الاتصال بالخادم لتحميل بيانات الدفع.'
+      setLoadError(`${message} تحقق من اتصال الإنترنت ثم أعد المحاولة.`)
     } finally {
       setLoading(false)
     }
@@ -653,7 +648,7 @@ function PayPage() {
   }
 
   const handleNotifyAdmin = async () => {
-    if (isNotified || notifying) return
+    if (isNotified || notifying || loading || loadError) return
     setNotifying(true)
     setPaymentError('')
     setPaymentWarning('')
@@ -730,14 +725,32 @@ function PayPage() {
   }
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
+    const input = e.currentTarget
+    const file = input.files?.[0]
     if (!file) return
 
+    if (!file.type.startsWith('image/')) {
+      setPaymentError('الملف المختار ليس صورة. اختر صورة واضحة لسند التحويل.')
+      input.value = ''
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setPaymentError('حجم صورة السند أكبر من 5 ميغابايت. اختر صورة أصغر.')
+      input.value = ''
+      return
+    }
+
+    setPaymentError('')
     const reader = new FileReader()
     reader.onload = (event) => {
-      const base64 = event.target?.result as string
+      const base64 = event.target?.result
+      if (typeof base64 !== 'string') {
+        setPaymentError('تعذر قراءة صورة السند. حاول اختيارها مرة أخرى.')
+        return
+      }
       setReceiptImg(base64)
     }
+    reader.onerror = () => setPaymentError('تعذر قراءة صورة السند. تحقق من الملف ثم أعد المحاولة.')
     reader.readAsDataURL(file)
   }
 
@@ -766,7 +779,7 @@ function PayPage() {
               <div className="pay-banner-icon">🎉</div>
               <div>
                 <div className="pay-banner-title">{activeBanner.title || 'تم اعتماد دفعتك بنجاح ✓'}</div>
-                <div className="pay-banner-sub">{formatNotificationMessage(activeBanner)}</div>
+                <div className="pay-banner-sub">{activeBanner.body || activeBanner.message || 'تم تأكيد استلام المبلغ بنجاح!'}</div>
               </div>
             </div>
             <div className="pay-banner-actions">
@@ -866,7 +879,7 @@ function PayPage() {
                               <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444', display: 'inline-block' }} />
                             )}
                           </div>
-                          <div className="notif-item-desc">{formatNotificationMessage(n)}</div>
+                          <div className="notif-item-desc">{n.message}</div>
                           <div className="notif-item-time">
                             {n.created_at
                               ? new Date(n.created_at).toLocaleTimeString('ar-YE', { hour: '2-digit', minute: '2-digit' })
@@ -881,11 +894,22 @@ function PayPage() {
             </div>
 
             {/* زر الرجوع */}
-            <button className="pay-arrow" type="button" title="رجوع" onClick={() => navigate({ to: '/' })}>
+            <button className="pay-arrow" type="button" title="رجوع" onClick={() => navigate({ to: '/dashboard' })}>
               <Arrow />
             </button>
           </div>
         </header>
+
+        {loadError && (
+          <div className="pay-card" role="alert" aria-live="assertive">
+            <div className="pay-error" style={{ marginTop: 0 }}>
+              <div>{loadError}</div>
+              <button className="pay-retry" type="button" onClick={() => void loadOrderData()} disabled={loading}>
+                {loading ? 'جارٍ التحقق...' : 'إعادة المحاولة'}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* تفاصيل الطلب */}
         <section className="pay-card">
@@ -922,7 +946,7 @@ function PayPage() {
               type="button"
               className={`pay-wait-btn ${isNotified ? 'notified' : ''}`}
               onClick={handleNotifyAdmin}
-              disabled={isNotified || notifying}
+              disabled={loading || Boolean(loadError) || remaining <= 0 || isNotified || notifying}
               title="حالة المراجعة"
             >
               {isNotified ? (
@@ -1078,7 +1102,7 @@ function PayPage() {
             <button 
               className="pay-btn pay-primary" 
               type="button" 
-              disabled={!wallet || notifying || isNotified || remaining <= 0}
+              disabled={!wallet || loading || Boolean(loadError) || notifying || isNotified || remaining <= 0}
               onClick={handleNotifyAdmin}
             >
               {isNotified ? <CheckIc /> : null}
@@ -1091,6 +1115,11 @@ function PayPage() {
               </span>
             </button>
 
+            {paymentSaved && (
+              <div className="pay-success" role="status" aria-live="polite">
+                تم حفظ طلب الدفع والسند بنجاح، وهو الآن بانتظار مراجعة الإدارة. هذا لا يعني اعتماد الدفعة بعد.
+              </div>
+            )}
             {paymentWarning && <div className="pay-error">{paymentWarning}</div>}
             {paymentError && (
               <div className="pay-error">
