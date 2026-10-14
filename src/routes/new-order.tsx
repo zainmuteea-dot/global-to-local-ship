@@ -2,17 +2,25 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useMemo, useState, useRef } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 
+type NewOrderEntryStep = 'link' | 'price' | 'buy'
+
+const NEW_ORDER_ENTRY_STEPS: NewOrderEntryStep[] = ['link', 'price', 'buy']
+
 export const Route = createFileRoute('/new-order')({
   validateSearch: (search: Record<string, unknown>): {
     name?: string
     phone?: string
     store?: string
     productName?: string
+    step?: NewOrderEntryStep
   } => ({
     name: typeof search['name'] === 'string' ? search['name'] : undefined,
     phone: typeof search['phone'] === 'string' ? search['phone'] : undefined,
     store: typeof search['store'] === 'string' ? search['store'] : undefined,
     productName: typeof search['productName'] === 'string' ? search['productName'] : undefined,
+    step: NEW_ORDER_ENTRY_STEPS.includes(search['step'] as NewOrderEntryStep)
+      ? (search['step'] as NewOrderEntryStep)
+      : undefined,
   }),
   component: NewOrderPage,
 })
@@ -130,6 +138,8 @@ const CSS = `
 .no-gold:hover{background:#fff8ec;border-color:var(--orange-600)}
 @media(max-width:460px){.no-sbtns{flex-direction:column}}
 .no-foot .f:nth-child(2) svg{color:var(--orange-500)}
+.no-entry-guidance{border-inline-start:4px solid var(--orange-500)}
+.no-entry-guidance p{margin-top:6px;color:var(--muted);font-size:13px;font-weight:600}
 @media(max-width:520px){.no-brand h1{font-size:16px}.no-price{flex-direction:column}.no-price select{flex:1}}
 @media(max-width:360px){.no-badge{width:44px;height:44px}.no-badge svg{width:28px;height:28px}.no-brand h1{font-size:14px}}
 `
@@ -271,6 +281,31 @@ function getInitialClientPhone(urlPhone?: string): string {
 function NewOrderPage() {
   const search = Route.useSearch()
   const navigate = useNavigate()
+
+  // تبدأ كل بطاقة من موضع مختلف في نموذج الطلب نفسه.
+  useEffect(() => {
+    const targetIds: Record<NewOrderEntryStep, string> = {
+      link: 'new-order-product-url',
+      price: 'new-order-product-price',
+      buy: 'new-order-submit',
+    }
+    const step = search.step
+    if (!step) return
+
+    const timer = window.setTimeout(() => {
+      const target = document.getElementById(targetIds[step])
+      if (!target) return
+
+      const scrollTarget = target.closest('.no-card') ?? target
+      scrollTarget.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      })
+      target.focus({ preventScroll: true })
+    }, 250)
+
+    return () => window.clearTimeout(timer)
+  }, [search.step])
 
   // 🌟 تعبئة الاسم ورقم الهاتف فورياً ومباشرة لحظة فتح الصفحة
   const [name, setName] = useState<string>(() => getInitialClientName(search.name))
@@ -596,6 +631,21 @@ function NewOrderPage() {
 
         {Header}
 
+        {search.step && (
+          <section className="no-card no-entry-guidance" role="status" aria-live="polite">
+            <div className="no-title">
+              {search.step === 'link' && 'أرسل رابط المنتج'}
+              {search.step === 'price' && 'أدخل سعر المنتج الظاهر في المتجر'}
+              {search.step === 'buy' && 'راجع تفاصيل طلبك قبل الإرسال'}
+            </div>
+            <p>
+              {search.step === 'link' && 'الصق رابط المنتج، ثم أضف اسمه وبيانات الطلب.'}
+              {search.step === 'price' && 'أدخل السعر الذي يظهر في المتجر إن توفر. السعر النهائي يؤكَّد بعد مراجعة الطلب، ولا يُحسب فورياً هنا.'}
+              {search.step === 'buy' && 'تحقق من رابط المنتج والسعر وبيانات المستلم، ثم اضغط تقديم الطلب لإرساله للمراجعة والتأكيد.'}
+            </p>
+          </section>
+        )}
+
         {sbError && (
           <div className="no-warn">
             <Flash />
@@ -616,6 +666,7 @@ function NewOrderPage() {
             <div className="no-iw">
               <LinkIcon />
               <input 
+                id="new-order-product-url"
                 className="has-ic" 
                 type="text" 
                 value={url} 
@@ -716,6 +767,7 @@ function NewOrderPage() {
           <div className="no-price">
             <div className="no-iw">
               <input 
+                id="new-order-product-price"
                 type="number" 
                 value={price} 
                 onChange={(e) => setPrice(e.target.value)} 
@@ -755,7 +807,7 @@ function NewOrderPage() {
         </section>
 
         {/* زر تقديم الطلب */}
-        <button className="no-btn no-primary" type="button" onClick={submit} disabled={status === 'sending'}>
+        <button id="new-order-submit" className="no-btn no-primary" type="button" onClick={submit} disabled={status === 'sending'}>
           <Rocket />
           <span>{status === 'sending' ? 'جارٍ إرسال وحفظ الطلب...' : 'تقديم الطلب'}</span>
         </button>
