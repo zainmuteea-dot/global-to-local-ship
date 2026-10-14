@@ -29,6 +29,7 @@ function MyAccountRoute() {
       }
       onNavigateToDashboard={() => navigate({ to: '/dashboard' })}
       onNavigateToOrders={() => navigate({ to: '/account/orders' })}
+      onNavigateToInvoices={() => navigate({ to: '/account/invoices' })}
     />
   );
 }
@@ -72,6 +73,7 @@ interface MyAccountProps {
   onNavigateToTracker?: (orderNumber?: string) => void;
   onNavigateToDashboard?: () => void;
   onNavigateToOrders?: () => void;
+  onNavigateToInvoices?: () => void;
 }
 
 export const MyAccountPage: React.FC<MyAccountProps> = ({
@@ -80,7 +82,8 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
   onNavigateToProducts,
   onNavigateToTracker,
   onNavigateToDashboard,
-  onNavigateToOrders
+  onNavigateToOrders,
+  onNavigateToInvoices
 }) => {
   const { session, user, loading: isLoading } = useSession(false);
   const [orders, setOrders] = useState<OrderItem[]>([]);
@@ -271,7 +274,13 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
 
           {/* 3. زر فواتير المبيعات */}
           <button
-            onClick={() => setActiveModal('invoices')}
+            onClick={() => {
+              if (onNavigateToInvoices) {
+                onNavigateToInvoices();
+              } else if (typeof window !== 'undefined') {
+                window.location.assign('/account/invoices');
+              }
+            }}
             className="w-full bg-white hover:bg-gradient-to-r hover:from-white hover:to-sky-50/60 border-2 border-slate-200/80 hover:border-[#0F4C81] rounded-2xl p-3.5 sm:p-4 shadow-xs hover:shadow-md transition-all duration-200 flex items-center justify-between cursor-pointer group active:scale-[0.99]"
           >
             <div className="flex items-center gap-3.5">
