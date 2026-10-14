@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertCircle, Bell, Check, CheckCircle2, ChevronLeft, Circle, Clock3, CreditCard, MapPin, Package, Plane, RefreshCw, Search, ShieldCheck, ShoppingBag, Truck, Warehouse, X, MessageCircle, Loader2, History, UserRound, Phone } from 'lucide-react';
+import { AlertCircle, Bell, Check, CheckCircle2, ChevronLeft, Circle, Clock3, CreditCard, MapPin, Package, Plane, RefreshCw, Search, ShieldCheck, ShoppingBag, Truck, Warehouse, X, MessageCircle, Loader2, History, UserRound, Phone, Pencil, Trash2, Save } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 const db = supabase as any;
@@ -53,7 +53,7 @@ const normalizePhone = (input: string) => {
 };
 
 function LiveTrackingAdminRoute() {
-  const [access, setAccess] = useState<'loading'|'allowed'|'denied'>('loading');
+  const [access, setAccess] = useState<'loading'|'admin'|'staff'|'denied'>('loading');
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -63,6 +63,10 @@ function LiveTrackingAdminRoute() {
   const [courierPhone, setCourierPhone] = useState('');
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
+  const [editing, setEditing] = useState<Shipment | null>(null);
+  const [editForm, setEditForm] = useState({ customerName: '', customerPhone: '', productName: '', productLink: '', courierName: '', courierPhone: '' });
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -70,7 +74,7 @@ function LiveTrackingAdminRoute() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { if (alive) setAccess('denied'); return; }
       const { data, error } = await db.from('user_roles').select('role').eq('user_id', user.id);
-      if (alive) setAccess(!error && data?.some((r: any) => r.role === 'admin' || r.role === 'staff') ? 'allowed' : 'denied');
+      if (alive) setAccess(error ? 'denied' : data?.some((r: any) => r.role === 'admin') ? 'admin' : data?.some((r: any) => r.role === 'staff') ? 'staff' : 'denied');
     })();
     return () => { alive = false; };
   }, []);
@@ -82,7 +86,7 @@ function LiveTrackingAdminRoute() {
     else setShipments((data || []).map((r: any) => ({ id:r.id, trackingCode:r.tracking_code, customerName:r.customer_name || 'عميل', customerPhone:r.phone || '', productName:r.product_name || 'شحنة', productLink:r.product_link || '', storeName:detectStore(r.product_link || ''), city:r.notes || 'غير محدد', status:r.status || 'new', userId:r.user_id || null, courierName:r.courier_name || '', courierPhone:r.courier_phone || '', createdAt:r.created_at })));
     setLoading(false);
   }, []);
-  useEffect(() => { if (access !== 'allowed') return; void refresh(); const channel = supabase.channel('admin-tracking-orders-v2').on('postgres_changes', { event:'*', schema:'public', table:'orders' }, () => void refresh()).subscribe(); return () => { void supabase.removeChannel(channel); }; }, [access, refresh]);
+  useEffect(() => { if (access !== 'admin' && access !== 'staff') return; void refresh(); const channel = supabase.channel('admin-tracking-orders-v2').on('postgres_changes', { event:'*', schema:'public', table:'orders' }, () => void refresh()).subscribe(); return () => { void supabase.removeChannel(channel); }; }, [access, refresh]);
 
   const loadHistory = useCallback(async (shipment: Shipment) => {
     const { data, error } = await db.rpc('admin_shipment_notification_history', { _order_id: shipment.id });
@@ -93,6 +97,55 @@ function LiveTrackingAdminRoute() {
   useEffect(() => { if (!notice) return; const t = window.setTimeout(() => setNotice(''), 5500); return () => clearTimeout(t); }, [notice]);
 
   const filtered = useMemo(() => { const q=search.trim().toLowerCase(); return shipments.filter(s => !q || `${s.trackingCode} ${s.customerName} ${s.customerPhone} ${s.storeName}`.toLowerCase().includes(q)); }, [shipments, search]);
+
+  const startEdit = (shipment: Shipment) => {
+    setEditing(shipment);
+    setEditForm({ customerName: shipment.customerName === 'عميل' ? '' : shipment.customerName, customerPhone: shipment.customerPhone, productName: shipment.productName === 'شحنة' ? '' : shipment.productName, productLink: shipment.productLink, courierName: shipment.courierName, courierPhone: shipment.courierPhone });
+  };
+
+  const saveEdit = async () => {
+    if (!editing) return;
+    const customerName = editForm.customerName.trim();
+    const customerPhone = editForm.customerPhone.trim();
+    const productLink = editForm.productLink.trim();
+    if (!customerName || !customerPhone || !productLink) { setNotice('الاسم والهاتف ورابط المنتج حقول مطلوبة.'); return; }
+    setSavingEdit(true); setNotice('');
+    try {
+      const { data, error } = await db.from('orders').update({
+        customer_name: customerName,
+        phone: customerPhone,
+        product_name: editForm.productName.trim() || null,
+        product_link: productLink,
+        courier_name: editForm.courierName.trim() || null,
+        courier_phone: editForm.courierPhone.trim() || null,
+      }).eq('id', editing.id).select('id').maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error('لم يتم تحديث السجل. تأكد من دور admin وسياسات RLS في قاعدة البيانات.');
+      const updated = { ...editing, customerName, customerPhone, productName: editForm.productName.trim() || 'شحنة', productLink, storeName: detectStore(productLink), courierName: editForm.courierName.trim(), courierPhone: editForm.courierPhone.trim() };
+      setShipments(prev => prev.map(s => s.id === editing.id ? updated : s));
+      setSelected(prev => prev?.id === editing.id ? updated : prev);
+      setEditing(null); setNotice('تم حفظ تعديلات الشحنة.');
+    } catch (e) {
+      setNotice(`تعذّر حفظ التعديل: ${e instanceof Error ? e.message : 'خطأ غير معروف'}`);
+    } finally { setSavingEdit(false); }
+  };
+
+  const deleteShipment = async (shipment: Shipment) => {
+    if (access !== 'admin') { setNotice('الحذف متاح للمدير فقط.'); return; }
+    const confirmed = window.confirm(`حذف نهائي للشحنة ${shipment.trackingCode} للعميل ${shipment.customerName}؟\nلا يمكن التراجع عن هذا الإجراء. إذا ارتبط الطلب بمدفوعات أو فواتير فقد تمنع قاعدة البيانات الحذف.`);
+    if (!confirmed) return;
+    setDeletingId(shipment.id); setNotice('');
+    try {
+      const { data, error } = await db.from('orders').delete().eq('id', shipment.id).select('id').maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error('لم يُحذف السجل. تأكد من دور admin وسياسة RLS، أو من ارتباط السجل ببيانات أخرى.');
+      setShipments(prev => prev.filter(s => s.id !== shipment.id));
+      setSelected(prev => prev?.id === shipment.id ? null : prev);
+      setNotice(`تم حذف الشحنة ${shipment.trackingCode} نهائيًا.`);
+    } catch (e) {
+      setNotice(`تعذّر حذف الشحنة: ${e instanceof Error ? e.message : 'خطأ غير معروف'}`);
+    } finally { setDeletingId(null); }
+  };
 
   const doAction = async (shipment: Shipment, stage: typeof STAGES[number], action: 'advance'|'notify', channel: Channel) => {
     if (channel === 'whatsapp' && !normalizePhone(shipment.customerPhone)) { setNotice('لا يوجد رقم هاتف صالح لهذا العميل.'); return; }
@@ -133,7 +186,7 @@ function LiveTrackingAdminRoute() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{[['إجمالي الشحنات',shipments.length],['طلبات اليوم',shipments.filter(s=>new Date(s.createdAt).toDateString()===new Date().toDateString()).length],['قيد التوصيل',shipments.filter(s=>s.status==='out_for_delivery').length],['مكتملة',shipments.filter(s=>s.status==='delivered').length]].map(([label,value])=><div key={String(label)} className="rounded-2xl border bg-white p-4 shadow-sm"><p className="text-xs text-slate-500">{label}</p><p className="mt-1 text-2xl font-black text-[#0F4C81]">{value}</p></div>)}</div>
       <label className="relative block"><Search className="absolute right-3 top-3 size-4 text-slate-400"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="ابحث برقم الشحنة أو العميل أو الهاتف" className="w-full rounded-2xl border bg-white py-3 pr-10 pl-4 outline-none focus:border-blue-500"/></label>
       {notice && <div role="status" className="flex items-start gap-2 rounded-2xl border border-sky-200 bg-sky-50 p-3 text-sm font-bold text-sky-900"><Bell className="mt-0.5 size-4 shrink-0"/>{notice}</div>}
-      {loading && !shipments.length ? <div className="rounded-3xl bg-white p-12 text-center">جارٍ تحميل الشحنات...</div> : filtered.length ? <div className="grid gap-4 lg:grid-cols-2">{filtered.map(s=>{const idx=stageIndex(s.status);const current=STAGES[idx];return <article key={s.id} className="rounded-3xl border bg-white p-5 shadow-sm"><div className="flex items-start justify-between gap-3"><div><div className="flex flex-wrap items-center gap-2"><span dir="ltr" className="rounded-full bg-blue-50 px-3 py-1 font-mono text-xs font-black text-blue-900">{s.trackingCode}</span><span className="rounded-lg bg-orange-50 px-2 py-1 text-[11px] font-bold text-orange-700">{s.storeName}</span></div><h2 className="mt-2 font-black">{s.customerName}</h2><p className="mt-1 text-xs text-slate-500">{s.productName} · {s.city}</p><p dir="ltr" className="mt-1 text-right text-xs text-slate-500">{s.customerPhone}</p></div><span className="rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800">{current?.title}</span></div><div className="mt-4 flex items-center gap-1">{STAGES.map((st,i)=><span key={st.code} title={`${i+1}. ${st.title}`} className={`h-2 flex-1 rounded-full ${i<=idx?'bg-emerald-500':'bg-slate-200'}`}/>)}</div><button onClick={()=>setSelected(s)} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#0F4C81] px-4 py-3 text-sm font-black text-white"><Bell className="size-4"/>مسار الشحنة وإشعار</button></article>})}</div> : <div className="rounded-3xl bg-white p-12 text-center text-slate-500">لا توجد شحنات مطابقة.</div>}
+      {loading && !shipments.length ? <div className="rounded-3xl bg-white p-12 text-center">جارٍ تحميل الشحنات...</div> : filtered.length ? <div className="grid gap-4 lg:grid-cols-2">{filtered.map(s=>{const idx=stageIndex(s.status);const current=STAGES[idx];return <article key={s.id} className="rounded-3xl border bg-white p-5 shadow-sm"><div className="flex items-start justify-between gap-3"><div><div className="flex flex-wrap items-center gap-2"><span dir="ltr" className="rounded-full bg-blue-50 px-3 py-1 font-mono text-xs font-black text-blue-900">{s.trackingCode}</span><span className="rounded-lg bg-orange-50 px-2 py-1 text-[11px] font-bold text-orange-700">{s.storeName}</span></div><h2 className="mt-2 font-black">{s.customerName}</h2><p className="mt-1 text-xs text-slate-500">{s.productName} · {s.city}</p><p dir="ltr" className="mt-1 text-right text-xs text-slate-500">{s.customerPhone}</p></div><span className="rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800">{current?.title}</span></div><div className="mt-4 flex items-center gap-1">{STAGES.map((st,i)=><span key={st.code} title={`${i+1}. ${st.title}`} className={`h-2 flex-1 rounded-full ${i<=idx?'bg-emerald-500':'bg-slate-200'}`}/>)}</div><button onClick={()=>setSelected(s)} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#0F4C81] px-4 py-3 text-sm font-black text-white"><Bell className="size-4"/>مسار الشحنة وإشعار</button>{access==='admin'&&<div className="mt-2 grid grid-cols-2 gap-2"><button onClick={()=>startEdit(s)} className="flex items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2.5 text-xs font-black text-blue-900"><Pencil className="size-4"/>تعديل البيانات</button><button disabled={deletingId===s.id} onClick={()=>void deleteShipment(s)} className="flex items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs font-black text-red-800 disabled:opacity-50"><Trash2 className="size-4"/>{deletingId===s.id?'جارٍ الحذف...':'حذف نهائي'}</button></div>}</article>})}</div> : <div className="rounded-3xl bg-white p-12 text-center text-slate-500">لا توجد شحنات مطابقة.</div>}
     </main>
     {selected && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-2 sm:p-5" role="dialog" aria-modal="true" aria-labelledby="shipment-modal-title"><section className="max-h-[95vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white p-4 shadow-2xl sm:p-6"><div className="sticky top-0 z-10 -mx-4 -mt-4 mb-4 flex items-center justify-between border-b bg-white/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:-mt-6 sm:px-6"><div><h2 id="shipment-modal-title" className="font-black">مسار الشحنة {selected.trackingCode}</h2><p className="text-xs text-slate-500">{selected.customerName} · {selected.storeName}</p></div><button onClick={()=>setSelected(null)} className="rounded-xl bg-slate-100 p-2" aria-label="إغلاق"><X className="size-4"/></button></div>
       <div className="mb-4 rounded-2xl border border-sky-100 bg-sky-50 p-3 text-xs leading-6 text-sky-950">تحديث المرحلة ينشئ إشعاراً داخل التطبيق. زر واتساب يفتح رسالة جاهزة ويسجلها «جاهزة»، ولا يثبت الإرسال حتى تؤكده من واتساب.</div>
@@ -141,6 +194,7 @@ function LiveTrackingAdminRoute() {
       <ol className="space-y-3">{STAGES.map((stage,i)=>{const Icon=stage.icon;const active=i===stageIndex(selected.status);const done=i<stageIndex(selected.status);return <li key={stage.code} className={`rounded-2xl border p-3 ${active?'border-blue-300 bg-blue-50':done?'border-emerald-200 bg-emerald-50/60':'bg-white'}`}><div className="flex items-start gap-3"><span className={`grid size-9 shrink-0 place-items-center rounded-xl ${done?'bg-emerald-600 text-white':active?'bg-blue-900 text-white':'bg-slate-100 text-slate-500'}`}>{done?<Check className="size-4"/>:<Icon className="size-4"/>}</span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><b className="text-sm">{i+1}. {stage.title}</b>{active&&<span className="rounded bg-blue-900 px-2 py-0.5 text-[10px] text-white">الحالية</span>}</div><p className="mt-1 text-xs text-slate-500">{stage.location} · {stage.detail}</p>{stage.code==='out_for_delivery'&&selected.courierName&&<p className="mt-1 text-xs font-bold text-emerald-800">المندوب: {selected.courierName} {selected.courierPhone&&<span dir="ltr">· {selected.courierPhone}</span>}</p>}<div className="mt-3 flex flex-wrap gap-2">{!active&&<button disabled={busy} onClick={()=>void doAction(selected,stage,'advance','app')} className="rounded-lg bg-orange-600 px-3 py-2 text-[11px] font-black text-white disabled:opacity-50">{busy?'جارٍ الحفظ...':'تفعيل المرحلة وإشعار التطبيق'}</button>}<button disabled={busy} onClick={()=>void doAction(selected,stage,'notify','app')} className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-[11px] font-bold text-blue-900 disabled:opacity-50">تذكير داخل التطبيق فقط</button><button disabled={busy||!normalizePhone(selected.customerPhone)} onClick={()=>void doAction(selected,stage,'notify','whatsapp')} className="flex items-center gap-1 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-[11px] font-bold text-emerald-800 disabled:opacity-50"><MessageCircle className="size-3.5"/>فتح رسالة واتساب</button></div></div></div></li>})}</ol>
       <section className="mt-5 rounded-2xl border p-4"><h3 className="flex items-center gap-2 font-black"><History className="size-4"/>سجل الإشعارات</h3>{history.length?<ul className="mt-3 space-y-2">{history.map(ev=><li key={ev.id} className="rounded-xl bg-slate-50 p-3 text-xs"><div className="flex flex-wrap justify-between gap-2 font-bold"><span>{ev.event_type==='stage'?'تغيير مرحلة':'تذكير'} · {ev.channel==='app'?'التطبيق':'واتساب'} · {ev.delivery_state==='created'?'أُنشئ إشعار التطبيق':ev.delivery_state==='prepared'?'رسالة مجهزة، بانتظار تأكيد واتساب':ev.delivery_state==='no_account'?'لا يوجد حساب تطبيق للعميل':ev.delivery_state}</span><time>{new Date(ev.created_at).toLocaleString('ar-YE')}</time></div><p className="mt-1 whitespace-pre-line text-slate-600">{ev.message}</p></li>)}</ul>:<p className="mt-3 text-xs text-slate-500">لا يوجد سجل بعد. طبّق SQL إذا لم يظهر السجل.</p>}</section>
       </section></div>}
+    {editing && access === 'admin' && <div className="fixed inset-0 z-[60] grid place-items-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-labelledby="edit-shipment-title"><section className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-3xl bg-white p-5 shadow-2xl"><div className="flex items-center justify-between border-b pb-3"><div><h2 id="edit-shipment-title" className="font-black">تعديل بيانات الشحنة</h2><p className="mt-1 text-xs text-slate-500">رقم التتبع: {editing.trackingCode} (لا يتغير)</p></div><button onClick={()=>setEditing(null)} disabled={savingEdit} className="rounded-xl bg-slate-100 p-2" aria-label="إغلاق"><X className="size-4"/></button></div><div className="mt-4 grid gap-3 sm:grid-cols-2"><label className="text-xs font-bold">اسم العميل *<input value={editForm.customerName} onChange={e=>setEditForm(f=>({...f,customerName:e.target.value}))} className="mt-1 w-full rounded-xl border p-2.5" maxLength={200}/></label><label className="text-xs font-bold">هاتف العميل *<input value={editForm.customerPhone} onChange={e=>setEditForm(f=>({...f,customerPhone:e.target.value}))} className="mt-1 w-full rounded-xl border p-2.5" maxLength={30} dir="ltr"/></label><label className="text-xs font-bold sm:col-span-2">اسم المنتج<input value={editForm.productName} onChange={e=>setEditForm(f=>({...f,productName:e.target.value}))} className="mt-1 w-full rounded-xl border p-2.5" maxLength={300}/></label><label className="text-xs font-bold sm:col-span-2">رابط المنتج *<input value={editForm.productLink} onChange={e=>setEditForm(f=>({...f,productLink:e.target.value}))} className="mt-1 w-full rounded-xl border p-2.5" maxLength={2000} dir="ltr"/></label><label className="text-xs font-bold">اسم المندوب<input value={editForm.courierName} onChange={e=>setEditForm(f=>({...f,courierName:e.target.value}))} className="mt-1 w-full rounded-xl border p-2.5" maxLength={200}/></label><label className="text-xs font-bold">هاتف المندوب<input value={editForm.courierPhone} onChange={e=>setEditForm(f=>({...f,courierPhone:e.target.value}))} className="mt-1 w-full rounded-xl border p-2.5" maxLength={30} dir="ltr"/></label></div><p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-900">لا يمكن من هذه النافذة تعديل المالك أو رقم التتبع أو حالة الشحنة أو الملاحظات. الحذف منفصل ونهائي.</p><div className="mt-4 flex gap-2"><button onClick={()=>void saveEdit()} disabled={savingEdit} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-blue-900 px-4 py-3 text-sm font-black text-white disabled:opacity-50"><Save className="size-4"/>{savingEdit?'جارٍ الحفظ...':'حفظ التعديلات'}</button><button onClick={()=>setEditing(null)} disabled={savingEdit} className="rounded-xl border px-4 py-3 text-sm font-bold">إلغاء</button></div></section></div>}
   </div>;
 }
 export default LiveTrackingAdminRoute;
