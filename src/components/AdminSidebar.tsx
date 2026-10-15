@@ -459,7 +459,7 @@ export function AdminSidebar({
                   <div onClick={() => handleLinkClick("/customers")} className="px-2.5 py-1 rounded-lg hover:bg-[#0B1E36] hover:text-white transition cursor-pointer">
                     • إدارة بيانات العملاء
                   </div>
-                  <div onClick={() => handleLinkClick("/customers")} className="px-2.5 py-1 rounded-lg hover:bg-[#0B1E36] hover:text-white transition cursor-pointer">
+                  <div onClick={() => handleLinkClick("/accounts")} className="px-2.5 py-1 rounded-lg hover:bg-[#0B1E36] hover:text-white transition cursor-pointer">
                     • دليل الحسابات وأرصدة العملاء
                   </div>
                 </div>
