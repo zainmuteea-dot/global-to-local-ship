@@ -103,6 +103,7 @@ export default function DashboardPage() {
     delivered: 0,
   });
 
+
   // شريط معلومات عام: لا يعرض تحديثات طلبات أو عروضًا غير مؤكدة.
   const tickerItems = [
     {
@@ -196,6 +197,7 @@ export default function DashboardPage() {
 
       setUserName(finalName);
       setUserPhone(phone);
+
 
       // الطلبات لا تُجلب إلا باستخدام UID من جلسة Supabase، وليس بهوية محلية قابلة للتزوير.
       if (!authUser) {
@@ -316,6 +318,7 @@ export default function DashboardPage() {
     }
   };
 
+
   // حفظ القراءة فعليًا في جدول notification_reads.
   const handleMarkAllAsRead = async () => {
     if (!userId) return;
@@ -366,11 +369,11 @@ export default function DashboardPage() {
   ];
 
   const steps = [
-    { title: 'أرسل الرابط', step: 'خطوة 1', desc: 'انسخ رابط المنتج من أي متجر عالمي', icon: Link2, color: 'text-[#0284C7]' },
-    { title: 'اعرف السعر', step: 'خطوة 2', desc: 'نوضح لك التكلفة بالريال اليمني أو الدولار', icon: CircleDollarSign, color: 'text-[#F97316]' },
-    { title: 'نشتري لك', step: 'خطوة 3', desc: 'نشتري بدلاً عنك ونضمن جودة وتطابق الطلب', icon: ShoppingCart, color: 'text-[#0284C7]' },
-    { title: 'تابع الشحنة', step: 'خطوة 4', desc: 'تتبع مسار شحنتك لحظة بلحظة برقم التتبع', icon: Search, color: 'text-[#F97316]' },
-    { title: 'الاستلام', step: 'خطوة 5', desc: 'توصيل موثوق حتى باب بيتك في كافة المحافظات', icon: Package, color: 'text-[#0284C7]' },
+    { title: 'أرسل الرابط', step: 'خطوة 1', desc: 'انسخ رابط المنتج من أي متجر عالمي', icon: Link2, color: 'text-sky-400' },
+    { title: 'اعرف السعر', step: 'خطوة 2', desc: 'نوضح لك التكلفة بالريال اليمني أو الدولار', icon: CircleDollarSign, color: 'text-orange-400' },
+    { title: 'نشتري لك', step: 'خطوة 3', desc: 'نشتري بدلاً عنك ونضمن جودة وتطابق الطلب', icon: ShoppingCart, color: 'text-sky-400' },
+    { title: 'تابع الشحنة', step: 'خطوة 4', desc: 'تتبع مسار شحنتك لحظة بلحظة برقم التتبع', icon: Search, color: 'text-orange-400' },
+    { title: 'الاستلام', step: 'خطوة 5', desc: 'توصيل موثوق حتى باب بيتك في كافة المحافظات', icon: Package, color: 'text-sky-400' },
   ];
 
   const testimonials = [
@@ -416,6 +419,7 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
 
       {/* 🌟 2. الهيدر الرئيسي مع كبسولة العميل وزر إدارة حسابي وتسجيل الخروج */}
       <header className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 pt-5 pb-3 relative z-30">
@@ -573,6 +577,7 @@ export default function DashboardPage() {
         </div>
       </header>
 
+
       {/* 🌟 3. بطاقة الهيرو الكحلية الملكية */}
       <section className="px-4 pt-3 pb-6">
         <div className="relative mx-auto max-w-5xl overflow-hidden rounded-[32px] bg-gradient-to-br from-[#0A2540] via-[#0F4C81] to-[#134074] p-6 text-white shadow-2xl sm:p-9 border border-sky-400/20">
@@ -725,6 +730,7 @@ export default function DashboardPage() {
         </p>
       </section>
 
+
       {/* 🌟 6. المتاجر العالمية المعتمدة — أزرار زجاجية متحركة (Dark Glass) */}
       <section className="max-w-5xl mx-auto px-4 mb-8">
         <div className="flex items-center justify-center gap-2 text-xs font-black text-amber-600 mb-4">
@@ -780,47 +786,66 @@ export default function DashboardPage() {
         `}</style>
       </section>
 
-      {/* 🌟 7. خطوات الطلب الـ 5 */}
-      <section className="max-w-5xl mx-auto px-4 mb-10">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-          {steps.map((st, i) => {
-            const Icon = st.icon;
-            const cardClass = `bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs flex items-center justify-between gap-4 transition hover:shadow-md hover:-translate-y-0.5 cursor-pointer text-right text-inherit no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F97316] focus-visible:ring-offset-2 ${
-              i === 4 ? 'md:col-span-2 md:w-2/3 md:mx-auto' : ''
-            }`;
-            const content = (
-              <>
-                <div className="space-y-1 text-right">
-                  <div className="flex items-center gap-2">
-                    <span className="font-black text-sm text-[#0A2540]">{st.title}</span>
-                    <span className="text-[10px] font-black text-orange-600 bg-orange-50 px-2 py-0.5 rounded-md border border-orange-200/60">
-                      {st.step}
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-500 font-bold">{st.desc}</p>
-                </div>
-                <div className="size-11 rounded-2xl bg-sky-50 grid place-items-center shrink-0 border border-sky-100">
-                  <Icon className={`size-5 ${st.color}`} />
-                </div>
-              </>
-            );
-            const ariaLabel = `${st.title}: ${st.desc}`;
 
-            if (i === 0) {
-              return <a key={i} href="/new-order?step=link" className={cardClass} aria-label={ariaLabel}>{content}</a>;
-            }
-            if (i === 1) {
-              return <a key={i} href="/new-order?step=price" className={cardClass} aria-label={ariaLabel}>{content}</a>;
-            }
-            if (i === 2) {
-              return <a key={i} href="/new-order?step=buy" className={cardClass} aria-label={ariaLabel}>{content}</a>;
-            }
-            if (i === 3) {
-              return <Link key={i} to="/track" className={cardClass} aria-label={ariaLabel}>{content}</Link>;
-            }
-            return <Link key={i} to="/account/orders" className={cardClass} aria-label={ariaLabel}>{content}</Link>;
-          })}
+      {/* 🌟 7. خطوات الطلب الـ 5 — بطاقات زجاجية متموّجة */}
+      <section className="max-w-5xl mx-auto px-4 mb-10">
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-b from-[#1b1d24] to-[#111318] p-5 ring-1 ring-white/5 shadow-xl">
+          {/* كتل ضوء ضبابية ليظهر تأثير الزجاج */}
+          <div aria-hidden className="pointer-events-none absolute -top-6 right-10 h-24 w-24 rounded-full bg-sky-500/40 blur-2xl" />
+          <div aria-hidden className="pointer-events-none absolute -bottom-8 left-16 h-24 w-24 rounded-full bg-orange-500/30 blur-2xl" />
+          <div aria-hidden className="pointer-events-none absolute top-1/2 left-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full bg-amber-400/15 blur-2xl" />
+
+          <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            {steps.map((st, i) => {
+              const Icon = st.icon;
+              const cardClass = `group relative overflow-hidden rounded-2xl p-4 border border-white/20 bg-white/10 backdrop-blur-md shadow-lg flex items-center justify-between gap-4 transition hover:bg-white/15 cursor-pointer text-right text-inherit no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#111318] animate-[step-wave_3s_ease-in-out_infinite] will-change-transform ${
+                i === 4 ? 'md:col-span-2 md:w-2/3 md:mx-auto' : ''
+              }`;
+              const cardStyle = { animationDelay: `${i * 0.25}s` } as React.CSSProperties;
+              const content = (
+                <>
+                  {/* حافة الزجاج العلوية */}
+                  <span aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent" />
+                  <div className="relative z-10 space-y-1 text-right">
+                    <div className="flex items-center gap-2">
+                      <span className="font-black text-sm text-white">{st.title}</span>
+                      <span className="text-[10px] font-black text-amber-200 bg-white/10 px-2 py-0.5 rounded-md border border-white/20">
+                        {st.step}
+                      </span>
+                    </div>
+                    <p className="text-xs text-sky-100/80 font-bold">{st.desc}</p>
+                  </div>
+                  <div className="relative z-10 size-11 rounded-2xl bg-white/15 grid place-items-center shrink-0 border border-white/20">
+                    <Icon className={`size-5 ${st.color}`} />
+                  </div>
+                </>
+              );
+              const ariaLabel = `${st.title}: ${st.desc}`;
+
+              if (i === 0) {
+                return <a key={i} href="/new-order?step=link" className={cardClass} style={cardStyle} aria-label={ariaLabel}>{content}</a>;
+              }
+              if (i === 1) {
+                return <a key={i} href="/new-order?step=price" className={cardClass} style={cardStyle} aria-label={ariaLabel}>{content}</a>;
+              }
+              if (i === 2) {
+                return <a key={i} href="/new-order?step=buy" className={cardClass} style={cardStyle} aria-label={ariaLabel}>{content}</a>;
+              }
+              if (i === 3) {
+                return <Link key={i} to="/track" className={cardClass} style={cardStyle} aria-label={ariaLabel}>{content}</Link>;
+              }
+              return <Link key={i} to="/account/orders" className={cardClass} style={cardStyle} aria-label={ariaLabel}>{content}</Link>;
+            })}
+          </div>
         </div>
+
+        {/* keyframes حركة التموّج للبطاقات */}
+        <style>{`
+          @keyframes step-wave {
+            0%, 100% { transform: translateY(0); }
+            50%      { transform: translateY(-7px); }
+          }
+        `}</style>
 
         {/* أزرار العمليات السريعة */}
         <div className="flex flex-wrap items-center justify-center gap-3 mt-6">
@@ -857,6 +882,7 @@ export default function DashboardPage() {
           ))}
         </div>
       </section>
+
 
       {/* 🌟 القائمة الجانبية المنسدلة (Slide-Over Drawer) */}
       {isSidebarOpen && (
