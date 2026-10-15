@@ -600,7 +600,7 @@ export default function AdminOperationsPage() {
             { label: "إدارة الطلبات والشحنات", icon: Truck, path: "/admin" },
             { label: "مسار تتبع الشحنات", icon: Plane, path: "/admin-tracking" },
             { label: "المدفوعات", icon: Wallet, path: "/payments" },
-            { label: "إدارة العملاء", icon: Users, path: "/admin-clients" },
+            { label: "إدارة العملاء", icon: Users, path: "/customers" },
             { label: "الأصناف والمخزون", icon: Package, path: "/inventory" },
             { label: "فواتير المبيعات", icon: FileText, path: "/sales-invoices" },
             { label: "فواتير المشتريات", icon: FileSpreadsheet, path: "/purchase-invoices" },
