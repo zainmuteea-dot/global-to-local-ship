@@ -53,7 +53,7 @@ export function AdminSidebar({
 
             <div className="space-y-1 pt-3">
               <div className="px-3 py-1 text-[10px] font-bold text-sky-700 uppercase tracking-wider">العملاء وقواعد البيانات</div>
-              <button onClick={() => { onClose(); navigateTo("/admin-clients"); }} className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-bold text-slate-700 hover:bg-sky-50 hover:text-[#0F4C81] transition cursor-pointer">
+              <button onClick={() => { onClose(); navigateTo("/customers"); }} className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-bold text-slate-700 hover:bg-sky-50 hover:text-[#0F4C81] transition cursor-pointer">
                 <div className="flex items-center gap-2.5"><Users className="w-4 h-4 text-emerald-600" /><span>إدارة العملاء</span></div>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold border border-emerald-200">قاعدة بيانات</span>
               </button>
