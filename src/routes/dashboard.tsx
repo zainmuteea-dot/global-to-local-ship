@@ -369,11 +369,11 @@ export default function DashboardPage() {
   ];
 
   const steps = [
-    { title: 'أرسل الرابط', step: 'خطوة 1', desc: 'انسخ رابط المنتج من أي متجر عالمي', icon: Link2, color: 'text-sky-400' },
-    { title: 'اعرف السعر', step: 'خطوة 2', desc: 'نوضح لك التكلفة بالريال اليمني أو الدولار', icon: CircleDollarSign, color: 'text-orange-400' },
-    { title: 'نشتري لك', step: 'خطوة 3', desc: 'نشتري بدلاً عنك ونضمن جودة وتطابق الطلب', icon: ShoppingCart, color: 'text-sky-400' },
-    { title: 'تابع الشحنة', step: 'خطوة 4', desc: 'تتبع مسار شحنتك لحظة بلحظة برقم التتبع', icon: Search, color: 'text-orange-400' },
-    { title: 'الاستلام', step: 'خطوة 5', desc: 'توصيل موثوق حتى باب بيتك في كافة المحافظات', icon: Package, color: 'text-sky-400' },
+    { title: 'أرسل الرابط', step: 'خطوة 1', desc: 'انسخ رابط المنتج من أي متجر عالمي', icon: Link2, color: 'text-sky-300' },
+    { title: 'اعرف السعر', step: 'خطوة 2', desc: 'نوضح لك التكلفة بالريال اليمني أو الدولار', icon: CircleDollarSign, color: 'text-orange-300' },
+    { title: 'نشتري لك', step: 'خطوة 3', desc: 'نشتري بدلاً عنك ونضمن جودة وتطابق الطلب', icon: ShoppingCart, color: 'text-sky-300' },
+    { title: 'تابع الشحنة', step: 'خطوة 4', desc: 'تتبع مسار شحنتك لحظة بلحظة برقم التتبع', icon: Search, color: 'text-orange-300' },
+    { title: 'الاستلام', step: 'خطوة 5', desc: 'توصيل موثوق حتى باب بيتك في كافة المحافظات', icon: Package, color: 'text-sky-300' },
   ];
 
   const testimonials = [
@@ -383,24 +383,27 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#F0F7FF] via-[#F8FAFC] to-[#FFF9F5] text-slate-800 font-sans pb-24" dir="rtl">
+    <div className="relative min-h-screen bg-[#040D1A] text-slate-100 font-sans pb-24 overflow-hidden" dir="rtl">
+      {/* 🌟 خلفية الشاشة الكاملة: تدرّج شعاعي كحلي (نفس الصورة) */}
+      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(120%_80%_at_50%_18%,#1E4272_0%,#12305A_35%,#0A1E3C_65%,#040D1A_100%)]" />
+      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 opacity-70" style={{ backgroundImage: 'radial-gradient(45% 35% at 50% 20%, rgba(56,189,248,.20), transparent 70%), radial-gradient(40% 30% at 15% 85%, rgba(249,115,22,.16), transparent 70%)' }} />
       
       {/* 🌟 1. شريط الإشعارات العلوي المتحرك */}
-      <div className="bg-[#0A2540] text-slate-200 text-xs py-2 px-4 border-b border-sky-950/30">
+      <div className="relative bg-gradient-to-r from-[#071B34] via-[#0F4C81] to-[#071B34] text-white text-xs py-2 px-4 border-b border-sky-400/25">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 overflow-hidden flex-1">
-            <span className="shrink-0 bg-[#EA580C] text-white text-[10px] font-black px-2 py-0.5 rounded-full">
+            <span className="shrink-0 bg-[#FF6A00] text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-sm shadow-orange-500/40">
               {tickerItems[currentTicker]?.tag}
             </span>
             <Link
               to={tickerItems[currentTicker]?.link ?? '/dashboard'}
-              className="truncate hover:text-white transition font-medium"
+              className="truncate hover:text-[#FFB37A] transition font-medium"
             >
               {tickerItems[currentTicker]?.text}
             </Link>
           </div>
 
-          <div className="flex items-center gap-1 shrink-0 text-slate-400">
+          <div className="flex items-center gap-1 shrink-0 text-sky-200/80">
             <button
               onClick={() => setCurrentTicker((prev) => (prev - 1 + tickerItems.length) % tickerItems.length)}
               className="hover:text-white p-1 rounded-md hover:bg-white/10 transition"
@@ -427,11 +430,11 @@ export default function DashboardPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setIsSidebarOpen(true)}
-            className="flex flex-col justify-center items-center gap-1 size-11 rounded-2xl bg-[#0F4C81] hover:bg-[#0A2540] text-white shadow-md transition-all active:scale-95 cursor-pointer"
+            className="flex flex-col justify-center items-center gap-1 size-11 rounded-2xl bg-[#12558F] hover:bg-[#0F4C81] text-white shadow-lg shadow-sky-900/40 ring-1 ring-sky-400/30 transition-all active:scale-95 cursor-pointer"
             title="القائمة الشاملة"
           >
             <span className="w-5 h-0.5 rounded-full bg-white" />
-            <span className="w-5 h-0.5 rounded-full bg-[#F97316]" />
+            <span className="w-5 h-0.5 rounded-full bg-[#FF6A00]" />
             <span className="w-5 h-0.5 rounded-full bg-white" />
           </button>
           <AlShamelLogo size="md" showText={true} />
@@ -442,16 +445,16 @@ export default function DashboardPage() {
           {/* حالة الاتصال معروضة حسب جلسة Supabase الفعلية */}
           <Link
             to="/my-account"
-            className={`flex items-center gap-2 bg-white rounded-full px-3.5 py-1.5 shadow-xs text-xs font-black transition group border ${connectionState ? "border-emerald-300 hover:border-emerald-500" : "border-slate-200 hover:border-slate-300"}`}
+            className={`flex items-center gap-2 bg-white/[0.08] backdrop-blur-md rounded-full px-3.5 py-1.5 text-xs font-black transition group border ${connectionState ? "border-emerald-400/50 hover:border-emerald-400" : "border-white/20 hover:border-white/40"}`}
             title="عرض ملفي الشخصي"
           >
             <span className="relative flex size-2.5 shrink-0">
               {connectionState && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />}
-              <span className={`relative inline-flex rounded-full size-2.5 ${connectionState ? "bg-emerald-500" : "bg-slate-400"}`} />
+              <span className={`relative inline-flex rounded-full size-2.5 ${connectionState ? "bg-emerald-400" : "bg-slate-400"}`} />
             </span>
-            <span className="text-slate-800 group-hover:text-[#0F4C81] max-w-[120px] truncate">{userName}</span>
-            <span className="text-slate-300">|</span>
-            <span className={`font-extrabold ${connectionState ? "text-emerald-600" : "text-slate-500"}`}>
+            <span className="text-slate-100 group-hover:text-white max-w-[120px] truncate">{userName}</span>
+            <span className="text-white/25">|</span>
+            <span className={`font-extrabold ${connectionState ? "text-emerald-400" : "text-slate-300"}`}>
               {connectionState === null ? "جارٍ التحقق" : connectionState ? "متصل" : "غير متصل"}
             </span>
           </Link>
@@ -459,10 +462,10 @@ export default function DashboardPage() {
           {/* 🌟 زر إدارة حسابي المطلوب بشكل واضح ومباشر */}
           <Link
             to="/my-account"
-            className="hidden sm:inline-flex items-center gap-1.5 bg-[#0F4C81] hover:bg-[#0A2540] text-white text-xs font-bold px-3.5 py-2 rounded-full shadow-xs transition active:scale-95"
+            className="hidden sm:inline-flex items-center gap-1.5 bg-white/[0.08] backdrop-blur-md border border-sky-400/30 hover:bg-white/15 text-white text-xs font-bold px-3.5 py-2 rounded-full shadow-xs transition active:scale-95"
             title="الانتقال إلى إعدادات الحساب والعناوين"
           >
-            <User className="size-3.5 text-[#F97316]" />
+            <User className="size-3.5 text-[#FF6A00]" />
             <span>إدارة حسابي</span>
           </Link>
 
@@ -472,7 +475,7 @@ export default function DashboardPage() {
             onClick={handleSignOut}
             disabled={logoutLoading}
             aria-busy={logoutLoading}
-            className="grid size-11 place-items-center rounded-2xl bg-white text-rose-600 hover:text-white hover:bg-rose-600 ring-1 ring-rose-200 shadow-xs transition active:scale-95 cursor-pointer group disabled:opacity-60 disabled:cursor-wait"
+            className="grid size-11 place-items-center rounded-2xl bg-white/[0.08] backdrop-blur-md text-rose-300 hover:text-white hover:bg-rose-600/90 ring-1 ring-rose-400/40 shadow-xs transition active:scale-95 cursor-pointer group disabled:opacity-60 disabled:cursor-wait"
             title={logoutLoading ? 'جارٍ تسجيل الخروج' : 'تسجيل الخروج'}
           >
             <LogOut className="size-5 transition-transform group-hover:-translate-x-0.5" />
@@ -482,12 +485,12 @@ export default function DashboardPage() {
           <div className="relative">
             <button
               onClick={() => setIsNotifOpen(!isNotifOpen)}
-              className="relative grid size-11 place-items-center rounded-2xl bg-white text-[#0F4C81] ring-1 ring-sky-200 shadow-xs hover:bg-sky-50 transition active:scale-95 cursor-pointer"
+              className="relative grid size-11 place-items-center rounded-2xl bg-white/[0.08] backdrop-blur-md text-sky-300 ring-1 ring-sky-400/40 shadow-xs hover:bg-white/15 transition active:scale-95 cursor-pointer"
               title="مراجعة الإشعارات"
             >
               <Bell className="size-5" />
               {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 size-5 bg-[#EA580C] text-white text-[10px] font-black rounded-full grid place-items-center ring-2 ring-white animate-bounce">
+                <span className="absolute -top-1 -right-1 size-5 bg-[#FF6A00] text-white text-[10px] font-black rounded-full grid place-items-center ring-2 ring-[#0A1E3C] animate-bounce">
                   {unreadCount}
                 </span>
               )}
@@ -495,19 +498,19 @@ export default function DashboardPage() {
 
             {/* نافذة الإشعارات المنسدلة للعميل */}
             {isNotifOpen && (
-              <div className="absolute left-0 mt-3 w-80 sm:w-96 rounded-3xl bg-white shadow-2xl border border-sky-100 p-4 text-right z-50 animate-in fade-in slide-in-from-top-2">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="absolute left-0 mt-3 w-80 sm:w-96 rounded-3xl bg-gradient-to-b from-[#0F4C81] to-[#0A2540] shadow-2xl border border-sky-400/25 p-4 text-right z-50 animate-in fade-in slide-in-from-top-2">
+                <div className="flex items-center justify-between pb-3 border-b border-white/10">
                   <div className="flex items-center gap-1.5">
-                    <Bell className="size-4 text-[#EA580C]" />
-                    <span className="font-black text-sm text-[#0A2540]">إشعاراتي</span>
-                    <span className="bg-orange-100 text-[#EA580C] text-[10px] font-black px-2 py-0.5 rounded-full">
+                    <Bell className="size-4 text-[#FF6A00]" />
+                    <span className="font-black text-sm text-white">إشعاراتي</span>
+                    <span className="bg-[#FF6A00]/20 text-[#FFB37A] text-[10px] font-black px-2 py-0.5 rounded-full border border-[#FF6A00]/30">
                       {unreadCount} جديد
                     </span>
                   </div>
                   {unreadCount > 0 && (
                     <button
                       onClick={handleMarkAllAsRead}
-                      className="text-xs text-sky-600 hover:text-sky-800 font-bold flex items-center gap-1"
+                      className="text-xs text-sky-300 hover:text-white font-bold flex items-center gap-1"
                     >
                       <CheckCheck className="size-3.5" />
                       <span>تحديد الكل كمقروء</span>
@@ -516,14 +519,14 @@ export default function DashboardPage() {
                 </div>
 
                 {notificationError && (
-                  <p className="mt-3 rounded-xl bg-rose-50 p-2 text-xs font-bold text-rose-700">
+                  <p className="mt-3 rounded-xl bg-rose-500/15 border border-rose-400/30 p-2 text-xs font-bold text-rose-200">
                     {notificationError}
                   </p>
                 )}
 
-                <div className="divide-y divide-slate-100 max-h-72 overflow-y-auto my-2">
+                <div className="divide-y divide-white/10 max-h-72 overflow-y-auto my-2">
                   {notifications.length === 0 ? (
-                    <p className="py-6 text-center text-xs font-bold text-slate-500">
+                    <p className="py-6 text-center text-xs font-bold text-sky-200/70">
                       {connectionState ? "لا توجد إشعارات حاليًا." : "سجّل الدخول لعرض إشعارات حسابك."}
                     </p>
                   ) : (
@@ -534,30 +537,30 @@ export default function DashboardPage() {
                           key={notif.id}
                           type="button"
                           onClick={() => void handleMarkNotificationAsRead(notif.id)}
-                          className={`w-full rounded-2xl p-3 text-right transition hover:bg-sky-50 ${isRead ? "opacity-70" : "bg-orange-50/40"}`}
+                          className={`w-full rounded-2xl p-3 text-right transition hover:bg-white/10 ${isRead ? "opacity-60" : "bg-[#FF6A00]/10"}`}
                         >
                           <span className="flex items-center justify-between">
-                            <span className="font-black text-xs text-[#0A2540]">{notif.title}</span>
-                            <span className="text-[10px] text-slate-400 font-medium">{formatNotificationTime(notif.created_at)}</span>
+                            <span className="font-black text-xs text-white">{notif.title}</span>
+                            <span className="text-[10px] text-sky-200/60 font-medium">{formatNotificationTime(notif.created_at)}</span>
                           </span>
-                          <span className="mt-1 block text-xs leading-relaxed text-slate-600">{notif.message ?? ""}</span>
+                          <span className="mt-1 block text-xs leading-relaxed text-sky-100/75">{notif.message ?? ""}</span>
                         </button>
                       );
                     })
                   )}
                 </div>
 
-                <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                <div className="pt-2 border-t border-white/10 flex items-center justify-between">
                   <Link
                     to="/notifications"
                     onClick={() => setIsNotifOpen(false)}
-                    className="text-xs font-black text-[#0F4C81] hover:underline"
+                    className="text-xs font-black text-sky-300 hover:text-white hover:underline"
                   >
                     عرض كل الإشعارات ←
                   </Link>
                   <button
                     onClick={() => setIsNotifOpen(false)}
-                    className="text-xs text-slate-400 hover:text-slate-600 font-bold"
+                    className="text-xs text-sky-200/60 hover:text-white font-bold"
                   >
                     إغلاق
                   </button>
@@ -569,7 +572,7 @@ export default function DashboardPage() {
           {/* زر اطلب الآن البرتقالي */}
           <Link
             to="/new-order"
-            className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[#F97316] via-[#EA580C] to-[#C2410C] hover:from-[#EA580C] hover:to-[#9A3412] px-4 sm:px-5 py-2.5 font-black text-xs sm:text-sm text-white shadow-md shadow-orange-500/25 transition-all hover:-translate-y-0.5 active:scale-95"
+            className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[#FF8A2B] via-[#FF6A00] to-[#D94800] hover:from-[#FF6A00] hover:to-[#A83800] px-4 sm:px-5 py-2.5 font-black text-xs sm:text-sm text-white shadow-lg shadow-orange-600/40 transition-all hover:-translate-y-0.5 active:scale-95"
           >
             <ShoppingCart className="size-4 text-white" />
             <span>اطلب الآن</span>
@@ -580,16 +583,20 @@ export default function DashboardPage() {
 
       {/* 🌟 3. بطاقة الهيرو الكحلية الملكية */}
       <section className="px-4 pt-3 pb-6">
-        <div className="relative mx-auto max-w-5xl overflow-hidden rounded-[32px] bg-gradient-to-br from-[#0A2540] via-[#0F4C81] to-[#134074] p-6 text-white shadow-2xl sm:p-9 border border-sky-400/20">
-          
+        <div className="relative mx-auto max-w-5xl overflow-hidden rounded-[32px] bg-gradient-to-br from-[#0F4C81]/85 via-[#12467C]/75 to-[#0A2540]/85 backdrop-blur-xl p-6 text-white shadow-2xl shadow-sky-950/60 sm:p-9 border border-sky-400/30">
+          {/* كتل ضوء ضبابية لإبراز الطابع الزجاجي الملكي */}
+          <div aria-hidden className="pointer-events-none absolute -top-10 -right-8 h-40 w-40 rounded-full bg-sky-400/35 blur-3xl" />
+          <div aria-hidden className="pointer-events-none absolute -bottom-12 -left-6 h-44 w-44 rounded-full bg-orange-500/30 blur-3xl" />
+          <div aria-hidden className="pointer-events-none absolute top-1/3 left-1/3 h-32 w-32 rounded-full bg-amber-300/15 blur-3xl" />
+
           {/* الترويسة العلوية للبطاقة: اسم السوق الشامل + أزرار الكبسولات */}
           <div className="flex flex-col-reverse sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 pb-6">
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl sm:text-3xl font-black tracking-tight">السوق الشامل</h1>
-                <span className="bg-[#EA580C] text-white text-[11px] font-black px-2.5 py-0.5 rounded-full">AL SHAMEL</span>
+                <span className="bg-[#FF6A00] text-white text-[11px] font-black px-2.5 py-0.5 rounded-full shadow-sm shadow-orange-600/50">AL SHAMEL</span>
               </div>
-              <p className="text-xs sm:text-sm text-sky-200 font-bold mt-1">
+              <p className="text-xs sm:text-sm text-sky-100 font-bold mt-1">
                 وسيط الشراء والاستيراد المعتمد في اليمن من كافة المتاجر العالمية
               </p>
             </div>
@@ -598,7 +605,7 @@ export default function DashboardPage() {
             <div className="flex items-center gap-2.5 self-end sm:self-auto">
               <Link
                 to="/my-account"
-                className="flex flex-col items-center justify-center size-16 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-white transition active:scale-95"
+                className="flex flex-col items-center justify-center size-16 rounded-2xl bg-white/10 hover:bg-white/20 border border-sky-300/30 text-white transition active:scale-95"
                 title="إدارة حسابي"
               >
                 <User className="size-5 text-sky-300 mb-0.5" />
@@ -606,15 +613,15 @@ export default function DashboardPage() {
               </Link>
               <Link
                 to="/new-order"
-                className="flex flex-col items-center justify-center size-16 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-white transition active:scale-95"
+                className="flex flex-col items-center justify-center size-16 rounded-2xl bg-white/10 hover:bg-white/20 border border-[#FF8A2B]/40 text-white transition active:scale-95"
                 title="طلب جديد"
               >
-                <Hand className="size-5 text-orange-400 mb-0.5" />
+                <Hand className="size-5 text-[#FF8A2B] mb-0.5" />
                 <span className="text-[11px] font-black">الطلب</span>
               </Link>
               <Link
                 to="/track"
-                className="flex flex-col items-center justify-center size-16 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-white transition active:scale-95"
+                className="flex flex-col items-center justify-center size-16 rounded-2xl bg-white/10 hover:bg-white/20 border border-sky-300/30 text-white transition active:scale-95"
                 title="تتبع الشحنات"
               >
                 <FileText className="size-5 text-sky-300 mb-0.5" />
@@ -628,7 +635,7 @@ export default function DashboardPage() {
             <div className="space-y-3 text-right max-w-xl">
               <div className="flex items-center gap-2">
                 <h2 className="text-2xl sm:text-4xl font-black text-white">كيف تطلب؟</h2>
-                <span className="text-2xl sm:text-4xl font-black text-amber-400">؟</span>
+                <span className="text-2xl sm:text-4xl font-black text-[#FFB37A]">؟</span>
               </div>
               <p className="text-xs sm:text-sm text-slate-200 leading-relaxed font-medium">
                 انسخ رابط أي منتج تريده من أي موقع عالمي وسنتولى الشراء والفحص والشحن الآمن حتى باب بيتك.
@@ -638,7 +645,7 @@ export default function DashboardPage() {
             {/* زر تشغيل الفيديو البرتقالي الكبير */}
             <button
               onClick={() => setIsVideoModalOpen(true)}
-              className="relative size-20 sm:size-24 rounded-3xl bg-gradient-to-tr from-[#EA580C] to-[#FB923C] grid place-items-center shadow-lg shadow-orange-500/40 cursor-pointer hover:scale-105 active:scale-95 transition group"
+              className="relative size-20 sm:size-24 rounded-3xl bg-gradient-to-tr from-[#FF6A00] to-[#FFA94D] grid place-items-center shadow-lg shadow-orange-600/50 cursor-pointer hover:scale-105 active:scale-95 transition group"
               title="مشاهدة فيديو طريقة الطلب"
             >
               <Play className="size-8 sm:size-10 text-white fill-white ml-1 group-hover:scale-110 transition" />
@@ -651,20 +658,20 @@ export default function DashboardPage() {
             <div className="flex flex-wrap items-center gap-3">
               <Link
                 to="/new-order"
-                className="inline-flex items-center gap-2 rounded-2xl bg-[#EA580C] hover:bg-[#C2410C] px-6 py-3 font-black text-sm text-white shadow-lg shadow-orange-500/30 transition hover:scale-105 active:scale-95"
+                className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[#FF8A2B] via-[#FF6A00] to-[#D94800] hover:from-[#FF6A00] hover:to-[#A83800] px-6 py-3 font-black text-sm text-white shadow-lg shadow-orange-600/45 transition hover:scale-105 active:scale-95"
               >
                 <Hand className="size-4" />
                 <span>اضغط هنا لطلب منتج</span>
               </Link>
               <Link
                 to="/track"
-                className="inline-flex items-center gap-2 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/25 px-5 py-3 font-black text-xs text-white transition active:scale-95"
+                className="inline-flex items-center gap-2 rounded-2xl bg-[#0F4C81]/60 hover:bg-[#12558F]/70 border border-sky-400/40 px-5 py-3 font-black text-xs text-white transition active:scale-95"
               >
                 <Search className="size-4 text-sky-300" />
                 <span>تتبع شحنة سابقة</span>
               </Link>
             </div>
-            <div className="flex items-center gap-2 text-xs font-bold text-sky-200 bg-white/5 border border-white/10 px-4 py-2 rounded-2xl">
+            <div className="flex items-center gap-2 text-xs font-bold text-sky-100 bg-white/[0.07] border border-sky-400/25 px-4 py-2 rounded-2xl backdrop-blur-md">
               <ShieldCheck className="size-4 text-emerald-400" />
               <span>ضمان استرجاع 100% في حال عدم مطابقة المنتج</span>
             </div>
@@ -676,10 +683,10 @@ export default function DashboardPage() {
       <section className="max-w-5xl mx-auto px-4 mb-8">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <Package className="size-4 text-[#0F4C81]" />
-            <h3 className="text-sm font-black text-[#0A2540]">متابعة طلباتي وشحناتي</h3>
+            <Package className="size-4 text-[#FF8A2B]" />
+            <h3 className="text-sm font-black text-white">متابعة طلباتي وشحناتي</h3>
           </div>
-          <Link to="/my-account" className="text-xs font-bold text-[#0F4C81] hover:text-[#EA580C] transition">
+          <Link to="/my-account" className="inline-flex items-center gap-1 text-xs font-black text-sky-200 hover:text-white bg-white/[0.07] border border-sky-400/30 px-3 py-1.5 rounded-full backdrop-blur-md transition">
             تفاصيل الحساب والفواتير ←
           </Link>
         </div>
@@ -687,61 +694,61 @@ export default function DashboardPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Link
             to="/my-account"
-            className="bg-white rounded-2xl p-4 border border-sky-100 shadow-xs text-right hover:shadow-md transition hover:-translate-y-0.5 block"
+            className="bg-gradient-to-b from-[#0F4C81] to-[#0A2540] rounded-2xl p-4 border border-sky-400/20 shadow-lg text-right hover:shadow-xl transition hover:-translate-y-0.5 block"
           >
-            <span className="text-xs font-bold text-slate-400">إجمالي طلباتي</span>
-            <div className="text-2xl font-black text-[#0F4C81] mt-1">{orderStats.total}</div>
+            <span className="text-xs font-bold text-sky-200/70">إجمالي طلباتي</span>
+            <div className="text-2xl font-black text-white mt-1">{orderStats.total}</div>
           </Link>
 
           <Link
             to="/track"
-            className="bg-white rounded-2xl p-4 border border-amber-100 shadow-xs text-right hover:shadow-md transition hover:-translate-y-0.5 block"
+            className="bg-gradient-to-b from-[#0F4C81] to-[#0A2540] rounded-2xl p-4 border border-orange-400/25 shadow-lg text-right hover:shadow-xl transition hover:-translate-y-0.5 block"
           >
-            <span className="text-xs font-bold text-slate-400">قيد الشراء والتجهيز</span>
-            <div className="text-2xl font-black text-amber-600 mt-1">{orderStats.inProgress}</div>
+            <span className="text-xs font-bold text-sky-200/70">قيد الشراء والتجهيز</span>
+            <div className="text-2xl font-black text-[#FB923C] mt-1">{orderStats.inProgress}</div>
           </Link>
 
           <Link
             to="/track"
-            className="bg-white rounded-2xl p-4 border border-blue-100 shadow-xs text-right hover:shadow-md transition hover:-translate-y-0.5 block"
+            className="bg-gradient-to-b from-[#0F4C81] to-[#0A2540] rounded-2xl p-4 border border-sky-400/25 shadow-lg text-right hover:shadow-xl transition hover:-translate-y-0.5 block"
           >
-            <span className="text-xs font-bold text-slate-400">شحنات في الطريق</span>
-            <div className="text-2xl font-black text-[#0284C7] mt-1">{orderStats.shipping}</div>
+            <span className="text-xs font-bold text-sky-200/70">شحنات في الطريق</span>
+            <div className="text-2xl font-black text-[#38BDF8] mt-1">{orderStats.shipping}</div>
           </Link>
 
           <Link
             to="/my-account"
-            className="bg-white rounded-2xl p-4 border border-emerald-100 shadow-xs text-right hover:shadow-md transition hover:-translate-y-0.5 block"
+            className="bg-gradient-to-b from-[#0F4C81] to-[#0A2540] rounded-2xl p-4 border border-emerald-400/25 shadow-lg text-right hover:shadow-xl transition hover:-translate-y-0.5 block"
           >
-            <span className="text-xs font-bold text-slate-400">تم الاستلام</span>
-            <div className="text-2xl font-black text-emerald-600 mt-1">{orderStats.delivered}</div>
+            <span className="text-xs font-bold text-sky-200/70">تم الاستلام</span>
+            <div className="text-2xl font-black text-emerald-300 mt-1">{orderStats.delivered}</div>
           </Link>
         </div>
       </section>
 
       {/* 🌟 5. تسوق عالمياً واستلم محلياً */}
-      <section className="max-w-5xl mx-auto px-4 text-center my-6">
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-sky-100 text-[#0F4C81] border border-sky-200 mb-2">
-          <Sparkles className="size-3.5 text-[#EA580C]" /> خدمة الشراء والوساطة الأولى في اليمن
-        </span>
-        <h2 className="text-2xl sm:text-3xl font-black text-[#0A2540]">تسوّق عالمياً، واستلم محلياً</h2>
-        <p className="text-xs sm:text-sm text-slate-600 font-bold mt-1">
-          اطلب من أي مكان في العالم ونوصله لباب بيتك في جميع المحافظات بأقل تكلفة وأعلى موثوقية.
-        </p>
+      <section className="max-w-5xl mx-auto px-4 mb-4 text-center">
+        <div className="p-2.5 sm:p-3 rounded-[28px] bg-gradient-to-br from-[#0F4C81]/60 via-[#123F66]/50 to-[#0A2540]/60 backdrop-blur-xl border border-sky-400/30 shadow-2xl shadow-sky-950/50">
+          <div className="relative rounded-[24px] bg-gradient-to-br from-[#12558F]/70 to-[#0A2540]/70 px-4 py-5 text-center">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-[#FF6A00]/15 text-[#FFB37A] border border-[#FF8A2B]/40 mb-2">
+              <Sparkles className="size-3.5 text-[#FF8A2B]" /> خدمة الشراء والوساطة الأولى في اليمن
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-black text-white">تسوّق عالمياً، واستلم محلياً</h2>
+            <p className="text-xs sm:text-sm text-sky-100/85 font-bold mt-1 max-w-2xl mx-auto">
+              اطلب من أي مكان في العالم ونوصله لباب بيتك في جميع المحافظات بأقل تكلفة وأعلى موثوقية.
+            </p>
+          </div>
+        </div>
       </section>
 
 
       {/* 🌟 6. المتاجر العالمية المعتمدة — أزرار زجاجية متحركة (Dark Glass) */}
       <section className="max-w-5xl mx-auto px-4 mb-8">
-        <div className="flex items-center justify-center gap-2 text-xs font-black text-amber-600 mb-4">
-          <span>🎗️ نستورد لك من أشهر المتاجر العالمية</span>
-        </div>
+          <div className="flex items-center justify-center gap-2 text-xs font-black text-[#FFB37A] mb-4">
+            <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-[#FF6A00]/10 border border-[#FF8A2B]/35 backdrop-blur-md">🎗️ نستورد لك من أشهر المتاجر العالمية</span>
+          </div>
 
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-b from-[#1b1d24] to-[#111318] p-5 ring-1 ring-white/5 shadow-xl">
-          {/* كتل ضوء ضبابية ليظهر تأثير الزجاج */}
-          <div aria-hidden className="pointer-events-none absolute -top-6 right-10 h-24 w-24 rounded-full bg-orange-500/40 blur-2xl" />
-          <div aria-hidden className="pointer-events-none absolute -bottom-8 left-16 h-24 w-24 rounded-full bg-rose-500/30 blur-2xl" />
-          <div aria-hidden className="pointer-events-none absolute top-2 left-1/2 h-20 w-20 -translate-x-1/2 rounded-full bg-amber-400/25 blur-2xl" />
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-b from-[#0A2540]/90 to-[#061A2F]/90 backdrop-blur-xl p-5 ring-1 ring-sky-400/30 shadow-2xl shadow-sky-950/60">
 
           <div className="relative z-10 grid grid-cols-3 sm:grid-cols-5 gap-3 place-items-center">
             {platforms.map((p, i) => (
@@ -789,16 +796,16 @@ export default function DashboardPage() {
 
       {/* 🌟 7. خطوات الطلب الـ 5 — بطاقات زجاجية متموّجة */}
       <section className="max-w-5xl mx-auto px-4 mb-10">
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-b from-[#1b1d24] to-[#111318] p-5 ring-1 ring-white/5 shadow-xl">
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-b from-[#0A2540]/92 to-[#061A2F]/92 backdrop-blur-xl p-5 ring-1 ring-sky-400/30 shadow-2xl shadow-sky-950/60">
           {/* كتل ضوء ضبابية ليظهر تأثير الزجاج */}
-          <div aria-hidden className="pointer-events-none absolute -top-6 right-10 h-24 w-24 rounded-full bg-sky-500/40 blur-2xl" />
-          <div aria-hidden className="pointer-events-none absolute -bottom-8 left-16 h-24 w-24 rounded-full bg-orange-500/30 blur-2xl" />
-          <div aria-hidden className="pointer-events-none absolute top-1/2 left-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full bg-amber-400/15 blur-2xl" />
+          <div aria-hidden className="pointer-events-none absolute -top-6 right-10 h-24 w-24 rounded-full bg-sky-400/40 blur-2xl" />
+          <div aria-hidden className="pointer-events-none absolute -bottom-8 left-16 h-24 w-24 rounded-full bg-orange-500/40 blur-2xl" />
+          <div aria-hidden className="pointer-events-none absolute top-1/2 left-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full bg-amber-300/15 blur-2xl" />
 
           <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-3.5">
             {steps.map((st, i) => {
               const Icon = st.icon;
-              const cardClass = `group relative overflow-hidden rounded-2xl p-4 border border-white/20 bg-white/10 backdrop-blur-md shadow-lg flex items-center justify-between gap-4 transition hover:bg-white/15 cursor-pointer text-right text-inherit no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#111318] animate-[step-wave_3s_ease-in-out_infinite] will-change-transform ${
+              const cardClass = `group relative overflow-hidden rounded-2xl p-4 border border-white/20 bg-white/10 backdrop-blur-md shadow-lg flex items-center justify-between gap-4 transition hover:bg-white/15 cursor-pointer text-right text-inherit no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A2540] animate-[step-wave_3s_ease-in-out_infinite] will-change-transform ${
                 i === 4 ? 'md:col-span-2 md:w-2/3 md:mx-auto' : ''
               }`;
               const cardStyle = { animationDelay: `${i * 0.25}s` } as React.CSSProperties;
@@ -851,16 +858,16 @@ export default function DashboardPage() {
         <div className="flex flex-wrap items-center justify-center gap-3 mt-6">
           <Link
             to="/new-order"
-            className="inline-flex items-center gap-2 bg-[#0F4C81] hover:bg-[#0A2540] text-white px-6 py-3 rounded-2xl font-black text-xs sm:text-sm shadow-md transition active:scale-95"
+            className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[#FF8A2B] via-[#FF6A00] to-[#D94800] hover:from-[#FF6A00] hover:to-[#A83800] text-white px-6 py-3 font-black text-xs sm:text-sm shadow-lg shadow-orange-600/45 transition hover:-translate-y-0.5 active:scale-95"
           >
             <ShoppingCart className="size-4" />
             <span>اطلب الآن فوراً</span>
           </Link>
           <Link
             to="/track"
-            className="inline-flex items-center gap-2 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 px-6 py-3 rounded-2xl font-black text-xs sm:text-sm shadow-2xs transition active:scale-95"
+            className="inline-flex items-center gap-2 rounded-2xl bg-[#12558F] hover:bg-[#1668AD] border border-sky-400/40 text-white px-6 py-3 font-black text-xs sm:text-sm shadow-lg shadow-sky-950/50 transition hover:-translate-y-0.5 active:scale-95"
           >
-            <Search className="size-4 text-[#EA580C]" />
+            <Search className="size-4 text-[#FF8A2B]" />
             <span>تتبع شحنتك الآن</span>
           </Link>
         </div>
@@ -868,15 +875,17 @@ export default function DashboardPage() {
 
       {/* 🌟 8. قسم آراء وتجارب العملاء */}
       <section className="max-w-5xl mx-auto px-4 mb-14 text-center">
-        <h3 className="text-lg font-black text-[#0A2540] mb-5">آراء وتجارب عملائنا الكرام ⭐⭐⭐⭐⭐</h3>
+        <h3 className="text-lg font-black text-white mb-5">آراء وتجارب عملائنا الكرام ⭐⭐⭐⭐⭐</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {testimonials.map((t, idx) => (
-            <div key={idx} className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-xs space-y-3 text-center">
-              <div className="flex justify-center text-amber-400 text-sm">★★★★★</div>
-              <p className="text-xs text-slate-600 font-bold leading-relaxed">{t.text}</p>
-              <div className="pt-2 border-t border-slate-100">
-                <span className="block text-xs font-black text-[#0A2540]">{t.name}</span>
-                <span className="text-[10px] font-bold text-[#EA580C]">{t.city}</span>
+            <div key={idx} className="relative overflow-hidden bg-gradient-to-b from-[#1572B6]/55 via-[#0F4C81]/60 to-[#0A2540]/80 backdrop-blur-xl rounded-3xl p-5 border border-sky-400/30 shadow-2xl shadow-sky-950/50 space-y-3 text-center">
+              <span aria-hidden className="pointer-events-none absolute -top-8 -right-6 h-20 w-20 rounded-full bg-orange-500/25 blur-2xl" />
+              <span aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/10 to-transparent" />
+              <div className="relative z-10 flex justify-center text-amber-400 text-sm">★★★★★</div>
+              <p className="relative z-10 text-xs text-sky-50/90 font-bold leading-relaxed">{t.text}</p>
+              <div className="relative z-10 pt-2 border-t border-sky-400/25">
+                <span className="block text-xs font-black text-white">{t.name}</span>
+                <span className="text-[10px] font-bold text-[#FFB37A]">{t.city}</span>
               </div>
             </div>
           ))}
@@ -886,24 +895,24 @@ export default function DashboardPage() {
 
       {/* 🌟 القائمة الجانبية المنسدلة (Slide-Over Drawer) */}
       {isSidebarOpen && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-black/50 backdrop-blur-xs animate-in fade-in">
-          <div className="w-80 max-w-[85vw] bg-white h-full shadow-2xl p-6 flex flex-col justify-between overflow-y-auto animate-in slide-in-from-right">
+        <div className="fixed inset-0 z-50 flex justify-end bg-[#040D1A]/70 backdrop-blur-sm animate-in fade-in">
+          <div className="w-80 max-w-[85vw] bg-gradient-to-b from-[#0A2540] to-[#061A2F] h-full shadow-2xl p-6 flex flex-col justify-between overflow-y-auto border-r border-sky-400/25 animate-in slide-in-from-right">
             <div>
-              <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+              <div className="flex items-center justify-between pb-4 border-b border-white/10">
                 <AlShamelLogo size="sm" showText={true} />
                 <button
                   onClick={() => setIsSidebarOpen(false)}
-                  className="size-9 rounded-xl bg-slate-100 grid place-items-center text-slate-600 hover:bg-slate-200"
+                  className="size-9 rounded-xl bg-white/10 grid place-items-center text-sky-200 hover:bg-white/20"
                 >
                   <X className="size-5" />
                 </button>
               </div>
 
               {/* بطاقة العميل المتصل داخل القائمة */}
-              <div className="bg-sky-50 rounded-2xl p-3.5 my-4 border border-sky-100">
-                <span className="text-[11px] font-bold text-slate-400 block">حساب العميل المتصل:</span>
-                <span className="text-sm font-black text-[#0F4C81] block mt-0.5">{userName}</span>
-                {userPhone && <span className="text-xs font-bold text-slate-500 block mt-0.5">{userPhone}</span>}
+              <div className="bg-white/[0.07] backdrop-blur-md rounded-2xl p-3.5 my-4 border border-sky-400/25">
+                <span className="text-[11px] font-bold text-sky-200/70 block">حساب العميل المتصل:</span>
+                <span className="text-sm font-black text-white block mt-0.5">{userName}</span>
+                {userPhone && <span className="text-xs font-bold text-sky-100/75 block mt-0.5">{userPhone}</span>}
               </div>
 
               {/* روابط التنقل السريع */}
@@ -911,63 +920,63 @@ export default function DashboardPage() {
                 <Link
                   to="/dashboard"
                   onClick={() => setIsSidebarOpen(false)}
-                  className="flex items-center gap-3 p-3 rounded-2xl bg-sky-100/60 font-black text-sm text-[#0F4C81]"
+                  className="flex items-center gap-3 p-3 rounded-2xl bg-[#1572B6]/30 border border-sky-400/30 font-black text-sm text-white"
                 >
-                  <ShoppingCart className="size-4 text-[#EA580C]" />
+                  <ShoppingCart className="size-4 text-[#FF8A2B]" />
                   <span>لوحة العمليات الرئيسية</span>
                 </Link>
                 <Link
                   to="/new-order"
                   onClick={() => setIsSidebarOpen(false)}
-                  className="flex items-center gap-3 p-3 rounded-2xl hover:bg-slate-50 font-black text-sm text-slate-700 transition"
+                  className="flex items-center gap-3 p-3 rounded-2xl hover:bg-white/10 font-black text-sm text-sky-100 transition"
                 >
-                  <Hand className="size-4 text-[#0F4C81]" />
+                  <Hand className="size-4 text-sky-300" />
                   <span>طلب شراء جديد</span>
                 </Link>
                 <Link
                   to="/track"
                   onClick={() => setIsSidebarOpen(false)}
-                  className="flex items-center gap-3 p-3 rounded-2xl hover:bg-slate-50 font-black text-sm text-slate-700 transition"
+                  className="flex items-center gap-3 p-3 rounded-2xl hover:bg-white/10 font-black text-sm text-sky-100 transition"
                 >
-                  <Truck className="size-4 text-[#0F4C81]" />
+                  <Truck className="size-4 text-sky-300" />
                   <span>تتبع الشحنات المباشر</span>
                 </Link>
                 <Link
                   to="/my-account"
                   onClick={() => setIsSidebarOpen(false)}
-                  className="flex items-center gap-3 p-3 rounded-2xl hover:bg-slate-50 font-black text-sm text-slate-700 transition"
+                  className="flex items-center gap-3 p-3 rounded-2xl hover:bg-white/10 font-black text-sm text-sky-100 transition"
                 >
-                  <User className="size-4 text-[#0F4C81]" />
+                  <User className="size-4 text-sky-300" />
                   <span>إدارة حسابي والفواتير</span>
                 </Link>
                 <Link
                   to="/prices"
                   onClick={() => setIsSidebarOpen(false)}
-                  className="flex items-center gap-3 p-3 rounded-2xl hover:bg-slate-50 font-black text-sm text-slate-700 transition"
+                  className="flex items-center gap-3 p-3 rounded-2xl hover:bg-white/10 font-black text-sm text-sky-100 transition"
                 >
-                  <CircleDollarSign className="size-4 text-[#0F4C81]" />
+                  <CircleDollarSign className="size-4 text-sky-300" />
                   <span>دليل الأسعار والعمولات</span>
                 </Link>
                 <a
                   href="https://wa.me/967770000000"
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center gap-3 p-3 rounded-2xl hover:bg-emerald-50 text-emerald-700 font-black text-sm transition"
+                  className="flex items-center gap-3 p-3 rounded-2xl hover:bg-emerald-500/15 text-emerald-300 font-black text-sm transition"
                 >
-                  <PhoneCall className="size-4 text-emerald-600" />
+                  <PhoneCall className="size-4 text-emerald-400" />
                   <span>الدعم الفني عبر الواتساب</span>
                 </a>
               </nav>
             </div>
 
             {/* زر تسجيل الخروج */}
-            <div className="pt-4 border-t border-slate-100">
+            <div className="pt-4 border-t border-white/10">
               <button
                 type="button"
                 onClick={handleSignOut}
                 disabled={logoutLoading}
                 aria-busy={logoutLoading}
-                className="w-full flex items-center justify-center gap-2 bg-rose-50 hover:bg-rose-100 text-rose-600 font-black text-sm py-3 rounded-2xl transition disabled:opacity-60 disabled:cursor-wait"
+                className="w-full flex items-center justify-center gap-2 bg-rose-500/15 hover:bg-rose-500/25 border border-rose-400/30 text-rose-200 font-black text-sm py-3 rounded-2xl transition disabled:opacity-60 disabled:cursor-wait"
               >
                 <LogOut className="size-4" />
                 <span>{logoutLoading ? 'جارٍ تسجيل الخروج…' : 'تسجيل الخروج'}</span>
@@ -979,31 +988,31 @@ export default function DashboardPage() {
 
       {/* 🌟 نافذة الفيديو التوضيحي المنبثقة */}
       {isVideoModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl relative text-right">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#040D1A]/75 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="bg-gradient-to-b from-[#0F4C81]/70 via-[#0A2540]/85 to-[#061A2F]/90 backdrop-blur-xl border border-sky-400/30 rounded-3xl max-w-lg w-full p-6 shadow-2xl shadow-sky-950/60 relative text-right">
             <button
               onClick={() => setIsVideoModalOpen(false)}
-              className="absolute top-4 left-4 size-9 rounded-full bg-slate-100 grid place-items-center text-slate-600 hover:bg-slate-200"
+              className="absolute top-4 left-4 size-9 rounded-full bg-white/10 grid place-items-center text-sky-200 hover:bg-white/20"
             >
               <X className="size-5" />
             </button>
 
-            <div className="flex items-center gap-2 mb-4 text-[#0F4C81]">
-              <Play className="size-5 text-[#EA580C] fill-[#EA580C]" />
+            <div className="flex items-center gap-2 mb-4 text-white">
+              <Play className="size-5 text-[#FF8A2B] fill-[#FF8A2B]" />
               <h3 className="font-black text-lg">شرح طريقة الطلب والاستيراد</h3>
             </div>
 
-            <div className="space-y-3 text-sm text-slate-600 font-bold leading-relaxed">
-              <div className="p-3 rounded-2xl bg-sky-50 border border-sky-100">
-                <span className="font-black text-[#0F4C81] block mb-1">1. انسخ الرابط:</span>
+            <div className="space-y-3 text-sm text-sky-100/85 font-bold leading-relaxed">
+              <div className="p-3 rounded-2xl bg-sky-400/10 border border-sky-400/25">
+                <span className="font-black text-sky-200 block mb-1">1. انسخ الرابط:</span>
                 تصفح متجرك المفضل (شي إن، أمازون، تيمو) وانسخ رابط أي منتج يعجبك.
               </div>
-              <div className="p-3 rounded-2xl bg-orange-50 border border-orange-100">
-                <span className="font-black text-[#EA580C] block mb-1">2. أرسل الطلب:</span>
+              <div className="p-3 rounded-2xl bg-[#FF6A00]/12 border border-[#FF8A2B]/30">
+                <span className="font-black text-[#FFB37A] block mb-1">2. أرسل الطلب:</span>
                 اضغط على «اطلب الآن» والصق الرابط، وسيقوم النظام فوراً بحساب التكلفة.
               </div>
-              <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-100">
-                <span className="font-black text-emerald-700 block mb-1">3. الاستلام عند باب بيتك:</span>
+              <div className="p-3 rounded-2xl bg-emerald-500/12 border border-emerald-400/30">
+                <span className="font-black text-emerald-300 block mb-1">3. الاستلام عند باب بيتك:</span>
                 نتولى الشراء والفحص والشحن ونوصلها لك في أي محافظة يمنية.
               </div>
             </div>
@@ -1012,7 +1021,7 @@ export default function DashboardPage() {
               <Link
                 to="/new-order"
                 onClick={() => setIsVideoModalOpen(false)}
-                className="bg-[#EA580C] text-white px-5 py-2.5 rounded-2xl font-black text-xs hover:bg-[#C2410C] transition"
+                className="bg-gradient-to-r from-[#FF8A2B] via-[#FF6A00] to-[#D94800] text-white px-5 py-2.5 rounded-2xl font-black text-xs hover:from-[#FF6A00] hover:to-[#A83800] transition shadow-lg shadow-orange-600/40"
               >
                 ابدأ الطلب الآن ⚡
               </Link>
