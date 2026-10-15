@@ -456,7 +456,7 @@ export function AdminSidebar({
               </button>
               {isUsersOpen && (
                 <div className="pr-7 pl-2 py-1 space-y-1 text-[11px] font-semibold text-slate-300">
-                  <div onClick={() => handleLinkClick("/admin-clients")} className="px-2.5 py-1 rounded-lg hover:bg-[#0B1E36] hover:text-white transition cursor-pointer">
+                  <div onClick={() => handleLinkClick("/customers")} className="px-2.5 py-1 rounded-lg hover:bg-[#0B1E36] hover:text-white transition cursor-pointer">
                     • إدارة بيانات العملاء
                   </div>
                   <div onClick={() => handleLinkClick("/customers")} className="px-2.5 py-1 rounded-lg hover:bg-[#0B1E36] hover:text-white transition cursor-pointer">
