@@ -383,11 +383,21 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="relative min-h-screen bg-[#040D1A] text-slate-100 font-sans pb-24 overflow-hidden" dir="rtl">
-      {/* 🌟 خلفية الشاشة الكاملة: تدرّج شعاعي كحلي (نفس الصورة) */}
-      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(120%_80%_at_50%_18%,#1E4272_0%,#12305A_35%,#0A1E3C_65%,#040D1A_100%)]" />
-      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 opacity-70" style={{ backgroundImage: 'radial-gradient(45% 35% at 50% 20%, rgba(56,189,248,.20), transparent 70%), radial-gradient(40% 30% at 15% 85%, rgba(249,115,22,.16), transparent 70%)' }} />
-      
+    <div className="relative min-h-screen bg-[#071C36] text-slate-100 font-sans pb-24 overflow-x-hidden" dir="rtl">
+      {/* 🌟 خلفية الشاشة الكاملة: تدرّج شعاعي أزرق ملكي (نفس الصورة) */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 z-0"
+        style={{ background: 'radial-gradient(115% 78% at 50% 16%, #2E6FB0 0%, #1D5490 22%, #143F70 45%, #0D2C52 68%, #071C36 100%)' }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 z-0"
+        style={{ backgroundImage: 'radial-gradient(50% 38% at 50% 18%, rgba(96,180,255,.22), transparent 72%), radial-gradient(42% 32% at 12% 88%, rgba(255,120,40,.14), transparent 72%)' }}
+      />
+
+      {/* كل محتوى الصفحة فوق الخلفية */}
+      <div className="relative z-10">
       {/* 🌟 1. شريط الإشعارات العلوي المتحرك */}
       <div className="relative bg-gradient-to-r from-[#071B34] via-[#0F4C81] to-[#071B34] text-white text-xs py-2 px-4 border-b border-sky-400/25">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-2">
@@ -445,7 +455,7 @@ export default function DashboardPage() {
           {/* حالة الاتصال معروضة حسب جلسة Supabase الفعلية */}
           <Link
             to="/my-account"
-            className={`flex items-center gap-2 bg-white/[0.08] backdrop-blur-md rounded-full px-3.5 py-1.5 text-xs font-black transition group border ${connectionState ? "border-emerald-400/50 hover:border-emerald-400" : "border-white/20 hover:border-white/40"}`}
+            className={`flex items-center gap-2 bg-white/[0.09] rounded-full px-3.5 py-1.5 text-xs font-black transition group border ${connectionState ? "border-emerald-400/50 hover:border-emerald-400" : "border-white/20 hover:border-white/40"}`}
             title="عرض ملفي الشخصي"
           >
             <span className="relative flex size-2.5 shrink-0">
@@ -462,7 +472,7 @@ export default function DashboardPage() {
           {/* 🌟 زر إدارة حسابي المطلوب بشكل واضح ومباشر */}
           <Link
             to="/my-account"
-            className="hidden sm:inline-flex items-center gap-1.5 bg-white/[0.08] backdrop-blur-md border border-sky-400/30 hover:bg-white/15 text-white text-xs font-bold px-3.5 py-2 rounded-full shadow-xs transition active:scale-95"
+            className="hidden sm:inline-flex items-center gap-1.5 bg-white/[0.09] border border-sky-400/40 hover:bg-white/[0.16] text-white text-xs font-bold px-3.5 py-2 rounded-full shadow-xs transition active:scale-95"
             title="الانتقال إلى إعدادات الحساب والعناوين"
           >
             <User className="size-3.5 text-[#FF6A00]" />
@@ -475,7 +485,7 @@ export default function DashboardPage() {
             onClick={handleSignOut}
             disabled={logoutLoading}
             aria-busy={logoutLoading}
-            className="grid size-11 place-items-center rounded-2xl bg-white/[0.08] backdrop-blur-md text-rose-300 hover:text-white hover:bg-rose-600/90 ring-1 ring-rose-400/40 shadow-xs transition active:scale-95 cursor-pointer group disabled:opacity-60 disabled:cursor-wait"
+            className="grid size-11 place-items-center rounded-2xl bg-white/[0.09] text-rose-300 hover:text-white hover:bg-rose-600/90 ring-1 ring-rose-400/40 shadow-xs transition active:scale-95 cursor-pointer group disabled:opacity-60 disabled:cursor-wait"
             title={logoutLoading ? 'جارٍ تسجيل الخروج' : 'تسجيل الخروج'}
           >
             <LogOut className="size-5 transition-transform group-hover:-translate-x-0.5" />
@@ -485,7 +495,7 @@ export default function DashboardPage() {
           <div className="relative">
             <button
               onClick={() => setIsNotifOpen(!isNotifOpen)}
-              className="relative grid size-11 place-items-center rounded-2xl bg-white/[0.08] backdrop-blur-md text-sky-300 ring-1 ring-sky-400/40 shadow-xs hover:bg-white/15 transition active:scale-95 cursor-pointer"
+              className="relative grid size-11 place-items-center rounded-2xl bg-white/[0.09] text-sky-300 ring-1 ring-sky-400/40 shadow-xs hover:bg-white/15 transition active:scale-95 cursor-pointer"
               title="مراجعة الإشعارات"
             >
               <Bell className="size-5" />
@@ -572,10 +582,14 @@ export default function DashboardPage() {
           {/* زر اطلب الآن البرتقالي */}
           <Link
             to="/new-order"
-            className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[#FF8A2B] via-[#FF6A00] to-[#D94800] hover:from-[#FF6A00] hover:to-[#A83800] px-4 sm:px-5 py-2.5 font-black text-xs sm:text-sm text-white shadow-lg shadow-orange-600/40 transition-all hover:-translate-y-0.5 active:scale-95"
+            className="relative overflow-hidden group inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[#FF8A2B] via-[#FF6A00] to-[#D94800] hover:from-[#FF6A00] hover:to-[#A83800] px-4 sm:px-5 py-2.5 font-black text-xs sm:text-sm text-white shadow-[0_0_22px_-2px_rgba(255,106,0,.85)] ring-1 ring-[#FFA94D]/50 hover:shadow-[0_0_32px_0_rgba(255,106,0,.95)] transition-all hover:-translate-y-0.5 active:scale-95"
           >
-            <ShoppingCart className="size-4 text-white" />
-            <span>اطلب الآن</span>
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-white/70 to-transparent -skew-x-12 animate-[btn-shine_2.8s_ease-in-out_infinite]"
+            />
+            <ShoppingCart className="relative z-10 size-4 text-white" />
+            <span className="relative z-10">اطلب الآن</span>
           </Link>
         </div>
       </header>
@@ -583,7 +597,7 @@ export default function DashboardPage() {
 
       {/* 🌟 3. بطاقة الهيرو الكحلية الملكية */}
       <section className="px-4 pt-3 pb-6">
-        <div className="relative mx-auto max-w-5xl overflow-hidden rounded-[32px] bg-gradient-to-br from-[#0F4C81]/85 via-[#12467C]/75 to-[#0A2540]/85 backdrop-blur-xl p-6 text-white shadow-2xl shadow-sky-950/60 sm:p-9 border border-sky-400/30">
+        <div className="relative mx-auto max-w-5xl overflow-hidden rounded-[32px] bg-white/[0.07] p-6 text-white shadow-2xl shadow-[#04122A]/70 sm:p-9 border border-sky-300/40" style={{ backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)' } as React.CSSProperties}>
           {/* كتل ضوء ضبابية لإبراز الطابع الزجاجي الملكي */}
           <div aria-hidden className="pointer-events-none absolute -top-10 -right-8 h-40 w-40 rounded-full bg-sky-400/35 blur-3xl" />
           <div aria-hidden className="pointer-events-none absolute -bottom-12 -left-6 h-44 w-44 rounded-full bg-orange-500/30 blur-3xl" />
@@ -658,10 +672,14 @@ export default function DashboardPage() {
             <div className="flex flex-wrap items-center gap-3">
               <Link
                 to="/new-order"
-                className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[#FF8A2B] via-[#FF6A00] to-[#D94800] hover:from-[#FF6A00] hover:to-[#A83800] px-6 py-3 font-black text-sm text-white shadow-lg shadow-orange-600/45 transition hover:scale-105 active:scale-95"
+                className="relative overflow-hidden group inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[#FF8A2B] via-[#FF6A00] to-[#D94800] hover:from-[#FF6A00] hover:to-[#A83800] px-6 py-3 font-black text-sm text-white shadow-[0_0_24px_-2px_rgba(255,106,0,.85)] ring-1 ring-[#FFA94D]/50 hover:shadow-[0_0_34px_0_rgba(255,106,0,.95)] transition hover:scale-105 active:scale-95"
               >
-                <Hand className="size-4" />
-                <span>اضغط هنا لطلب منتج</span>
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-white/70 to-transparent -skew-x-12 animate-[btn-shine_2.8s_ease-in-out_infinite]"
+                />
+                <Hand className="relative z-10 size-4" />
+                <span className="relative z-10">اضغط هنا لطلب منتج</span>
               </Link>
               <Link
                 to="/track"
@@ -694,33 +712,33 @@ export default function DashboardPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Link
             to="/my-account"
-            className="bg-gradient-to-b from-[#0F4C81] to-[#0A2540] rounded-2xl p-4 border border-sky-400/20 shadow-lg text-right hover:shadow-xl transition hover:-translate-y-0.5 block"
+            className="bg-white/[0.08] rounded-2xl p-4 border border-sky-300/35 shadow-2xl shadow-[#04122A]/60 text-right hover:shadow-[0_0_24px_-4px_rgba(96,180,255,.55)] transition hover:-translate-y-0.5 block"
           >
-            <span className="text-xs font-bold text-sky-200/70">إجمالي طلباتي</span>
+            <span className="text-xs font-bold text-sky-100/70">إجمالي طلباتي</span>
             <div className="text-2xl font-black text-white mt-1">{orderStats.total}</div>
           </Link>
 
           <Link
             to="/track"
-            className="bg-gradient-to-b from-[#0F4C81] to-[#0A2540] rounded-2xl p-4 border border-orange-400/25 shadow-lg text-right hover:shadow-xl transition hover:-translate-y-0.5 block"
+            className="bg-white/[0.08] rounded-2xl p-4 border border-[#FF8A2B]/40 shadow-2xl shadow-[#04122A]/60 text-right hover:shadow-[0_0_24px_-4px_rgba(255,138,43,.65)] transition hover:-translate-y-0.5 block"
           >
-            <span className="text-xs font-bold text-sky-200/70">قيد الشراء والتجهيز</span>
-            <div className="text-2xl font-black text-[#FB923C] mt-1">{orderStats.inProgress}</div>
+            <span className="text-xs font-bold text-sky-100/70">قيد الشراء والتجهيز</span>
+            <div className="text-2xl font-black text-[#FFB37A] mt-1">{orderStats.inProgress}</div>
           </Link>
 
           <Link
             to="/track"
-            className="bg-gradient-to-b from-[#0F4C81] to-[#0A2540] rounded-2xl p-4 border border-sky-400/25 shadow-lg text-right hover:shadow-xl transition hover:-translate-y-0.5 block"
+            className="bg-white/[0.08] rounded-2xl p-4 border border-sky-300/40 shadow-2xl shadow-[#04122A]/60 text-right hover:shadow-[0_0_24px_-4px_rgba(96,180,255,.6)] transition hover:-translate-y-0.5 block"
           >
-            <span className="text-xs font-bold text-sky-200/70">شحنات في الطريق</span>
+            <span className="text-xs font-bold text-sky-100/70">شحنات في الطريق</span>
             <div className="text-2xl font-black text-[#38BDF8] mt-1">{orderStats.shipping}</div>
           </Link>
 
           <Link
             to="/my-account"
-            className="bg-gradient-to-b from-[#0F4C81] to-[#0A2540] rounded-2xl p-4 border border-emerald-400/25 shadow-lg text-right hover:shadow-xl transition hover:-translate-y-0.5 block"
+            className="bg-white/[0.08] rounded-2xl p-4 border border-emerald-400/35 shadow-2xl shadow-[#04122A]/60 text-right hover:shadow-[0_0_24px_-4px_rgba(16,185,129,.6)] transition hover:-translate-y-0.5 block"
           >
-            <span className="text-xs font-bold text-sky-200/70">تم الاستلام</span>
+            <span className="text-xs font-bold text-sky-100/70">تم الاستلام</span>
             <div className="text-2xl font-black text-emerald-300 mt-1">{orderStats.delivered}</div>
           </Link>
         </div>
@@ -728,8 +746,8 @@ export default function DashboardPage() {
 
       {/* 🌟 5. تسوق عالمياً واستلم محلياً */}
       <section className="max-w-5xl mx-auto px-4 mb-4 text-center">
-        <div className="p-2.5 sm:p-3 rounded-[28px] bg-gradient-to-br from-[#0F4C81]/60 via-[#123F66]/50 to-[#0A2540]/60 backdrop-blur-xl border border-sky-400/30 shadow-2xl shadow-sky-950/50">
-          <div className="relative rounded-[24px] bg-gradient-to-br from-[#12558F]/70 to-[#0A2540]/70 px-4 py-5 text-center">
+        <div className="p-2.5 sm:p-3 rounded-[28px] bg-white/[0.06] border border-sky-300/40 shadow-2xl shadow-[#04122A]/70" style={{ backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)' } as React.CSSProperties}>
+          <div className="relative rounded-[24px] bg-[#0F4C81]/25 px-4 py-5 text-center">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-[#FF6A00]/15 text-[#FFB37A] border border-[#FF8A2B]/40 mb-2">
               <Sparkles className="size-3.5 text-[#FF8A2B]" /> خدمة الشراء والوساطة الأولى في اليمن
             </span>
@@ -748,7 +766,7 @@ export default function DashboardPage() {
             <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-[#FF6A00]/10 border border-[#FF8A2B]/35 backdrop-blur-md">🎗️ نستورد لك من أشهر المتاجر العالمية</span>
           </div>
 
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-b from-[#0A2540]/90 to-[#061A2F]/90 backdrop-blur-xl p-5 ring-1 ring-sky-400/30 shadow-2xl shadow-sky-950/60">
+        <div className="relative overflow-hidden rounded-3xl bg-white/[0.06] p-5 ring-1 ring-sky-300/40 shadow-2xl shadow-[#04122A]/70 animate-[glass-glow_5s_ease-in-out_infinite]" style={{ backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)' } as React.CSSProperties}>
 
           <div className="relative z-10 grid grid-cols-3 sm:grid-cols-5 gap-3 place-items-center">
             {platforms.map((p, i) => (
@@ -757,7 +775,7 @@ export default function DashboardPage() {
                 to="/new-order"
                 search={{ store: p.key }}
                 title={p.name}
-                className="group relative h-16 w-full max-w-[112px] overflow-hidden rounded-2xl border border-white/20 bg-white/10 backdrop-blur-md animate-[store-pulse_2s_ease-in-out_infinite] will-change-transform"
+                className="group relative h-16 w-full max-w-[112px] overflow-hidden rounded-2xl border border-white/25 bg-white/[0.12] animate-[store-pulse_2s_ease-in-out_infinite] will-change-transform"
                 style={{ animationDelay: `${i * 0.3}s`, '--glow': p.glow } as React.CSSProperties}
               >
                 {/* حافة الزجاج العلوية */}
@@ -796,7 +814,7 @@ export default function DashboardPage() {
 
       {/* 🌟 7. خطوات الطلب الـ 5 — بطاقات زجاجية متموّجة */}
       <section className="max-w-5xl mx-auto px-4 mb-10">
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-b from-[#0A2540]/92 to-[#061A2F]/92 backdrop-blur-xl p-5 ring-1 ring-sky-400/30 shadow-2xl shadow-sky-950/60">
+        <div className="relative overflow-hidden rounded-3xl bg-white/[0.06] p-5 ring-1 ring-sky-300/40 shadow-2xl shadow-[#04122A]/70 animate-[glass-glow_5s_ease-in-out_infinite]" style={{ backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)' } as React.CSSProperties}>
           {/* كتل ضوء ضبابية ليظهر تأثير الزجاج */}
           <div aria-hidden className="pointer-events-none absolute -top-6 right-10 h-24 w-24 rounded-full bg-sky-400/40 blur-2xl" />
           <div aria-hidden className="pointer-events-none absolute -bottom-8 left-16 h-24 w-24 rounded-full bg-orange-500/40 blur-2xl" />
@@ -805,7 +823,7 @@ export default function DashboardPage() {
           <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-3.5">
             {steps.map((st, i) => {
               const Icon = st.icon;
-              const cardClass = `group relative overflow-hidden rounded-2xl p-4 border border-white/20 bg-white/10 backdrop-blur-md shadow-lg flex items-center justify-between gap-4 transition hover:bg-white/15 cursor-pointer text-right text-inherit no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A2540] animate-[step-wave_3s_ease-in-out_infinite] will-change-transform ${
+              const cardClass = `group relative overflow-hidden rounded-2xl p-4 border border-white/25 bg-white/[0.12] shadow-lg flex items-center justify-between gap-4 transition hover:bg-white/[0.18] cursor-pointer text-right text-inherit no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A2540] animate-[step-wave_3s_ease-in-out_infinite] will-change-transform ${
                 i === 4 ? 'md:col-span-2 md:w-2/3 md:mx-auto' : ''
               }`;
               const cardStyle = { animationDelay: `${i * 0.25}s` } as React.CSSProperties;
@@ -858,10 +876,14 @@ export default function DashboardPage() {
         <div className="flex flex-wrap items-center justify-center gap-3 mt-6">
           <Link
             to="/new-order"
-            className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[#FF8A2B] via-[#FF6A00] to-[#D94800] hover:from-[#FF6A00] hover:to-[#A83800] text-white px-6 py-3 font-black text-xs sm:text-sm shadow-lg shadow-orange-600/45 transition hover:-translate-y-0.5 active:scale-95"
+            className="relative overflow-hidden group inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[#FF8A2B] via-[#FF6A00] to-[#D94800] hover:from-[#FF6A00] hover:to-[#A83800] text-white px-6 py-3 font-black text-xs sm:text-sm shadow-[0_0_24px_-2px_rgba(255,106,0,.85)] ring-1 ring-[#FFA94D]/50 hover:shadow-[0_0_34px_0_rgba(255,106,0,.95)] transition hover:-translate-y-0.5 active:scale-95"
           >
-            <ShoppingCart className="size-4" />
-            <span>اطلب الآن فوراً</span>
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-white/70 to-transparent -skew-x-12 animate-[btn-shine_2.8s_ease-in-out_infinite]"
+            />
+            <ShoppingCart className="relative z-10 size-4" />
+            <span className="relative z-10">اطلب الآن فوراً</span>
           </Link>
           <Link
             to="/track"
@@ -878,7 +900,7 @@ export default function DashboardPage() {
         <h3 className="text-lg font-black text-white mb-5">آراء وتجارب عملائنا الكرام ⭐⭐⭐⭐⭐</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {testimonials.map((t, idx) => (
-            <div key={idx} className="relative overflow-hidden bg-gradient-to-b from-[#1572B6]/55 via-[#0F4C81]/60 to-[#0A2540]/80 backdrop-blur-xl rounded-3xl p-5 border border-sky-400/30 shadow-2xl shadow-sky-950/50 space-y-3 text-center">
+            <div key={idx} className="relative overflow-hidden bg-white/[0.07] rounded-3xl p-5 border border-sky-300/35 shadow-2xl shadow-[#04122A]/70 space-y-3 text-center" style={{ backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)' } as React.CSSProperties}>
               <span aria-hidden className="pointer-events-none absolute -top-8 -right-6 h-20 w-20 rounded-full bg-orange-500/25 blur-2xl" />
               <span aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/10 to-transparent" />
               <div className="relative z-10 flex justify-center text-amber-400 text-sm">★★★★★</div>
@@ -895,8 +917,8 @@ export default function DashboardPage() {
 
       {/* 🌟 القائمة الجانبية المنسدلة (Slide-Over Drawer) */}
       {isSidebarOpen && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-[#040D1A]/70 backdrop-blur-sm animate-in fade-in">
-          <div className="w-80 max-w-[85vw] bg-gradient-to-b from-[#0A2540] to-[#061A2F] h-full shadow-2xl p-6 flex flex-col justify-between overflow-y-auto border-r border-sky-400/25 animate-in slide-in-from-right">
+        <div className="fixed inset-0 z-50 flex justify-end bg-[#071C36]/70 backdrop-blur-sm animate-in fade-in">
+          <div className="w-80 max-w-[85vw] bg-[#0A2540]/85 h-full backdrop-blur-xl shadow-2xl p-6 flex flex-col justify-between overflow-y-auto border-r border-sky-400/25 animate-in slide-in-from-right">
             <div>
               <div className="flex items-center justify-between pb-4 border-b border-white/10">
                 <AlShamelLogo size="sm" showText={true} />
@@ -988,8 +1010,8 @@ export default function DashboardPage() {
 
       {/* 🌟 نافذة الفيديو التوضيحي المنبثقة */}
       {isVideoModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#040D1A]/75 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="bg-gradient-to-b from-[#0F4C81]/70 via-[#0A2540]/85 to-[#061A2F]/90 backdrop-blur-xl border border-sky-400/30 rounded-3xl max-w-lg w-full p-6 shadow-2xl shadow-sky-950/60 relative text-right">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#071C36]/75 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="bg-[#0F4C81]/35 border border-sky-300/40 rounded-3xl max-w-lg w-full p-6 shadow-2xl shadow-[#04122A]/70 relative text-right" style={{ backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)' } as React.CSSProperties}>
             <button
               onClick={() => setIsVideoModalOpen(false)}
               className="absolute top-4 left-4 size-9 rounded-full bg-white/10 grid place-items-center text-sky-200 hover:bg-white/20"
@@ -1021,14 +1043,32 @@ export default function DashboardPage() {
               <Link
                 to="/new-order"
                 onClick={() => setIsVideoModalOpen(false)}
-                className="bg-gradient-to-r from-[#FF8A2B] via-[#FF6A00] to-[#D94800] text-white px-5 py-2.5 rounded-2xl font-black text-xs hover:from-[#FF6A00] hover:to-[#A83800] transition shadow-lg shadow-orange-600/40"
+                className="relative overflow-hidden group bg-gradient-to-r from-[#FF8A2B] via-[#FF6A00] to-[#D94800] text-white px-5 py-2.5 rounded-2xl font-black text-xs hover:from-[#FF6A00] hover:to-[#A83800] transition shadow-[0_0_22px_-2px_rgba(255,106,0,.85)] ring-1 ring-[#FFA94D]/50"
               >
-                ابدأ الطلب الآن ⚡
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-white/70 to-transparent -skew-x-12 animate-[btn-shine_2.8s_ease-in-out_infinite]"
+                />
+                <span className="relative z-10">ابدأ الطلب الآن ⚡</span>
               </Link>
             </div>
           </div>
         </div>
       )}
+      </div>
+
+      {/* 🌟 keyframes: لمعان الأزرار البرتقالية + نبضة الخلفية الزجاجية */}
+      <style>{`
+        @keyframes btn-shine {
+          0%        { transform: translateX(-160%) skewX(-20deg); opacity: 0; }
+          12%       { opacity: .95; }
+          55%, 100% { transform: translateX(320%) skewX(-20deg); opacity: 0; }
+        }
+        @keyframes glass-glow {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(96,180,255,.12), 0 10px 30px -12px rgba(0,0,0,.55); }
+          50%      { box-shadow: 0 0 26px 3px rgba(96,180,255,.28), 0 14px 34px -12px rgba(0,0,0,.60); }
+        }
+      `}</style>
 
     </div>
   );
