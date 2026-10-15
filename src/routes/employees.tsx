@@ -30,6 +30,42 @@ interface EmployeeItem {
   createdAt: string | null;
 }
 
+interface EmployeeRpcRow {
+  user_id: string;
+  full_name: string | null;
+  phone: string | null;
+  role: StaffRole;
+  created_at: string | null;
+}
+
+// The current generated Supabase types do not yet declare the two admin RPCs.
+// Keep this narrow adapter until types.ts is regenerated after deploying the SQL.
+async function callEmployeeRpc(
+  name: string,
+  args?: Record<string, unknown>,
+): Promise<{ data: unknown; error: { message: string } | null }> {
+  const rpc = supabase.rpc as unknown as (
+    functionName: string,
+    parameters?: Record<string, unknown>,
+  ) => Promise<{ data: unknown; error: { message: string } | null }>;
+  return rpc(name, args);
+}
+
+async function getFunctionErrorMessage(error: unknown): Promise<string> {
+  if (error && typeof error === "object" && "context" in error) {
+    const context = (error as { context?: unknown }).context;
+    if (context instanceof Response) {
+      try {
+        const body = await context.clone().json();
+        if (typeof body?.error === "string") return body.error;
+      } catch {
+        // Use the SDK message when the response body is not JSON.
+      }
+    }
+  }
+  return error instanceof Error ? error.message : "تعذر حذف الحساب. تحقق من إعداد Edge Function.";
+}
+
 const ROLE_INFO: Record<StaffRole, { title: string; color: string; bg: string; border: string }> = {
   admin: {
     title: "مشرف عام",
@@ -95,44 +131,20 @@ function EmployeesPage() {
           throw new Error("هذا الحساب لا يملك صلاحية المشرف لعرض قائمة الموظفين.");
         }
 
-        // user_roles هو المصدر الموثوق لتحديد الموظفين، وليس بيانات المتصفح المحلية.
-        const { data: roleRows, error: rolesError } = await supabase
-          .from("user_roles")
-          .select("user_id, role");
-        if (rolesError) throw rolesError;
-
-        const rolesByUser = new Map<string, StaffRole>();
-        for (const row of roleRows ?? []) {
-          if (row.role === "admin") {
-            rolesByUser.set(row.user_id, "admin");
-          } else if (row.role === "staff" && !rolesByUser.has(row.user_id)) {
-            rolesByUser.set(row.user_id, "staff");
-          }
-        }
-
-        const userIds = [...rolesByUser.keys()];
-        if (userIds.length === 0) {
-          if (active) setEmployees([]);
-          return;
-        }
-
-        const { data: profiles, error: profilesError } = await supabase
-          .from("profiles")
-          .select("id, full_name, phone, created_at")
-          .in("id", userIds);
-        if (profilesError) throw profilesError;
-
-        const profilesById = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
-        const result: EmployeeItem[] = userIds.map((id) => {
-          const profile = profilesById.get(id);
-          return {
-            id,
-            name: profile?.full_name?.trim() || "موظف بدون اسم",
-            phone: profile?.phone ?? null,
-            role: rolesByUser.get(id) ?? "staff",
-            createdAt: profile?.created_at ?? null,
-          };
-        });
+        // لا نستعلم مباشرة من user_roles/profiles: سياسات RLS الحالية تسمح للمستخدم
+        // بقراءة صفه فقط. RPC SECURITY DEFINER تعرض القائمة للمدير بعد التحقق منه.
+        const { data, error } = await callEmployeeRpc("admin_list_employees");
+        if (error) throw new Error(error.message);
+        const rows = Array.isArray(data) ? (data as EmployeeRpcRow[]) : [];
+        const result: EmployeeItem[] = rows
+          .filter((row) => row && typeof row.user_id === "string" && (row.role === "admin" || row.role === "staff"))
+          .map((row) => ({
+            id: row.user_id,
+            name: row.full_name?.trim() || "موظف بدون اسم",
+            phone: row.phone ?? null,
+            role: row.role,
+            createdAt: row.created_at ?? null,
+          }));
 
         result.sort((a, b) => {
           if (a.role !== b.role) return a.role === "admin" ? -1 : 1;
@@ -187,13 +199,13 @@ function EmployeesPage() {
     setActionError(null);
     setActionMessage(null);
     try {
-      const { error } = await supabase.rpc("admin_update_employee", {
+      const { error } = await callEmployeeRpc("admin_update_employee", {
         _target_user_id: editing.id,
         _full_name: fullName,
         _phone: phone || null,
         _role: editRole,
       });
-      if (error) throw error;
+      if (error) throw new Error(error.message);
       setEditing(null);
       setActionMessage("تم حفظ بيانات الموظف ودوره.");
       setReloadKey((key) => key + 1);
@@ -223,7 +235,7 @@ function EmployeesPage() {
       setReloadKey((key) => key + 1);
     } catch (error) {
       console.error("تعذر حذف حساب الموظف:", error);
-      setActionError(error instanceof Error ? error.message : "تعذر حذف الحساب. تحقق من إعداد Edge Function.");
+      setActionError(await getFunctionErrorMessage(error));
     } finally {
       setBusyId(null);
     }
@@ -365,10 +377,11 @@ function EmployeesPage() {
               <p className="font-black">تعذر تحميل الموظفين</p>
               <p className="mt-1">{loadError}</p>
               <p className="mt-2 text-xs">
-                تأكد أن هذا الحساب مشرف، وأن سياسات RLS تسمح للمشرف بقراءة جدولي
-                <code dir="ltr" className="mx-1 rounded bg-red-100 px-1">user_roles</code>
+                تأكد من تثبيت RPC باسم
+                <code dir="ltr" className="mx-1 rounded bg-red-100 px-1">admin_list_employees</code>
                 و
-                <code dir="ltr" className="mx-1 rounded bg-red-100 px-1">profiles</code>.
+                <code dir="ltr" className="mx-1 rounded bg-red-100 px-1">admin_update_employee</code>
+                في قاعدة Supabase الصحيحة، وأن الحساب يحمل دور admin.
               </p>
             </div>
           </div>
@@ -462,7 +475,7 @@ function EmployeesPage() {
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-2">
                           <button type="button" onClick={() => beginEdit(employee)} disabled={busyId === employee.id} className="inline-flex items-center gap-1 rounded-lg bg-sky-50 px-2.5 py-2 font-bold text-sky-800 hover:bg-sky-100 disabled:opacity-50" aria-label={`تعديل ${employee.name}`}><Pencil className="size-3.5" /><span>تعديل</span></button>
-                          <button type="button" onClick={() => void deleteEmployee(employee)} disabled={busyId === employee.id} className="inline-flex items-center gap-1 rounded-lg bg-red-50 px-2.5 py-2 font-bold text-red-700 hover:bg-red-100 disabled:opacity-50" aria-label={`حذف ${employee.name}`}><Trash2 className="size-3.5" /><span>{busyId === employee.id ? "جارٍ…" : "حذف نهائي"}</span></button>
+                          <button type="button" onClick={() => void deleteEmployee(employee)} disabled={busyId === employee.id || employee.role === "admin"} title={employee.role === "admin" ? "غيّر دور المدير إلى موظف أولاً قبل الحذف" : undefined} className="inline-flex items-center gap-1 rounded-lg bg-red-50 px-2.5 py-2 font-bold text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50" aria-label={employee.role === "admin" ? `يجب خفض دور ${employee.name} قبل الحذف` : `حذف ${employee.name}`}><Trash2 className="size-3.5" /><span>{busyId === employee.id ? "جارٍ…" : employee.role === "admin" ? "اخفض الدور أولاً" : "حذف نهائي"}</span></button>
                         </div>
                       </td>
                     </tr>
