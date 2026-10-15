@@ -1,7 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
+  AlertCircle,
   ArrowDownUp,
+  RefreshCw,
   ArrowLeft,
   Banknote,
   Coins,
@@ -13,6 +15,8 @@ import {
   Wallet,
   X,
 } from "lucide-react";
+import { AdminRouteGuard } from "@/components/admin/AdminRouteGuard";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/accounts")({
   head: () => ({
@@ -31,16 +35,16 @@ export const Route = createFileRoute("/accounts")({
 type Currency = "USD" | "SAR" | "YER";
 
 interface Fund {
-  id: number;
+  id: string;
   name: string;
   kind: "bank" | "wallet" | "cash";
   balances: Record<Currency, number>;
 }
 
 interface Voucher {
-  id: number;
+  id: string;
   kind: "قبض" | "صرف";
-  fundId: number;
+  fundId: string;
   fundName: string;
   currency: Currency;
   amount: number;
@@ -66,41 +70,7 @@ const FUND_DEFS: { name: string; kind: Fund["kind"]; icon: React.ElementType }[]
   { name: "صندوق عدن", kind: "cash", icon: Banknote },
 ];
 
-const LS_FUNDS = "alsouk_funds_v1";
-const LS_VOUCHERS = "alsouk_vouchers_v1";
-const LS_RATES = "alsouk_rates_v1";
-
 const emptyBalances = (): Record<Currency, number> => ({ USD: 0, SAR: 0, YER: 0 });
-
-const loadFunds = (): Fund[] => {
-  try {
-    const saved = JSON.parse(localStorage.getItem(LS_FUNDS) || "null");
-    if (Array.isArray(saved) && saved.length) return saved;
-  } catch {
-    /* تجاهل */
-  }
-  return FUND_DEFS.map((f, i) => ({ id: i + 1, name: f.name, kind: f.kind, balances: emptyBalances() }));
-};
-
-const loadVouchers = (): Voucher[] => {
-  try {
-    const saved = JSON.parse(localStorage.getItem(LS_VOUCHERS) || "null");
-    if (Array.isArray(saved)) return saved;
-  } catch {
-    /* تجاهل */
-  }
-  return [];
-};
-
-const loadRates = (): Record<Currency, number> => {
-  try {
-    const saved = JSON.parse(localStorage.getItem(LS_RATES) || "null");
-    if (saved && typeof saved === "object") return { ...DEFAULT_RATES, ...saved };
-  } catch {
-    /* تجاهل */
-  }
-  return { ...DEFAULT_RATES };
-};
 
 const fmt = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 2 });
 
@@ -110,30 +80,74 @@ const kindStyles: Record<Fund["kind"], string> = {
   cash: "bg-orange-50 text-[#C2410C] border-orange-200",
 };
 
-export function AccountsPage() {
+function AccountsPageContent() {
   const navigate = useNavigate();
-  const [funds, setFunds] = useState<Fund[]>(loadFunds);
-  const [vouchers, setVouchers] = useState<Voucher[]>(loadVouchers);
-  const [rates, setRates] = useState<Record<Currency, number>>(loadRates);
+  const [funds, setFunds] = useState<Fund[]>([]);
+  const [vouchers, setVouchers] = useState<Voucher[]>([]);
+  const [rates, setRates] = useState<Record<Currency, number>>({ ...DEFAULT_RATES });
   const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
   const [isRatesOpen, setIsRatesOpen] = useState(false);
-
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [voucherForm, setVoucherForm] = useState({
     kind: "قبض" as Voucher["kind"],
-    fundId: 1,
+    fundId: "",
     currency: "USD" as Currency,
     amount: "",
     note: "",
   });
-
   const [calc, setCalc] = useState({ amount: "100", from: "USD" as Currency, to: "YER" as Currency });
 
-  const persist = (nextFunds: Fund[], nextVouchers: Voucher[]) => {
-    setFunds(nextFunds);
-    setVouchers(nextVouchers);
-    localStorage.setItem(LS_FUNDS, JSON.stringify(nextFunds));
-    localStorage.setItem(LS_VOUCHERS, JSON.stringify(nextVouchers));
+  // Generated Supabase types may not yet include these manually-created tables/RPCs.
+  const db = supabase as any;
+
+  const refreshData = async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      let { data: fundRows, error: fundsError } = await db
+        .from("company_funds").select("id,name,kind,balances").order("name");
+      if (fundsError) throw fundsError;
+
+      if (!fundRows?.length) {
+        const initialFunds = FUND_DEFS.map(({ name, kind }) => ({ name, kind, balances: emptyBalances() }));
+        const { error: seedError } = await db.from("company_funds").upsert(initialFunds, { onConflict: "name", ignoreDuplicates: true });
+        if (seedError) throw seedError;
+        const refreshed = await db.from("company_funds").select("id,name,kind,balances").order("name");
+        if (refreshed.error) throw refreshed.error;
+        fundRows = refreshed.data;
+      }
+
+      const [voucherResult, ratesResult] = await Promise.all([
+        db.from("fund_vouchers").select("id,kind,fund_id,fund_name,currency,amount,note,created_at").order("created_at", { ascending: false }),
+        db.from("exchange_rates").select("currency,units_per_usd"),
+      ]);
+      if (voucherResult.error) throw voucherResult.error;
+      if (ratesResult.error) throw ratesResult.error;
+
+      setFunds((fundRows ?? []).map((row: any) => ({
+        id: row.id, name: row.name, kind: row.kind,
+        balances: { ...emptyBalances(), ...(row.balances ?? {}) },
+      })));
+      setVouchers((voucherResult.data ?? []).map((row: any) => ({
+        id: row.id, kind: row.kind, fundId: row.fund_id, fundName: row.fund_name,
+        currency: row.currency, amount: Number(row.amount), note: row.note,
+        date: row.created_at,
+      })));
+      const nextRates = { ...DEFAULT_RATES };
+      for (const row of ratesResult.data ?? []) {
+        if (row.currency in nextRates) nextRates[row.currency as Currency] = Number(row.units_per_usd);
+      }
+      setRates(nextRates);
+    } catch (error) {
+      console.error("تعذر تحميل الحسابات والصناديق:", error);
+      setLoadError(error instanceof Error ? error.message : "تعذر تحميل البيانات من قاعدة البيانات.");
+    } finally {
+      setLoading(false);
+    }
   };
+
+  useEffect(() => { void refreshData(); }, []);
 
   // إجمالي السيولة لكل عملة عبر جميع الصناديق
   const totals = useMemo(() => {
@@ -146,75 +160,62 @@ export function AccountsPage() {
     return t;
   }, [funds]);
 
-  const saveVoucher = (e: React.FormEvent) => {
+  const saveVoucher = async (e: React.FormEvent) => {
     e.preventDefault();
     const amount = Number(voucherForm.amount);
-    if (!amount || amount <= 0) return alert("يرجى إدخال مبلغ صحيح");
-    const fund = funds.find((f) => f.id === voucherForm.fundId);
-    if (!fund) return;
-
-    const voucher: Voucher = {
-      id: Date.now(),
-      kind: voucherForm.kind,
-      fundId: fund.id,
-      fundName: fund.name,
-      currency: voucherForm.currency,
-      amount,
-      note: voucherForm.note.trim() || "بدون وصف",
-      date: new Date().toISOString(),
-    };
-
-    const nextFunds = funds.map((f) => {
-      if (f.id !== fund.id) return f;
-      const delta = voucher.kind === "قبض" ? amount : -amount;
-      return { ...f, balances: { ...f.balances, [voucher.currency]: Number(f.balances?.[voucher.currency] || 0) + delta } };
-    });
-
-    persist(nextFunds, [voucher, ...vouchers]);
-    setIsVoucherModalOpen(false);
-    setVoucherForm({ kind: "قبض", fundId: 1, currency: "USD", amount: "", note: "" });
-    alert(`تم تسجيل سند ${voucher.kind} بنجاح: ${fmt(amount)} ${voucher.currency}`);
+    if (!Number.isFinite(amount) || amount <= 0) return alert("يرجى إدخال مبلغ صحيح");
+    if (!voucherForm.fundId) return alert("اختر الصندوق أو المحفظة.");
+    try {
+      const { error } = await db.rpc("post_fund_voucher", {
+        p_kind: voucherForm.kind,
+        p_fund_id: voucherForm.fundId,
+        p_currency: voucherForm.currency,
+        p_amount: amount,
+        p_note: voucherForm.note.trim() || "بدون وصف",
+      });
+      if (error) throw error;
+      await refreshData();
+      setIsVoucherModalOpen(false);
+      setVoucherForm({ kind: "قبض", fundId: "", currency: "USD", amount: "", note: "" });
+      alert(`تم تسجيل سند ${voucherForm.kind} بنجاح: ${fmt(amount)} ${voucherForm.currency}`);
+    } catch (error) {
+      console.error("تعذر حفظ السند:", error);
+      alert(`لم يُحفظ السند: ${error instanceof Error ? error.message : "تحقق من الاتصال والصلاحيات."}`);
+    }
   };
 
-  const depositFund = (fundId: number) => {
+  const depositFund = async (fundId: string) => {
     const input = prompt("مبلغ الإيداع (مثال: 500 USD أو 150000 YER):", "500 USD");
     if (!input) return;
     const match = input.trim().match(/^([\d.,]+)\s*(USD|SAR|YER)?$/i);
     if (!match) return alert("صيغة غير صحيحة. مثال: 500 USD");
     const amount = Number((match[1] ?? "0").replace(/,/g, ""));
     const currency = ((match[2] ?? "USD").toUpperCase() as Currency) || "USD";
-    if (!amount || amount <= 0) return alert("أدخل مبلغاً صحيحاً");
-
-    const nextFunds = funds.map((f) =>
-      f.id === fundId
-        ? { ...f, balances: { ...f.balances, [currency]: Number(f.balances?.[currency] || 0) + amount } }
-        : f
-    );
-    const fund = funds.find((f) => f.id === fundId)!;
-    persist(nextFunds, [
-      {
-        id: Date.now(),
-        kind: "قبض",
-        fundId,
-        fundName: fund.name,
-        currency,
-        amount,
-        note: "إيداع مباشر بالصندوق",
-        date: new Date().toISOString(),
-      },
-      ...vouchers,
-    ]);
-    alert(`تم إيداع ${fmt(amount)} ${currency} في ${fund.name}`);
+    if (!Number.isFinite(amount) || amount <= 0) return alert("أدخل مبلغاً صحيحاً");
+    try {
+      const { error } = await db.rpc("post_fund_voucher", {
+        p_kind: "قبض", p_fund_id: fundId, p_currency: currency,
+        p_amount: amount, p_note: "إيداع مباشر بالصندوق",
+      });
+      if (error) throw error;
+      await refreshData();
+      alert(`تم إيداع ${fmt(amount)} ${currency} في الصندوق`);
+    } catch (error) {
+      console.error("تعذر إيداع المبلغ:", error);
+      alert(`تعذر الإيداع: ${error instanceof Error ? error.message : "تحقق من الاتصال والصلاحيات."}`);
+    }
   };
 
-  const deleteVoucher = (v: Voucher) => {
-    if (!confirm(`حذف سند ${v.kind} (${fmt(v.amount)} ${v.currency})؟ سيتم إرجاع المبلغ للصندوق.`)) return;
-    const nextFunds = funds.map((f) => {
-      if (f.id !== v.fundId) return f;
-      const delta = v.kind === "قبض" ? -v.amount : v.amount;
-      return { ...f, balances: { ...f.balances, [v.currency]: Number(f.balances?.[v.currency] || 0) + delta } };
-    });
-    persist(nextFunds, vouchers.filter((x) => x.id !== v.id));
+  const deleteVoucher = async (v: Voucher) => {
+    if (!confirm(`حذف سند ${v.kind} (${fmt(v.amount)} ${v.currency})؟ سيتم عكس أثره على رصيد الصندوق.`)) return;
+    try {
+      const { error } = await db.rpc("delete_fund_voucher", { p_voucher_id: v.id });
+      if (error) throw error;
+      await refreshData();
+    } catch (error) {
+      console.error("تعذر حذف السند:", error);
+      alert(`تعذر حذف السند: ${error instanceof Error ? error.message : "تحقق من الاتصال والصلاحيات."}`);
+    }
   };
 
   const calcResult = useMemo(() => {
@@ -223,10 +224,22 @@ export function AccountsPage() {
     return usd * (rates[calc.to] || 1);
   }, [calc, rates]);
 
-  const updateRate = (code: Currency, value: string) => {
-    const next = { ...rates, [code]: Number(value) || DEFAULT_RATES[code] };
+  const updateRate = async (code: Currency, value: string) => {
+    const nextValue = Number(value);
+    if (!Number.isFinite(nextValue) || nextValue <= 0) return;
+    const next = { ...rates, [code]: nextValue };
     setRates(next);
-    localStorage.setItem(LS_RATES, JSON.stringify(next));
+    try {
+      const { error } = await db.from("exchange_rates").upsert(
+        { currency: code, units_per_usd: nextValue, updated_at: new Date().toISOString() },
+        { onConflict: "currency" },
+      );
+      if (error) throw error;
+    } catch (error) {
+      console.error("تعذر حفظ سعر الصرف:", error);
+      alert(`تعذر حفظ سعر الصرف: ${error instanceof Error ? error.message : "تحقق من الاتصال والصلاحيات."}`);
+      void refreshData();
+    }
   };
 
   return (
@@ -259,6 +272,8 @@ export function AccountsPage() {
       </div>
 
       <main className="max-w-6xl mx-auto px-4 pt-6 space-y-6">
+        {loading && <div role="status" className="flex items-center gap-2 rounded-xl border border-sky-100 bg-white p-3 text-xs font-bold text-[#0F4C81]"><RefreshCw className="size-4 animate-spin" /> جارٍ تحميل بيانات الحسابات…</div>}
+        {loadError && <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-bold text-red-700"><span className="flex items-center gap-2"><AlertCircle className="size-4" /> تعذر تحميل البيانات من Supabase: {loadError}</span><button onClick={() => void refreshData()} className="rounded-lg bg-white px-3 py-1.5 text-red-700 shadow-sm">إعادة المحاولة</button></div>}
         {/* هيدر النظام المالي */}
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
@@ -328,7 +343,7 @@ export function AccountsPage() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => {
-                setVoucherForm((f) => ({ ...f, kind: "قبض" }));
+                setVoucherForm((f) => ({ ...f, kind: "قبض", fundId: f.fundId || funds[0]?.id || "" }));
                 setIsVoucherModalOpen(true);
               }}
               className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-xs font-black shadow-md hover:brightness-105 transition cursor-pointer"
@@ -338,7 +353,7 @@ export function AccountsPage() {
             </button>
             <button
               onClick={() => {
-                setVoucherForm((f) => ({ ...f, kind: "صرف" }));
+                setVoucherForm((f) => ({ ...f, kind: "صرف", fundId: f.fundId || funds[0]?.id || "" }));
                 setIsVoucherModalOpen(true);
               }}
               className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-red-500 text-white text-xs font-black shadow-md hover:brightness-105 transition cursor-pointer"
@@ -561,7 +576,7 @@ export function AccountsPage() {
                 <label className="block font-bold mb-1 text-slate-600">الصندوق / المحفظة:</label>
                 <select
                   value={voucherForm.fundId}
-                  onChange={(e) => setVoucherForm({ ...voucherForm, fundId: Number(e.target.value) })}
+                  onChange={(e) => setVoucherForm({ ...voucherForm, fundId: e.target.value })}
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none focus:border-[#0284C7]"
                 >
                   {funds.map((f) => (
@@ -678,6 +693,10 @@ export function AccountsPage() {
       )}
     </div>
   );
+}
+
+export function AccountsPage() {
+  return <AdminRouteGuard><AccountsPageContent /></AdminRouteGuard>;
 }
 
 export default AccountsPage;
