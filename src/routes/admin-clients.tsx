@@ -1220,7 +1220,7 @@ export function AdminOperationsDashboard() {
 }
 
 // TanStack Router registration
-export const Route = (createFileRoute as any)("/admin")({
+export const Route = createFileRoute("/admin-clients")({
   head: () => ({
     meta: [
       { title: "لوحة العمليات والإدارة | السوق الشامل AL SHAMEL" },
