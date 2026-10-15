@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   AlertCircle,
   ArrowRight,
@@ -11,7 +11,12 @@ import {
   UserCog,
   Users,
   UserRound,
+  Pencil,
+  Trash2,
+  Save,
+  X,
 } from "lucide-react";
+import { AdminRouteGuard } from "@/components/admin/AdminRouteGuard";
 import { supabase } from "@/integrations/supabase/client";
 
 export type StaffRole = "admin" | "staff";
@@ -59,6 +64,13 @@ function EmployeesPage() {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
   const [reloadKey, setReloadKey] = useState(0);
+  const [editing, setEditing] = useState<EmployeeItem | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editRole, setEditRole] = useState<StaffRole>("staff");
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -148,6 +160,74 @@ function EmployeesPage() {
       active = false;
     };
   }, [reloadKey]);
+
+  function beginEdit(employee: EmployeeItem) {
+    setEditing(employee);
+    setEditName(employee.name === "موظف بدون اسم" ? "" : employee.name);
+    setEditPhone(employee.phone ?? "");
+    setEditRole(employee.role);
+    setActionError(null);
+    setActionMessage(null);
+  }
+
+  async function saveEmployee(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!editing) return;
+    const fullName = editName.trim();
+    const phone = editPhone.trim();
+    if (!fullName) {
+      setActionError("اكتب اسم الموظف.");
+      return;
+    }
+    if (fullName.length > 120 || phone.length > 30) {
+      setActionError("الاسم يجب ألا يتجاوز 120 حرفًا والهاتف 30 حرفًا.");
+      return;
+    }
+    setBusyId(editing.id);
+    setActionError(null);
+    setActionMessage(null);
+    try {
+      const { error } = await supabase.rpc("admin_update_employee", {
+        _target_user_id: editing.id,
+        _full_name: fullName,
+        _phone: phone || null,
+        _role: editRole,
+      });
+      if (error) throw error;
+      setEditing(null);
+      setActionMessage("تم حفظ بيانات الموظف ودوره.");
+      setReloadKey((key) => key + 1);
+    } catch (error) {
+      console.error("تعذر تحديث حساب الموظف:", error);
+      setActionError(error instanceof Error ? error.message : "تعذر حفظ التعديلات.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function deleteEmployee(employee: EmployeeItem) {
+    const confirmed = window.confirm(
+      `تحذير: هذا يحذف حساب الدخول نهائيًا للمستخدم ${employee.name} (${employee.id})، وقد يحذف بيانات مرتبطة حسب علاقات قاعدة البيانات. لا يمكن التراجع. هل تريد المتابعة؟`,
+    );
+    if (!confirmed) return;
+    setBusyId(employee.id);
+    setActionError(null);
+    setActionMessage(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-delete-employee", {
+        body: { userId: employee.id },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setActionMessage("تم حذف حساب المستخدم نهائيًا.");
+      setReloadKey((key) => key + 1);
+    } catch (error) {
+      console.error("تعذر حذف حساب الموظف:", error);
+      setActionError(error instanceof Error ? error.message : "تعذر حذف الحساب. تحقق من إعداد Edge Function.");
+    } finally {
+      setBusyId(null);
+    }
+  }
 
   const filteredEmployees = useMemo(() => {
     const query = search.trim().toLocaleLowerCase();
@@ -294,6 +374,40 @@ function EmployeesPage() {
           </div>
         )}
 
+        {(actionError || actionMessage) && (
+          <div role={actionError ? "alert" : "status"} className={`rounded-2xl border p-3 text-sm font-bold ${actionError ? "border-red-200 bg-red-50 text-red-800" : "border-emerald-200 bg-emerald-50 text-emerald-800"}`}>
+            {actionError || actionMessage}
+          </div>
+        )}
+
+        {editing && (
+          <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/50 p-4" role="presentation">
+            <form onSubmit={saveEmployee} dir="rtl" className="w-full max-w-lg space-y-4 rounded-3xl bg-white p-5 shadow-2xl" aria-labelledby="edit-employee-title">
+              <div className="flex items-center justify-between gap-3">
+                <h2 id="edit-employee-title" className="text-lg font-black">تعديل بيانات الموظف</h2>
+                <button type="button" onClick={() => setEditing(null)} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100" aria-label="إغلاق"><X className="size-5" /></button>
+              </div>
+              <label className="block space-y-1 text-sm font-bold">الاسم
+                <input value={editName} onChange={(e) => setEditName(e.target.value)} maxLength={120} required className="h-11 w-full rounded-xl border border-slate-300 px-3 outline-none focus:border-sky-700" />
+              </label>
+              <label className="block space-y-1 text-sm font-bold">رقم الهاتف
+                <input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} maxLength={30} dir="ltr" className="h-11 w-full rounded-xl border border-slate-300 px-3 text-left outline-none focus:border-sky-700" />
+              </label>
+              <label className="block space-y-1 text-sm font-bold">الدور
+                <select value={editRole} onChange={(e) => setEditRole(e.target.value as StaffRole)} className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 outline-none focus:border-sky-700">
+                  <option value="staff">موظف</option><option value="admin">مشرف عام</option>
+                </select>
+              </label>
+              <p className="text-xs leading-6 text-amber-800">تغيير دور المدير يخضع لفحص في قاعدة البيانات، ولا يمكن خفض آخر مدير.</p>
+              {actionError && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">{actionError}</p>}
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={() => setEditing(null)} className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-bold">إلغاء</button>
+                <button type="submit" disabled={busyId === editing.id} className="inline-flex items-center gap-2 rounded-xl bg-[#0F4C81] px-4 py-2 text-sm font-bold text-white disabled:opacity-60"><Save className="size-4" />{busyId === editing.id ? "جارٍ الحفظ…" : "حفظ التعديلات"}</button>
+              </div>
+            </form>
+          </div>
+        )}
+
         <section className="overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px] text-right text-xs">
@@ -304,12 +418,13 @@ function EmployeesPage() {
                   <th className="px-4 py-3.5">رقم الهاتف</th>
                   <th className="px-4 py-3.5">تاريخ إنشاء الحساب</th>
                   <th className="px-4 py-3.5">معرّف الحساب</th>
+                  <th className="px-4 py-3.5">الإجراءات</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {loading && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-12 text-center font-semibold text-slate-500">
+                    <td colSpan={6} className="px-4 py-12 text-center font-semibold text-slate-500">
                       جارٍ تحميل الموظفين من قاعدة البيانات...
                     </td>
                   </tr>
@@ -344,12 +459,18 @@ function EmployeesPage() {
                       <td className="px-4 py-3.5 font-mono text-[10px] text-slate-500" dir="ltr">
                         {employee.id}
                       </td>
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center gap-2">
+                          <button type="button" onClick={() => beginEdit(employee)} disabled={busyId === employee.id} className="inline-flex items-center gap-1 rounded-lg bg-sky-50 px-2.5 py-2 font-bold text-sky-800 hover:bg-sky-100 disabled:opacity-50" aria-label={`تعديل ${employee.name}`}><Pencil className="size-3.5" /><span>تعديل</span></button>
+                          <button type="button" onClick={() => void deleteEmployee(employee)} disabled={busyId === employee.id} className="inline-flex items-center gap-1 rounded-lg bg-red-50 px-2.5 py-2 font-bold text-red-700 hover:bg-red-100 disabled:opacity-50" aria-label={`حذف ${employee.name}`}><Trash2 className="size-3.5" /><span>{busyId === employee.id ? "جارٍ…" : "حذف نهائي"}</span></button>
+                        </div>
+                      </td>
                     </tr>
                   );
                 })}
                 {!loading && !loadError && filteredEmployees.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-12 text-center">
+                    <td colSpan={6} className="px-4 py-12 text-center">
                       <p className="font-black text-slate-700">
                         {employees.length === 0
                           ? "لا توجد حسابات موظفين في جدول user_roles."
@@ -369,7 +490,7 @@ function EmployeesPage() {
         </section>
 
         <p className="text-center text-[11px] font-medium text-slate-500">
-          تعرض الصفحة الحسابات ذات الدور admin أو staff فقط. إضافة الحسابات والأدوار تتم بأمان من Supabase.
+          تعديلات الأدوار وبيانات الملف تمر عبر RPC محمي. حذف الحساب النهائي يمر عبر Edge Function، ولا يضع مفتاح service_role في المتصفح.
         </p>
       </main>
     </div>
@@ -386,7 +507,11 @@ export const Route = createFileRoute("/employees")({
       },
     ],
   }),
-  component: EmployeesPage,
+  component: GuardedEmployeesPage,
 });
 
-export default EmployeesPage
+function GuardedEmployeesPage() {
+  return <AdminRouteGuard><EmployeesPage /></AdminRouteGuard>;
+}
+
+export default GuardedEmployeesPage;
