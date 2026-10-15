@@ -62,18 +62,19 @@ function NotificationsPage() {
     setCanManage(null);
     setRoleError(null);
 
-    void supabase
-      .rpc("has_role", { _user_id: user.id, _role: "admin" })
-      .then(({ data, error }) => {
-        if (!active) return;
-        if (error) {
-          console.error("تعذر التحقق من صلاحية الإدارة:", error);
-          setCanManage(false);
-          setRoleError("تعذر التحقق من الصلاحية. لم نعرض إشعارات الإدارة.");
-          return;
-        }
-        setIsAdmin(data === true);
-      });
+    void Promise.all([
+      supabase.rpc("has_role", { _user_id: user.id, _role: "admin" }),
+      supabase.rpc("has_role", { _user_id: user.id, _role: "staff" }),
+    ]).then(([adminResult, staffResult]) => {
+      if (!active) return;
+      if (adminResult.error || staffResult.error) {
+        console.error("تعذر التحقق من صلاحية الإدارة:", adminResult.error ?? staffResult.error);
+        setCanManage(false);
+        setRoleError("تعذر التحقق من الصلاحية. لم نعرض أدوات إدارة الإشعارات.");
+        return;
+      }
+      setCanManage(adminResult.data === true || staffResult.data === true);
+    });
 
     return () => {
       active = false;
@@ -323,7 +324,7 @@ function CustomerNotificationsPage({
   );
 }
 
-/** شاشة الإدارة: لا تعرض إلا بعد نجاح التحقق من has_role(admin). */
+/** شاشة الإدارة: لا تعرض إلا بعد نجاح التحقق من دور admin أو staff. */
 function AdminNotificationsPage({ userId }: { userId: string }) {
   const [orders, setOrders] = useState<OrderNotification[]>([]);
   const [notifications, setNotifications] = useState<SystemNotification[]>([]);
