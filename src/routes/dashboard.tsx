@@ -356,12 +356,13 @@ export default function DashboardPage() {
     setNotificationError(null);
   };
 
+  // المتاجر العالمية — ألوان الهوية ووهج النبض لكل متجر (تظهر على الخلفية الداكنة)
   const platforms = [
-    { key: 'temu', name: 'TEMU', color: 'text-[#FA6400]', border: 'hover:border-[#FA6400]/40' },
-    { key: 'trendyol', name: 'TrendYol', color: 'text-[#F27A1A]', border: 'hover:border-[#F27A1A]/40' },
-    { key: 'shein', name: 'SHEIN', color: 'text-zinc-900', border: 'hover:border-zinc-800/40' },
-    { key: 'amazon', name: 'Amazon', color: 'text-[#FF9900]', border: 'hover:border-[#FF9900]/40' },
-    { key: 'aliexpress', name: 'AliExpress', color: 'text-[#FF4747]', border: 'hover:border-[#FF4747]/40' },
+    { key: 'temu', name: 'TEMU', color: '#FF7A1A', glow: 'rgba(255,122,26,.55)' },
+    { key: 'trendyol', name: 'TrendYol', color: '#FF9A3D', glow: 'rgba(255,154,61,.55)' },
+    { key: 'shein', name: 'SHEIN', color: '#F4F4F6', glow: 'rgba(255,255,255,.45)' },
+    { key: 'amazon', name: 'Amazon', color: '#F4F4F6', glow: 'rgba(255,153,0,.45)' },
+    { key: 'aliexpress', name: 'AliExpress', color: '#FF5A3C', glow: 'rgba(255,90,60,.6)', italic: true },
   ];
 
   const steps = [
@@ -724,23 +725,59 @@ export default function DashboardPage() {
         </p>
       </section>
 
-      {/* 🌟 6. المتاجر العالمية المعتمدة */}
+      {/* 🌟 6. المتاجر العالمية المعتمدة — أزرار زجاجية متحركة (Dark Glass) */}
       <section className="max-w-5xl mx-auto px-4 mb-8">
         <div className="flex items-center justify-center gap-2 text-xs font-black text-amber-600 mb-4">
           <span>🎗️ نستورد لك من أشهر المتاجر العالمية</span>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-          {platforms.map((p, idx) => (
-            <Link
-              key={p.key}
-              to="/new-order"
-              search={{ store: p.key }}
-              className={`bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80 flex items-center justify-center font-black text-lg transition hover:shadow-md ${p.color} ${p.border}`}
-            >
-              {p.name}
-            </Link>
-          ))}
+
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-b from-[#1b1d24] to-[#111318] p-5 ring-1 ring-white/5 shadow-xl">
+          {/* كتل ضوء ضبابية ليظهر تأثير الزجاج */}
+          <div aria-hidden className="pointer-events-none absolute -top-6 right-10 h-24 w-24 rounded-full bg-orange-500/40 blur-2xl" />
+          <div aria-hidden className="pointer-events-none absolute -bottom-8 left-16 h-24 w-24 rounded-full bg-rose-500/30 blur-2xl" />
+          <div aria-hidden className="pointer-events-none absolute top-2 left-1/2 h-20 w-20 -translate-x-1/2 rounded-full bg-amber-400/25 blur-2xl" />
+
+          <div className="relative z-10 grid grid-cols-3 sm:grid-cols-5 gap-3 place-items-center">
+            {platforms.map((p, i) => (
+              <Link
+                key={p.key}
+                to="/new-order"
+                search={{ store: p.key }}
+                title={p.name}
+                className="group relative h-16 w-full max-w-[112px] overflow-hidden rounded-2xl border border-white/20 bg-white/10 backdrop-blur-md animate-[store-pulse_2s_ease-in-out_infinite] will-change-transform"
+                style={{ animationDelay: `${i * 0.3}s`, '--glow': p.glow } as React.CSSProperties}
+              >
+                {/* حافة الزجاج العلوية */}
+                <span aria-hidden className="pointer-events-none absolute inset-x-0 top-0 z-10 h-1/2 bg-gradient-to-b from-white/25 to-transparent" />
+                {/* اسم المتجر بلون هويته */}
+                <span
+                  className="relative z-20 flex h-full w-full items-center justify-center px-1 text-center text-[13px] font-black leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,.35)]"
+                  style={{ color: p.color, fontStyle: p.italic ? 'italic' : 'normal' }}
+                >
+                  {p.name}
+                </span>
+                {/* اللمعة المتحركة */}
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute inset-y-0 left-0 z-30 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/60 to-transparent animate-[store-shine_2.5s_linear_infinite]"
+                  style={{ animationDelay: `${i * 0.3}s` }}
+                />
+              </Link>
+            ))}
+          </div>
         </div>
+
+        {/* keyframes المخصّصة (أسماء فريدة حتى لا تتعارض مع غيرها) */}
+        <style>{`
+          @keyframes store-pulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 8px 20px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.25), 0 0 0 0 var(--glow); }
+            50%      { transform: scale(1.05); box-shadow: 0 10px 24px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.3), 0 0 22px 4px var(--glow); }
+          }
+          @keyframes store-shine {
+            0%        { transform: translateX(-180%) skewX(-12deg); }
+            55%, 100% { transform: translateX(320%) skewX(-12deg); }
+          }
+        `}</style>
       </section>
 
       {/* 🌟 7. خطوات الطلب الـ 5 */}
