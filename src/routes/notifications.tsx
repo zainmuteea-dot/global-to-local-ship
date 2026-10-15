@@ -34,10 +34,12 @@ type SystemNotification = {
   id: string;
   user_id: string | null;
   title: string;
-  body: string | null;
-  kind: string;
+  message: string | null;
+  type: string;
   created_at: string;
   sent_by?: string | null;
+  href?: string | null;
+  is_active: boolean;
 };
 
 const ADMIN_ONLY_NOTIFICATION_KINDS = new Set(["new_payment_submitted"]);
@@ -128,8 +130,8 @@ function CustomerNotificationsPage({
       setLoading(true);
       const [notificationsResult, readsResult] = await Promise.all([
         (supabase.from("notifications") as any)
-          .select("id,user_id,title,body,kind,created_at,sent_by")
-          .or(`user_id.is.null,user_id.eq.${userId}`)
+          .select("id,user_id,title,message,type,created_at,sent_by,href,is_active")
+          .or(`and(user_id.is.null,is_active.eq.true),user_id.eq.${userId}`)
           .order("created_at", { ascending: false })
           .limit(50),
         supabase
@@ -145,7 +147,7 @@ function CustomerNotificationsPage({
         setError("تعذر تحميل الإشعارات. تحقق من الاتصال والصلاحيات ثم حاول مجددًا.");
       } else {
         const rows = (notificationsResult.data ?? []).filter(
-          (item) => !ADMIN_ONLY_NOTIFICATION_KINDS.has(item.kind),
+          (item) => !ADMIN_ONLY_NOTIFICATION_KINDS.has(item.type),
         );
         setNotifications(rows as SystemNotification[]);
         setError(roleError);
@@ -163,22 +165,54 @@ function CustomerNotificationsPage({
 
     void loadNotifications();
 
+    const isVisibleToCustomer = (notification: SystemNotification) => {
+      const isOwnNotification = notification.user_id === userId;
+      const isActiveBroadcast =
+        notification.user_id === null && notification.is_active === true;
+
+      return (
+        (isOwnNotification || isActiveBroadcast) &&
+        !ADMIN_ONLY_NOTIFICATION_KINDS.has(notification.type)
+      );
+    };
+
+    const upsertCustomerNotification = (payload: any) => {
+      if (!active) return;
+
+      const notification = payload.new as SystemNotification;
+      if (!notification?.id) return;
+
+      if (!isVisibleToCustomer(notification)) {
+        // Remove it if a broadcast was deactivated or the row is no longer visible.
+        setNotifications((current) => current.filter((item) => item.id !== notification.id));
+        return;
+      }
+
+      setNotifications((current) =>
+        [notification, ...current.filter((item) => item.id !== notification.id)].slice(0, 50),
+      );
+    };
+
     const channel = supabase
       .channel(`customer-notifications-${userId}`)
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "notifications" },
-        (payload) => {
-          const notification = payload.new as SystemNotification;
-          if (
-            (notification.user_id !== null && notification.user_id !== userId) ||
-            ADMIN_ONLY_NOTIFICATION_KINDS.has(notification.kind)
-          ) {
-            return;
-          }
-          setNotifications((current) =>
-            [notification, ...current.filter((item) => item.id !== notification.id)].slice(0, 50),
-          );
+        upsertCustomerNotification,
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "notifications" },
+        upsertCustomerNotification,
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "notifications" },
+        (payload: any) => {
+          if (!active) return;
+          const deleted = payload.old as { id?: string };
+          if (!deleted?.id) return;
+          setNotifications((current) => current.filter((item) => item.id !== deleted.id));
         },
       )
       .subscribe();
@@ -292,9 +326,9 @@ function CustomerNotificationsPage({
                         {isRead ? "مقروء" : "جديد"}
                       </span>
                     </div>
-                    {notification.body && (
+                    {notification.message && (
                       <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600">
-                        {notification.body}
+                        {notification.message}
                       </p>
                     )}
                     <time
@@ -364,7 +398,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
           .order("created_at", { ascending: false })
           .limit(30),
         (supabase.from("notifications") as any)
-          .select("id,user_id,title,body,kind,created_at,sent_by")
+          .select("id,user_id,title,message,type,created_at,sent_by,href,is_active")
           .order("created_at", { ascending: false })
           .limit(100),
         supabase
@@ -499,11 +533,11 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
       .insert({
         user_id: null,
         title,
-        body: message,
-        kind: draftType,
+        message,
+        type: draftType,
         is_active: true,
       })
-      .select("id,user_id,title,body,kind,created_at,sent_by")
+      .select("id,user_id,title,message,type,created_at,sent_by,href,is_active")
       .single();
     setSending(false);
 
@@ -698,9 +732,9 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <h3 className="font-bold text-slate-900">{notification.title}</h3>
-                      {notification.body && (
+                      {notification.message && (
                         <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-slate-600">
-                          {notification.body}
+                          {notification.message}
                         </p>
                       )}
                       <time className="mt-2 block text-xs text-slate-400" dateTime={notification.created_at}>
