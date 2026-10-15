@@ -1,13 +1,15 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, type FormEvent } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { AdminRouteGuard } from "@/components/admin/AdminRouteGuard";
 import {
   ArrowRight, Search, Plus, Boxes, Warehouse,
   MapPin, QrCode, Printer, CheckCircle2, Clock,
-  AlertTriangle, Package
+  AlertTriangle, Package, Pencil
 } from "lucide-react";
 
 export const Route = createFileRoute('/inventory')({
-  component: InventoryPage,
+  component: ProtectedInventoryPage,
 });
 
 interface InventoryItem {
@@ -25,86 +27,66 @@ interface InventoryItem {
   status: "جاهز للتسليم" | "قيد الفرز والوزن" | "معاد تغليفه" | "تم التسليم للعميل";
 }
 
-const INITIAL_ITEMS: InventoryItem[] = [
-  {
-    id: "INV-101",
-    trackingCode: "SQ-800816",
-    barcode: "629104882001",
-    clientName: "محمد عبد الله الأصبحي",
-    clientPhone: "777123456",
-    warehouse: "صنعاء (حدة)",
-    shelfLocation: "المنطقة B - رف 04",
-    weightKg: 2.8,
-    piecesCount: 3,
-    arrivalDate: "2026-04-01",
-    daysInWarehouse: 2,
-    status: "جاهز للتسليم"
-  },
-  {
-    id: "INV-102",
-    trackingCode: "SQ-800922",
-    barcode: "629104882002",
-    clientName: "سارة خالد القاسمي",
-    clientPhone: "733987654",
-    warehouse: "عدن (المنصورة)",
-    shelfLocation: "المنطقة A - رف 11",
-    weightKg: 1.2,
-    piecesCount: 1,
-    arrivalDate: "2026-03-25",
-    daysInWarehouse: 9,
-    status: "جاهز للتسليم"
-  },
-  {
-    id: "INV-103",
-    trackingCode: "SQ-801044",
-    barcode: "629104882003",
-    clientName: "مؤسسة الأفق للتجارة",
-    clientPhone: "711554433",
-    warehouse: "الصين (غوانزو)",
-    shelfLocation: "مستودع التجميع C",
-    weightKg: 44.5,
-    piecesCount: 12,
-    arrivalDate: "2026-04-02",
-    daysInWarehouse: 1,
-    status: "قيد الفرز والوزن"
-  },
-  {
-    id: "INV-104",
-    trackingCode: "SQ-800755",
-    barcode: "629104882004",
-    clientName: "عمار يحيى الوادعي",
-    clientPhone: "771889900",
-    warehouse: "صنعاء (حدة)",
-    shelfLocation: "المنطقة B - رف 08",
-    weightKg: 0.9,
-    piecesCount: 1,
-    arrivalDate: "2026-03-18",
-    daysInWarehouse: 16,
-    status: "جاهز للتسليم"
-  },
-  {
-    id: "INV-105",
-    trackingCode: "SQ-801120",
-    barcode: "629104882005",
-    clientName: "فاطمة أحمد الحاشدي",
-    clientPhone: "770112233",
-    warehouse: "تركيا (إسطنبول)",
-    shelfLocation: "مستودع إسطنبول T1",
-    weightKg: 3.4,
-    piecesCount: 2,
-    arrivalDate: "2026-04-01",
-    daysInWarehouse: 2,
-    status: "معاد تغليفه"
-  }
+type InventoryDbRow = {
+  id: string;
+  tracking_code: string;
+  barcode: string | null;
+  client_name: string;
+  client_phone: string | null;
+  warehouse: string;
+  shelf_location: string | null;
+  weight_kg: number | string;
+  pieces_count: number;
+  arrival_date: string;
+  status: string;
+};
+
+const INVENTORY_STATUSES: InventoryItem["status"][] = [
+  "جاهز للتسليم",
+  "قيد الفرز والوزن",
+  "معاد تغليفه",
+  "تم التسليم للعميل",
 ];
 
-export default function InventoryPage() {
+function mapInventoryRow(row: InventoryDbRow): InventoryItem {
+  const arrival = new Date(`${row.arrival_date}T00:00:00Z`);
+  const today = new Date();
+  const todayUtc = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+  const arrivalUtc = Date.UTC(arrival.getUTCFullYear(), arrival.getUTCMonth(), arrival.getUTCDate());
+  const daysInWarehouse = Number.isNaN(arrivalUtc) ? 0 : Math.max(0, Math.floor((todayUtc - arrivalUtc) / 86_400_000));
+
+  return {
+    id: String(row.id),
+    trackingCode: row.tracking_code,
+    barcode: row.barcode ?? "",
+    clientName: row.client_name,
+    clientPhone: row.client_phone ?? "",
+    warehouse: row.warehouse as InventoryItem["warehouse"],
+    shelfLocation: row.shelf_location ?? "",
+    weightKg: Number(row.weight_kg ?? 0),
+    piecesCount: Number(row.pieces_count ?? 1),
+    arrivalDate: row.arrival_date,
+    daysInWarehouse,
+    status: INVENTORY_STATUSES.includes(row.status as InventoryItem["status"])
+      ? (row.status as InventoryItem["status"])
+      : "قيد الفرز والوزن",
+  };
+}
+
+// Temporary cast until Supabase types are regenerated after creating inventory_items.
+const inventoryTable = () => (supabase as any).from("inventory_items");
+
+function InventoryPageContent() {
   const navigate = useNavigate();
-  const [items, setItems] = useState<InventoryItem[]>(INITIAL_ITEMS);
+  const [items, setItems] = useState<InventoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [pageError, setPageError] = useState("");
   const [search, setSearch] = useState("");
   const [selectedWarehouse, setSelectedWarehouse] = useState<string>("الكل");
   const [selectedStatus, setSelectedStatus] = useState<string>("الكل");
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
 
   const [newItem, setNewItem] = useState({
     trackingCode: "",
@@ -141,31 +123,30 @@ export default function InventoryPage() {
     return { totalParcels, readyForPickup, inProcessing, delayed, totalWeight };
   }, [items]);
 
-  const handleDeliver = (id: string) => {
-    setItems(prev => prev.map(item =>
-      item.id === id? {...item, status: "تم التسليم للعميل" } : item
-    ));
-  };
-
-  const handleAddItem = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newItem.trackingCode ||!newItem.clientName) return;
-    const item: InventoryItem = {
-      id: `INV-${Date.now().toString().slice(-4)}`,
-      trackingCode: newItem.trackingCode.toUpperCase(),
-      barcode: newItem.barcode || `6291${Math.floor(10000000 + Math.random() * 90000000)}`,
-      clientName: newItem.clientName,
-      clientPhone: newItem.clientPhone,
-      warehouse: newItem.warehouse,
-      shelfLocation: newItem.shelfLocation || "منطقة الاستقبال العام",
-      weightKg: Number(newItem.weightKg) || 1.0,
-      piecesCount: Number(newItem.piecesCount) || 1,
-      arrivalDate: new Date().toISOString().split("T")[0]?? "",
-      daysInWarehouse: 0,
-      status: "قيد الفرز والوزن"
+  useEffect(() => {
+    let active = true;
+    const loadItems = async () => {
+      setLoading(true);
+      setPageError("");
+      const { data, error } = await inventoryTable()
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (!active) return;
+      if (error) {
+        setPageError("تعذر تحميل المخزون من قاعدة البيانات. تحقق من وجود جدول inventory_items وسياسات RLS.");
+        setLoading(false);
+        return;
+      }
+      setItems(((data ?? []) as InventoryDbRow[]).map(mapInventoryRow));
+      setLoading(false);
     };
-    setItems([item,...items]);
-    setShowAddModal(false);
+    void loadItems();
+    return () => { active = false; };
+  }, []);
+
+  const openAddModal = () => {
+    setPageError("");
+    setEditingItemId(null);
     setNewItem({
       trackingCode: "",
       barcode: "",
@@ -176,6 +157,122 @@ export default function InventoryPage() {
       weightKg: "",
       piecesCount: "1",
     });
+    setShowAddModal(true);
+  };
+
+  const openEditModal = (item: InventoryItem) => {
+    setPageError("");
+    setEditingItemId(item.id);
+    setNewItem({
+      trackingCode: item.trackingCode,
+      barcode: item.barcode,
+      clientName: item.clientName,
+      clientPhone: item.clientPhone,
+      warehouse: item.warehouse,
+      shelfLocation: item.shelfLocation,
+      weightKg: String(item.weightKg),
+      piecesCount: String(item.piecesCount),
+    });
+    setShowAddModal(true);
+  };
+
+  const handleDeliver = async (id: string) => {
+    setPageError("");
+    const { data, error } = await inventoryTable()
+      .update({ status: "تم التسليم للعميل", updated_at: new Date().toISOString() })
+      .eq("id", id)
+      .select("*")
+      .single();
+    if (error) {
+      setPageError("لم يتم حفظ حالة التسليم. تحقق من اتصال قاعدة البيانات وصلاحية المدير.");
+      return;
+    }
+    const updated = mapInventoryRow(data as InventoryDbRow);
+    setItems(current => current.map(item => item.id === id ? updated : item));
+  };
+
+  const handleSaveItem = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setPageError("");
+    const weight = Number(newItem.weightKg || 0);
+    const pieces = Number(newItem.piecesCount || 1);
+    if (!newItem.trackingCode.trim() || !newItem.clientName.trim()) {
+      setPageError("أدخل رقم التتبع واسم العميل.");
+      return;
+    }
+    if (!Number.isFinite(weight) || weight < 0 || !Number.isInteger(pieces) || pieces < 1) {
+      setPageError("تحقق من الوزن وعدد القطع، ويجب أن يكون عدد القطع عددًا صحيحًا أكبر من صفر.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const { data: userResult, error: userError } = await supabase.auth.getUser();
+      if (userError || !userResult.user) {
+        setPageError("انتهت جلسة الدخول. سجّل الدخول مجددًا ثم أعد المحاولة.");
+        return;
+      }
+      const original = editingItemId ? items.find(item => item.id === editingItemId) : undefined;
+      const payload = {
+        tracking_code: newItem.trackingCode.trim().toUpperCase(),
+        barcode: newItem.barcode.trim() || `6291${Math.floor(10000000 + Math.random() * 90000000)}`,
+        client_name: newItem.clientName.trim(),
+        client_phone: newItem.clientPhone.trim() || null,
+        warehouse: newItem.warehouse,
+        shelf_location: newItem.shelfLocation.trim() || "منطقة الاستقبال العام",
+        weight_kg: weight,
+        pieces_count: pieces,
+        arrival_date: original?.arrivalDate ?? new Date().toISOString().slice(0, 10),
+        days_in_warehouse: original?.daysInWarehouse ?? 0,
+        status: original?.status ?? "قيد الفرز والوزن",
+        updated_at: new Date().toISOString(),
+      };
+
+      if (editingItemId) {
+        const { data, error } = await inventoryTable()
+          .update(payload)
+          .eq("id", editingItemId)
+          .select("*")
+          .single();
+        if (error) {
+          setPageError(error.code === "23505"
+            ? "رقم التتبع مستخدم في طرد آخر. أدخل رقمًا مختلفًا."
+            : "تعذر حفظ التعديلات. تحقق من اتصال قاعدة البيانات وصلاحية المدير.");
+          return;
+        }
+        const updated = mapInventoryRow(data as InventoryDbRow);
+        setItems(current => current.map(item => item.id === editingItemId ? updated : item));
+      } else {
+        const { data, error } = await inventoryTable()
+          .insert({ ...payload, created_by: userResult.user.id })
+          .select("*")
+          .single();
+        if (error) {
+          setPageError(error.code === "23505"
+            ? "رقم التتبع موجود مسبقًا. استخدم رقمًا مختلفًا."
+            : "تعذر حفظ الطرد. تحقق من الجدول وسياسات RLS ثم أعد المحاولة.");
+          return;
+        }
+        setItems(current => [mapInventoryRow(data as InventoryDbRow), ...current]);
+      }
+
+      setShowAddModal(false);
+      setEditingItemId(null);
+      setNewItem({
+        trackingCode: "",
+        barcode: "",
+        clientName: "",
+        clientPhone: "",
+        warehouse: "صنعاء (حدة)",
+        shelfLocation: "",
+        weightKg: "",
+        piecesCount: "1",
+      });
+    } catch {
+      setPageError("حدث خطأ غير متوقع أثناء الحفظ. لم يتم إغلاق النموذج؛ أعد المحاولة.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -195,12 +292,18 @@ export default function InventoryPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => setShowAddModal(true)} className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#0F4C81] hover:bg-[#0c3c66] text-white font-bold text-sm shadow-md transition">
+            <button onClick={openAddModal} className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#0F4C81] hover:bg-[#0c3c66] text-white font-bold text-sm shadow-md transition">
               <Plus className="w-4 h-4" />
               إيداع طرد جديد
             </button>
           </div>
         </div>
+
+        {pageError && (
+          <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-800">
+            {pageError}
+          </div>
+        )}
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-white p-4 md:p-5 rounded-2xl border border-sky-100 shadow-sm">
@@ -284,7 +387,11 @@ export default function InventoryPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">
-                {filteredItems.map((item) => (
+                {loading ? (
+                  <tr><td colSpan={7} className="py-10 text-center text-slate-500">جارٍ تحميل المخزون من قاعدة البيانات…</td></tr>
+                ) : filteredItems.length === 0 ? (
+                  <tr><td colSpan={7} className="py-10 text-center text-slate-500">لا توجد طرود مطابقة. أضف طردًا أو غيّر عوامل البحث.</td></tr>
+                ) : filteredItems.map((item) => (
                   <tr key={item.id} className="hover:bg-slate-50/80 transition">
                     <td className="py-3.5 px-4">
                       <div className="font-mono font-bold text-[#0F4C81] flex items-center gap-1.5">
@@ -323,8 +430,11 @@ export default function InventoryPage() {
                     </td>
                     <td className="py-3.5 px-4 text-center">
                       <div className="flex items-center justify-center gap-1.5">
+                        <button type="button" onClick={() => openEditModal(item)} aria-label={`تعديل الطرد ${item.trackingCode}`} className="p-1.5 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-800 transition">
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
                         {item.status === "جاهز للتسليم" && (
-                          <button onClick={() => handleDeliver(item.id)} className="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition">تسليم</button>
+                          <button onClick={() => void handleDeliver(item.id)} className="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition">تسليم</button>
                         )}
                         <button onClick={() => window.print()} className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition">
                           <Printer className="w-3.5 h-3.5" />
@@ -344,11 +454,12 @@ export default function InventoryPage() {
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <h3 className="font-black text-lg text-[#0F4C81] flex items-center gap-2">
                   <Package className="w-5 h-5 text-[#F97316]" />
-                  إيداع طرد جديد في المستودع
+                  {editingItemId ? "تعديل بيانات الطرد" : "إيداع طرد جديد في المستودع"}
                 </h3>
-                <button onClick={() => setShowAddModal(false)} className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 font-bold">✕</button>
+                <button onClick={() => { setShowAddModal(false); setEditingItemId(null); setPageError(""); }} className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 font-bold">✕</button>
               </div>
-              <form onSubmit={handleAddItem} className="space-y-3">
+              {pageError && <div role="alert" className="rounded-lg bg-rose-50 border border-rose-200 px-3 py-2 text-xs font-bold text-rose-800">{pageError}</div>}
+              <form onSubmit={handleSaveItem} className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs font-bold text-slate-600 block mb-1">رقم التتبع / الشحنة</label>
@@ -395,8 +506,8 @@ export default function InventoryPage() {
                   </div>
                 </div>
                 <div className="pt-3 flex gap-2">
-                  <button type="submit" className="flex-1 h-11 rounded-xl bg-[#0F4C81] hover:bg-[#0c3c66] text-white font-bold text-sm shadow-md transition">حفظ وإيداع الطرد</button>
-                  <button type="button" onClick={() => setShowAddModal(false)} className="px-4 h-11 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-sm transition">إلغاء</button>
+                  <button type="submit" disabled={saving} className="flex-1 h-11 rounded-xl bg-[#0F4C81] hover:bg-[#0c3c66] disabled:opacity-60 text-white font-bold text-sm shadow-md transition">{saving ? "جارٍ الحفظ…" : editingItemId ? "حفظ التعديلات" : "حفظ وإيداع الطرد"}</button>
+                  <button type="button" onClick={() => { setShowAddModal(false); setEditingItemId(null); setPageError(""); }} className="px-4 h-11 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-sm transition">إلغاء</button>
                 </div>
               </form>
             </div>
@@ -404,5 +515,13 @@ export default function InventoryPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function InventoryPage() {
+  return (
+    <AdminRouteGuard>
+      <InventoryPageContent />
+    </AdminRouteGuard>
   );
 }
