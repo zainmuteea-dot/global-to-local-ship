@@ -72,6 +72,27 @@ const FUND_DEFS: { name: string; kind: Fund["kind"]; icon: React.ElementType }[]
 
 const emptyBalances = (): Record<Currency, number> => ({ USD: 0, SAR: 0, YER: 0 });
 
+function readableSupabaseError(error: unknown): string {
+  if (error instanceof Error && error.message) return error.message;
+
+  if (typeof error === "string" && error.trim()) return error;
+
+  if (typeof error === "object" && error !== null) {
+    const value = error as {
+      message?: unknown;
+      code?: unknown;
+      details?: unknown;
+      hint?: unknown;
+    };
+    const parts = [value.message, value.code, value.details, value.hint]
+      .filter((part) => typeof part === "string" && part.trim().length > 0)
+      .map((part) => String(part).trim());
+    if (parts.length) return parts.join(" — ");
+  }
+
+  return "تعذر إكمال طلب قاعدة البيانات. راجع Console لمعرفة التفاصيل.";
+}
+
 const fmt = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 2 });
 
 const kindStyles: Record<Fund["kind"], string> = {
@@ -138,7 +159,7 @@ function AccountsPageContent() {
       setRates(nextRates);
     } catch (error) {
       console.error("تعذر تحميل الحسابات والصناديق:", error);
-      setLoadError(error instanceof Error ? error.message : "تعذر تحميل البيانات من قاعدة البيانات.");
+      setLoadError(readableSupabaseError(error));
     } finally {
       setLoading(false);
     }
@@ -177,7 +198,7 @@ function AccountsPageContent() {
       alert(`تم تسجيل سند ${voucherForm.kind} بنجاح: ${fmt(amount)} ${voucherForm.currency}`);
     } catch (error) {
       console.error("تعذر حفظ السند:", error);
-      alert(`لم يُحفظ السند: ${error instanceof Error ? error.message : "تحقق من الاتصال والصلاحيات."}`);
+      alert(`لم يُحفظ السند: ${readableSupabaseError(error)}`);
     }
   };
 
@@ -199,7 +220,7 @@ function AccountsPageContent() {
       alert(`تم إيداع ${fmt(amount)} ${currency} في الصندوق`);
     } catch (error) {
       console.error("تعذر إيداع المبلغ:", error);
-      alert(`تعذر الإيداع: ${error instanceof Error ? error.message : "تحقق من الاتصال والصلاحيات."}`);
+      alert(`تعذر الإيداع: ${readableSupabaseError(error)}`);
     }
   };
 
@@ -211,7 +232,7 @@ function AccountsPageContent() {
       await refreshData();
     } catch (error) {
       console.error("تعذر حذف السند:", error);
-      alert(`تعذر حذف السند: ${error instanceof Error ? error.message : "تحقق من الاتصال والصلاحيات."}`);
+      alert(`تعذر حذف السند: ${readableSupabaseError(error)}`);
     }
   };
 
@@ -235,7 +256,7 @@ function AccountsPageContent() {
       if (error) throw error;
     } catch (error) {
       console.error("تعذر حفظ سعر الصرف:", error);
-      alert(`تعذر حفظ سعر الصرف: ${error instanceof Error ? error.message : "تحقق من الاتصال والصلاحيات."}`);
+      alert(`تعذر حفظ سعر الصرف: ${readableSupabaseError(error)}`);
       void refreshData();
     }
   };
