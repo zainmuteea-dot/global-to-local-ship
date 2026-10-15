@@ -110,17 +110,12 @@ function AccountsPageContent() {
       if (fundsError) throw fundsError;
 
       if (!fundRows?.length) {
-        const initialFunds = FUND_DEFS.map(({ name, kind }) => ({ name, kind, balances: emptyBalances() }));
-        const { error: seedError } = await db.from("company_funds").upsert(initialFunds, { onConflict: "name", ignoreDuplicates: true });
-        if (seedError) throw seedError;
-        const refreshed = await db.from("company_funds").select("id,name,kind,balances").order("name");
-        if (refreshed.error) throw refreshed.error;
-        fundRows = refreshed.data;
+        throw new Error("لم يتم العثور على صناديق. شغّل جزء التهيئة من SQL مرة واحدة بحساب مسؤول قاعدة البيانات.");
       }
 
       const [voucherResult, ratesResult] = await Promise.all([
         db.from("fund_vouchers").select("id,kind,fund_id,fund_name,currency,amount,note,created_at").order("created_at", { ascending: false }),
-        db.from("exchange_rates").select("currency,units_per_usd"),
+        db.from("exchange_rates").select("from_currency,to_currency,rate").eq("from_currency", "USD"),
       ]);
       if (voucherResult.error) throw voucherResult.error;
       if (ratesResult.error) throw ratesResult.error;
@@ -136,7 +131,9 @@ function AccountsPageContent() {
       })));
       const nextRates = { ...DEFAULT_RATES };
       for (const row of ratesResult.data ?? []) {
-        if (row.currency in nextRates) nextRates[row.currency as Currency] = Number(row.units_per_usd);
+        if (row.from_currency === "USD" && row.to_currency in nextRates) {
+          nextRates[row.to_currency as Currency] = Number(row.rate);
+        }
       }
       setRates(nextRates);
     } catch (error) {
@@ -230,10 +227,11 @@ function AccountsPageContent() {
     const next = { ...rates, [code]: nextValue };
     setRates(next);
     try {
-      const { error } = await db.from("exchange_rates").upsert(
-        { currency: code, units_per_usd: nextValue, updated_at: new Date().toISOString() },
-        { onConflict: "currency" },
-      );
+      const { error } = await db.rpc("set_exchange_rate", {
+        p_from_currency: "USD",
+        p_to_currency: code,
+        p_rate: nextValue,
+      });
       if (error) throw error;
     } catch (error) {
       console.error("تعذر حفظ سعر الصرف:", error);
