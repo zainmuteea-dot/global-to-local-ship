@@ -1,259 +1,70 @@
-/* ================== تنسيقات روبوت شامِل بوت الأزرق المتحرك ================== */
+import { useNavigate } from "@tanstack/react-router";
+import { ArrowRight } from "lucide-react";
+import type { ReactNode } from "react";
 
-.chatbot {
-  position: fixed;
-  bottom: 22px;
-  inset-inline-start: 22px;
-  z-index: 60;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
+type AccountShellProps = {
+  title: string;
+  back?: string;
+  children: ReactNode;
+  wide?: boolean;
+};
+
+export function AccountShell({
+  title,
+  back = "/my-account",
+  children,
+  wide = false,
+}: AccountShellProps) {
+  const navigate = useNavigate();
+
+  return (
+    <div dir="rtl" lang="ar" className="min-h-screen bg-background px-4 py-6 font-body">
+      <div
+        className={`mx-auto w-full max-w-md ${
+          wide ? "lg:max-w-6xl" : ""
+        }`}
+      >
+        <div className="mb-6 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => navigate({ to: back })}
+            className="flex items-center gap-1 rounded-full bg-card px-4 py-2 text-xs font-bold text-cocoa ring-1 ring-border"
+          >
+            <ArrowRight className="size-4" />
+            رجوع
+          </button>
+
+          <h1 className="font-display text-lg font-black text-cocoadeep">
+            {title}
+          </h1>
+
+          <span className="w-16" aria-hidden="true" />
+        </div>
+
+        {children}
+      </div>
+    </div>
+  );
 }
 
-.chatbot-fab-container {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
+export function EmptyState({
+  icon,
+  title,
+  text,
+}: {
+  icon: ReactNode;
+  title: string;
+  text?: string;
+}) {
+  return (
+    <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border px-4 py-10 text-center">
+      <span className="grid size-12 place-items-center rounded-2xl bg-secondary text-clay">
+        {icon}
+      </span>
 
-/* فقاعة الترحيب اللطيفة فوق الروبوت */
-.chatbot-badge-callout {
-  position: absolute;
-  top: -26px;
-  font-size: 11px;
-  font-weight: 700;
-  background: color-mix(in oklch, var(--glass-stage) 70%, transparent);
-  color: #7dd3fc;
-  border: 1px solid rgba(56, 189, 248, 0.35);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  padding: 2px 9px;
-  border-radius: 20px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
-  pointer-events: none;
-  white-space: nowrap;
-  animation: bot-badge-bob 2.6s ease-in-out infinite;
-}
+      <p className="font-display text-sm font-black text-cocoadeep">{title}</p>
 
-/* زر الروبوت العائم الدائري الشفاف بنمط زجاجي أزرق */
-.chatbot-fab {
-  width: 60px;
-  height: 60px;
-  padding: 0;
-  border-radius: 50% !important;
-  background: color-mix(in oklch, var(--glass-stage) 60%, transparent);
-  border: 1.5px solid rgba(56, 189, 248, 0.4);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  box-shadow: 0 10px 28px rgba(2, 132, 199, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.25);
-  animation: blue-bot-hover 3.4s ease-in-out infinite, bot-pulse-glow 2.8s ease-in-out infinite;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.chatbot-fab:hover {
-  transform: scale(1.1) translateY(-4px);
-  border-color: rgba(56, 189, 248, 0.7);
-  box-shadow: 0 14px 34px rgba(2, 132, 199, 0.6);
-}
-
-.chatbot-fab:active {
-  transform: scale(0.92);
-}
-
-/* شخصية الروبوت الأزرق */
-.blue-robot-character {
-  display: block;
-  filter: drop-shadow(0 4px 10px rgba(2, 132, 199, 0.35));
-}
-
-/* وميض الهوائي */
-.robot-beacon {
-  animation: beacon-glow 1.6s ease-in-out infinite alternate;
-}
-
-/* رمش العيون */
-.robot-eye {
-  transform-origin: center;
-  animation: robot-blink 4s infinite;
-}
-
-/* تمايل الذراعين */
-.robot-arm-left {
-  transform-origin: 26px 64px;
-  animation: arm-wave-left 3.4s ease-in-out infinite;
-}
-
-.robot-arm-right {
-  transform-origin: 74px 64px;
-  animation: arm-wave-right 3.4s ease-in-out infinite;
-}
-
-/* هزة الضحك */
-.animate-giggle {
-  display: inline-block;
-  animation: giggle-wiggle 0.55s ease-in-out;
-}
-
-/* لوحة المحادثة الزجاجية */
-.chatbot-panel {
-  width: min(324px, calc(100vw - 36px));
-  border-radius: 20px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  background: color-mix(in oklch, var(--glass-stage) 82%, transparent);
-  backdrop-filter: blur(28px);
-  -webkit-backdrop-filter: blur(28px);
-  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.18);
-  border: 1px solid rgba(56, 189, 248, 0.25);
-  animation: pop-in 0.28s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.chatbot-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 14px;
-  border-bottom: 1px solid rgba(56, 189, 248, 0.15);
-  font-size: 13.5px;
-}
-
-.chatbot-head button {
-  width: 28px;
-  height: 28px;
-}
-
-.chatbot-msgs {
-  max-height: 260px;
-  overflow-y: auto;
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  font-size: 12.5px;
-  line-height: 1.65;
-}
-
-.chatbot-msg {
-  padding: 8px 12px;
-  border-radius: 14px;
-  max-width: 85%;
-  white-space: pre-line;
-}
-
-.chatbot-msg.bot {
-  align-self: flex-start;
-  background: var(--glass-surface);
-  border: 1px solid var(--glass-border);
-  border-start-start-radius: 4px;
-  color: #f0f9ff;
-}
-
-.chatbot-msg.user {
-  align-self: flex-end;
-  background: color-mix(in oklch, var(--color-primary) 38%, transparent);
-  border: 1px solid color-mix(in oklch, var(--color-primary) 55%, transparent);
-  border-start-end-radius: 4px;
-  color: #ffffff;
-}
-
-.chatbot-form {
-  display: flex;
-  gap: 6px;
-  padding: 10px 12px;
-  border-top: 1px solid rgba(56, 189, 248, 0.15);
-}
-
-.chatbot-form input {
-  height: 36px;
-  font-size: 12.5px;
-  background: var(--glass-surface);
-  border-color: var(--glass-border);
-}
-
-.chatbot-form button {
-  width: 36px;
-  height: 36px;
-  flex-shrink: 0;
-}
-
-/* ================== تعريف الحركات (Keyframes) ================== */
-
-@keyframes blue-bot-hover {
-  0%, 100% {
-    transform: translateY(0) rotate(0deg);
-  }
-  30% {
-    transform: translateY(-8px) rotate(3deg);
-  }
-  70% {
-    transform: translateY(-4px) rotate(-3deg);
-  }
-}
-
-@keyframes bot-pulse-glow {
-  0%, 100% {
-    box-shadow: 0 10px 24px rgba(2, 132, 199, 0.35);
-  }
-  50% {
-    box-shadow: 0 12px 32px rgba(56, 189, 248, 0.65), 0 0 18px rgba(2, 132, 199, 0.3);
-  }
-}
-
-@keyframes bot-badge-bob {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-5px); }
-}
-
-@keyframes beacon-glow {
-  from {
-    fill: #38bdf8;
-    filter: drop-shadow(0 0 2px #38bdf8);
-  }
-  to {
-    fill: #bae6fd;
-    filter: drop-shadow(0 0 7px #38bdf8);
-  }
-}
-
-@keyframes robot-blink {
-  0%, 94%, 98%, 100% {
-    transform: scaleY(1);
-  }
-  96% {
-    transform: scaleY(0.1);
-  }
-}
-
-@keyframes arm-wave-left {
-  0%, 100% { transform: rotate(0deg); }
-  50% { transform: rotate(5deg); }
-}
-
-@keyframes arm-wave-right {
-  0%, 100% { transform: rotate(0deg); }
-  50% { transform: rotate(-5deg); }
-}
-
-@keyframes giggle-wiggle {
-  0%, 100% { transform: rotate(0deg) scale(1); }
-  25% { transform: rotate(-10deg) scale(1.1); }
-  50% { transform: rotate(10deg) scale(1.1); }
-  75% { transform: rotate(-6deg) scale(1.05); }
-}
-
-@keyframes pop-in {
-  from {
-    opacity: 0;
-    transform: scale(0.92) translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
+      {text && <p className="text-xs text-muted-foreground">{text}</p>}
+    </div>
+  );
 }
