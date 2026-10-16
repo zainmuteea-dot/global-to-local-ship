@@ -11,7 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import { AIRobot } from "../components/AIRobot";
+import AIRobot from "../components/AIRobot";
 
 function NotFoundComponent() {
   return (
