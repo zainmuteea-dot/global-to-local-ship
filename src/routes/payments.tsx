@@ -228,6 +228,7 @@ function PaymentsPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [err, setErr] = useState("");
+  const [success, setSuccess] = useState("");
   const [preview, setPreview] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -696,39 +697,65 @@ function PaymentsPage() {
     }
 
     setErr("");
+    setSuccess("");
     setBusy(payment.id);
 
     try {
-      const { error } = await supabase
-        .from("payments")
-        .update({ status: "rejected" })
+      // لا نعتبر الرفض ناجحًا إلا إذا أعاد التحديث سجل الدفعة فعلًا.
+      // شرط الحالة المعلّقة يمنع رفض دفعة سبق اعتمادها أو رفضها.
+      const { data: rejectedRow, error: rejectError } = await (supabase
+        .from("payments") as any)
+        .update({
+          status: "rejected",
+          reviewed_at: new Date().toISOString(),
+        })
         .eq("id", payment.id)
-        .in("status", ["pending", "بانتظار التأكيد"]);
+        .in("status", ["pending", "بانتظار التأكيد"])
+        .select("id")
+        .maybeSingle();
 
-      if (error) {
-        throw new Error(`تعذر رفض الدفعة: ${error.message}`);
+      if (rejectError) {
+        throw new Error(`تعذر رفض الدفعة: ${rejectError.message}`);
       }
 
+      if (!rejectedRow) {
+        throw new Error(
+          "لم يتم رفض الدفعة: قد لا تكون معلّقة الآن، أو لا تسمح صلاحيات قاعدة البيانات بتحديثها.",
+        );
+      }
+
+      let notificationWarning = "";
       if (payment.userId) {
-        const { error: notificationError } = await supabase
-          .from("notifications")
+        const { error: notificationError } = await (supabase
+          .from("notifications") as any)
           .insert({
             user_id: payment.userId,
             title: `لم يتم قبول سند الدفع للطلب ${payment.tracking}`,
-            body: "يرجى مراجعة السند أو التواصل مع خدمة العملاء لإعادة تقديمه.",
-            kind: "payment",
+            message:
+              "يرجى مراجعة السند أو التواصل مع خدمة العملاء لإعادة تقديمه.",
+            type: "payment",
             href: "/account/wallet",
             is_active: true,
           });
 
         if (notificationError) {
-          setErr(
-            `تم تحديث حالة الدفعة، لكن تعذر إرسال إشعار الرفض: ${notificationError.message}`,
-          );
+          console.error("تعذر إرسال إشعار رفض الدفع:", notificationError);
+          notificationWarning =
+            `تم رفض الدفعة، لكن تعذر إرسال إشعار العميل: ${notificationError.message}`;
         }
       }
 
       await load();
+
+      if (notificationWarning) {
+        setErr(notificationWarning);
+      } else if (payment.userId) {
+        setSuccess(`تم رفض سند الدفع للطلب ${payment.tracking} وإشعار العميل.`);
+      } else {
+        setSuccess(
+          `تم رفض سند الدفع للطلب ${payment.tracking}. لا يوجد حساب مستخدم مرتبط لإرسال إشعار إليه.`,
+        );
+      }
     } catch (cause) {
       console.error("تعذر رفض الدفعة:", cause);
       setErr(
@@ -808,6 +835,12 @@ function PaymentsPage() {
             </Link>
           </div>
         </header>
+
+        {success && (
+          <div role="status" aria-live="polite" className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold text-emerald-800">
+            {success}
+          </div>
+        )}
 
         {err && (
           <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
