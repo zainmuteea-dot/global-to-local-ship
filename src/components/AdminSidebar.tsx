@@ -214,19 +214,17 @@ export function AdminSidebar({
               <ChevronLeft className="size-3.5 opacity-50" />
             </Link>
 
-            {/* الرسائل والمحادثات */}
+            {/* صندوق محادثات العملاء */}
             <Link
-              to="/notifications"
-              onClick={() => handleLinkClick("/notifications")}
+              to="/admin-chat"
+              onClick={() => handleLinkClick("/admin-chat")}
               className="flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:bg-[#0B1E36] hover:text-white transition font-bold cursor-pointer"
             >
               <div className="flex items-center gap-2.5">
                 <MessageSquare className="size-4 text-indigo-400" />
-                <span>الرسائل والمحادثات</span>
+                <span>محادثات العملاء</span>
               </div>
-              <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-indigo-950 text-indigo-300 border border-indigo-800/40">
-                2 جديدة
-              </span>
+              <ChevronLeft className="size-3.5 opacity-50" />
             </Link>
 
             {/* الأسعار والشحن (منسدلة) */}
