@@ -1,9 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Hand, Send, X } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
-type Msg = { id: number; text: string; sender: "bot" | "user" };
+type Sender = "bot" | "user" | "staff";
+type Msg = { id: string; text: string; sender: Sender };
+type StoredMessage = {
+  id: string;
+  sender_type: "visitor" | "bot" | "staff";
+  body: string;
+  created_at: string;
+};
 
+const CHAT_STORAGE_KEY = "alsouk_robot_chat_conversation_v1";
 const SECTIONS: { label: string; to: "/new-order" | "/track" | "/login" }[] = [
   { label: "اطلب الآن", to: "/new-order" },
   { label: "تتبع شحنتك", to: "/track" },
@@ -25,8 +34,19 @@ function reply(q: string): string {
     return "نستورد لك من TEMU، Trendyol، SHEIN، Amazon، AliExpress.";
   if (/مدة|متى|يوم|وقت/.test(t))
     return "مدة التوصيل تختلف حسب المتجر وبلد الشحن، ونبلغك بالمدة المتوقعة مع السعر.";
-  if (/حساب|تسجيل|دخول/.test(t)) return "تقدر تسجل دخولك برقم جوالك من زر «حسابي».";
-  return "سؤال جميل! للتفاصيل تواصل معنا واتساب، أو اختر قسماً من الأزرار تحت.";
+  if (/حساب|تسجيل|دخول/.test(t))
+    return "تقدر تسجل دخولك برقم جوالك من زر «حسابي».";
+  return "وصل سؤالك. إذا احتجت مساعدة من الموظفين، اترك رسالتك هنا وسيرونها في صندوق المحادثات.";
+}
+
+const db = supabase as any;
+
+function mapMessage(row: StoredMessage): Msg {
+  return {
+    id: row.id,
+    text: row.body,
+    sender: row.sender_type === "visitor" ? "user" : row.sender_type,
+  };
 }
 
 function RobotFace({ size = 64 }: { size?: number }) {
@@ -45,27 +65,127 @@ function RobotFace({ size = 64 }: { size?: number }) {
   );
 }
 
-export function AIRobot() {
+export default function AIRobot() {
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState<Msg[]>([{ id: 1, text: WELCOME, sender: "bot" }]);
+  const [messages, setMessages] = useState<Msg[]>([
+    { id: "welcome", text: WELCOME, sender: "bot" },
+  ]);
+  const [conversationId, setConversationId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
+  const [initializing, setInitializing] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
+  const [resetKey, setResetKey] = useState(0);
   const endRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, typing]);
 
-  const send = () => {
-    const q = input.trim();
-    if (!q) return;
-    setMessages((m) => [...m, { id: Date.now(), text: q, sender: "user" }]);
+  useEffect(() => {
+    if (!open) return;
+    let active = true;
+
+    const initialize = async () => {
+      setInitializing(true);
+      setError("");
+      try {
+        let id = window.localStorage.getItem(CHAT_STORAGE_KEY);
+        if (id) {
+          const { data, error: readError } = await db.rpc("chat_get_messages", {
+            _conversation_id: id,
+          });
+          if (readError) throw readError;
+          if (!active) return;
+          setConversationId(id);
+          const rows = (data ?? []) as StoredMessage[];
+          setMessages(
+            rows.length
+              ? rows.map(mapMessage)
+              : [{ id: "welcome", text: WELCOME, sender: "bot" }],
+          );
+          return;
+        }
+
+        const { data, error: createError } = await db.rpc("chat_create_conversation");
+        if (createError) throw createError;
+        id = data as string;
+        if (!id) throw new Error("لم يُرجع الخادم رقم المحادثة.");
+        window.localStorage.setItem(CHAT_STORAGE_KEY, id);
+        if (active) setConversationId(id);
+      } catch (cause) {
+        console.error("Chat initialization failed", cause);
+        if (active) setError("تعذر فتح المحادثة الآن. تحقق من الاتصال ثم أعد المحاولة.");
+      } finally {
+        if (active) setInitializing(false);
+      }
+    };
+
+    void initialize();
+    return () => {
+      active = false;
+    };
+  }, [open, resetKey]);
+
+  useEffect(() => {
+    if (!open || !conversationId) return;
+    let active = true;
+    const refresh = async () => {
+      const { data, error: readError } = await db.rpc("chat_get_messages", {
+        _conversation_id: conversationId,
+      });
+      if (!active || readError || !data) return;
+      const rows = data as StoredMessage[];
+      if (rows.length) setMessages(rows.map(mapMessage));
+    };
+    const timer = window.setInterval(() => void refresh(), 5000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [open, conversationId]);
+
+  const send = async () => {
+    const question = input.trim();
+    if (!question || !conversationId || sending || question.length > 1000) return;
+
+    const answer = reply(question);
     setInput("");
+    setSending(true);
     setTyping(true);
-    setTimeout(() => {
-      setMessages((m) => [...m, { id: Date.now() + 1, text: reply(q), sender: "bot" }]);
+    setError("");
+    try {
+      const { error: sendError } = await db.rpc("chat_send_visitor_message", {
+        _conversation_id: conversationId,
+        _body: question,
+        _bot_reply: answer,
+      });
+      if (sendError) throw sendError;
+      const { data, error: readError } = await db.rpc("chat_get_messages", {
+        _conversation_id: conversationId,
+      });
+      if (readError) throw readError;
+      setMessages(((data ?? []) as StoredMessage[]).map(mapMessage));
+    } catch (cause) {
+      console.error("Chat send failed", cause);
+      setMessages((current) => [
+        ...current,
+        { id: `local-${Date.now()}`, text: question, sender: "user" },
+      ]);
+      setError("لم تُحفظ الرسالة. أعد المحاولة بعد التأكد من الاتصال.");
+    } finally {
       setTyping(false);
-    }, 700);
+      setSending(false);
+    }
+  };
+
+  const startNewConversation = () => {
+    window.localStorage.removeItem(CHAT_STORAGE_KEY);
+    setConversationId(null);
+    setMessages([{ id: "welcome", text: WELCOME, sender: "bot" }]);
+    setError("");
+    setResetKey((value) => value + 1);
   };
 
   return (
@@ -77,7 +197,7 @@ export function AIRobot() {
           </div>
         )}
         <button
-          onClick={() => setOpen((o) => !o)}
+          onClick={() => setOpen((value) => !value)}
           aria-label="مساعد السوق الشامل"
           className="robot-float relative grid size-20 place-items-center rounded-full border-[3px] border-cocoa bg-card shadow-xl transition-transform hover:scale-105 active:scale-95"
         >
@@ -96,34 +216,32 @@ export function AIRobot() {
             </div>
             <div className="flex-1">
               <div className="font-display font-bold">مساعد السوق الشامل</div>
-              <div className="text-xs opacity-90">متصل الآن</div>
+              <div className="text-xs opacity-90">تصل رسالتك إلى فريق الدعم</div>
             </div>
             <button onClick={() => setOpen(false)} aria-label="إغلاق" className="rounded-full p-1 hover:bg-cocoadeep">
               <X className="size-5" />
             </button>
           </div>
           <div className="flex-1 space-y-3 overflow-y-auto bg-cream p-3">
-            {messages.map((m) => (
-              <div key={m.id} className={m.sender === "user" ? "text-left" : "text-right"}>
-                <div
-                  className={`inline-block max-w-[85%] whitespace-pre-line rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
-                    m.sender === "user" ? "bg-cocoa text-cream" : "border border-goldsoft bg-card text-cocoadeep"
-                  }`}
-                >
-                  {m.text}
+            {initializing && <div className="text-center text-xs text-cocoa">جارٍ فتح المحادثة…</div>}
+            {messages.map((message) => (
+              <div key={message.id} className={message.sender === "user" ? "text-left" : "text-right"}>
+                {message.sender === "staff" && <div className="mb-1 text-xs font-bold text-emerald-800">فريق الدعم</div>}
+                <div className={`inline-block max-w-[85%] whitespace-pre-line rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${message.sender === "user" ? "bg-cocoa text-cream" : message.sender === "staff" ? "border border-emerald-300 bg-emerald-50 text-emerald-950" : "border border-goldsoft bg-card text-cocoadeep"}`}>
+                  {message.text}
                 </div>
               </div>
             ))}
             {typing && <div className="text-xs text-cocoa">يكتب الآن...</div>}
+            {error && (
+              <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-2 text-xs text-red-800">
+                {error} <button onClick={startNewConversation} className="font-bold underline">إعادة بدء المحادثة</button>
+              </div>
+            )}
             <div className="flex flex-wrap gap-2 pt-1">
-              {SECTIONS.map((s) => (
-                <Link
-                  key={s.to}
-                  to={s.to}
-                  onClick={() => setOpen(false)}
-                  className="rounded-full border border-cocoa px-3 py-1 text-xs font-bold text-cocoa hover:bg-cocoa hover:text-cream"
-                >
-                  {s.label}
+              {SECTIONS.map((section) => (
+                <Link key={section.to} to={section.to} onClick={() => setOpen(false)} className="rounded-full border border-cocoa px-3 py-1 text-xs font-bold text-cocoa hover:bg-cocoa hover:text-cream">
+                  {section.label}
                 </Link>
               ))}
             </div>
@@ -132,12 +250,14 @@ export function AIRobot() {
           <div className="flex gap-2 border-t border-goldsoft bg-card p-3">
             <input
               value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && send()}
+              onChange={(event) => setInput(event.target.value)}
+              onKeyDown={(event) => event.key === "Enter" && void send()}
+              maxLength={1000}
               placeholder="اكتب سؤالك..."
-              className="flex-1 rounded-full border border-goldsoft bg-cream px-4 py-2 text-sm text-cocoadeep outline-none focus:border-cocoa"
+              disabled={initializing || !conversationId || sending}
+              className="flex-1 rounded-full border border-goldsoft bg-cream px-4 py-2 text-sm text-cocoadeep outline-none focus:border-cocoa disabled:opacity-60"
             />
-            <button onClick={send} aria-label="إرسال" className="grid size-10 place-items-center rounded-full bg-cocoa text-cream active:scale-95">
+            <button onClick={() => void send()} aria-label="إرسال" disabled={initializing || !conversationId || sending || !input.trim()} className="grid size-10 place-items-center rounded-full bg-cocoa text-cream active:scale-95 disabled:opacity-50">
               <Send className="size-4 -scale-x-100" />
             </button>
           </div>
@@ -146,6 +266,3 @@ export function AIRobot() {
     </>
   );
 }
-
-// يدعم كلا النوعين من الاستيراد سواء import AIRobot أو import { AIRobot }
-export default AIRobot;
