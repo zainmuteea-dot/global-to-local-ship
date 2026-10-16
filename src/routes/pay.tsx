@@ -4,8 +4,8 @@ import { supabase } from '@/integrations/supabase/client'
 
 export const Route = createFileRoute('/pay')({
   component: PayPage,
-  validateSearch: (s: Record<string, unknown>) => ({ 
-    order: typeof s['order'] === 'string' ? (s['order'] as string) : '' 
+  validateSearch: (s: Record<string, unknown>) => ({
+    order: typeof s['order'] === 'string' ? (s['order'] as string) : ''
   })
 })
 
@@ -72,7 +72,6 @@ const CSS = `
 .notif-item-time{font-size:10px;color:#94a3b8;margin-top:4px}
 .notif-empty{padding:24px 10px;text-align:center;color:var(--muted);font-size:12.5px}
 .notif-error{margin-bottom:8px;padding:8px 10px;border-radius:10px;background:#fff1f2;color:#be123c;font-size:11px}
-
 /* Top Floating Banner Toast */
 .pay-banner-wrap{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:9999;
   width:92%;max-width:540px;animation:slideDownBanner .38s cubic-bezier(0.16,1,0.3,1)}
@@ -136,19 +135,30 @@ const CSS = `
 .stat.total .num{color:var(--blue-900)}
 .stat.paid .num{color:var(--green)}
 .stat.rest .num{color:var(--red)}
-
-.pay-grid{display:grid;grid-template-columns:1fr;gap:8px;margin-top:4px;padding:7px;background:#fffdfa;border:1px solid #eee1c2;border-radius:18px;}
-.wbtn{position:relative;display:flex;direction:rtl;align-items:center;gap:12px;width:100%;min-height:54px;padding:7px 9px;background:#fff;border:1px solid transparent;border-radius:13px;cursor:pointer;font-family:inherit;text-align:right;transition:.18s;}
-.wbtn:hover{background:#fffaf0;border-color:#efe2c6}
-.wbtn .wchip{display:grid;place-items:center;flex:0 0 38px;width:38px;height:38px;overflow:hidden;background:#fff;border:1px solid #f0ece5;border-radius:11px;}
-.wbtn .wname{min-width:0;color:#46382b;font-size:13px;font-weight:800}
-.wbtn.active{background:#fff8e8;border-color:#e6c76e}
-.wbtn .tick{position:absolute;top:50%;inset-inline-start:10px;display:none;width:18px;height:18px;align-items:center;justify-content:center;color:#198754;background:#fff;border-radius:50%;transform:translateY(-50%)}
+/* ===== Payment method list (polished) ===== */
+.pay-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px;padding:4px}
+@media (max-width:460px){.pay-grid{grid-template-columns:1fr}}
+.wbtn{position:relative;display:flex;direction:rtl;align-items:center;gap:12px;width:100%;min-height:64px;
+  padding:10px 12px;background:#fff;border:1.5px solid var(--line);border-radius:16px;cursor:pointer;
+  font-family:inherit;text-align:right;transition:transform .18s,box-shadow .18s,border-color .18s;
+  box-shadow:0 2px 8px -4px rgba(0,74,141,.12)}
+.wbtn:hover{transform:translateY(-2px);border-color:#cfe0f1;box-shadow:0 10px 22px -12px rgba(0,74,141,.35)}
+.wbtn .wchip{display:grid;place-items:center;flex:0 0 46px;width:46px;height:46px;overflow:hidden;
+  border-radius:13px;box-shadow:0 4px 12px -5px rgba(0,0,0,.35)}
+.wbtn .wchip svg{width:46px;height:46px;display:block}
+.wbtn .wname{min-width:0;color:#2a3a52;font-size:13px;font-weight:800;line-height:1.3}
+.wbtn.active{border-color:#e6c76e;background:linear-gradient(180deg,#fffdf5,#fff8e8);
+  box-shadow:0 12px 26px -12px rgba(230,172,40,.6)}
+.wbtn .tick{position:absolute;top:8px;inset-inline-start:8px;display:none;width:20px;height:20px;
+  align-items:center;justify-content:center;color:#fff;background:#198754;border-radius:50%;
+  box-shadow:0 2px 6px -1px rgba(25,135,84,.6)}
 .wbtn.active .tick{display:flex}
 
 .pay-acc{margin-top:16px;border-radius:16px;padding:16px;color:#fff;position:relative;overflow:hidden;box-shadow:0 12px 26px -12px rgba(0,0,0,.4)}
 .pay-acc .atop{display:flex;align-items:center;gap:12px;margin-bottom:12px}
-.pay-acc .wlogo{width:48px;height:48px;border-radius:12px;display:grid;place-items:center;font-weight:900;font-size:18px;flex:0 0 auto}
+.pay-acc .wlogo{width:54px;height:54px;border-radius:14px;overflow:hidden;flex:0 0 auto;
+  background:#fff;box-shadow:0 6px 16px -6px rgba(0,0,0,.45)}
+.pay-acc .wlogo svg{width:54px;height:54px;display:block}
 .pay-acc .at{font-size:12px;opacity:.9}
 .pay-acc .an{font-size:16px;font-weight:800}
 .pay-accnum{display:flex;flex-direction:column;gap:8px;background:rgba(0,0,0,.22);border-radius:14px;padding:14px}
@@ -203,15 +213,42 @@ const Logo = () => (
   </svg>
 )
 
-type Wallet = { key: string; label: string; color: string; mark: string; markClass?: string }
+type Wallet = { key: string; label: string; color: string; grad: [string, string]; mark: string; markSize?: number }
+
+/* شعارات المحافظ: SVG مدمجة (تدرّج لوني + حرف) لا تعتمد على روابط خارجية فلا تنكسر. */
+function WalletLogo({ brand, size = 46 }: { brand: Wallet; size?: number }) {
+  const gid = `wg-${brand.key}`
+  const sid = `ws-${brand.key}`
+  return (
+    <svg viewBox="0 0 48 48" width={size} height={size} role="img" aria-label={brand.label}>
+      <defs>
+        <linearGradient id={gid} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor={brand.grad[0]} />
+          <stop offset="1" stopColor={brand.grad[1]} />
+        </linearGradient>
+        <linearGradient id={sid} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#ffffff" stopOpacity="0.38" />
+          <stop offset="0.55" stopColor="#ffffff" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <rect width="48" height="48" rx="13" fill={`url(#${gid})`} />
+      <rect width="48" height="25" rx="13" fill={`url(#${sid})`} />
+      {brand.key === 'najm' ? (
+        <path d="M24 10.5 l3.4 6.9 7.6 1.1 -5.5 5.4 1.3 7.6 L24 29 l-6.8 3.5 1.3 -7.6 -5.5 -5.4 7.6 -1.1 Z" fill="#fff" />
+      ) : (
+        <text x="24" y="25" textAnchor="middle" dominantBaseline="central" fontFamily="'Cairo',system-ui,sans-serif" fontWeight="900" fontSize={brand.markSize ?? 20} fill="#fff">{brand.mark}</text>
+      )}
+    </svg>
+  )
+}
 
 const WALLETS: Wallet[] = [
-  { key: 'kuraimi', label: 'الكريمي جوال / حاسب', color: '#0e7090', mark: 'K' },
-  { key: 'onecash', label: 'ون كاش OneCash', color: '#7c3aed', mark: '1C' },
-  { key: 'floosak', label: 'فلوسك Floosak', color: '#2563eb', mark: 'F' },
-  { key: 'jawali', label: 'جوالي Jawali', color: '#be185d', mark: 'J' },
-  { key: 'jeeb', label: 'جيب Jeeb', color: '#0284c7', mark: 'Je' },
-  { key: 'najm', label: 'حوالة النجم', color: '#ea580c', mark: '✦', markClass: 'najm' },
+  { key: 'kuraimi', label: 'الكريمي جوال / حاسب', color: '#0e7090', grad: ['#13b0cf', '#0e6f8e'], mark: 'K' },
+  { key: 'onecash', label: 'ون كاش OneCash', color: '#7c3aed', grad: ['#9f67f0', '#6d28d9'], mark: '1C', markSize: 16 },
+  { key: 'floosak', label: 'فلوسك Floosak', color: '#2563eb', grad: ['#5b8def', '#1d4ed8'], mark: 'F' },
+  { key: 'jawali', label: 'جوالي Jawali', color: '#be185d', grad: ['#ec4899', '#9d174d'], mark: 'J' },
+  { key: 'jeeb', label: 'جيب Jeeb', color: '#0284c7', grad: ['#2bc0ea', '#0369a1'], mark: 'Je', markSize: 16 },
+  { key: 'najm', label: 'حوالة النجم', color: '#ea580c', grad: ['#fb923c', '#ea580c'], mark: '*' },
 ]
 
 const UNIFIED_PHONE = '772399744'
@@ -262,7 +299,7 @@ function PayPage() {
   const [total, setTotal] = useState(0)
   const [paid, setPaid] = useState(0)
   const [status, setStatus] = useState('غير مكتمل')
-  
+
   const [isNotified, setIsNotified] = useState(false)
   const [notifying, setNotifying] = useState(false)
   const [paymentSaved, setPaymentSaved] = useState(false)
@@ -272,7 +309,6 @@ function PayPage() {
   const [receiptImg, setReceiptImg] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Notifications State & Realtime Banner
   const [notifications, setNotifications] = useState<any[]>([])
   const [readNotificationIds, setReadNotificationIds] = useState<Set<string>>(new Set())
   const [notificationUserId, setNotificationUserId] = useState<string | null>(null)
@@ -286,7 +322,6 @@ function PayPage() {
   const remaining = Math.max(total - paid, 0)
   const isPaid = /مدفوع|مكتمل|paid|complete/i.test(status) && !/غير|جزئي/i.test(status)
 
-  // اعرض الرصيد الحالي للطلب بدل المبلغ القديم المخزّن داخل نص الإشعار.
   const notificationMessage = (notice: any) => {
     const original = String(
       notice?.body ?? notice?.message ?? 'تم تأكيد استلام المبلغ بنجاح!',
@@ -296,7 +331,7 @@ function PayPage() {
       : `المتبقي عليك حالياً: ${fmt(remaining)} ${currency}`
 
     const remainingPattern =
-      /((?:المتبقي|متبقي|الباقي|باقي)(?:\s+(?:عليكم|عليك|علي|لكم|لك))?(?:\s+(?:حالياً|حاليًا))?\s*[:：]?\s*)(?:[٠-٩0-9][٠-٩0-9٬,،.]*\s*(?:ر\.?\s*ي|ريال(?:\s+يمني)?|YER)?|صفر|لا\s+يوجد)/iu
+      /((?:المتبقي|متبقي|الباقي|باقي)(?:\s+(?:عليكم|عليك|علي|لكم|لك))?(?:\s+(?:حالياً|حاليّا))?\s*[:：]?\s*)(?:[٠-٩ 0-9][٠-٩ 0-9٬,،.]*\s*(?:ر\.?\s*ي|ريال(?:\s+يمني)?|YER)?|صفر|لا\s+يوجد)/iu
     const replacement = `المتبقي عليك حالياً: ${loading || loadError ? 'قيد التحقق' : `${fmt(remaining)} ${currency}`}`
     const updated = original.replace(remainingPattern, replacement)
     const hasOrder = original.includes(orderNo)
@@ -307,7 +342,6 @@ function PayPage() {
     return `${original} • ${currentRemaining}${hasOrder || !orderNo ? '' : ` • الطلب: ${orderNo}`}`
   }
 
-  // تحميل تفاصيل الطلب والدفعات من Supabase، مع إظهار الخطأ بدلاً من عرض مبالغ افتراضية.
   const loadOrderData = useCallback(async () => {
     setLoading(true)
     setLoadError('')
@@ -410,7 +444,6 @@ function PayPage() {
     }
   }, [orderNo])
 
-  // تحميل البيانات الأولية
   useEffect(() => {
     loadOrderData()
   }, [loadOrderData])
@@ -437,7 +470,6 @@ function PayPage() {
       audioContextRef.current = context
       await context.resume()
       setNotificationSoundEnabled(true)
-      // نغمة اختبار قصيرة بعد ضغط المستخدم لتأكيد أن الصوت يعمل.
       playApprovalTone(context)
     } catch (error) {
       console.warn('Could not enable notification sound:', error)
@@ -445,7 +477,6 @@ function PayPage() {
     }
   }
 
-  // إشعارات اعتماد دفعات العميل، مع حفظ القراءة في notification_reads.
   useEffect(() => {
     if (!orderNo) return
 
@@ -461,7 +492,6 @@ function PayPage() {
       const message = String(notice.message ?? '')
       const searchableText = `${category} ${title} ${message}`
 
-      // إشعار إرسال دفعة للمراجعة ليس إشعار اعتماد موجهاً للعميل.
       const isPendingOrRejected =
         /new_payment_submitted|pending|بانتظار|قيد المراجعة|مراجعة الدفع|دفعة جديدة|طلب سداد|rejected|رفض|لم يتم قبول|غير مقبول/i.test(searchableText)
       const isApproved =
@@ -524,7 +554,7 @@ function PayPage() {
       }
     }
 
-  const setupNotificationListener = async () => {
+    const setupNotificationListener = async () => {
       const user = await fetchNotifications()
       if (!user || !isActive) return
 
@@ -615,7 +645,6 @@ function PayPage() {
     }
   }, [])
 
-  // عند الضغط على الشريط المنبثق في رأس الصفحة: يختفي وينتقل ليفتح جرس الإشعارات
   const handleBannerClick = () => {
     setActiveBanner(null)
     setShowBellMenu(true)
@@ -623,7 +652,6 @@ function PayPage() {
     setTimeout(() => setBellShake(false), 600)
   }
 
-  // عداد الجرس مشتق من سجلات notification_reads المحفوظة للمستخدم.
   const unreadCount = notifications.filter((notice) => !readNotificationIds.has(notice.id)).length
 
   const handleMarkRead = async (notificationId: string) => {
@@ -667,6 +695,10 @@ function PayPage() {
     })
     setNotificationError('')
   }
+
+  const [walletKey, setWalletKey] = useState('kuraimi')
+  const [copied, setCopied] = useState(false)
+  const wallet = useMemo(() => WALLETS.find((w) => w.key === walletKey) || WALLETS[0], [walletKey])
 
   const handleNotifyAdmin = async () => {
     if (isNotified || notifying || loading || loadError) return
@@ -775,10 +807,6 @@ function PayPage() {
     reader.readAsDataURL(file)
   }
 
-  const [walletKey, setWalletKey] = useState('kuraimi')
-  const [copied, setCopied] = useState(false)
-  const wallet = useMemo(() => WALLETS.find((w) => w.key === walletKey) || WALLETS[0], [walletKey])
-
   const copyAcc = async () => {
     try {
       await navigator.clipboard.writeText(UNIFIED_PHONE)
@@ -792,7 +820,6 @@ function PayPage() {
       <style>{CSS}</style>
       <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
 
-      {/* الشريط التنبيهي العائم في رأس الصفحة */}
       {activeBanner && (
         <div className="pay-banner-wrap">
           <div className="pay-banner" onClick={handleBannerClick} title="انقر لعرض الإشعار في السجل">
@@ -822,7 +849,6 @@ function PayPage() {
 
       <div className="pay-wrap">
 
-        {/* الهيدر العلوي مع جرس الإشعارات وزر الرجوع */}
         <header className="pay-topbar">
           <div className="pay-badge"><Logo /></div>
           <div className="pay-brand">
@@ -842,7 +868,6 @@ function PayPage() {
             >
               {notificationSoundEnabled ? '🔊' : '🔇'}
             </button>
-            {/* جرس الإشعارات */}
             <div style={{ position: 'relative' }}>
               <button
                 type="button"
@@ -858,7 +883,6 @@ function PayPage() {
                 )}
               </button>
 
-              {/* القائمة المنسدلة للإشعارات */}
               {showBellMenu && (
                 <div className="pay-notif-menu">
                   <div className="notif-menu-header">
@@ -914,7 +938,6 @@ function PayPage() {
               )}
             </div>
 
-            {/* زر الرجوع */}
             <button className="pay-arrow" type="button" title="رجوع" onClick={() => navigate({ to: '/dashboard' })}>
               <Arrow />
             </button>
@@ -932,7 +955,6 @@ function PayPage() {
           </div>
         )}
 
-        {/* تفاصيل الطلب */}
         <section className="pay-card">
           <div className="pay-head">
             <div className="pay-ico"><Receipt /></div>
@@ -997,7 +1019,6 @@ function PayPage() {
           </div>
         </section>
 
-        {/* ملخص المبالغ المالية */}
         <section className="pay-card">
           <div className="pay-head">
             <div className="pay-ico"><Wallet /></div>
@@ -1022,7 +1043,6 @@ function PayPage() {
           </div>
         </section>
 
-        {/* طريقة الدفع والتحويل */}
         {!isPaid && (
           <section className="pay-card">
             <div className="pay-head alt">
@@ -1042,9 +1062,7 @@ function PayPage() {
                     onClick={() => { setWalletKey(w.key); setCopied(false) }}
                   >
                     <span className="tick"><CheckIc /></span>
-                    <span className="wchip" aria-hidden="true" style={{ color: '#fff', background: w.color, borderColor: w.color }}>
-                      <span className={'brand-mark ' + (w.markClass || '')}>{w.mark}</span>
-                    </span>
+                    <span className="wchip" aria-hidden="true"><WalletLogo brand={w} size={46} /></span>
                     <span className="wname">{w.label}</span>
                   </button>
                 )
@@ -1054,9 +1072,7 @@ function PayPage() {
             {wallet && (
               <div className="pay-acc" style={{ background: `linear-gradient(140deg, ${wallet.color}, ${wallet.color}cc)` }}>
                 <div className="atop">
-                  <div className="wlogo" aria-hidden="true" style={{ background: '#fff', color: wallet.color }}>
-                    <span className={'brand-mark ' + (wallet.markClass || '')}>{wallet.mark}</span>
-                  </div>
+                  <div className="wlogo" aria-hidden="true"><WalletLogo brand={wallet} size={54} /></div>
                   <div>
                     <div className="at">أودِع عبر</div>
                     <div className="an">{wallet.label}</div>
@@ -1081,16 +1097,16 @@ function PayPage() {
                   </div>
                 </div>
 
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  accept="image/*" 
-                  style={{ display: 'none' }} 
-                  onChange={handleFileUpload} 
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  onChange={handleFileUpload}
                 />
-                
-                <div 
-                  className="upload-box" 
+
+                <div
+                  className="upload-box"
                   onClick={() => fileInputRef.current?.click()}
                   title="انقر لتحميل صورة إشعار التحويل"
                 >
@@ -1101,9 +1117,9 @@ function PayPage() {
                   {receiptImg && (
                     <div className="upload-preview" onClick={(e) => e.stopPropagation()}>
                       <img src={receiptImg} alt="سند الدفع" />
-                      <button 
-                        className="upload-remove" 
-                        type="button" 
+                      <button
+                        className="upload-remove"
+                        type="button"
                         title="حذف الصورة"
                         onClick={() => setReceiptImg(null)}
                       >
@@ -1120,9 +1136,9 @@ function PayPage() {
               </div>
             )}
 
-            <button 
-              className="pay-btn pay-primary" 
-              type="button" 
+            <button
+              className="pay-btn pay-primary"
+              type="button"
               disabled={!wallet || loading || Boolean(loadError) || notifying || isNotified || remaining <= 0}
               onClick={handleNotifyAdmin}
             >
@@ -1157,3 +1173,4 @@ function PayPage() {
     </div>
   )
 }
+
