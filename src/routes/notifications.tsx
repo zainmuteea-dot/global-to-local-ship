@@ -288,6 +288,9 @@ function CustomerNotificationsPage({
   };
 
   const unreadCount = notifications.filter((item) => !readIds.has(item.id)).length;
+  const latestFirst = [...notifications].sort(
+    (a, b) => Date.parse(b.created_at) - Date.parse(a.created_at),
+  );
 
   return (
     <AccountShell title="إشعاراتي">
@@ -328,7 +331,7 @@ function CustomerNotificationsPage({
         />
       ) : (
         <div className="space-y-3">
-          {notifications.map((notification) => {
+          {latestFirst.map((notification) => {
             const isRead = readIds.has(notification.id);
             return (
               <article
@@ -596,6 +599,9 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
 
   const unreadOrders = orders.filter((order) => !order.read).length;
   const unreadSystem = notifications.filter((item) => !readIds.has(item.id)).length;
+  const latestFirst = [...notifications].sort(
+    (a, b) => Date.parse(b.created_at) - Date.parse(a.created_at),
+  );
 
   return (
     <AccountShell title="إشعارات الإدارة" back="/admin" wide>
@@ -743,7 +749,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
           </p>
         ) : (
           <div className="space-y-2">
-            {notifications.map((notification) => {
+            {latestFirst.map((notification) => {
               const isRead = readIds.has(notification.id);
               return (
                 <article
