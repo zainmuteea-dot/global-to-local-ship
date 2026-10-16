@@ -3,7 +3,7 @@ import { AdminRouteGuard } from "@/components/admin/AdminRouteGuard";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-export type PaymentStatus = "pending" | "approved" | "rejected";
+export type PaymentStatus = "pending" | "approved" | "rejected" | "cancelled";
 export type Period = "all" | "today" | "week" | "month";
 
 export type Payment = {
@@ -24,6 +24,8 @@ type PaymentRecord = Payment & {
   receiptImage: string | null;
   reviewedAt: string | null;
   userId: string | null;
+  settledAt: string | null;
+  cancelledAt: string | null;
 };
 
 type PaymentFilter = PaymentStatus | "partial" | "all";
@@ -194,6 +196,7 @@ const STATUS_LABELS: Record<PaymentFilter, string> = {
   partial: "دفعوا جزءًا",
   approved: "معتمدة",
   rejected: "مرفوضة",
+  cancelled: "ملغاة",
   all: "الكل",
 };
 
@@ -201,6 +204,7 @@ const STATUS_STYLES: Record<PaymentStatus, string> = {
   pending: "bg-amber-100 text-amber-800",
   approved: "bg-emerald-100 text-emerald-700",
   rejected: "bg-red-100 text-red-700",
+  cancelled: "bg-slate-100 text-slate-700",
 };
 
 const PERIOD_OPTIONS: { value: Period; label: string }[] = [
@@ -215,12 +219,14 @@ const STATUS_OPTIONS: PaymentFilter[] = [
   "partial",
   "approved",
   "rejected",
+  "cancelled",
   "all",
 ];
 
 function normalizeStatus(value: unknown): PaymentStatus {
   if (value === "approved") return "approved";
   if (value === "rejected") return "rejected";
+  if (value === "cancelled") return "cancelled";
   return "pending";
 }
 
@@ -366,11 +372,11 @@ function PaymentsPage() {
       // جلب صفحة واحدة من قاعدة البيانات مع العدد الدقيق لكل نتائج البحث والفلاتر.
       const query = (supabase.from("payments") as any)
         .select(
-          "id, order_tracking, customer_name, method, amount, status, created_at, currency, phone, tracking_code, payment_method, user_id, wallet, reviewed_at, updated_at, remaining_amount",
+          "id, order_tracking, customer_name, method, amount, status, created_at, currency, phone, tracking_code, payment_method, user_id, wallet, reviewed_at, updated_at, remaining_amount, settled_at, cancelled_at",
           { count: "exact" },
         );
 
-      if (filter === "pending" || filter === "approved" || filter === "rejected") {
+      if (filter === "pending" || filter === "approved" || filter === "rejected" || filter === "cancelled") {
         query.eq("status", filter);
       } else if (filter === "partial") {
         // اعرض الدفعات المعلقة والمعتمدة للطلبات المدفوعة جزئيًا، واستبعد المرفوضة.
@@ -471,6 +477,8 @@ function PaymentsPage() {
           receiptImage: null,
           reviewedAt: row.reviewed_at ?? null,
           userId: row.user_id ?? null,
+          settledAt: row.settled_at ?? null,
+          cancelledAt: row.cancelled_at ?? null,
         };
       }).sort((a: PaymentRecord, b: PaymentRecord) => {
         const aTime = Date.parse(a.createdAt);
@@ -775,6 +783,55 @@ function PaymentsPage() {
     }
   };
 
+  const recordPaymentAction = async (
+    payment: PaymentRecord,
+    action: "cancel" | "settle",
+  ) => {
+    setErr("");
+    setSuccess("");
+
+    const actionLabel = action === "cancel" ? "إلغاء الدفعة" : "تسوية الدفعة";
+    const note = window.prompt(`اكتب سبب ${actionLabel}:`);
+    if (note === null) return;
+
+    if (!note.trim()) {
+      setErr("يجب كتابة سبب الإجراء لحفظه في سجل التدقيق.");
+      return;
+    }
+
+    if (
+      !window.confirm(
+        `تأكيد ${actionLabel} للطلب ${payment.tracking}؟ سيتم حفظ سبب الإجراء ومنفذه ووقته في سجل التدقيق.`,
+      )
+    ) {
+      return;
+    }
+
+    setBusy(payment.id);
+    try {
+      const { error } = await (supabase as any).rpc(
+        "admin_record_payment_action",
+        {
+          _payment_id: payment.id,
+          _action: action,
+          _note: note.trim(),
+        },
+      );
+
+      if (error) {
+        throw new Error(error.message || `تعذر تنفيذ ${actionLabel}.`);
+      }
+
+      setSuccess(`تم ${actionLabel} للطلب ${payment.tracking} وحفظ سجل التدقيق.`);
+      await load();
+    } catch (cause) {
+      console.error(`تعذر ${actionLabel}:`, cause);
+      setErr(cause instanceof Error ? cause.message : `تعذر ${actionLabel}.`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
   // الصفوف المعروضة هي الصفحة التي جلبناها من قاعدة البيانات بالفعل.
   const filteredRows = rows;
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
@@ -1047,8 +1104,13 @@ function PaymentsPage() {
                         <td className="whitespace-nowrap px-4 py-3 text-slate-600">{validDate ? new Date(payment.createdAt).toLocaleString("ar") : "—"}</td>
                         <td className="px-4 py-3">
                           <span className={`whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-bold ${STATUS_STYLES[payment.status]}`}>
-                            {payment.status === "pending" ? "بانتظار المراجعة" : payment.status === "approved" ? "معتمد ✓" : "مرفوض"}
+                            {payment.status === "pending" ? "بانتظار المراجعة" : payment.status === "approved" ? "معتمد ✓" : payment.status === "cancelled" ? "ملغاة" : "مرفوض"}
                           </span>
+                          {payment.settledAt && (
+                            <div className="mt-1 text-[10px] font-bold text-sky-700">
+                              تمت التسوية في {new Date(payment.settledAt).toLocaleString("ar")}
+                            </div>
+                          )}
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex flex-wrap items-center gap-2">
@@ -1068,7 +1130,30 @@ function PaymentsPage() {
                                 <button type="button" disabled={busy === payment.id} onClick={() => void reject(payment)} className="whitespace-nowrap rounded-lg border border-red-200 bg-red-50 px-3 py-2 font-bold text-red-700 hover:bg-red-100 disabled:opacity-50">
                                   رفض
                                 </button>
+                                <button
+                                  type="button"
+                                  disabled={busy === payment.id}
+                                  onClick={() => void recordPaymentAction(payment, "cancel")}
+                                  className="whitespace-nowrap rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+                                >
+                                  إلغاء الدفعة
+                                </button>
                               </>
+                            )}
+                            {payment.status === "approved" && !payment.settledAt && (
+                              <button
+                                type="button"
+                                disabled={busy === payment.id}
+                                onClick={() => void recordPaymentAction(payment, "settle")}
+                                className="whitespace-nowrap rounded-lg bg-sky-700 px-3 py-2 font-bold text-white hover:bg-sky-800 disabled:opacity-50"
+                              >
+                                تسوية الدفعة
+                              </button>
+                            )}
+                            {payment.settledAt && (
+                              <span className="rounded-lg bg-sky-50 px-3 py-2 font-bold text-sky-800">
+                                تمت التسوية
+                              </span>
                             )}
                           </div>
                         </td>
