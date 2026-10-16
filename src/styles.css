@@ -30,6 +30,8 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+
+  /* الألوان المخصصة لهوية المتجر */
   --color-cream: var(--cream);
   --color-sand: var(--sand);
   --color-cocoa: var(--cocoa);
@@ -38,11 +40,19 @@
   --color-gold: var(--gold);
   --color-goldsoft: var(--goldsoft);
   --color-wa: var(--wa);
+
+  /* ألوان المتاجر العالمية */
   --color-temu: #fb6d20;
   --color-trendyol: #f27a1a;
   --color-shein: #141414;
   --color-amazon: #232f3e;
   --color-aliexpress: #e43225;
+
+  /* درجات الأزرق للروبوت */
+  --color-robot-blue: #0284c7;
+  --color-robot-sky: #38bdf8;
+  --color-robot-navy: #0369a1;
+
   --font-display: "Cairo", "Tajawal", sans-serif;
   --font-body: "Tajawal", "Cairo", sans-serif;
 }
@@ -57,6 +67,7 @@
   --gold: oklch(0.72 0.115 78);
   --goldsoft: oklch(0.85 0.09 85);
   --wa: oklch(0.55 0.13 152);
+
   --background: var(--cream);
   --foreground: var(--cocoadeep);
   --card: oklch(0.975 0.015 88);
@@ -90,41 +101,25 @@
   }
 }
 
+/* ==================== الحركات الأساسية ==================== */
 @keyframes route-move {
-  from {
-    background-position: 0 50%;
-  }
-  to {
-    background-position: 24px 50%;
-  }
+  from { background-position: 0 50%; }
+  to { background-position: 24px 50%; }
 }
 
 @keyframes floaty {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-8px);
-  }
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
 }
 
 @keyframes marquee-rtl {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(-50%);
-  }
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
 }
 
 @keyframes drive {
-  from {
-    transform: translateX(-20vw);
-  }
-  to {
-    transform: translateX(110vw);
-  }
+  from { transform: translateX(-20vw); }
+  to { transform: translateX(110vw); }
 }
 
 @utility route-dots {
@@ -148,19 +143,85 @@
 }
 
 @utility card-lift {
-  transition:
-    transform 0.3s cubic-bezier(0.32, 0.72, 0, 1),
-    box-shadow 0.3s cubic-bezier(0.32, 0.72, 0, 1);
-
+  transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1),
+              box-shadow 0.3s cubic-bezier(0.32, 0.72, 0, 1);
   &:hover {
     transform: translateY(-5px);
     box-shadow: 0 20px 40px -20px color-mix(in oklab, var(--cocoadeep) 45%, transparent);
   }
 }
 
-@keyframes robot-float { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-8px) } }
-@keyframes robot-wave { 0%,60%,100% { transform: rotate(0) } 10%,30% { transform: rotate(20deg) } 20%,40% { transform: rotate(-12deg) } }
-@keyframes robot-blink { 0%,92%,100% { transform: scaleY(1) } 96% { transform: scaleY(0.1) } }
+/* ==================== حركات وتنسيقات الروبوت الذكي ==================== */
+@keyframes robot-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+
+@keyframes robot-wave {
+  0%, 60%, 100% { transform: rotate(0deg); }
+  10%, 30% { transform: rotate(20deg); }
+  20%, 40% { transform: rotate(-12deg); }
+}
+
+@keyframes robot-blink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  96% { transform: scaleY(0.1); }
+}
+
+@keyframes scale-in {
+  0% { opacity: 0; transform: scale(0.92) translateY(12px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes giggle-wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-8deg) scale(1.08); }
+  75% { transform: rotate(8deg) scale(1.08); }
+}
+
+@keyframes pop-in {
+  0% { opacity: 0; transform: scale(0.85); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes robot-glow {
+  0%, 100% { filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.4)); }
+  50% { filter: drop-shadow(0 0 16px rgba(56, 189, 248, 0.85)); }
+}
+
+/* أصناف مساعدة للروبوت */
 .robot-float { animation: robot-float 3s ease-in-out infinite; }
 .robot-wave { display: inline-block; transform-origin: 70% 70%; animation: robot-wave 2.4s ease-in-out infinite; }
 .robot-blink { transform-box: fill-box; transform-origin: center; animation: robot-blink 4s infinite; }
+.robot-glow { animation: robot-glow 2.8s ease-in-out infinite; }
+.animate-scale-in { animation: scale-in 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.animate-giggle { animation: giggle-wiggle 0.35s ease-in-out infinite; }
+.animate-pop-in { animation: pop-in 0.2s ease-out forwards; }
+
+/* شارة التنبيه الصغيرة أعلى الروبوت */
+.chatbot-badge-callout {
+  position: absolute;
+  top: -12px;
+  right: -8px;
+  background: var(--color-cocoa, #4a2c1f);
+  color: #fff;
+  font-size: 11px;
+  font-weight: bold;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  white-space: nowrap;
+  animation: floaty 3s ease-in-out infinite;
+}
+
+/* تنسيق شريط التمرير داخل نافذة المحادثة */
+.chatbot-msgs::-webkit-scrollbar {
+  width: 5px;
+}
+.chatbot-msgs::-webkit-scrollbar-track {
+  background: transparent;
+}
+.chatbot-msgs::-webkit-scrollbar-thumb {
+  background: var(--color-goldsoft, #e2d3b3);
+  border-radius: 9999px;
+}
