@@ -13,10 +13,31 @@ export const Route = createFileRoute("/admin-login")({
   component: AdminLoginPage,
 });
 
-function getSafeRedirect() {
+function getSafeRedirect(): string {
   if (typeof window === "undefined") return "/admin";
-  const target = new URLSearchParams(window.location.search).get("redirect") || "/admin";
-  return target.startsWith("/") && !target.startsWith("//") ? target : "/admin";
+
+  const requestedRedirect = new URLSearchParams(window.location.search).get("redirect");
+  if (
+    !requestedRedirect ||
+    !requestedRedirect.startsWith("/") ||
+    requestedRedirect.startsWith("//") ||
+    requestedRedirect.includes("\\") ||
+    /%5c/i.test(requestedRedirect)
+  ) {
+    return "/admin";
+  }
+
+  try {
+    const target = new URL(requestedRedirect, window.location.origin);
+
+    if (target.origin !== window.location.origin) {
+      return "/admin";
+    }
+
+    return `${target.pathname}${target.search}${target.hash}`;
+  } catch {
+    return "/admin";
+  }
 }
 
 function AdminLoginPage() {
