@@ -15,6 +15,35 @@ type AdminRouteGuardProps = {
   redirectTo?: string;
 };
 
+/** Accept only same-origin absolute paths; reject protocol-relative and backslash paths. */
+function getSafeInternalRedirect(
+  value: string | null | undefined,
+  fallback = "/admin",
+): string {
+  if (
+    typeof window === "undefined" ||
+    !value ||
+    !value.startsWith("/") ||
+    value.startsWith("//") ||
+    value.includes("\\") ||
+    /%5c/i.test(value)
+  ) {
+    return fallback;
+  }
+
+  try {
+    const target = new URL(value, window.location.origin);
+
+    if (target.origin !== window.location.origin) {
+      return fallback;
+    }
+
+    return `${target.pathname}${target.search}${target.hash}`;
+  } catch {
+    return fallback;
+  }
+}
+
 /** Protects admin routes with a valid Supabase session and the trusted has_role RPC. */
 export function AdminRouteGuard({
   children,
@@ -37,10 +66,7 @@ export function AdminRouteGuard({
         return;
       }
 
-      const safeRedirect =
-        redirectTo.startsWith("/") && !redirectTo.startsWith("//")
-          ? redirectTo
-          : "/admin";
+      const safeRedirect = getSafeInternalRedirect(redirectTo, "/admin");
       const query = new URLSearchParams({ redirect: safeRedirect });
       if (reason) query.set("error", reason);
 
