@@ -143,7 +143,6 @@ const CSS = `
 @media(max-width:520px){.no-brand h1{font-size:16px}.no-price{flex-direction:column}.no-price select{flex:1}}
 @media(max-width:360px){.no-badge{width:44px;height:44px}.no-badge svg{width:28px;height:28px}.no-brand h1{font-size:14px}}
 `
-
 /* ===================== Icons ===================== */
 const Cart = () => (<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>)
 const Truck = () => (<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>)
@@ -195,7 +194,6 @@ function detectStore(url: string): Store | null {
 }
 
 const DUP_OPTS = ['نعم', 'لا', 'غير متأكد'] as const
-
 /** يمنع تعبئة حقول العميل بقيمة تبدو كرابط صفحة أو رابط متجر. */
 function isUrlLike(value?: string | null): boolean {
   const candidate = value?.trim()
@@ -249,7 +247,7 @@ function getInitialClientName(urlName?: string): string {
       }
     }
   } catch {
-    // تجاهل التخزين التالف أو غير المتاح؛ يستطيع العميل إدخال بياناته يدويًا.
+    // تجاهل التخزين التالف أو غير المتاح؛ يستطيع العميل إدخال بياناته يدوياً.
   }
   return ''
 }
@@ -273,11 +271,10 @@ function getInitialClientPhone(urlPhone?: string): string {
       }
     }
   } catch {
-    // تجاهل التخزين التالف أو غير المتاح؛ يستطيع العميل إدخال بياناته يدويًا.
+    // تجاهل التخزين التالف أو غير المتاح؛ يستطيع العميل إدخال بياناته يدوياً.
   }
   return ''
 }
-
 function NewOrderPage() {
   const search = Route.useSearch()
   const navigate = useNavigate()
@@ -310,9 +307,9 @@ function NewOrderPage() {
   // 🌟 تعبئة الاسم ورقم الهاتف فورياً ومباشرة لحظة فتح الصفحة
   const [name, setName] = useState<string>(() => getInitialClientName(search.name))
   const [phone, setPhone] = useState<string>(() => getInitialClientPhone(search.phone))
-  
+
   const [url, setUrl] = useState('')
-  const [productName, setProductName] = useState<string>(() => search.productName?.trim() ?? '')
+  // اسم المنتج لم يعد حقلاً مرئيًا؛ يُشتق تلقائيًا من المتجر أو من رابط الدخول.
   const [address, setAddress] = useState('')
   const [price, setPrice] = useState('')
   const [currency, setCurrency] = useState('ر.س سعودي')
@@ -342,6 +339,13 @@ function NewOrderPage() {
     () => detectStore(url) ?? selectedStore,
     [url, selectedStore],
   )
+
+  // اسم المنتج المُرسَل للطلب: من رابط الدخول إن وجد، وإلا اسم المتجر.
+  const resolvedProductName = useMemo(() => {
+    const fromSearch = search.productName?.trim()
+    if (fromSearch) return fromSearch
+    return `طلب ${store?.label || 'متجر دولي'}`
+  }, [search.productName, store])
 
   // يتطلب إنشاء الطلب جلسة عميل، ثم يحمّل بيانات الملف الشخصي للحساب نفسه.
   useEffect(() => {
@@ -394,7 +398,6 @@ function NewOrderPage() {
     void syncWithDatabaseProfile()
     return () => { active = false }
   }, [])
-
   // تفعيل الميكروفون والتسجيل الصوتي للملاحظات
   const toggleSpeechRecognition = () => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
@@ -482,7 +485,7 @@ function NewOrderPage() {
           customer_name: name.trim(),
           phone: phone.trim(),
           product_link: url.trim(),
-          product_name: productName.trim() || `طلب ${storeLabel}`,
+          product_name: resolvedProductName,
           notes: notesSummary,
           status: 'قيد الشراء والتجهيز',
           user_id: user.id,
@@ -510,7 +513,7 @@ function NewOrderPage() {
           customer_name: name.trim(),
           phone: phone.trim(),
           product_link: url.trim(),
-          product_name: productName.trim() || `طلب ${storeLabel}`,
+          product_name: resolvedProductName,
           status: 'قيد الشراء والتجهيز',
           created_at: new Date().toISOString(),
           user_id: user.id,
@@ -554,6 +557,7 @@ function NewOrderPage() {
     setTrackingUnavailable(false)
     setStatus('idle')
     setSbError('')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const copyCode = async () => {
@@ -563,7 +567,6 @@ function NewOrderPage() {
       setTimeout(() => setCopied(false), 2000)
     } catch {}
   }
-
   const Header = (
     <header className="no-topbar">
       <div className="no-badge"><Logo /></div>
@@ -571,9 +574,9 @@ function NewOrderPage() {
         <h1>SHOPPING <b>AL SHAMEL</b></h1>
         <p>السوق الشامل • وسيطكم العالمي</p>
       </div>
-      <button 
-        className="no-arrow" 
-        type="button" 
+      <button
+        className="no-arrow"
+        type="button"
         title="الرجوع للرئيسية"
         onClick={() => navigate({ to: '/dashboard' })}
       >
@@ -644,7 +647,6 @@ function NewOrderPage() {
       </div>
     )
   }
-
   return (
     <div className="no-root">
       <style>{CSS}</style>
@@ -661,8 +663,8 @@ function NewOrderPage() {
               {search.step === 'buy' && 'راجع تفاصيل طلبك قبل الإرسال'}
             </div>
             <p>
-              {search.step === 'link' && 'الصق رابط المنتج، ثم أضف اسمه وبيانات الطلب.'}
-              {search.step === 'price' && 'أدخل السعر الذي يظهر في المتجر إن توفر. السعر النهائي يؤكَّد بعد مراجعة الطلب، ولا يُحسب فورياً هنا.'}
+              {search.step === 'link' && 'الصق رابط المنتج، ثم أضف بيانات الطلب والتوصيل.'}
+              {search.step === 'price' && 'أدخل السعر الذي يظهر في المتجر إن توفر. السعر النهائي يؤكّد بعد مراجعة الطلب، ولا يُحسب فورياً هنا.'}
               {search.step === 'buy' && 'تحقق من رابط المنتج والسعر وبيانات المستلم، ثم اضغط تقديم الطلب لإرساله للمراجعة والتأكيد.'}
             </p>
           </section>
@@ -687,15 +689,15 @@ function NewOrderPage() {
             <label className="no-lbl">رابط السلة / المنتج <span className="no-req">*</span></label>
             <div className="no-iw">
               <LinkIcon />
-              <input 
+              <input
                 id="new-order-product-url"
-                className="has-ic" 
-                type="text" 
-                value={url} 
-                onChange={(e) => setUrl(e.target.value)} 
-                dir="ltr" 
-                style={{ textAlign: 'right' }} 
-                placeholder="الصق رابط المنتج من أي متجر عالمي (SHEIN، Amazon، AliExpress...)" 
+                className="has-ic"
+                type="text"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                dir="ltr"
+                style={{ textAlign: 'right' }}
+                placeholder="الصق رابط المنتج من أي متجر عالمي (SHEIN، Amazon، AliExpress...)"
               />
             </div>
             {store && (
@@ -706,21 +708,12 @@ function NewOrderPage() {
               </div>
             )}
           </div>
-          <div className="no-field">
-            <label className="no-lbl">اسم المنتج</label>
-            <input
-              type="text"
-              value={productName}
-              onChange={(event) => setProductName(event.target.value)}
-              placeholder="اسم المنتج المطلوب"
-            />
-          </div>
           <div className="no-q">هل توجد منتجات مكررة؟ <span className="no-req">*</span></div>
           <div className="no-choices">
             {DUP_OPTS.map((o) => (
-              <div 
-                key={o} 
-                className={'no-choice' + (dup === o ? ' active' : '')} 
+              <div
+                key={o}
+                className={'no-choice' + (dup === o ? ' active' : '')}
                 onClick={() => setDup(o)}
               >
                 {o}
@@ -740,12 +733,12 @@ function NewOrderPage() {
             <label className="no-lbl">عنوان التوصيل بالتفصيل (المدينة، الحي، أقرب معلم) <span className="no-req">*</span></label>
             <div className="no-iw">
               <Pin />
-              <input 
-                className="has-ic" 
-                type="text" 
-                value={address} 
-                onChange={(e) => setAddress(e.target.value)} 
-                placeholder="مثال: صنعاء - شارع حدة - بجوار فندق برج السلام..." 
+              <input
+                className="has-ic"
+                type="text"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="مثال: صنعاء - شارع حدة - بجوار فندق برج السلام..."
               />
             </div>
           </div>
@@ -753,12 +746,12 @@ function NewOrderPage() {
             <label className="no-lbl">اسم المستلم الكريم <span className="no-req">*</span></label>
             <div className="no-iw">
               <User />
-              <input 
-                className="has-ic" 
-                type="text" 
-                value={name} 
-                onChange={(e) => setName(e.target.value)} 
-                placeholder="اسم المستلم" 
+              <input
+                className="has-ic"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="اسم المستلم"
               />
             </div>
           </div>
@@ -766,14 +759,14 @@ function NewOrderPage() {
             <label className="no-lbl">رقم الهاتف / الواتساب <span className="no-req">*</span></label>
             <div className="no-iw">
               <Phone />
-              <input 
-                className="has-ic" 
-                type="tel" 
-                dir="ltr" 
-                style={{ textAlign: 'right' }} 
-                value={phone} 
-                onChange={(e) => setPhone(e.target.value)} 
-                placeholder="7XXXXXXXX" 
+              <input
+                className="has-ic"
+                type="tel"
+                dir="ltr"
+                style={{ textAlign: 'right' }}
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="7XXXXXXXX"
               />
             </div>
           </div>
@@ -788,12 +781,12 @@ function NewOrderPage() {
           </div>
           <div className="no-price">
             <div className="no-iw">
-              <input 
+              <input
                 id="new-order-product-price"
-                type="number" 
-                value={price} 
-                onChange={(e) => setPrice(e.target.value)} 
-                placeholder="0.00" 
+                type="number"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                placeholder="0.00"
               />
             </div>
             <select value={currency} onChange={(e) => setCurrency(e.target.value)}>
@@ -812,14 +805,14 @@ function NewOrderPage() {
             <div className="no-title">ملاحظات إضافية (اختياري)</div>
           </div>
           <div className="no-ta">
-            <textarea 
-              value={notes} 
-              onChange={(e) => setNotes(e.target.value)} 
-              placeholder="اكتب أي ملاحظات خاصة بطلبك هنا (مقاسات، ألوان، تعليمات خاصة)..." 
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="اكتب أي ملاحظات خاصة بطلبك هنا (مقاسات، ألوان، تعليمات خاصة)..."
             />
-            <button 
-              className={`mic ${isRecording ? 'listening' : ''}`} 
-              type="button" 
+            <button
+              className={`mic ${isRecording ? 'listening' : ''}`}
+              type="button"
               title={isRecording ? 'جارٍ الاستماع... انقر للإيقاف' : 'تسجيل صوتي للملاحظات'}
               onClick={toggleSpeechRecognition}
             >
@@ -835,8 +828,8 @@ function NewOrderPage() {
         </button>
 
         {/* زر الرجوع للصفحة الرئيسية */}
-        <button 
-          className="no-btn no-ghost" 
+        <button
+          className="no-btn no-ghost"
           type="button"
           onClick={() => navigate({ to: '/dashboard' })}
         >
@@ -854,3 +847,4 @@ function NewOrderPage() {
     </div>
   )
 }
+
