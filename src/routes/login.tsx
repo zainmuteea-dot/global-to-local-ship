@@ -217,7 +217,14 @@ export function LoginPage() {
           throw new Error("هذا الحساب غير مصرح له بدخول الإدارة.");
         }
 
-        window.location.href = "/admin";
+        const requestedRedirect = new URLSearchParams(window.location.search).get("redirect");
+        const safeRedirect =
+          requestedRedirect &&
+          requestedRedirect.startsWith("/") &&
+          !requestedRedirect.startsWith("//")
+            ? requestedRedirect
+            : "/admin";
+        window.location.replace(safeRedirect);
         return;
       } else {
         const phone = normalizePhoneE164(identifier);
