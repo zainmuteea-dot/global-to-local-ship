@@ -55,3 +55,47 @@
     * { border-color: var(--color-border); }
   body { background-color: var(--background); color: var(--foreground); font-family: "Tajawal", "Cairo", sans-serif; }
 }
+
+/* تأثير الطفو والتأرجح للروبوت الأزرق */
+.blue-robot-character {
+  display: inline-block;
+  transform-origin: center bottom;
+  filter: drop-shadow(0 6px 14px rgba(2, 132, 199, 0.45));
+  animation: blue-bot-hover 3.2s ease-in-out infinite;
+}
+.robot-beacon {
+  animation: beacon-glow 1.5s ease-in-out infinite alternate;
+}
+.robot-eye {
+  transform-origin: center;
+  animation: robot-blink 4s infinite;
+}
+.robot-arm-left {
+  transform-origin: 26px 64px;
+  animation: arm-wave-left 3.2s ease-in-out infinite;
+}
+.robot-arm-right {
+  transform-origin: 74px 64px;
+  animation: arm-wave-right 3.2s ease-in-out infinite;
+}
+@keyframes blue-bot-hover {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  30% { transform: translateY(-7px) rotate(2.5deg); }
+  70% { transform: translateY(-3px) rotate(-2.5deg); }
+}
+@keyframes beacon-glow {
+  from { fill: #38bdf8; filter: drop-shadow(0 0 2px #38bdf8); }
+  to { fill: #bae6fd; filter: drop-shadow(0 0 7px #38bdf8); }
+}
+@keyframes robot-blink {
+  0%, 94%, 98%, 100% { transform: scaleY(1); }
+  96% { transform: scaleY(0.1); }
+}
+@keyframes arm-wave-left {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(4deg); }
+}
+@keyframes arm-wave-right {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-4deg); }
+}
