@@ -45,7 +45,7 @@ function RobotFace({ size = 64 }: { size?: number }) {
   );
 }
 
-export default function AIRobot() {
+export function AIRobot() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([{ id: 1, text: WELCOME, sender: "bot" }]);
   const [input, setInput] = useState("");
@@ -146,3 +146,6 @@ export default function AIRobot() {
     </>
   );
 }
+
+// يدعم كلا النوعين من الاستيراد سواء import AIRobot أو import { AIRobot }
+export default AIRobot;
