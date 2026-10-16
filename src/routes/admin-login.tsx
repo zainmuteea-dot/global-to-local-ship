@@ -22,7 +22,7 @@ function getSafeRedirect(): string {
     !requestedRedirect.startsWith("/") ||
     requestedRedirect.startsWith("//") ||
     requestedRedirect.includes("\\") ||
-    /%5c/i.test(requestedRedirect)
+    /%(?:25)*5c/i.test(requestedRedirect)
   ) {
     return "/admin";
   }
