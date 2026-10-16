@@ -218,12 +218,26 @@ export function LoginPage() {
         }
 
         const requestedRedirect = new URLSearchParams(window.location.search).get("redirect");
-        const safeRedirect =
+        let safeRedirect = "/admin";
+
+        if (
           requestedRedirect &&
           requestedRedirect.startsWith("/") &&
-          !requestedRedirect.startsWith("//")
-            ? requestedRedirect
-            : "/admin";
+          !requestedRedirect.startsWith("//") &&
+          !requestedRedirect.includes("\\") &&
+          !/%5c/i.test(requestedRedirect)
+        ) {
+          try {
+            const target = new URL(requestedRedirect, window.location.origin);
+
+            if (target.origin === window.location.origin) {
+              safeRedirect = `${target.pathname}${target.search}${target.hash}`;
+            }
+          } catch {
+            // Keep /admin when the requested redirect is malformed.
+          }
+        }
+
         window.location.replace(safeRedirect);
         return;
       } else {
