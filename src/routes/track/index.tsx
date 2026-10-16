@@ -79,6 +79,31 @@ function getInitialTrackingCode(): string {
   return (params.get('tracking') || params.get('order') || '').trim();
 }
 
+function normalizeArabicDigits(value: string): string {
+  return value.replace(/[٠-٩۰-۹]/g, (digit) => {
+    const code = digit.charCodeAt(0);
+    return String(code >= 0x06f0 ? code - 0x06f0 : code - 0x0660);
+  });
+}
+
+/**
+ * Return common exact storage formats for a Yemen mobile number.
+ * Phone search is never allowed by itself; it must be paired with a tracking code.
+ */
+function getYemenPhoneCandidates(value: string): string[] {
+  let digits = normalizeArabicDigits(value).replace(/\D/g, '');
+  if (digits.startsWith('00')) digits = digits.slice(2);
+
+  if (digits.startsWith('967')) digits = digits.slice(3);
+  if (digits.startsWith('0')) digits = digits.slice(1);
+
+  if (!/^7\d{8}$/.test(digits)) return [];
+
+  const local = `0${digits}`;
+  const international = `967${digits}`;
+  return [...new Set([digits, local, international, `+${international}`, `00${international}`])];
+}
+
 function getFriendlySearchError(error: unknown): string {
   const value = error as { code?: string; message?: string } | null;
   const code = value?.code ?? '';
@@ -178,53 +203,64 @@ export function TrackPage() {
     },
   ];
 
-  // دالة البحث التلقائي المصححة المتوافقة مع أعمدة Supabase (tracking_code و phone)
+  // لا نبحث إلا عند إدخال كود تتبع ورقم هاتف يمني معًا، ونُظهر سجلًا مطابقًا واحدًا فقط.
   const handleSearch = useCallback(async (overrideOrder?: string, overridePhone?: string) => {
-    const oQuery = (overrideOrder !== undefined ? overrideOrder : orderQuery).trim().toUpperCase();
-    const pQuery = (overridePhone !== undefined ? overridePhone : phoneQuery).trim();
-    if (!oQuery && !pQuery) {
-      setHasSearched(true);
-      setErrorMessage('أدخل رقم التتبع أو رقم الهاتف المسجل للبحث عن طلبك.');
-      setOrder(null);
-      setOrderResults([]);
-      return;
-    }
+    const rawOrder = (overrideOrder !== undefined ? overrideOrder : orderQuery).trim();
+    const oQuery = rawOrder.toUpperCase();
+    const rawPhone = (overridePhone !== undefined ? overridePhone : phoneQuery).trim();
+    const phoneCandidates = getYemenPhoneCandidates(rawPhone);
 
-    setLoading(true);
     setHasSearched(true);
     setErrorMessage('');
     setOrder(null);
     setOrderResults([]);
 
+    if (!oQuery || !rawPhone) {
+      setErrorMessage('لخصوصية حسابك، أدخل رقم التتبع ورقم الهاتف المسجل معًا.');
+      return;
+    }
+
+    if (!/^[A-Z0-9-]{3,80}$/.test(oQuery)) {
+      setErrorMessage('تحقق من كتابة رقم التتبع بشكل صحيح، ثم حاول مرة أخرى.');
+      return;
+    }
+
+    if (phoneCandidates.length === 0) {
+      setErrorMessage('أدخل رقم هاتف يمني صحيحًا يبدأ بـ 7 أو بمفتاح اليمن +967.');
+      return;
+    }
+
+    setLoading(true);
+
     try {
-      // اطلب الأعمدة التي تستخدمها الصفحة فقط.
-      let query = supabase
+      // مطابقة كود التتبع والهاتف معًا؛ لا نُرجع قائمة الطلبات المرتبطة بالهاتف.
+      const { data, error } = await supabase
         .from('orders')
-        .select('id,tracking_code,customer_name,phone,product_link,product_name,status,created_at,updated_at');
-
-      if (oQuery && pQuery) {
-        // عند إدخال الرقمين يجب أن يطابقا السجل نفسه معًا.
-        query = query.ilike('tracking_code', oQuery).eq('phone', pQuery);
-      } else if (oQuery) {
-        // رقم التتبع يتغير لكل طلب، لذلك تتم مطابقته بالكامل.
-        query = query.ilike('tracking_code', oQuery);
-      } else if (pQuery) {
-        // الهاتف قد يرتبط بطلبات كثيرة؛ أعد جميع الطلبات الأحدث بدل اختيار واحد بصمت.
-        query = query.eq('phone', pQuery);
-      }
-
-      const { data, error } = await query
+        .select('id,tracking_code,customer_name,phone,product_link,product_name,status,created_at,updated_at')
+        .ilike('tracking_code', oQuery)
+        .in('phone', phoneCandidates)
         .order('created_at', { ascending: false })
-        .limit(100);
+        .limit(2);
 
       if (error) throw error;
 
-      const results: OrderItem[] = (data ?? []).map((row: any) => ({
+      const rows = data ?? [];
+      if (rows.length > 1) {
+        setErrorMessage('تعذّر تحديد طلب واحد بهذا الرقم. تواصل مع خدمة العملاء للمساعدة.');
+        return;
+      }
+
+      if (rows.length === 0) {
+        return;
+      }
+
+      const row = rows[0] as any;
+      const result: OrderItem = {
         id: row.id,
         orderNumber: row.tracking_code || 'بدون رقم تتبع',
         intlTrackingNumber: row.tracking_code || undefined,
         customerName: row.customer_name || 'عميل السوق الشامل',
-        customerPhone: row.phone || pQuery,
+        customerPhone: row.phone || rawPhone,
         customerCity: 'اليمن',
         customerAddress: '',
         storeName: 'المتجر الدولي',
@@ -234,11 +270,10 @@ export function TrackPage() {
         status: (row.status as OrderStatus) || 'new',
         createdAt: row.created_at || new Date().toISOString(),
         updatedAt: row.updated_at || undefined,
-      }));
+      };
 
-      setOrderResults(results);
-      // افتح تلقائيًا فقط عند وجود نتيجة واحدة. إذا تعددت، يختار العميل الطلب المقصود.
-      if (results.length === 1) setOrder(results[0]);
+      setOrderResults([result]);
+      setOrder(result);
     } catch (err: unknown) {
       setErrorMessage(getFriendlySearchError(err));
       setOrder(null);
@@ -248,52 +283,38 @@ export function TrackPage() {
     }
   }, [orderQuery, phoneQuery]);
 
-  // الجلب التلقائي الفوري من جلسة المستخدم وقاعدة البيانات
+  // تعبئة رقم الهاتف من جلسة العميل عند توفره، دون تشغيل بحث تلقائي أو عرض طلباته.
   useEffect(() => {
     let active = true;
 
-    async function initUserTracking() {
-      let resolvedPhone = getInitialClientPhone();
-      const resolvedTracking = getInitialTrackingCode();
+    async function autofillPhone() {
+      if (getInitialClientPhone()) return;
 
-      // فحص جلسة المستخدم في Supabase Auth إن لم يتوفر الرقم محلياً
-      if (!resolvedPhone) {
-        try {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('phone, full_name')
-              .eq('id', user.id)
-              .maybeSingle();
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
 
-            if (profile?.phone && !profile.phone.includes('@')) {
-              resolvedPhone = profile.phone.trim();
-              if (active) {
-                setPhoneQuery(resolvedPhone);
-                localStorage.setItem('sc_phone', resolvedPhone);
-              }
-            }
-          }
-        } catch {
-          // ignore
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('phone')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        if (active && profile?.phone && !profile.phone.includes('@')) {
+          const phone = profile.phone.trim();
+          setPhoneQuery(phone);
+          localStorage.setItem('sc_phone', phone);
         }
-      }
-
-      if (!active) return;
-
-      // تشغيل البحث التلقائي إذا وجد رقم هاتف أو كود تتبع
-      if (resolvedTracking || resolvedPhone) {
-        handleSearch(resolvedTracking || undefined, resolvedPhone || undefined);
+      } catch {
+        // إذا تعذّر جلب الملف الشخصي، يستطيع العميل كتابة رقم الهاتف يدويًا.
       }
     }
 
-    initUserTracking();
-
+    void autofillPhone();
     return () => {
       active = false;
     };
-  }, [handleSearch]);
+  }, []);
 
   // الربط التلقائي المباشر (Realtime): تحديث المسار فوراً بمجرد أن يغير الأدمن الحالة
   useEffect(() => {
@@ -444,11 +465,7 @@ export function TrackPage() {
                   <span>لم نعثر على طلب مطابق لبيانات البحث</span>
                 </p>
                 <div className="text-[11px] leading-relaxed text-slate-700 text-center">
-                  {orderQuery.trim() && phoneQuery.trim()
-                    ? 'تأكد أن رقم التتبع والهاتف صحيحان وينتميان إلى الطلب نفسه.'
-                    : orderQuery.trim()
-                      ? 'تحقق من رقم التتبع كاملًا؛ لكل طلب رقم تتبع خاص به.'
-                      : 'لم نعثر على طلب بهذا الهاتف. تحقق من كتابة رقم الهاتف المسجل مع مفتاح الدولة.'}
+                  'تأكد من كود التتبع ورقم الهاتف المسجل، وأنهما يخصان الطلب نفسه. أدخل الرقمين معًا.' 
                 </div>
                 <p className="text-[11px] text-slate-600 text-center">إذا استمرت المشكلة، تواصل مع خدمة العملاء للمساعدة.</p>
               </div>
@@ -484,7 +501,7 @@ export function TrackPage() {
               </span>
             </div>
             <p className="text-xs leading-relaxed text-slate-600">
-              هذا الرقم مرتبط بأكثر من طلب. اختر رقم التتبع الصحيح، أو أدخل رقم التتبع والهاتف معًا للبحث عن طلب محدد.
+              اختر الطلب الذي أدخلت رقمه، ولا تُعرض الطلبات بالبحث برقم الهاتف وحده.
             </p>
             <div className="space-y-2">
               {orderResults.map((result) => {
