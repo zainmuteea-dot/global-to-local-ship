@@ -16,6 +16,7 @@ import {
   Home,
   MapPin,
   MessageCircle,
+  MessageSquare,
   Package,
   Phone,
   Plane,
@@ -826,7 +827,15 @@ export default function AdminOperationsPage() {
               <Bell className="size-4" />
               {pendingPaymentsCount > 0 && <span className="absolute -top-1 -left-1 min-w-5 h-5 px-1 rounded-full bg-red-600 text-white text-[10px] font-black grid place-items-center">{pendingPaymentsCount}</span>}
             </button>
-            <a href="https://wa.me/967773370041" target="_blank" rel="noreferrer" className="hidden xl:grid p-2.5 rounded-xl bg-emerald-50 text-emerald-700" title="تواصل واتساب"><MessageCircle className="size-4" /></a>
+            <button
+              type="button"
+              onClick={() => navigateTo("/admin-chat")}
+              className="hidden xl:grid p-2.5 rounded-xl bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+              title="محادثات العملاء"
+              aria-label="فتح محادثات العملاء"
+            >
+              <MessageSquare className="size-4" />
+            </button>
             <div className="hidden 2xl:block text-left text-[10px] leading-5 text-slate-500"><div>{now.toLocaleTimeString("ar-YE", { hour: "2-digit", minute: "2-digit" })}</div><div>{now.toLocaleDateString("ar-YE")}</div></div>
             <button onClick={() => navigateTo("/")} className="hidden xl:block px-3 py-2.5 rounded-xl border border-sky-100 bg-white text-[#0F4C81] text-xs font-bold hover:bg-sky-50" type="button">معاينة المتجر</button>
           </div>
