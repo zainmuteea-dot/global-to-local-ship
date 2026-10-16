@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { AdminRouteGuard } from "@/components/admin/AdminRouteGuard";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -156,8 +157,16 @@ export const Route = createFileRoute("/payments")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  component: PaymentsPage,
+  component: GuardedPaymentsPage,
 });
+
+function GuardedPaymentsPage() {
+  return (
+    <AdminRouteGuard allowStaff redirectTo="/payments">
+      <PaymentsPage />
+    </AdminRouteGuard>
+  );
+}
 
 const fmt = (value: number) => Math.round(value).toLocaleString("en-US");
 
