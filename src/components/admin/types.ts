@@ -13,6 +13,8 @@ export interface OrderItem {
   orderNumber: string;
   customerName: string;
   customerPhone: string;
+  /** Supabase auth user id; null for historical/guest orders. */
+  userId?: string | null;
   customerCity?: string;
   productTitle: string;
   productUrl?: string;
