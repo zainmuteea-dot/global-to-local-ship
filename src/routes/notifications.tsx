@@ -44,6 +44,35 @@ type SystemNotification = {
 
 const ADMIN_ONLY_NOTIFICATION_KINDS = new Set(["new_payment_submitted"]);
 
+// حالة القراءة لهذا الملف مصدرها notification_reads فقط، وليس notifications.is_read.
+// يتوقع الجدول notification_id وuser_id وقيدًا فريدًا عليهما معًا.
+async function loadNotificationReadIds(userId: string) {
+  const { data, error } = await (supabase.from("notification_reads") as any)
+    .select("notification_id,user_id")
+    .eq("user_id", userId);
+
+  return {
+    error,
+    readIds: new Set<string>(
+      (data ?? [])
+        .filter((row: { user_id: string }) => row.user_id === userId)
+        .map((row: { notification_id: string }) => row.notification_id),
+    ),
+  };
+}
+
+async function saveNotificationReadIds(userId: string, notificationIds: string[]) {
+  if (notificationIds.length === 0) return { error: null };
+
+  return await (supabase.from("notification_reads") as any).upsert(
+    notificationIds.map((notificationId) => ({
+      notification_id: notificationId,
+      user_id: userId,
+    })),
+    { onConflict: "notification_id,user_id" },
+  );
+}
+
 function NotificationsPage() {
   const { user, loading: sessionLoading } = useSession();
   const [canManage, setCanManage] = useState<boolean | null>(null);
@@ -109,7 +138,7 @@ function NotificationsPage() {
   );
 }
 
-/** واجهة العميل: لا تجلب إلا الإشعارات المرتبطة بمعرّف جلسته. */
+/** واجهة العميل: تجلب إشعارات الحساب والعروض العامة النشطة فقط. */
 function CustomerNotificationsPage({
   userId,
   roleError,
@@ -134,10 +163,7 @@ function CustomerNotificationsPage({
           .or(`and(user_id.is.null,is_active.eq.true),user_id.eq.${userId}`)
           .order("created_at", { ascending: false })
           .limit(50),
-        supabase
-          .from("notification_reads")
-          .select("notification_id")
-          .eq("user_id", userId),
+        loadNotificationReadIds(userId),
       ]);
 
       if (!active) return;
@@ -157,7 +183,7 @@ function CustomerNotificationsPage({
         console.error("تعذر تحميل حالة قراءة الإشعارات:", readsResult.error);
         setError((current) => current ?? "تعذر تحميل حالة قراءة الإشعارات.");
       } else {
-        setReadIds(new Set((readsResult.data ?? []).map((row) => row.notification_id)));
+        setReadIds(readsResult.readIds);
       }
 
       setLoading(false);
@@ -227,10 +253,7 @@ function CustomerNotificationsPage({
     if (readIds.has(notificationId)) return;
     setSavingRead(true);
 
-    const { error: saveError } = await supabase.from("notification_reads").upsert(
-      { notification_id: notificationId, user_id: userId },
-      { onConflict: "notification_id,user_id" },
-    );
+    const { error: saveError } = await saveNotificationReadIds(userId, [notificationId]);
 
     setSavingRead(false);
     if (saveError) {
@@ -248,9 +271,9 @@ function CustomerNotificationsPage({
     if (unread.length === 0) return;
     setSavingRead(true);
 
-    const { error: saveError } = await supabase.from("notification_reads").upsert(
-      unread.map((item) => ({ notification_id: item.id, user_id: userId })),
-      { onConflict: "notification_id,user_id" },
+    const { error: saveError } = await saveNotificationReadIds(
+      userId,
+      unread.map((item) => item.id),
     );
 
     setSavingRead(false);
@@ -505,9 +528,9 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
     if (unread.length === 0) return;
     setSavingRead(true);
 
-    const { error: saveError } = await supabase.from("notification_reads").upsert(
-      unread.map((item) => ({ notification_id: item.id, user_id: userId })),
-      { onConflict: "notification_id,user_id" },
+    const { error: saveError } = await saveNotificationReadIds(
+      userId,
+      unread.map((item) => item.id),
     );
 
     setSavingRead(false);
