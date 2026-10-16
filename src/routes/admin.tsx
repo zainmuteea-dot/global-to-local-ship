@@ -337,6 +337,7 @@ export default function AdminOperationsPage() {
   const [loading, setLoading] = useState(false);
   const [now, setNow] = useState(() => new Date());
   const [pendingPaymentsCount, setPendingPaymentsCount] = useState(0);
+  const [backupLoading, setBackupLoading] = useState(false);
   const [isPosOpen, setIsPosOpen] = useState(false);
   const [posItemName, setPosItemName] = useState("");
   const [posQuantity, setPosQuantity] = useState("1");
@@ -385,20 +386,61 @@ export default function AdminOperationsPage() {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  const downloadLocalBackup = () => {
-    const payload = {
-      exportedAt: new Date().toISOString(),
-      notice: "نسخة من البيانات المحملة في هذه الصفحة فقط، وليست نسخة كاملة أو مشفرة من قاعدة البيانات.",
-      orders,
-      employees,
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `alsouk-admin-backup-${new Date().toISOString().slice(0, 10)}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
+  const downloadLocalBackup = async () => {
+    setBackupLoading(true);
+
+    try {
+      const batchSize = 500;
+      const rows: unknown[] = [];
+      let from = 0;
+
+      while (true) {
+        const { data, error } = await supabase
+          .from("orders")
+          .select("*")
+          .order("created_at", { ascending: true })
+          .order("id", { ascending: true })
+          .range(from, from + batchSize - 1);
+
+        if (error) throw error;
+
+        const batch = data ?? [];
+        rows.push(...batch);
+
+        if (batch.length < batchSize) break;
+        from += batchSize;
+      }
+
+      const payload = {
+        exportedAt: new Date().toISOString(),
+        exportType: "orders_export",
+        warning:
+          "تصدير للطلبات التي يستطيع هذا الحساب قراءتها فقط، وليس نسخة احتياطية كاملة من قاعدة البيانات.",
+        count: rows.length,
+        orders: rows,
+      };
+
+      const blob = new Blob([JSON.stringify(payload, null, 2)], {
+        type: "application/json;charset=utf-8",
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `alsouk-orders-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+      console.error("فشل تصدير الطلبات:", error);
+      window.alert(
+        `تعذّر تصدير الطلبات: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+    } finally {
+      setBackupLoading(false);
+    }
   };
 
   const copyTrackingCode = async (order: OrderItem) => {
@@ -599,22 +641,27 @@ export default function AdminOperationsPage() {
 
   const sendWhatsAppNotification = (order: OrderItem) => {
     const rawPhone = String(order.customerPhone ?? "").replace(/\D/g, "");
-    const phone = rawPhone
-      ? rawPhone.startsWith("967")
+    const phone = rawPhone.startsWith("00")
+      ? rawPhone.slice(2)
+      : rawPhone.startsWith("967")
         ? rawPhone
-        : `967${rawPhone.replace(/^0+/, "")}`
-      : "";
+        : `967${rawPhone.replace(/^0+/, "")}`;
 
-    if (!phone) {
-      window.alert("لا يوجد رقم هاتف صالح للعميل في هذا الطلب.");
+    if (!/^9677\d{8}$/.test(phone)) {
+      window.alert("رقم العميل غير صالح لواتساب. تحقق من الرقم اليمني المسجل.");
       return;
     }
 
     const statusLabel = STATUS_TEXT[order.status] || order.status;
-    const message = encodeURIComponent(
-      `مرحباً ${order.customerName}،\nشحنتك رقم (${order.orderNumber}) من متجر ${order.storeName}:\nالحالة الحالية: ${statusLabel}\nرقم التتبع: ${order.intlTrackingNumber || order.orderNumber}\n\nشكراً لتسوقك مع السوق الشامل 🌟`
-    );
-    window.open(`https://wa.me/${phone}?text=${message}`, "_blank", "noopener,noreferrer");
+    const message =
+      `مرحباً ${order.customerName}،\n` +
+      `شحنتك رقم (${order.orderNumber}) من متجر ${order.storeName}:\n` +
+      `الحالة الحالية: ${statusLabel}\n` +
+      `رقم التتبع: ${order.intlTrackingNumber || order.orderNumber}\n\n` +
+      "شكراً لتسوقك مع السوق الشامل 🌟";
+    const url = new URL(`https://wa.me/${phone}`);
+    url.searchParams.set("text", message);
+    window.open(url.toString(), "_blank", "noopener,noreferrer");
   };
 
   // تصفية الشحنات
@@ -765,8 +812,15 @@ export default function AdminOperationsPage() {
             <button onClick={() => { setPosNotice(""); setIsPosOpen(true); }} className="hidden xl:flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700" type="button">
               <Wallet className="size-4" /> كاشير POS
             </button>
-            <button onClick={downloadLocalBackup} className="hidden xl:flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs font-bold hover:bg-slate-50" type="button" title="تنزيل نسخة محلية من بيانات هذه الصفحة">
-              <Download className="size-4" /> نسخة احتياطية
+            <button
+              onClick={downloadLocalBackup}
+              disabled={backupLoading}
+              className="hidden xl:flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs font-bold hover:bg-slate-50 disabled:opacity-50"
+              type="button"
+              title="تصدير الطلبات المتاحة فقط، وليس نسخة كاملة من قاعدة البيانات"
+            >
+              <Download className="size-4" />
+              {backupLoading ? "جارٍ التصدير…" : "تصدير الطلبات"}
             </button>
             <button onClick={() => navigateTo("/notifications")} className="relative p-2.5 rounded-xl border border-sky-100 bg-white text-[#0F4C81] hover:bg-sky-50" type="button" title="الإشعارات">
               <Bell className="size-4" />
@@ -884,7 +938,7 @@ export default function AdminOperationsPage() {
             </div>
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[10px]"><span className="text-rose-700">يوم الذروة المعلن: 501,000 YER • يحتاج مطابقة مع الفواتير الفعلية</span><span className="flex gap-3"><span className="text-blue-700">■ المبيعات</span><span className="text-rose-600">■ المشتريات</span></span></div>
           </div>
-          <div className="rounded-2xl border border-sky-100 bg-white p-5 shadow-sm"><h2 className="font-black text-[#0A2540]">ملخص سير العمليات</h2><p className="mt-1 text-[11px] text-slate-500">محسوب من الشحنات المحمّلة في الصفحة.</p><div className="mt-5 space-y-4">{[{label:"طلبات قيد المراجعة",count:orders.filter(o=>o.status==="reviewing").length,color:"bg-amber-500"},{label:"طلبات قيد الشراء",count:orders.filter(o=>o.status==="purchased").length,color:"bg-blue-500"},{label:"شحنات دولية",count:orders.filter(o=>o.status==="international_ship").length,color:"bg-violet-500"},{label:"تم التسليم",count:deliveredShipments,color:"bg-emerald-500"}].map((x)=><div key={x.label}><div className="mb-1 flex justify-between text-xs"><span>{x.label}</span><b>{x.count}</b></div><div className="h-2 rounded-full bg-slate-100"><div className={`h-2 rounded-full ${x.color}`} style={{width:`${orders.length ? Math.max(4,Math.min(100,(x.count/orders.length)*100)) : 0}%`}}/></div></div>)}</div><button type="button" onClick={()=>navigateTo("/payments")} className="mt-5 w-full rounded-xl bg-slate-50 px-3 py-2 text-xs font-bold text-[#0F4C81]">مراجعة المدفوعات المعلقة ({pendingPaymentsCount})</button></div>
+          <div className="rounded-2xl border border-sky-100 bg-white p-5 shadow-sm"><h2 className="font-black text-[#0A2540]">ملخص سير العمليات</h2><p className="mt-1 text-[11px] text-slate-500">محسوب من الشحنات المحمّلة في الصفحة.</p><div className="mt-5 space-y-4">{[{label:"طلبات قيد المراجعة",count:orders.filter(o=>o.status==="reviewing").length,color:"bg-amber-500"},{label:"طلبات قيد الشراء",count:orders.filter(o=>o.status==="purchased").length,color:"bg-blue-500"},{label:"شحنات دولية",count:orders.filter(o=>o.status==="international_ship").length,color:"bg-violet-500"},{label:"تم التسليم",count:deliveredShipments,color:"bg-emerald-500"}].map((x)=><div key={x.label}><div className="mb-1 flex justify-between text-xs"><span>{x.label}</span><b>{x.count}</b></div><div className="h-2 rounded-full bg-slate-100"><div className={`h-2 rounded-full ${x.color}`} style={{width:`${orders.length ? Math.max(4,Math.min(100,(x.count/orders.length)*100)) : 0}%`}}/></div></div>)}</div><a href="/payments" className="mt-5 block w-full rounded-xl bg-slate-50 px-3 py-2 text-center text-xs font-bold text-[#0F4C81]">مراجعة المدفوعات المعلقة ({pendingPaymentsCount})</a></div>
         </section>
 
         {/* مكون بث التنبيهات المباشرة */}
