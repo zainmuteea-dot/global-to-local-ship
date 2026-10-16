@@ -598,7 +598,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
   const unreadSystem = notifications.filter((item) => !readIds.has(item.id)).length;
 
   return (
-    <AccountShell title="إشعارات الإدارة" back="/admin">
+    <AccountShell title="إشعارات الإدارة" back="/admin" wide>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <div className="relative">
