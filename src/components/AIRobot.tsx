@@ -23,7 +23,7 @@ const fallback = [
   "هذا خارج تغطيتي، أنا أغطي بس السوق الشامل.. زي الشبكة تمامًا 📶",
 ];
 
-// مكون الروبوت الأزرق المطابق للصورة تماماً
+// أيقونة وشخصية الروبوت الأزرق الكرتوني المطابق للصورة
 export function BlueRobotMascot({ size = 44, className = "" }: { size?: number; className?: string }) {
   return (
     <svg
@@ -35,39 +35,35 @@ export function BlueRobotMascot({ size = 44, className = "" }: { size?: number; 
       className={`blue-robot-character ${className}`}
     >
       <defs>
-        {/* تدرج اللون الأزرق الأساسي */}
         <linearGradient id="robotBlueGrad" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#38bdf8" />
           <stop offset="50%" stopColor="#0284c7" />
           <stop offset="100%" stopColor="#0369a1" />
         </linearGradient>
 
-        {/* تدرج إطار الرأس */}
         <linearGradient id="headBevelGrad" x1="0%" y1="0%" x2="0%" y2="100%">
           <stop offset="0%" stopColor="#7dd3fc" />
           <stop offset="100%" stopColor="#075985" />
         </linearGradient>
 
-        {/* تدرج شاشة الوجه */}
         <linearGradient id="screenGrad" x1="0%" y1="0%" x2="0%" y2="100%">
           <stop offset="0%" stopColor="#081528" />
           <stop offset="100%" stopColor="#0f172a" />
         </linearGradient>
 
-        {/* توهج العيون والابتسامة البيضاء */}
         <filter id="eyeGlow" x="-20%" y="-20%" width="140%" height="140%">
           <feGaussianBlur stdDeviation="1.5" result="blur" />
           <feComposite in="SourceGraphic" in2="blur" operator="over" />
         </filter>
       </defs>
 
-      {/* 1. الهوائي الرأسي والكرة العلوية */}
+      {/* الهوائي العلوي */}
       <g className="robot-antenna-group">
         <line x1="50" y1="20" x2="50" y2="9" stroke="#0284c7" strokeWidth="4" strokeLinecap="round" />
         <circle cx="50" cy="7" r="5" fill="#38bdf8" stroke="#bae6fd" strokeWidth="1.5" className="robot-beacon" />
       </g>
 
-      {/* 2. الذراعان */}
+      {/* الذراعان */}
       <g className="robot-arms">
         <path
           d="M26 64 L14 74 L8 98"
@@ -87,7 +83,7 @@ export function BlueRobotMascot({ size = 44, className = "" }: { size?: number; 
         />
       </g>
 
-      {/* 3. الجسم مع الخطوط الرأسية كالصورة */}
+      {/* جسم الروبوت مع الخطوط الرأسية */}
       <g className="robot-body">
         <path
           d="M32 60 H68 L64 100 H36 Z"
@@ -100,7 +96,7 @@ export function BlueRobotMascot({ size = 44, className = "" }: { size?: number; 
         <line x1="58" y1="61" x2="60" y2="99" stroke="#7dd3fc" strokeWidth="3" opacity="0.85" />
       </g>
 
-      {/* 4. الرأس وشاشة الوجه المنحنية */}
+      {/* الرأس وشاشة الوجه والابتسامات */}
       <g className="robot-head-group">
         <rect x="16" y="32" width="5" height="12" rx="2.5" fill="#0284c7" />
         <rect x="79" y="32" width="5" height="12" rx="2.5" fill="#0284c7" />
@@ -127,7 +123,6 @@ export function BlueRobotMascot({ size = 44, className = "" }: { size?: number; 
           strokeWidth="1"
         />
 
-        {/* العيون المستديرة البيضاء والابتسامة الضاحكة */}
         <g className="robot-face-expressions" filter="url(#eyeGlow)">
           <circle cx="39" cy="35" r="5" fill="#ffffff" className="robot-eye" />
           <circle cx="61" cy="35" r="5" fill="#ffffff" className="robot-eye" />
@@ -142,7 +137,7 @@ export function BlueRobotMascot({ size = 44, className = "" }: { size?: number; 
   );
 }
 
-export function ChatBot() {
+export function AIRobot() {
   const [open, setOpen] = useState(false);
   const [gone, setGone] = useState(false);
   const [isGiggling, setIsGiggling] = useState(false);
@@ -165,7 +160,6 @@ export function ChatBot() {
     const q = text.trim();
     if (!q) return;
 
-    // تفعيل هزة الضحك الخفيفة للروبوت عند الإرسال
     setIsGiggling(true);
     setTimeout(() => setIsGiggling(false), 800);
 
@@ -242,7 +236,6 @@ export function ChatBot() {
 
       {!open && (
         <div className="chatbot-fab-container">
-          {/* فقاعة دعوة للدردشة تطفو فوق الروبوت */}
           <div className="chatbot-badge-callout">
             اسألني! 😄
           </div>
@@ -261,3 +254,6 @@ export function ChatBot() {
     </div>
   );
 }
+
+// السطر المسؤول عن حل خطأ Vercel تماماً:
+export default AIRobot;
