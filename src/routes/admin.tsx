@@ -146,68 +146,123 @@ function AdminNotificationComposer() {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
-  const [message, setMessage] = useState("");
+  const [feedback, setFeedback] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
-  const sendNotification = async (event: React.FormEvent<HTMLFormElement>) => {
+  const sendNotification = async (
+    event: React.FormEvent<HTMLFormElement>,
+  ) => {
     event.preventDefault();
-    if (!title.trim() || !body.trim()) return;
+
+    const cleanTitle = title.trim();
+    const cleanMessage = body.trim();
+
+    if (!cleanTitle || !cleanMessage || sending) return;
+
     setSending(true);
-    setMessage("");
-    const { error } = await supabase.from("notifications").insert({
-      title: title.trim(),
-      body: body.trim(),
-    });
-    setSending(false);
-    if (error) {
-      setMessage("تعذر إرسال الإشعار. يرجى التحقق من الصلاحيات.");
-      return;
+    setFeedback(null);
+
+    try {
+      const { error } = await (supabase.from("notifications") as any).insert({
+        user_id: null,
+        title: cleanTitle,
+        message: cleanMessage,
+        type: "system",
+        is_active: true,
+      });
+
+      if (error) throw error;
+
+      setTitle("");
+      setBody("");
+      setFeedback({
+        type: "success",
+        text: "تم نشر الإشعار للعملاء بنجاح.",
+      });
+    } catch (error) {
+      console.error("تعذر إرسال إشعار العملاء:", error);
+      setFeedback({
+        type: "error",
+        text: "تعذر إرسال الإشعار. تحقق من الاتصال وصلاحيات قاعدة البيانات ثم حاول مجددًا.",
+      });
+    } finally {
+      setSending(false);
     }
-    setTitle("");
-    setBody("");
-    setMessage("تم بث الإشعار بنجاح لجميع العملاء.");
   };
 
   return (
-    <section className="rounded-2xl border border-sky-100 bg-white p-4 shadow-sm" dir="rtl">
+    <section
+      className="rounded-2xl border border-sky-100 bg-white p-4 shadow-sm"
+      dir="rtl"
+    >
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="grid size-9 place-items-center rounded-xl bg-orange-100 text-[#EA580C]">
             <Bell className="size-4" />
           </span>
+
           <div>
-            <h3 className="text-sm font-black text-[#0A2540]">بث إشعار فوري للعملاء</h3>
-            <p className="text-[11px] text-slate-500">سيظهر التنبيه فوراً في حسابات العملاء وشريط التنبيهات</p>
+            <h3 className="text-sm font-black text-[#0A2540]">
+              بث إشعار فوري للعملاء
+            </h3>
+            <p className="text-[11px] text-slate-500">
+              سينشر الإشعار في حسابات العملاء ضمن الإشعارات داخل الموقع.
+            </p>
           </div>
         </div>
       </div>
 
-      <form onSubmit={sendNotification} className="grid grid-cols-1 md:grid-cols-4 gap-2.5">
+      <form
+        onSubmit={sendNotification}
+        className="grid grid-cols-1 gap-2.5 md:grid-cols-4"
+      >
         <input
           type="text"
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="عنوان الإشعار (مثال: وصول شحنات جديدة)"
-          className="rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-[#0284C7] bg-slate-50 font-bold"
+          onChange={(event) => setTitle(event.target.value)}
+          placeholder="عنوان الإشعار"
+          className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold outline-none focus:border-[#0284C7] md:col-span-1"
+          maxLength={150}
           required
+          disabled={sending}
         />
+
         <input
           type="text"
           value={body}
-          onChange={(e) => setBody(e.target.value)}
-          placeholder="نص الإشعار التفصيلي..."
-          className="rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-[#0284C7] bg-slate-50 md:col-span-2"
+          onChange={(event) => setBody(event.target.value)}
+          placeholder="نص الإشعار التفصيلي"
+          className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs outline-none focus:border-[#0284C7] md:col-span-2"
+          maxLength={2000}
           required
+          disabled={sending}
         />
+
         <button
           type="submit"
-          disabled={sending}
-          className="flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-[#F97316] to-[#EA580C] px-4 py-2 text-xs font-bold text-white shadow-sm hover:brightness-105 disabled:opacity-60 cursor-pointer"
+          disabled={sending || !title.trim() || !body.trim()}
+          className="flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-[#F97316] to-[#EA580C] px-4 py-2 text-xs font-bold text-white shadow-sm hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <Send className="size-3.5" />
-          <span>{sending ? "جارٍ البث..." : "إرسال التنبيه"}</span>
+          <span>{sending ? "جارٍ الإرسال..." : "إرسال الإشعار"}</span>
         </button>
       </form>
-      {message && <p className="mt-2 text-xs font-bold text-[#0284C7]">{message}</p>}
+
+      {feedback && (
+        <p
+          role={feedback.type === "error" ? "alert" : "status"}
+          aria-live={feedback.type === "error" ? "assertive" : "polite"}
+          className={`mt-3 rounded-xl border p-3 text-xs font-bold ${
+            feedback.type === "success"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+              : "border-red-200 bg-red-50 text-red-800"
+          }`}
+        >
+          {feedback.text}
+        </p>
+      )}
     </section>
   );
 }
@@ -412,6 +467,7 @@ export default function AdminOperationsPage() {
             orderNumber: item.tracking_code || `SQ-${item.id.slice(0, 8)}`,
             customerName: item.customer_name || "عميل مسجل",
             customerPhone: item.phone ?? "",
+            userId: item.user_id ?? null,
             customerCity: item.notes || "صنعاء",
             productTitle: item.product_name || "شحنة وساطة دولية",
             storeName: store,
@@ -479,16 +535,25 @@ export default function AdminOperationsPage() {
         prev.map((o) => (o.id === orderId ? { ...o, status: newStatus, updatedAt: new Date().toISOString() } : o))
       );
 
-      if (targetOrder) {
-        const { error: notificationError } = await supabase.from("notifications").insert({
+      if (targetOrder.userId) {
+        const { error: notificationError } = await (supabase.from("notifications") as any).insert({
+          user_id: targetOrder.userId,
           title: `تحديث مسار الشحنة (${targetOrder.orderNumber})`,
-          body: `مرحباً ${targetOrder.customerName}، شحنتك أصبحت في مرحلة: ${STATUS_TEXT[newStatus]}`,
+          message: `مرحباً ${targetOrder.customerName}، شحنتك أصبحت في مرحلة: ${STATUS_TEXT[newStatus]}`,
+          type: "shipment_update",
+          is_active: true,
         });
         if (notificationError) {
           console.error("تم تحديث حالة الطلب لكن تعذر إنشاء الإشعار:", notificationError);
           setStatusNotice({ type: "warning", message: `تم تحديث حالة الطلب ${targetOrder.orderNumber}، لكن تعذر حفظ إشعار العميل.` });
           return;
         }
+      } else {
+        setStatusNotice({
+          type: "warning",
+          message: `تم تحديث حالة الطلب ${targetOrder.orderNumber}، لكن لا يمكن إرسال إشعار خاص لأن الطلب غير مرتبط بحساب عميل.`,
+        });
+        return;
       }
 
       setStatusNotice({ type: "success", message: `تم تحديث حالة الطلب ${targetOrder.orderNumber} إلى «${nextStatus}» بنجاح.` });
