@@ -11,7 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import { AIRobot } from "../components/AIRobot";
+import { ChatBot } from "../components/chat-bot"; // <-- غيرناه هنا
 
 function NotFoundComponent() {
   return (
@@ -87,10 +87,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "theme-color", content: "#8b4a2e" },
     ],
     links: [
-      {
-        rel: "stylesheet",
-        href: appCss,
-      },
+      { rel: "stylesheet", href: appCss },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
       { rel: "manifest", href: "/manifest.json" },
       { rel: "apple-touch-icon", href: "https://cdn-icons-png.flaticon.com/512/3081/3081559.png" },
@@ -134,7 +131,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <Outlet />
-      <AIRobot />
+      <ChatBot />
     </QueryClientProvider>
   );
 }
