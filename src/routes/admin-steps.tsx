@@ -1,10 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { AdminRouteGuard } from "@/components/admin/AdminRouteGuard";
 import { supabase } from "@/integrations/supabase/client";
 const db = supabase as any;
 
 export const Route = createFileRoute("/admin-steps")({
-  component: StepsAdmin,
+  component: () => (
+    <AdminRouteGuard redirectTo="/admin-steps">
+      <StepsAdmin />
+    </AdminRouteGuard>
+  ),
 });
 
 type StepRow = {
@@ -37,17 +42,20 @@ function StepsAdmin() {
     if (!form.title) return alert("أدخل العنوان");
     const { error } = await db.from("site_steps").insert([{ ...form, is_active: true }]);
     if (!error) { setForm({ title: "", description: "", icon_name: "Link2", link_to: "/new-order", sort_order: 1 }); load(); }
+    else alert(`تعذر إضافة الخطوة: ${error.message}`);
   };
 
   const toggle = async (r: StepRow) => {
-    await db.from("site_steps").update({ is_active: !r.is_active }).eq("id", r.id);
-    load();
+    const { error } = await db.from("site_steps").update({ is_active: !r.is_active }).eq("id", r.id);
+    if (error) alert(`تعذر تحديث الخطوة: ${error.message}`);
+    else load();
   };
 
   const del = async (id: string) => {
     if (!confirm("حذف هذه الخطوة؟")) return;
-    await db.from("site_steps").delete().eq("id", id);
-    load();
+    const { error } = await db.from("site_steps").delete().eq("id", id);
+    if (error) alert(`تعذر حذف الخطوة: ${error.message}`);
+    else load();
   };
 
   return (
