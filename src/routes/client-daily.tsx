@@ -1,8 +1,13 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { AdminRouteGuard } from "@/components/admin/AdminRouteGuard";
 import { useEffect, useState } from "react";
 
 export const Route = createFileRoute("/client-daily")({
-  component: ClientDailyPage,
+  component: () => (
+    <AdminRouteGuard allowStaff redirectTo="/client-daily">
+      <ClientDailyPage />
+    </AdminRouteGuard>
+  ),
 });
 
 function ClientDailyPage() {
@@ -11,11 +16,13 @@ function ClientDailyPage() {
   const [form, setForm] = useState({ client: "", type: "قبض", amount: "", note: "", date: new Date().toISOString().split('T')[0] });
 
   useEffect(() => {
-    const role = sessionStorage.getItem("sc_role");
-    if (role!== "employee") navigate({ to: "/login" });
-    const saved = JSON.parse(localStorage.getItem("sc_client_daily") || "[]");
-    setEntries(saved);
-  }, [navigate]);
+    try {
+      const saved = JSON.parse(localStorage.getItem("sc_client_daily") || "[]");
+      setEntries(Array.isArray(saved) ? saved : []);
+    } catch {
+      setEntries([]);
+    }
+  }, []);
 
   const save = (data: any[]) => {
     setEntries(data);
@@ -44,6 +51,7 @@ function ClientDailyPage() {
           <div>
             <h1 className="text-2xl font-extrabold text-[#3d2314]">📒 يوميات العملاء</h1>
             <p className="text-sm text-[#8a7a65]">حركات القبض والصرف اليومية</p>
+            <p role="alert" className="mt-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm font-bold text-amber-900">هذه القيود محفوظة على هذا المتصفح فقط، وليست سجلًا ماليًا مركزيًا أو كشفًا معتمدًا.</p>
           </div>
           <button onClick={() => navigate({ to: "/admin" })} className="text-sm font-bold text-[#8a7a65] hover:text-[#3d2314]">← رجوع للإدارة</button>
         </div>
