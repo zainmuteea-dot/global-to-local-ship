@@ -3,6 +3,10 @@ import { useEffect, useMemo, useState } from "react";
 import { AdminRouteGuard } from "@/components/admin/AdminRouteGuard";
 import { supabase } from "@/integrations/supabase/client";
 import {
+  buildReceivedPresentation,
+  calculateApprovedReceived,
+} from "./client-reports.received-summary";
+import {
   ArrowRight,
   CheckCircle2,
   FileText,
@@ -266,32 +270,15 @@ function ClientReportsPageContent() {
   }, [clients, search]);
 
   const activeClient = clients.find((client) => client.id === selectedClientId) ?? null;
-  const receivedSummary = useMemo(() => {
-    const totals = new Map<string, number>();
-    let hasApprovedMissingAmount = false;
-    for (const row of rows) {
-      if (row.kind !== "دفعة" || row.status !== "معتمد") continue;
-      if (row.amount == null) {
-        hasApprovedMissingAmount = true;
-        continue;
-      }
-      const currency = row.currency || "غير محدد";
-      totals.set(currency, (totals.get(currency) || 0) + row.amount);
-    }
-    return {
-      totals: Array.from(totals.entries()),
-      hasApprovedMissingAmount,
-    };
-  }, [rows]);
-  const receivedTotals = receivedSummary.totals;
+  const receivedSummary = useMemo(() => calculateApprovedReceived(rows), [rows]);
+  const receivedPresentation = useMemo(
+    () => buildReceivedPresentation(receivedSummary, formatAmount),
+    [receivedSummary],
+  );
 
   const handleWhatsAppShare = () => {
     if (!activeClient?.phone) return;
-    const totalsText = receivedSummary.hasApprovedMissingAmount
-      ? `- المقبوض المعتمد: غير مكتمل؛ توجد دفعة معتمدة بلا مبلغ موثق${receivedTotals.length ? `\n- إجمالي المبالغ المعتمدة الموثقة جزئيًا: ${receivedTotals.map(([currency, amount]) => `${formatAmount(amount)} ${currency}`).join("، ")}` : ""}`
-      : receivedTotals.length
-        ? receivedTotals.map(([currency, amount]) => `- المقبوض المعتمد: ${formatAmount(amount)} ${currency}`).join("\n")
-        : "- لا توجد دفعات معتمدة ضمن الفترة المحددة";
+    const totalsText = receivedPresentation.whatsappText;
     const message = `السلام عليكم ${activeClient.full_name || "عميلنا"}،\nملخص الحركات المسجلة في السوق الشامل:\n${totalsText}\nالحركات المعروضة: ${rows.length} (طلبات ودفعات بجميع حالاتها)\nملاحظة: المقبوض محسوب من الدفعات المعتمدة فقط.\nملاحظة: المبالغ المستحقة لا تظهر لأن الفواتير/تكاليف الطلبات غير مسجلة في مصدر مالي مرتبط بالحساب.`;
     const phone = activeClient.phone.replace(/\D/g, "").replace(/^0+/, "");
     const internationalPhone = phone.startsWith("967") ? phone : `967${phone}`;
@@ -345,13 +332,23 @@ function ClientReportsPageContent() {
         <section className="grid gap-3 sm:grid-cols-2">
           <article className="rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm">
             <p className="flex items-center gap-2 text-sm font-bold text-emerald-700"><Wallet className="size-4" /> المقبوض من الدفعات المعتمدة ضمن الفترة</p>
-            {rowsLoadState === "loaded" && receivedSummary.hasApprovedMissingAmount ? (
-              <div className="mt-2">
-                <p className="text-xl font-black text-amber-700">غير مكتمل</p>
-                <p className="mt-1 text-xs leading-5 text-amber-800">توجد دفعة معتمدة بلا مبلغ موثق، لذلك لا يُعرض مجموع جزئي كإجمالي كامل.</p>
-                {receivedTotals.length > 0 && <p className="mt-2 text-sm font-bold text-slate-600">المبالغ المعتمدة الموثقة جزئيًا: {receivedTotals.map(([currency, amount]) => `${formatAmount(amount)} ${currency}`).join("، ")}</p>}
-              </div>
-            ) : receivedTotals.length ? receivedTotals.map(([currency, amount]) => <p key={currency} className="mt-2 text-xl font-black text-slate-900">{formatAmount(amount)} {currency}</p>) : <p className="mt-2 text-xl font-black text-slate-400">{rowsLoadState === "loaded" ? "لا توجد دفعات معتمدة" : rowsLoadState === "error" ? "غير متاح بسبب فشل القراءة" : "بانتظار اكتمال القراءة"}</p>}
+            {rowsLoadState === "loaded" ? (
+              receivedPresentation.state === "incomplete" ? (
+                <div className="mt-2">
+                  <p className="text-xl font-black text-amber-700">{receivedPresentation.reportText}</p>
+                  <p className="mt-1 text-xs leading-5 text-amber-800">توجد دفعة معتمدة بلا مبلغ موثق، لذلك لا يُعرض مجموع جزئي كإجمالي كامل.</p>
+                  {receivedPresentation.partialText && <p className="mt-2 text-sm font-bold text-slate-600">{receivedPresentation.partialText}</p>}
+                </div>
+              ) : (
+                <p className={`mt-2 text-xl font-black ${receivedPresentation.state === "none" ? "text-slate-400" : "text-slate-900"}`}>
+                  {receivedPresentation.reportText}
+                </p>
+              )
+            ) : (
+              <p className="mt-2 text-xl font-black text-slate-400">
+                {rowsLoadState === "error" ? "غير متاح بسبب فشل القراءة" : "بانتظار اكتمال القراءة"}
+              </p>
+            )}
           </article>
           <article className="rounded-2xl border border-amber-100 bg-amber-50/60 p-5 shadow-sm">
             <p className="text-sm font-bold text-amber-800">الرصيد المستحق / المدين</p>
