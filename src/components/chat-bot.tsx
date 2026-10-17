@@ -25,6 +25,7 @@ const fallback = [
 ];
 
 type ChatSession = { conversationId: string; accessToken: string };
+
 type StoredChatMessage = {
   id: string;
   sender_type: "visitor" | "bot" | "staff";
@@ -41,7 +42,9 @@ function readChatSession(): ChatSession | null {
   try {
     const raw = window.localStorage.getItem(CHAT_STORAGE_KEY);
     if (!raw) return null;
+
     const parsed: unknown = JSON.parse(raw);
+
     if (
       typeof parsed === "object" &&
       parsed !== null &&
@@ -58,6 +61,7 @@ function readChatSession(): ChatSession | null {
   } catch (error) {
     console.error("Could not read saved chat session", error);
   }
+
   return null;
 }
 
@@ -65,12 +69,19 @@ function createChatAccessToken(): string {
   if (typeof window.crypto.randomUUID === "function") {
     return window.crypto.randomUUID();
   }
+
   const bytes = new Uint8Array(16);
   window.crypto.getRandomValues(bytes);
   bytes[6] = (bytes[6] & 0x0f) | 0x40;
   bytes[8] = (bytes[8] & 0x3f) | 0x80;
+
   const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0"));
-  return `${hex.slice(0, 4).join("")}-${hex.slice(4, 6).join("")}-${hex.slice(6, 8).join("")}-${hex.slice(8, 10).join("")}-${hex.slice(10, 16).join("")}`;
+
+  return `${hex.slice(0, 4).join("")}-${hex.slice(4, 6).join("")}-${hex
+    .slice(6, 8)
+    .join("")}-${hex.slice(8, 10).join("")}-${hex
+    .slice(10, 16)
+    .join("")}`;
 }
 
 function mapStoredMessages(rows: StoredChatMessage[]): Msg[] {
@@ -83,8 +94,14 @@ function mapStoredMessages(rows: StoredChatMessage[]): Msg[] {
   ];
 }
 
-// مكون الروبوت الأزرق المطابق للصورة تماماً
-export function BlueRobotMascot({ size = 44, className = "" }: { size?: number; className?: string }) {
+/** شخصية الروبوت الزرقاء المرسومة بـSVG، دون صورة خارجية. */
+export function BlueRobotMascot({
+  size = 44,
+  className = "",
+}: {
+  size?: number;
+  className?: string;
+}) {
   return (
     <svg
       width={size}
@@ -93,41 +110,52 @@ export function BlueRobotMascot({ size = 44, className = "" }: { size?: number; 
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={`blue-robot-character ${className}`}
+      aria-hidden="true"
     >
       <defs>
-        {/* تدرج اللون الأزرق الأساسي */}
         <linearGradient id="robotBlueGrad" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#38bdf8" />
           <stop offset="50%" stopColor="#0284c7" />
           <stop offset="100%" stopColor="#0369a1" />
         </linearGradient>
 
-        {/* تدرج إطار الرأس */}
         <linearGradient id="headBevelGrad" x1="0%" y1="0%" x2="0%" y2="100%">
           <stop offset="0%" stopColor="#7dd3fc" />
           <stop offset="100%" stopColor="#075985" />
         </linearGradient>
 
-        {/* تدرج شاشة الوجه */}
         <linearGradient id="screenGrad" x1="0%" y1="0%" x2="0%" y2="100%">
           <stop offset="0%" stopColor="#081528" />
           <stop offset="100%" stopColor="#0f172a" />
         </linearGradient>
 
-        {/* توهج العيون والابتسامة البيضاء */}
         <filter id="eyeGlow" x="-20%" y="-20%" width="140%" height="140%">
           <feGaussianBlur stdDeviation="1.5" result="blur" />
           <feComposite in="SourceGraphic" in2="blur" operator="over" />
         </filter>
       </defs>
 
-      {/* 1. الهوائي الرأسي والكرة العلوية */}
       <g className="robot-antenna-group">
-        <line x1="50" y1="20" x2="50" y2="9" stroke="#0284c7" strokeWidth="4" strokeLinecap="round" />
-        <circle cx="50" cy="7" r="5" fill="#38bdf8" stroke="#bae6fd" strokeWidth="1.5" className="robot-beacon" />
+        <line
+          x1="50"
+          y1="20"
+          x2="50"
+          y2="9"
+          stroke="#0284c7"
+          strokeWidth="4"
+          strokeLinecap="round"
+        />
+        <circle
+          cx="50"
+          cy="7"
+          r="5"
+          fill="#38bdf8"
+          stroke="#bae6fd"
+          strokeWidth="1.5"
+          className="robot-beacon"
+        />
       </g>
 
-      {/* 2. الذراعان */}
       <g className="robot-arms">
         <path
           d="M26 64 L14 74 L8 98"
@@ -147,7 +175,6 @@ export function BlueRobotMascot({ size = 44, className = "" }: { size?: number; 
         />
       </g>
 
-      {/* 3. الجسم مع الخطوط الرأسية كالصورة */}
       <g className="robot-body">
         <path
           d="M32 60 H68 L64 100 H36 Z"
@@ -155,12 +182,35 @@ export function BlueRobotMascot({ size = 44, className = "" }: { size?: number; 
           stroke="#075985"
           strokeWidth="2"
         />
-        <line x1="42" y1="61" x2="40" y2="99" stroke="#7dd3fc" strokeWidth="3" opacity="0.85" />
-        <line x1="50" y1="61" x2="50" y2="99" stroke="#bae6fd" strokeWidth="4" opacity="0.95" />
-        <line x1="58" y1="61" x2="60" y2="99" stroke="#7dd3fc" strokeWidth="3" opacity="0.85" />
+        <line
+          x1="42"
+          y1="61"
+          x2="40"
+          y2="99"
+          stroke="#7dd3fc"
+          strokeWidth="3"
+          opacity="0.85"
+        />
+        <line
+          x1="50"
+          y1="61"
+          x2="50"
+          y2="99"
+          stroke="#bae6fd"
+          strokeWidth="4"
+          opacity="0.95"
+        />
+        <line
+          x1="58"
+          y1="61"
+          x2="60"
+          y2="99"
+          stroke="#7dd3fc"
+          strokeWidth="3"
+          opacity="0.85"
+        />
       </g>
 
-      {/* 4. الرأس وشاشة الوجه المنحنية */}
       <g className="robot-head-group">
         <rect x="16" y="32" width="5" height="12" rx="2.5" fill="#0284c7" />
         <rect x="79" y="32" width="5" height="12" rx="2.5" fill="#0284c7" />
@@ -187,7 +237,6 @@ export function BlueRobotMascot({ size = 44, className = "" }: { size?: number; 
           strokeWidth="1"
         />
 
-        {/* العيون المستديرة البيضاء والابتسامة الضاحكة */}
         <g className="robot-face-expressions" filter="url(#eyeGlow)">
           <circle cx="39" cy="35" r="5" fill="#ffffff" className="robot-eye" />
           <circle cx="61" cy="35" r="5" fill="#ffffff" className="robot-eye" />
@@ -206,13 +255,16 @@ export function ChatBot() {
   const [open, setOpen] = useState(false);
   const [gone, setGone] = useState(false);
   const [isGiggling, setIsGiggling] = useState(false);
-  const [msgs, setMsgs] = useState<Msg[]>([{ from: "bot", text: CHAT_WELCOME }]);
+  const [msgs, setMsgs] = useState<Msg[]>([
+    { from: "bot", text: CHAT_WELCOME },
+  ]);
   const [text, setText] = useState("");
   const [chatSession, setChatSession] = useState<ChatSession | null>(null);
   const [chatReady, setChatReady] = useState(false);
   const [chatBusy, setChatBusy] = useState(false);
   const [chatError, setChatError] = useState("");
   const [initAttempt, setInitAttempt] = useState(0);
+
   const listRef = useRef<HTMLDivElement>(null);
   const sendingRef = useRef(false);
 
@@ -222,71 +274,105 @@ export function ChatBot() {
     const initializeChat = async () => {
       setChatReady(false);
       setChatError("");
+
       try {
         let saved = readChatSession();
+
         if (!saved) {
           const accessToken = createChatAccessToken();
           const { data, error } = await db.rpc("chat_create_conversation", {
             _access_token: accessToken,
           });
+
           if (error) throw error;
+
           if (typeof data !== "string" || !data) {
             throw new Error("The chat creation RPC returned no conversation ID");
           }
+
           saved = { conversationId: data, accessToken };
+
           try {
-            window.localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(saved));
+            window.localStorage.setItem(
+              CHAT_STORAGE_KEY,
+              JSON.stringify(saved),
+            );
           } catch (storageError) {
-            console.error("Could not persist chat session in this browser", storageError);
+            console.error(
+              "Could not persist chat session in this browser",
+              storageError,
+            );
             throw new Error("تعذر حفظ جلسة المحادثة على هذا الجهاز.");
           }
         }
+
         if (cancelled) return;
+
         setChatSession(saved);
         setChatReady(true);
       } catch (error) {
         console.error("Chat initialization failed", error);
+
         if (!cancelled) {
-          setChatError("تعذر بدء المحادثة. تأكد من إعداد دوال قاعدة البيانات وسياسات الوصول ثم أعد المحاولة.");
+          setChatError(
+            "تعذر بدء المحادثة. تأكد من إعداد دوال قاعدة البيانات وسياسات الوصول ثم أعد المحاولة.",
+          );
         }
       }
     };
 
     void initializeChat();
+
     return () => {
       cancelled = true;
     };
   }, [initAttempt]);
 
   useEffect(() => {
-    listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
+    listRef.current?.scrollTo({
+      top: listRef.current.scrollHeight,
+      behavior: "smooth",
+    });
   }, [msgs, open]);
 
   useEffect(() => {
     if (!open || !chatSession || !chatReady) return;
+
     let cancelled = false;
     let loadingMessages = false;
 
     const refreshMessages = async () => {
       if (loadingMessages) return;
+
       loadingMessages = true;
+
       const { data, error } = await db.rpc("chat_get_messages", {
         _conversation_id: chatSession.conversationId,
         _access_token: chatSession.accessToken,
       });
+
       loadingMessages = false;
+
       if (cancelled) return;
+
       if (error) {
         console.error("Loading chat messages failed", error);
-        setChatError("تعذر تحميل الرسائل. قد تكون المحادثة غير متاحة؛ أعد المحاولة أو ابدأ محادثة جديدة.");
+        setChatError(
+          "تعذر تحميل الرسائل. قد تكون المحادثة غير متاحة؛ أعد المحاولة أو ابدأ محادثة جديدة.",
+        );
         return;
       }
+
       setChatError("");
       setMsgs(mapStoredMessages((data ?? []) as StoredChatMessage[]));
     };
 
     void refreshMessages();
-    const timer = window.setInterval(() => void refreshMessages(), 5000);
+
+    const timer = window.setInterval(() => {
+      void refreshMessages();
+    }, 5000);
+
     return () => {
       cancelled = true;
       window.clearInterval(timer);
@@ -299,6 +385,7 @@ export function ChatBot() {
     } catch (error) {
       console.error("Could not clear saved chat session", error);
     }
+
     setChatSession(null);
     setChatReady(false);
     setMsgs([{ from: "bot", text: CHAT_WELCOME }]);
@@ -307,8 +394,17 @@ export function ChatBot() {
   };
 
   const send = async () => {
-    const q = text.trim();
-    if (!q || q.length > 1000 || !chatSession || !chatReady || sendingRef.current) return;
+    const question = text.trim();
+
+    if (
+      !question ||
+      question.length > 1000 ||
+      !chatSession ||
+      !chatReady ||
+      sendingRef.current
+    ) {
+      return;
+    }
 
     sendingRef.current = true;
     setChatBusy(true);
@@ -316,26 +412,34 @@ export function ChatBot() {
     setIsGiggling(true);
     window.setTimeout(() => setIsGiggling(false), 800);
 
-    const hit = replies.find((item) => item.match.test(q));
-    const answer = hit
-      ? hit.text
-      : fallback[Math.floor(Math.random() * fallback.length)] ?? fallback[0]!;
+    const matchingReply = replies.find((item) => item.match.test(question));
+    const answer =
+      matchingReply?.text ??
+      fallback[Math.floor(Math.random() * fallback.length)] ??
+      fallback[0]!;
 
     try {
       const { error } = await db.rpc("chat_send_visitor_message", {
         _conversation_id: chatSession.conversationId,
         _access_token: chatSession.accessToken,
-        _body: q,
+        _body: question,
         _bot_reply: answer,
       });
+
       if (error) throw error;
 
       setText("");
-      const { data, error: refreshError } = await db.rpc("chat_get_messages", {
-        _conversation_id: chatSession.conversationId,
-        _access_token: chatSession.accessToken,
-      });
+
+      const { data, error: refreshError } = await db.rpc(
+        "chat_get_messages",
+        {
+          _conversation_id: chatSession.conversationId,
+          _access_token: chatSession.accessToken,
+        },
+      );
+
       if (refreshError) throw refreshError;
+
       setMsgs(mapStoredMessages((data ?? []) as StoredChatMessage[]));
     } catch (error) {
       console.error("Sending chat message failed", error);
@@ -359,6 +463,7 @@ export function ChatBot() {
               </span>
               شامِل بوت
             </span>
+
             <span className="flex items-center gap-1">
               <Button
                 variant="ghost"
@@ -369,6 +474,7 @@ export function ChatBot() {
               >
                 <Trash2 size={15} />
               </Button>
+
               <Button
                 variant="ghost"
                 size="icon"
@@ -382,12 +488,17 @@ export function ChatBot() {
 
           <div className="chatbot-msgs" ref={listRef} aria-live="polite">
             {!chatReady && !chatError && (
-              <div className="chatbot-msg bot" role="status">جارٍ الاتصال بصندوق المحادثات…</div>
+              <div className="chatbot-msg bot" role="status">
+                جارٍ الاتصال بصندوق المحادثات…
+              </div>
             )}
+
             {msgs.map((message, index) => (
               <div
                 key={`${message.from}-${index}`}
-                className={`chatbot-msg ${message.from === "user" ? "user" : "bot"} animate-pop-in`}
+                className={`chatbot-msg ${
+                  message.from === "user" ? "user" : "bot"
+                } animate-pop-in`}
               >
                 {message.text}
               </div>
@@ -397,12 +508,26 @@ export function ChatBot() {
           {chatError && (
             <div className="px-3 pb-2 text-xs text-red-200" role="alert">
               <p>{chatError}</p>
+
               <div className="mt-2 flex gap-2">
-                <Button type="button" variant="secondary" size="sm" onClick={() => setInitAttempt((attempt) => attempt + 1)}>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() =>
+                    setInitAttempt((attempt) => attempt + 1)
+                  }
+                >
                   إعادة المحاولة
                 </Button>
+
                 {chatSession && (
-                  <Button type="button" variant="ghost" size="sm" onClick={startNewConversation}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={startNewConversation}
+                  >
                     محادثة جديدة
                   </Button>
                 )}
@@ -421,10 +546,15 @@ export function ChatBot() {
               value={text}
               onChange={(event) => setText(event.target.value)}
               maxLength={1000}
-              placeholder={chatReady ? "اسألني عن المتاجر، الشحن، أو اكتب للدعم…" : "جارٍ تجهيز المحادثة…"}
+              placeholder={
+                chatReady
+                  ? "اسألني عن المتاجر، الشحن، أو اكتب للدعم…"
+                  : "جارٍ تجهيز المحادثة…"
+              }
               aria-label="رسالتك للروبوت"
               disabled={!chatReady || chatBusy}
             />
+
             <Button
               type="submit"
               size="icon"
@@ -440,15 +570,30 @@ export function ChatBot() {
 
       {!open && (
         <div className="chatbot-fab-container">
-          <div className="chatbot-badge-callout">اسألني! 😄</div>
+          <div className="chatbot-badge-callout">
+            مرحباً بك! كيف يمكنني مساعدتك اليوم؟
+          </div>
+
           <Button
             variant="ghost"
             size="icon"
             className="chatbot-fab"
-            aria-label="فتح محادثة شامِل بوت"
+            aria-label="فتح محادثة شامل بوت"
             onClick={() => setOpen(true)}
           >
             <BlueRobotMascot size={46} />
+          </Button>
+
+          <Button
+            type="button"
+            variant="secondary"
+            size="icon"
+            className="chatbot-dismiss"
+            aria-label="إخفاء الروبوت"
+            title="إخفاء الروبوت"
+            onClick={() => setGone(true)}
+          >
+            <X size={13} />
           </Button>
         </div>
       )}
