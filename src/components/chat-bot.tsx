@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import type { PointerEvent as ReactPointerEvent } from "react";
 import { Send, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -267,6 +268,79 @@ export function ChatBot() {
 
   const listRef = useRef<HTMLDivElement>(null);
   const sendingRef = useRef(false);
+  const chatbotRef = useRef<HTMLDivElement>(null);
+  const dragStartRef = useRef<{
+    pointerId: number;
+    pointerX: number;
+    pointerY: number;
+    left: number;
+    top: number;
+  } | null>(null);
+  const draggedRef = useRef(false);
+  const [dragPosition, setDragPosition] = useState<{
+    left: number;
+    top: number;
+  } | null>(null);
+
+  const handleRobotPointerDown = (
+    event: ReactPointerEvent<HTMLButtonElement>,
+  ) => {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+
+    const bounds = chatbotRef.current?.getBoundingClientRect();
+    if (!bounds) return;
+
+    dragStartRef.current = {
+      pointerId: event.pointerId,
+      pointerX: event.clientX,
+      pointerY: event.clientY,
+      left: bounds.left,
+      top: bounds.top,
+    };
+    draggedRef.current = false;
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const handleRobotPointerMove = (
+    event: ReactPointerEvent<HTMLButtonElement>,
+  ) => {
+    const start = dragStartRef.current;
+    const node = chatbotRef.current;
+    if (!start || !node || start.pointerId !== event.pointerId) return;
+
+    const deltaX = event.clientX - start.pointerX;
+    const deltaY = event.clientY - start.pointerY;
+
+    if (Math.abs(deltaX) > 4 || Math.abs(deltaY) > 4) {
+      draggedRef.current = true;
+    }
+    if (!draggedRef.current) return;
+
+    const bounds = node.getBoundingClientRect();
+    const maxLeft = Math.max(0, window.innerWidth - bounds.width);
+    const maxTop = Math.max(0, window.innerHeight - bounds.height);
+
+    setDragPosition({
+      left: Math.min(Math.max(start.left + deltaX, 0), maxLeft),
+      top: Math.min(Math.max(start.top + deltaY, 0), maxTop),
+    });
+  };
+
+  const handleRobotPointerUp = (
+    event: ReactPointerEvent<HTMLButtonElement>,
+  ) => {
+    if (dragStartRef.current?.pointerId === event.pointerId) {
+      dragStartRef.current = null;
+    }
+  };
+
+  const handleRobotClick = () => {
+    if (draggedRef.current) {
+      draggedRef.current = false;
+      return;
+    }
+    setOpen(true);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -453,7 +527,21 @@ export function ChatBot() {
   if (gone) return null;
 
   return (
-    <div className="chatbot" dir="rtl">
+    <div
+      ref={chatbotRef}
+      className="chatbot"
+      dir="rtl"
+      style={
+        dragPosition
+          ? {
+              left: `${dragPosition.left}px`,
+              top: `${dragPosition.top}px`,
+              right: "auto",
+              bottom: "auto",
+            }
+          : undefined
+      }
+    >
       {open && (
         <div className="chatbot-panel glass-card">
           <div className="chatbot-head">
@@ -575,13 +663,21 @@ export function ChatBot() {
           </div>
 
           <Button
+            type="button"
             variant="ghost"
             size="icon"
-            className="chatbot-fab"
-            aria-label="فتح محادثة شامل بوت"
-            onClick={() => setOpen(true)}
+            className="chatbot-fab chatbot-fab--draggable"
+            aria-label="اسحب الروبوت لتغيير مكانه أو اضغط لفتح المحادثة"
+            onPointerDown={handleRobotPointerDown}
+            onPointerMove={handleRobotPointerMove}
+            onPointerUp={handleRobotPointerUp}
+            onPointerCancel={() => {
+              dragStartRef.current = null;
+              draggedRef.current = false;
+            }}
+            onClick={handleRobotClick}
           >
-            <BlueRobotMascot size={46} />
+            <BlueRobotMascot size={64} />
           </Button>
 
           <Button
