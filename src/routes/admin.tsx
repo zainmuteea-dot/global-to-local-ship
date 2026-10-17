@@ -44,7 +44,6 @@ import { AdminSidebar } from "@/components/AdminSidebar";
 import { AddShipmentModal } from "@/components/admin/AddShipmentModal";
 import { QuickScanModal } from "@/components/admin/QuickScanModal";
 import { PrintReceiptModal } from "@/components/admin/PrintReceiptModal";
-import { INITIAL_SEED_ORDERS } from "@/components/admin/seed-data";
 import type { OrderItem, OrderStatus } from "@/components/admin/types";
 function AdminRouteError({ error }: { error: unknown }) {
   const message =
@@ -121,171 +120,6 @@ export const Route = createFileRoute("/admin")({
   errorComponent: AdminRouteError,
 });
 
-// كادر الموظفين المعتمد
-interface Employee {
-  id: string;
-  name: string;
-  role: string;
-  department: string;
-  phone: string;
-  status: "online" | "busy" | "offline";
-  tasksCompleted: number;
-}
-
-const INITIAL_EMPLOYEES: Employee[] = [
-  { id: "1", name: "زين مطيع", role: "المدير العام ومسؤول النظام (Super Admin)", department: "الإدارة العليا", phone: "772399745", status: "online", tasksCompleted: 142 },
-  { id: "2", name: "أحمد المهندس", role: "مسؤول المشتريات الدولية", department: "الشراء الدولي", phone: "771234567", status: "online", tasksCompleted: 98 },
-  { id: "3", name: "سارة الخولاني", role: "المديرة المالية ورئيسة المحاسبة", department: "المالية والمحاسبة", phone: "777890123", status: "online", tasksCompleted: 85 },
-  { id: "4", name: "عمر الشامي", role: "مشرف مستودع الفرز - صنعاء", department: "المستودعات الميدانية", phone: "775678901", status: "online", tasksCompleted: 114 },
-  { id: "5", name: "فؤاد العريقي", role: "منسق التوزيع والشحن - عدن", department: "فرع عدن", phone: "733456789", status: "online", tasksCompleted: 67 },
-  { id: "6", name: "ريهام العنسي", role: "خدمة العملاء والتتبع الفوري", department: "الدعم الفني", phone: "774567890", status: "online", tasksCompleted: 130 },
-  { id: "7", name: "طارق الحمادي", role: "مندوب التوصيل الميداني - صنعاء", department: "التوصيل الميداني", phone: "778901234", status: "online", tasksCompleted: 88 },
-  { id: "8", name: "كمال اليافعي", role: "مندوب التوصيل الميداني - عدن ولحج", department: "التوصيل الميداني", phone: "735678901", status: "online", tasksCompleted: 52 },
-];
-
-function AdminNotificationComposer() {
-  const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
-  const [sending, setSending] = useState(false);
-  const [feedback, setFeedback] = useState<{
-    type: "success" | "error";
-    text: string;
-  } | null>(null);
-
-  const sendNotification = async (
-    event: React.FormEvent<HTMLFormElement>,
-  ) => {
-    event.preventDefault();
-
-    const cleanTitle = title.trim();
-    const cleanMessage = body.trim();
-
-    if (!cleanTitle || !cleanMessage || sending) return;
-
-    setSending(true);
-    setFeedback(null);
-
-    try {
-      const { error } = await (supabase.from("notifications") as any).insert({
-        user_id: null,
-        title: cleanTitle,
-        message: cleanMessage,
-        type: "system",
-        is_active: true,
-      });
-
-      if (error) throw error;
-
-      setTitle("");
-      setBody("");
-      setFeedback({
-        type: "success",
-        text: "تم نشر الإشعار للعملاء بنجاح.",
-      });
-    } catch (error) {
-      console.error("تعذر إرسال إشعار العملاء:", error);
-      setFeedback({
-        type: "error",
-        text: "تعذر إرسال الإشعار. تحقق من الاتصال وصلاحيات قاعدة البيانات ثم حاول مجددًا.",
-      });
-    } finally {
-      setSending(false);
-    }
-  };
-
-  return (
-    <section
-      className="rounded-2xl border border-sky-100 bg-white p-4 shadow-sm"
-      dir="rtl"
-    >
-      <div className="mb-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="grid size-9 place-items-center rounded-xl bg-orange-100 text-[#EA580C]">
-            <Bell className="size-4" />
-          </span>
-
-          <div>
-            <h3 className="text-sm font-black text-[#0A2540]">
-              بث إشعار فوري للعملاء
-            </h3>
-            <p className="text-[11px] text-slate-500">
-              سينشر الإشعار في حسابات العملاء ضمن الإشعارات داخل الموقع.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <form
-        onSubmit={sendNotification}
-        className="grid grid-cols-1 gap-2.5 md:grid-cols-4"
-      >
-        <input
-          type="text"
-          value={title}
-          onChange={(event) => setTitle(event.target.value)}
-          placeholder="عنوان الإشعار"
-          className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold outline-none focus:border-[#0284C7] md:col-span-1"
-          maxLength={150}
-          required
-          disabled={sending}
-        />
-
-        <input
-          type="text"
-          value={body}
-          onChange={(event) => setBody(event.target.value)}
-          placeholder="نص الإشعار التفصيلي"
-          className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs outline-none focus:border-[#0284C7] md:col-span-2"
-          maxLength={2000}
-          required
-          disabled={sending}
-        />
-
-        <button
-          type="submit"
-          disabled={sending || !title.trim() || !body.trim()}
-          className="flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-[#F97316] to-[#EA580C] px-4 py-2 text-xs font-bold text-white shadow-sm hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          <Send className="size-3.5" />
-          <span>{sending ? "جارٍ الإرسال..." : "إرسال الإشعار"}</span>
-        </button>
-      </form>
-
-      {feedback && (
-        <p
-          role={feedback.type === "error" ? "alert" : "status"}
-          aria-live={feedback.type === "error" ? "assertive" : "polite"}
-          className={`mt-3 rounded-xl border p-3 text-xs font-bold ${
-            feedback.type === "success"
-              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-              : "border-red-200 bg-red-50 text-red-800"
-          }`}
-        >
-          {feedback.text}
-        </p>
-      )}
-    </section>
-  );
-}
-
-const STATUS_MAP_TO_UI: Record<string, OrderStatus> = {
-  "جديد": "new",
-  "قيد المراجعة": "reviewing",
-  "تم الشراء": "purchased",
-  "المستودع الدولي": "warehouse_china",
-  "شحن دولي": "international_ship",
-  "الفرز والتوصيل": "shipped",
-  "تم التسليم": "delivered",
-  "ملغي": "cancelled",
-  "new": "new",
-  "reviewing": "reviewing",
-  "purchased": "purchased",
-  "warehouse_china": "warehouse_china",
-  "international_ship": "international_ship",
-  "shipped": "shipped",
-  "delivered": "delivered",
-  "cancelled": "cancelled",
-};
 
 const STATUS_MAP_TO_ARABIC: Record<OrderStatus, string> = {
   new: "جديد",
@@ -312,23 +146,9 @@ const STATUS_TEXT: Record<OrderStatus, string> = {
 export default function AdminOperationsPage() {
   const { pathname: currentPath } = useLocation();
   const [activeTab, setActiveTab] = useState<"operations" | "finance" | "employees">("operations");
-  const [orders, setOrders] = useState<OrderItem[]>(() => {
-    try {
-      const saved = localStorage.getItem("alsouk_admin_shipments_v1");
-      return saved ? JSON.parse(saved) : INITIAL_SEED_ORDERS;
-    } catch {
-      return INITIAL_SEED_ORDERS;
-    }
-  });
-
-  const [employees, setEmployees] = useState<Employee[]>(() => {
-    try {
-      const saved = localStorage.getItem("alsouk_admin_employees");
-      return saved ? JSON.parse(saved) : INITIAL_EMPLOYEES;
-    } catch {
-      return INITIAL_EMPLOYEES;
-    }
-  });
+  const [orders, setOrders] = useState<OrderItem[]>([]);
+  const [ordersLoadState, setOrdersLoadState] = useState<"loading" | "loaded" | "error">("loading");
+  const [ordersLoadError, setOrdersLoadError] = useState<string | null>(null);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStore, setSelectedStore] = useState("ALL");
@@ -472,60 +292,56 @@ export default function AdminOperationsPage() {
     setPosNotice("تم فتح إيصال الطباعة. هذه الفاتورة لا تُحفظ في قاعدة البيانات.");
   };
 
-  useEffect(() => {
-    try {
-      localStorage.setItem("alsouk_admin_shipments_v1", JSON.stringify(orders));
-    } catch {}
-  }, [orders]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem("alsouk_admin_employees", JSON.stringify(employees));
-    } catch {}
-  }, [employees]);
-
-  // دالة جلب الشحنات من قاعدة بيانات Lovable Cloud
+  // قراءة الطلبات من قاعدة البيانات، مع حالة صريحة للتحميل والنجاح والفشل.
   const fetchOrdersFromDatabase = async () => {
     setLoading(true);
+    setOrdersLoadState("loading");
+    setOrdersLoadError(null);
+
     try {
       const { data, error } = await supabase
         .from("orders")
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (!error && data && data.length > 0) {
-        const mappedOrders: OrderItem[] = data.map((item: any) => {
-          let store = "SHEIN";
-          const link = (item.product_link || "").toLowerCase();
-          if (link.includes("amazon")) store = "Amazon";
-          else if (link.includes("aliexpress")) store = "AliExpress";
-          else if (link.includes("alibaba")) store = "Alibaba";
-          else if (link.includes("temu")) store = "TEMU";
-          else if (link.includes("trendyol")) store = "Trendyol";
+      if (error) throw error;
 
-          const uiStatus = STATUS_MAP_TO_UI[item.status] || "new";
+      // تبقى النتيجة الفارغة فارغة، ولا نستبدلها ببيانات تجريبية.
+      const mappedOrders: OrderItem[] = (data ?? []).map((item: any) => {
+        let store = "SHEIN";
+        const link = (item.product_link || "").toLowerCase();
+        if (link.includes("amazon")) store = "Amazon";
+        else if (link.includes("aliexpress")) store = "AliExpress";
+        else if (link.includes("alibaba")) store = "Alibaba";
+        else if (link.includes("temu")) store = "TEMU";
+        else if (link.includes("trendyol")) store = "Trendyol";
 
-          return {
-            id: String(item.id),
-            orderNumber: item.tracking_code || `SQ-${item.id.slice(0, 8)}`,
-            customerName: item.customer_name || "عميل مسجل",
-            customerPhone: item.phone ?? "",
-            userId: item.user_id ?? null,
-            customerCity: item.notes || "صنعاء",
-            productTitle: item.product_name || "شحنة وساطة دولية",
-            storeName: store,
-            status: uiStatus,
-            originalPrice: 45,
-            intlTrackingNumber: item.tracking_code || `TRK-${item.id.slice(0, 8)}`,
-            createdAt: item.created_at || new Date().toISOString(),
-          };
-        });
-        setOrders(mappedOrders);
-      } else if ((!data || data.length === 0) && orders.length === 0) {
-        setOrders(INITIAL_SEED_ORDERS);
-      }
+        const uiStatus = STATUS_MAP_TO_UI[item.status] || "new";
+
+        return {
+          id: String(item.id),
+          orderNumber: item.tracking_code || `SQ-${item.id.slice(0, 8)}`,
+          customerName: item.customer_name || "عميل مسجل",
+          customerPhone: item.phone ?? "",
+          userId: item.user_id ?? null,
+          customerCity: item.notes || "صنعاء",
+          productTitle: item.product_name || "شحنة وساطة دولية",
+          storeName: store,
+          status: uiStatus,
+          originalPrice: 45,
+          intlTrackingNumber: item.tracking_code || `TRK-${item.id.slice(0, 8)}`,
+          createdAt: item.created_at || new Date().toISOString(),
+        };
+      });
+
+      setOrders(mappedOrders);
+      setOrdersLoadState("loaded");
     } catch (err) {
       console.error("خطأ في قراءة الطلبات من القاعدة:", err);
+      setOrdersLoadState("error");
+      setOrdersLoadError(
+        "تعذرت قراءة الطلبات من قاعدة البيانات. القائمة الحالية قد تكون آخر بيانات ناجحة؛ أعد المحاولة للتحقق."
+      );
     } finally {
       setLoading(false);
     }
@@ -609,14 +425,33 @@ export default function AdminOperationsPage() {
     }
   };
 
-  // حذف شحنة من الواجهة والقاعدة
+  // لا نحذف من الواجهة إلا بعد تأكيد نجاح الحذف في قاعدة البيانات.
   const handleDeleteOrder = async (orderId: string, orderNumber: string) => {
     if (!window.confirm(`هل أنت متأكد من حذف الشحنة (${orderNumber}) نهائياً؟`)) return;
-    setOrders((prev) => prev.filter((o) => o.id !== orderId));
+
     try {
-      await supabase.from("orders").delete().eq("id", orderId);
-    } catch (e) {
-      console.error("فشل الحذف من القاعدة:", e);
+      const { data, error } = await supabase
+        .from("orders")
+        .delete()
+        .eq("id", orderId)
+        .select("id");
+
+      if (error) throw error;
+      if (!data?.length) {
+        throw new Error("لم تؤكد قاعدة البيانات حذف أي سجل.");
+      }
+
+      setOrders((prev) => prev.filter((order) => order.id !== orderId));
+      setStatusNotice({
+        type: "success",
+        message: `تم حذف الشحنة (${orderNumber}) من قاعدة البيانات بنجاح.`,
+      });
+    } catch (error) {
+      console.error("فشل الحذف من القاعدة:", error);
+      setStatusNotice({
+        type: "error",
+        message: `تعذر حذف الشحنة (${orderNumber}). لم تتغير القائمة؛ تحقق من الاتصال والصلاحيات.`,
+      });
     }
   };
 
@@ -775,9 +610,30 @@ export default function AdminOperationsPage() {
               <EmbeddedLogo />
             </div>
             <div className="hidden lg:block border-r border-slate-200 pr-3">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-200">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                قاعدة البيانات: متصلة لحظياً ⚡
+              <span
+                role="status"
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${
+                  ordersLoadState === "loaded"
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                    : ordersLoadState === "error"
+                      ? "bg-red-50 text-red-700 border-red-200"
+                      : "bg-amber-50 text-amber-800 border-amber-200"
+                }`}
+              >
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    ordersLoadState === "loaded"
+                      ? "bg-emerald-500"
+                      : ordersLoadState === "error"
+                        ? "bg-red-500"
+                        : "bg-amber-500 animate-pulse"
+                  }`}
+                />
+                {ordersLoadState === "loading"
+                  ? "جارٍ تحميل الطلبات…"
+                  : ordersLoadState === "error"
+                    ? "تعذر تحديث الطلبات"
+                    : `قراءة ناجحة من قاعدة البيانات · ${orders.length} طلب`}
               </span>
             </div>
           </div>
@@ -877,7 +733,7 @@ export default function AdminOperationsPage() {
             }`}
           >
             <Users className="w-4 h-4" />
-            <span>طاقم العمل والموظفين ({employees.length})</span>
+            <span>طاقم العمل والموظفون</span>
           </button>
         </div>
       </header>
@@ -885,6 +741,29 @@ export default function AdminOperationsPage() {
       <main className="mx-auto w-full min-w-0 max-w-[1600px] space-y-4 px-3 py-4 sm:space-y-6 sm:px-5 sm:py-6 lg:px-6 xl:px-8">
         {/* شريط الإحصائيات الحية الخماسي */}
         <AdminAlerts />
+        {ordersLoadState === "error" ? (
+          <div
+            role="alert"
+            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-800"
+          >
+            <span>{ordersLoadError || "تعذرت قراءة الطلبات من قاعدة البيانات."}</span>
+            <button
+              type="button"
+              onClick={() => void fetchOrdersFromDatabase()}
+              disabled={loading}
+              className="rounded-lg border border-red-300 bg-white px-3 py-2 underline disabled:opacity-50"
+            >
+              أعد المحاولة
+            </button>
+          </div>
+        ) : ordersLoadState === "loaded" && orders.length === 0 ? (
+          <div
+            role="status"
+            className="rounded-xl border border-sky-200 bg-sky-50 p-3 text-sm font-bold text-sky-900"
+          >
+            تمت قراءة قاعدة البيانات بنجاح، ولا توجد طلبات حالياً.
+          </div>
+        ) : null}
         <section className="grid grid-cols-1 md:grid-cols-2 gap-3" aria-label="التنبيهات العاجلة">
           <button type="button" onClick={() => navigateTo("/payments")} className="flex items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-right hover:bg-amber-100">
             <span><b className="block text-sm text-amber-900">طلبات الدفع المعلقة</b><small className="mt-1 block text-amber-800">{pendingPaymentsCount} طلب بانتظار المراجعة من قاعدة البيانات</small></span><span className="rounded-xl bg-white px-3 py-2 text-lg font-black text-amber-700">{pendingPaymentsCount}</span>
@@ -1248,46 +1127,12 @@ export default function AdminOperationsPage() {
 
         {/* 3. تبويب طاقم العمل والموظفين */}
         {activeTab === "employees" && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {employees.map((emp) => (
-              <div key={emp.id} className="bg-white p-5 rounded-2xl border border-sky-100 shadow-xs space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <span className="text-xs font-bold text-emerald-700">متصل الآن</span>
-                  </div>
-                  <span className="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
-                    {emp.department}
-                  </span>
-                </div>
-
-                <div>
-                  <h4 className="font-bold text-sm text-[#0A2540]">{emp.name}</h4>
-                  <p className="text-xs text-slate-500 mt-0.5">{emp.role}</p>
-                </div>
-
-                <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs font-mono text-slate-600">
-                  <span>{emp.phone}</span>
-                  <div className="flex gap-2">
-                    <a
-                      href={`https://wa.me/967${emp.phone}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
-                    >
-                      <MessageCircle className="w-3.5 h-3.5" />
-                    </a>
-                    <a
-                      href={`tel:${emp.phone}`}
-                      className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100"
-                    >
-                      <Phone className="w-3.5 h-3.5" />
-                    </a>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+          <section
+            className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm leading-7 text-amber-900"
+            role="status"
+          >
+            لا تُعرض بيانات موظفين تجريبية أو محفوظة على هذا الجهاز. لا توجد في هذه الصفحة حالياً قراءة موصولة بمصدر بيانات الموظفين؛ اربطها بجدول الموظفين قبل عرض سجلات فعلية.
+          </section>
         )}
       </main>
 
