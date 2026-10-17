@@ -57,13 +57,15 @@
   --glass-border: oklch(1 0 0 / 0.2);
 }
 
-/* ================== تنسيقات روبوت شامل بوت الأزرق المتحرك ================== */
+/* ================== الروبوت الأزرق وفقاعة الترحيب ================== */
 
 .chatbot {
   position: fixed;
-  bottom: max(22px, env(safe-area-inset-bottom));
-  inset-inline-start: max(22px, env(safe-area-inset-left));
   z-index: 60;
+  left: max(18px, env(safe-area-inset-left));
+  right: auto;
+  bottom: max(18px, env(safe-area-inset-bottom));
+  inset-inline-start: auto;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -73,48 +75,50 @@
 .chatbot-fab-container {
   position: relative;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  direction: rtl;
   align-items: center;
+  gap: 10px;
 }
 
-/* فقاعة الترحيب فوق الروبوت */
+/* فقاعة الترحيب بجانب الروبوت */
 .chatbot-badge-callout {
-  position: absolute;
-  top: -26px;
-  font-size: 11px;
+  position: static;
+  max-width: calc(100vw - 105px);
+  padding: 10px 15px;
+  border: 1px solid rgba(2, 132, 199, 0.16);
+  border-radius: 999px;
+  background: #fff;
+  color: #075985;
+  box-shadow: 0 6px 20px rgba(2, 132, 199, 0.16);
+  font-size: 13px;
   font-weight: 700;
-  background: color-mix(in oklch, var(--glass-stage) 70%, transparent);
-  color: #7dd3fc;
-  border: 1px solid rgba(56, 189, 248, 0.35);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  padding: 2px 9px;
-  border-radius: 20px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+  line-height: 1.4;
+  white-space: normal;
   pointer-events: none;
-  white-space: nowrap;
   animation: bot-badge-bob 2.6s ease-in-out infinite;
 }
 
-/* زر الروبوت العائم */
+/* زر الروبوت الأزرق العائم */
 .chatbot-fab {
   width: 60px;
   height: 60px;
+  flex: 0 0 60px;
   padding: 0;
+  border: 1.5px solid rgba(56, 189, 248, 0.4);
   border-radius: 50% !important;
   background: color-mix(in oklch, var(--glass-stage) 60%, transparent);
-  border: 1.5px solid rgba(56, 189, 248, 0.4);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   box-shadow:
     0 10px 28px rgba(2, 132, 199, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.25);
-  animation:
-    blue-bot-hover 3.4s ease-in-out infinite,
-    bot-pulse-glow 2.8s ease-in-out infinite;
   display: flex;
   align-items: center;
   justify-content: center;
+  animation:
+    blue-bot-hover 3.4s ease-in-out infinite,
+    bot-pulse-glow 2.8s ease-in-out infinite;
   transition:
     transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
     border-color 0.25s ease,
@@ -122,7 +126,6 @@
 }
 
 .chatbot-fab:hover {
-  /* أوقف الحركة هنا حتى لا تتعارض مع transform عند المرور */
   animation: none;
   transform: scale(1.08) translateY(-3px);
   border-color: rgba(56, 189, 248, 0.7);
@@ -136,6 +139,32 @@
 .chatbot-fab:focus-visible {
   outline: 3px solid #7dd3fc;
   outline-offset: 4px;
+}
+
+/* زر × لإخفاء الروبوت */
+.chatbot-dismiss {
+  position: absolute;
+  top: -7px;
+  left: 43px;
+  z-index: 2;
+  width: 23px;
+  height: 23px;
+  padding: 0;
+  border: 1px solid rgba(2, 132, 199, 0.25);
+  border-radius: 50%;
+  background: #fff;
+  color: #075985;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16);
+}
+
+.chatbot-dismiss:hover {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.chatbot-dismiss:focus-visible {
+  outline: 2px solid #0284c7;
+  outline-offset: 2px;
 }
 
 /* شخصية الروبوت */
@@ -172,10 +201,12 @@
   animation: giggle-wiggle 0.55s ease-in-out;
 }
 
-/* لوحة المحادثة الزجاجية */
+/* ================== لوحة المحادثة ================== */
+
 .chatbot-panel {
   width: min(324px, calc(100vw - 36px));
   max-height: min(72dvh, 460px);
+  border: 1px solid rgba(56, 189, 248, 0.25);
   border-radius: 20px;
   overflow: hidden;
   display: flex;
@@ -187,7 +218,6 @@
   box-shadow:
     0 16px 44px rgba(0, 0, 0, 0.5),
     inset 0 1px 0 rgba(255, 255, 255, 0.18);
-  border: 1px solid rgba(56, 189, 248, 0.25);
   animation: pop-in 0.28s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -223,30 +253,30 @@
 }
 
 .chatbot-msg {
+  max-width: 85%;
   padding: 8px 12px;
   border-radius: 14px;
-  max-width: 85%;
   overflow-wrap: anywhere;
   white-space: pre-line;
 }
 
 .chatbot-msg.bot {
   align-self: flex-start;
-  background: var(--glass-surface);
   border: 1px solid var(--glass-border);
   border-start-start-radius: 4px;
+  background: var(--glass-surface);
   color: #f0f9ff;
 }
 
 .chatbot-msg.user {
   align-self: flex-end;
-  background: color-mix(in oklch, var(--color-primary) 38%, transparent);
   border: 1px solid color-mix(in oklch, var(--color-primary) 55%, transparent);
   border-start-end-radius: 4px;
-  color: #ffffff;
+  background: color-mix(in oklch, var(--color-primary) 38%, transparent);
+  color: #fff;
 }
 
-/* مستخدمة في chat-bot.tsx لظهور الرسائل الجديدة */
+/* حركة الرسائل المستخدمة في chat-bot.tsx */
 .animate-pop-in {
   animation: pop-in 0.24s ease-out both;
 }
@@ -260,12 +290,12 @@
 }
 
 .chatbot-form input {
-  height: 36px;
   min-width: 0;
-  font-size: 12.5px;
-  color: #f0f9ff;
-  background: var(--glass-surface);
+  height: 36px;
   border-color: var(--glass-border);
+  background: var(--glass-surface);
+  color: #f0f9ff;
+  font-size: 12.5px;
 }
 
 .chatbot-form input::placeholder {
@@ -394,6 +424,33 @@
   to {
     opacity: 1;
     transform: scale(1) translateY(0);
+  }
+}
+
+/* ملاءمة الهواتف الصغيرة */
+@media (max-width: 380px) {
+  .chatbot {
+    left: max(12px, env(safe-area-inset-left));
+  }
+
+  .chatbot-fab-container {
+    gap: 8px;
+  }
+
+  .chatbot-fab {
+    width: 54px;
+    height: 54px;
+    flex-basis: 54px;
+  }
+
+  .chatbot-badge-callout {
+    max-width: calc(100vw - 96px);
+    padding: 8px 11px;
+    font-size: 12px;
+  }
+
+  .chatbot-dismiss {
+    left: 38px;
   }
 }
 
