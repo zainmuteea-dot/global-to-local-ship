@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
+import { AdminRouteGuard } from '@/components/admin/AdminRouteGuard';
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   TrendingUp,
@@ -465,7 +466,11 @@ export function MerchantReportsPage() {
 }
 
 export const Route = (createFileRoute as any)('/merchant-reports')({
-  component: MerchantReportsPage,
+  component: () => (
+    <AdminRouteGuard allowStaff redirectTo="/merchant-reports">
+      <MerchantReportsPage />
+    </AdminRouteGuard>
+  ),
 });
 
 export default MerchantReportsPage;
