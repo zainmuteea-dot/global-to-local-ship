@@ -830,8 +830,24 @@ export default function AdminOperationsPage() {
           <div className="rounded-2xl border border-sky-100 bg-white p-5 shadow-sm"><h2 className="font-black text-[#0A2540]">ملخص سير العمليات</h2><p className="mt-1 text-[11px] text-slate-500">محسوب من الشحنات المحمّلة في الصفحة.</p><div className="mt-5 space-y-4">{[{label:"طلبات قيد المراجعة",count:orders.filter(o=>o.status==="reviewing").length,color:"bg-amber-500"},{label:"طلبات قيد الشراء",count:orders.filter(o=>o.status==="purchased").length,color:"bg-blue-500"},{label:"شحنات دولية",count:orders.filter(o=>o.status==="international_ship").length,color:"bg-violet-500"},{label:"تم التسليم",count:deliveredShipments,color:"bg-emerald-500"}].map((x)=><div key={x.label}><div className="mb-1 flex justify-between text-xs"><span>{x.label}</span><b>{x.count}</b></div><div className="h-2 rounded-full bg-slate-100"><div className={`h-2 rounded-full ${x.color}`} style={{width:`${orders.length ? Math.max(4,Math.min(100,(x.count/orders.length)*100)) : 0}%`}}/></div></div>)}</div><a href="/payments" className="mt-5 block w-full rounded-xl bg-slate-50 px-3 py-2 text-center text-xs font-bold text-[#0F4C81]">مراجعة المدفوعات المعلقة ({pendingPaymentsCount})</a></div>
         </section>
 
-        {/* مكون بث التنبيهات المباشرة */}
-        <AdminNotificationComposer />
+        {/* رابط مركز الإشعارات: تم استبدال المكوّن غير المعرّف */}
+        <section className="rounded-2xl border border-sky-100 bg-white p-4 shadow-sm">
+          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+            <div>
+              <h2 className="font-black text-[#0A2540]">إدارة الإشعارات</h2>
+              <p className="mt-1 text-sm text-slate-600">
+                أرسل إشعارات للعملاء وتابع الإشعارات من مركز الإدارة.
+              </p>
+            </div>
+            <a
+              href="/notifications"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0F4C81] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#0A2540]"
+            >
+              <Send className="size-4" />
+              فتح مركز الإشعارات
+            </a>
+          </div>
+        </section>
 
         {/* 1. تبويب العمليات والشحنات */}
         {activeTab === "operations" && (
