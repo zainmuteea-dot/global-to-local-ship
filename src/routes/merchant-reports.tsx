@@ -42,15 +42,33 @@ export interface ReportOrderRow {
   storeName: string;
   productTitle: string;
   quantity: number;
-  totalCostUSD: number;
-  totalCostYER: number;
-  paidAmount: number;
-  remainingAmount: number;
-  profitAmount: number;
+  totalCostUSD: number | null;
+  totalCostYER: number | null;
+  paidAmount: number | null;
+  remainingAmount: number | null;
+  profitAmount: number | null;
   paymentStatus: string;
   paymentMethod: string;
   status: string;
   createdAt: string;
+}
+
+function toNullableNumber(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function sumIfComplete<T>(
+  rows: T[],
+  getValue: (row: T) => number | null,
+): number | null {
+  if (rows.some((row) => getValue(row) === null)) return null;
+  return rows.reduce((sum, row) => sum + (getValue(row) ?? 0), 0);
+}
+
+function formatMoney(value: number | null): string {
+  return value === null ? "غير مكتمل" : value.toLocaleString("ar-YE");
 }
 
 export function MerchantReportsPage() {
@@ -75,14 +93,19 @@ export function MerchantReportsPage() {
 
       if (error) throw error;
 
-      if (data && data.length > 0) {
+      if (data) {
         const mapped: ReportOrderRow[] = data.map((row: any) => {
-          const totalUSD = Number(row.total_cost_usd || 0);
-          const totalYER = Number(row.total_cost_yer || Math.round(totalUSD * 530));
-          const isPaid = row.payment_status === 'paid' || row.status === 'delivered';
-          const paid = isPaid ? totalYER : Number(row.paid_amount || 0);
-          const remaining = Math.max(0, totalYER - paid);
-          const profit = Number(row.profit_amount || Math.round((Number(row.service_fee || 12)) * 530));
+          const totalUSD = toNullableNumber(row.total_cost_usd);
+          const totalYER = toNullableNumber(row.total_cost_yer);
+          const paid = toNullableNumber(row.paid_amount);
+          const storedRemaining = toNullableNumber(row.remaining_amount);
+          const remaining =
+            storedRemaining !== null
+              ? storedRemaining
+              : totalYER !== null && paid !== null
+                ? Math.max(0, totalYER - paid)
+                : null;
+          const profit = toNullableNumber(row.profit_amount);
 
           return {
             id: String(row.id),
@@ -99,7 +122,7 @@ export function MerchantReportsPage() {
             paidAmount: paid,
             remainingAmount: remaining,
             profitAmount: profit,
-            paymentStatus: row.payment_status || (isPaid ? 'paid' : 'unpaid'),
+            paymentStatus: row.payment_status || 'unknown',
             paymentMethod: row.payment_method || 'الدفع عند الاستلام (COD)',
             status: row.status || 'new',
             createdAt: row.created_at || new Date().toISOString(),
@@ -170,11 +193,11 @@ export function MerchantReportsPage() {
   const stats = useMemo(() => {
     const totalOrdersCount = filteredOrders.length;
     const deliveredCount = filteredOrders.filter((o) => o.status === 'delivered').length;
-    const totalSalesUSD = filteredOrders.reduce((sum, o) => sum + o.totalCostUSD, 0);
-    const totalSalesYER = filteredOrders.reduce((sum, o) => sum + o.totalCostYER, 0);
-    const totalProfitYER = filteredOrders.reduce((sum, o) => sum + o.profitAmount, 0);
-    const totalCollectedYER = filteredOrders.reduce((sum, o) => sum + o.paidAmount, 0);
-    const totalRemainingYER = filteredOrders.reduce((sum, o) => sum + o.remainingAmount, 0);
+    const totalSalesUSD = sumIfComplete(filteredOrders, (o) => o.totalCostUSD);
+    const totalSalesYER = sumIfComplete(filteredOrders, (o) => o.totalCostYER);
+    const totalProfitYER = sumIfComplete(filteredOrders, (o) => o.profitAmount);
+    const totalCollectedYER = sumIfComplete(filteredOrders, (o) => o.paidAmount);
+    const totalRemainingYER = sumIfComplete(filteredOrders, (o) => o.remainingAmount);
     const deliveryRate = totalOrdersCount > 0 ? Math.round((deliveredCount / totalOrdersCount) * 100) : 0;
 
     return {
@@ -196,8 +219,8 @@ export function MerchantReportsPage() {
     ];
     const rows = filteredOrders.map((o) => [
       o.orderNumber, o.intlTrackingNumber, o.customerName, o.customerPhone, o.customerCity,
-      o.storeName, `"${o.productTitle.replace(/"/g, '""')}"`, o.totalCostUSD, o.totalCostYER,
-      o.paidAmount, o.remainingAmount, o.profitAmount, o.status, o.createdAt.split('T')[0]
+      o.storeName, `"${o.productTitle.replace(/"/g, '""')}"`, o.totalCostUSD ?? "غير مكتمل", o.totalCostYER ?? "غير مكتمل",
+      o.paidAmount ?? "غير مكتمل", o.remainingAmount ?? "غير مكتمل", o.profitAmount ?? "غير مكتمل", o.status, o.createdAt.split('T')[0]
     ]);
 
     const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
@@ -288,15 +311,15 @@ export function MerchantReportsPage() {
           <div className="bg-white/95 backdrop-blur-md border-2 border-sky-100 rounded-3xl p-4 sm:p-5 shadow-xs hover:border-[#0F4C81] transition-all">
             <span className="text-xs font-bold text-slate-500 block mb-1">إجمالي المبيعات</span>
             <div className="text-xl sm:text-2xl font-black text-[#0F4C81] font-mono">
-              {stats.totalSalesYER.toLocaleString('ar-YE')} <span className="text-xs font-sans">ر.ي</span>
+              {formatMoney(stats.totalSalesYER)} <span className="text-xs font-sans">ر.ي</span>
             </div>
-            <div className="text-[11px] font-bold text-slate-500 mt-1 font-mono">${stats.totalSalesUSD.toLocaleString()} USD</div>
+            <div className="text-[11px] font-bold text-slate-500 mt-1 font-mono">${formatMoney(stats.totalSalesUSD)} USD</div>
           </div>
 
           <div className="bg-white/95 backdrop-blur-md border-2 border-orange-100 rounded-3xl p-4 sm:p-5 shadow-xs hover:border-[#FF7A00] transition-all">
             <span className="text-xs font-bold text-slate-500 block mb-1">صافي الأرباح المحققة</span>
             <div className="text-xl sm:text-2xl font-black text-[#EA580C] font-mono">
-              +{stats.totalProfitYER.toLocaleString('ar-YE')} <span className="text-xs font-sans">ر.ي</span>
+              {formatMoney(stats.totalProfitYER)} <span className="text-xs font-sans">ر.ي</span>
             </div>
             <div className="text-[11px] font-bold text-emerald-600 mt-1 flex items-center gap-1">
               <Sparkles className="w-3 h-3" />
@@ -307,9 +330,9 @@ export function MerchantReportsPage() {
           <div className="bg-white/95 backdrop-blur-md border-2 border-emerald-100 rounded-3xl p-4 sm:p-5 shadow-xs hover:border-emerald-500 transition-all">
             <span className="text-xs font-bold text-slate-500 block mb-1">السيولة المحصلة</span>
             <div className="text-xl sm:text-2xl font-black text-emerald-700 font-mono">
-              {stats.totalCollectedYER.toLocaleString('ar-YE')} <span className="text-xs font-sans">ر.ي</span>
+              {formatMoney(stats.totalCollectedYER)} <span className="text-xs font-sans">ر.ي</span>
             </div>
-            <div className="text-[11px] font-bold text-amber-700 mt-1 font-mono">المتبقي: {stats.totalRemainingYER.toLocaleString('ar-YE')} ر.ي</div>
+            <div className="text-[11px] font-bold text-amber-700 mt-1 font-mono">المتبقي: {formatMoney(stats.totalRemainingYER)} ر.ي</div>
           </div>
 
           <div className="bg-white/95 backdrop-blur-md border-2 border-indigo-100 rounded-3xl p-4 sm:p-5 shadow-xs hover:border-indigo-500 transition-all">
@@ -413,15 +436,19 @@ export function MerchantReportsPage() {
                         <div className="text-slate-800 font-bold truncate max-w-[180px]">{ord.productTitle}</div>
                       </td>
                       <td className="py-3.5 px-4 font-mono font-black">
-                        <div className="text-[#0F4C81]">{ord.totalCostYER.toLocaleString('ar-YE')} ر.ي</div>
-                        <div className="text-[10px] text-slate-400">${ord.totalCostUSD} USD</div>
+                        <div className="text-[#0F4C81]">{formatMoney(ord.totalCostYER)} ر.ي</div>
+                        <div className="text-[10px] text-slate-400">${formatMoney(ord.totalCostUSD)} USD</div>
                       </td>
                       <td className="py-3.5 px-4 font-mono text-xs">
-                        <div className="text-emerald-700 font-bold">مدفوع: {ord.paidAmount.toLocaleString('ar-YE')}</div>
-                        {ord.remainingAmount > 0 ? (
-                          <div className="text-rose-600 font-bold text-[11px]">متبقي: {ord.remainingAmount.toLocaleString('ar-YE')}</div>
+                        <div className="text-emerald-700 font-bold">مدفوع: {formatMoney(ord.paidAmount)}</div>
+                        {ord.remainingAmount === null ? (
+                          <div className="text-amber-700 font-bold">المتبقي: غير متاح</div>
+                        ) : ord.remainingAmount > 0 ? (
+                          <div className="text-rose-600 font-bold text-[11px]">
+                            متبقي: {formatMoney(ord.remainingAmount)}
+                          </div>
                         ) : (
-                          <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">مسدد بالكامل ✓</span>
+                          <span className="text-amber-700">لا يوجد متبقٍ مسجل</span>
                         )}
                       </td>
                       <td className="py-3.5 px-4 text-center">
