@@ -48,7 +48,7 @@ async function callEmployeeRpc(
     functionName: string,
     parameters?: Record<string, unknown>,
   ) => Promise<{ data: unknown; error: { message: string } | null }>;
-  return rpc(name, args);
+  return rpc.call(supabase, name, args);
 }
 
 async function getFunctionErrorMessage(error: unknown): Promise<string> {
