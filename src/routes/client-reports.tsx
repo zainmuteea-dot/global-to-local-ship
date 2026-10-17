@@ -1,94 +1,77 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AdminRouteGuard } from "@/components/admin/AdminRouteGuard";
+import { supabase } from "@/integrations/supabase/client";
 import {
-  ArrowRight, Search, Printer, Share2, Calendar,
-  FileText, ArrowDownLeft, ArrowUpRight, DollarSign,
-  TrendingUp, Wallet, CheckCircle2, Clock, AlertCircle,
-  Phone, User, Package
+  ArrowRight,
+  CheckCircle2,
+  FileText,
+  Loader2,
+  Package,
+  Printer,
+  RefreshCw,
+  Search,
+  Share2,
+  Wallet,
 } from "lucide-react";
 
-export const Route = createFileRoute('/client-reports')({
+export const Route = createFileRoute("/client-reports")({
   component: ClientReportsPage,
 });
 
-// بيانات نموذجية للعملاء وحركاتهم المالية
-interface Transaction {
+type Client = {
+  id: string;
+  full_name: string | null;
+  phone: string | null;
+  created_at: string;
+};
+
+type StatementRow = {
   id: string;
   date: string;
-  refNo: string;
-  type: "شراء وتوريد" | "سند قبض" | "شحن وتخليص" | "عمولة وسيط" | "استرداد";
+  ref: string;
+  kind: "طلب" | "دفعة معتمدة";
   description: string;
-  debit: number; // مدين (مستحق على العميل)
-  credit: number; // دائن (مدفوع من العميل)
-  currency: "USD" | "SAR" | "YER";
-  status: "مكتمل" | "معلق" | "قيد المراجعة";
-}
+  amount: number | null;
+  currency: string | null;
+  status: string;
+};
 
-interface ClientData {
-  id: string;
-  name: string;
-  phone: string;
-  city: string;
-  joinDate: string;
-  totalOrders: number;
-  balanceUSD: number; // الرصيد المتبقي (مدين - دائن)
-  balanceYER: number;
-  transactions: Transaction[];
-}
+type ProfileRow = Client;
+type RoleRow = { user_id: string; role: string };
 
-const INITIAL_CLIENTS: ClientData[] = [
-  {
-    id: "CL-8801",
-    name: "محمد عبد الله الأصبحي",
-    phone: "777123456",
-    city: "صنعاء - حدة",
-    joinDate: "2026-01-15",
-    totalOrders: 14,
-    balanceUSD: 85,
-    balanceYER: 45000,
-    transactions: [
-      { id: "TX-101", date: "2026-03-28", refNo: "SQ-800816", type: "شراء وتوريد", description: "شراء منتجات SHEIN + شحن جوي سريع", debit: 220, credit: 0, currency: "USD", status: "مكتمل" },
-      { id: "TX-102", date: "2026-03-29", refNo: "RC-3021", type: "سند قبض", description: "دفعة مقدمة نقدية عبر الكريمي", debit: 0, credit: 150, currency: "USD", status: "مكتمل" },
-      { id: "TX-103", date: "2026-04-01", refNo: "SQ-800955", type: "شراء وتوريد", description: "طلب عطور من Trendyol تركيا", debit: 65, credit: 0, currency: "USD", status: "مكتمل" },
-      { id: "TX-104", date: "2026-04-02", refNo: "RC-3045", type: "سند قبض", description: "حوالة بنكية سداد جزئي", debit: 0, credit: 50, currency: "USD", status: "مكتمل" },
-      { id: "TX-105", date: "2026-04-03", refNo: "DL-1120", type: "شحن وتخليص", description: "رسوم توصيل منزلي صنعاء", debit: 0, credit: 0, currency: "USD", status: "مكتمل" }
-    ]
-  },
-  {
-    id: "CL-8802",
-    name: "سارة خالد القاسمي",
-    phone: "733987654",
-    city: "عدن - المنصورة",
-    joinDate: "2026-02-10",
-    totalOrders: 6,
-    balanceUSD: 0,
-    balanceYER: 0,
-    transactions: [
-      { id: "TX-201", date: "2026-03-15", refNo: "SQ-799201", type: "شراء وتوريد", description: "ملابس أطفال TEMU", debit: 110, credit: 0, currency: "USD", status: "مكتمل" },
-      { id: "TX-202", date: "2026-03-15", refNo: "RC-2890", type: "سند قبض", description: "سداد كامل كاش عند الاستلام", debit: 0, credit: 110, currency: "USD", status: "مكتمل" }
-    ]
-  },
-  {
-    id: "CL-8803",
-    name: "مؤسسة الأفق للتجارة (جملة)",
-    phone: "711554433",
-    city: "تعز - الحوبان",
-    joinDate: "2025-11-20",
-    totalOrders: 42,
-    balanceUSD: 540,
-    balanceYER: 290000,
-    transactions: [
-      { id: "TX-301", date: "2026-03-20", refNo: "SQ-800112", type: "شراء وتوريد", description: "بوليصة هواتف وملحقات من علي بابا", debit: 1850, credit: 0, currency: "USD", status: "مكتمل" },
-      { id: "TX-302", date: "2026-03-21", refNo: "RC-2911", type: "سند قبض", description: "تحويل تجاري مصرف النجم", debit: 0, credit: 1500, currency: "USD", status: "مكتمل" },
-      { id: "TX-303", date: "2026-03-25", refNo: "SQ-800340", type: "شحن وتخليص", description: "تخليص جمركي وأجور شحن بحري كراتين 4", debit: 190, credit: 0, currency: "USD", status: "مكتمل" }
-    ]
+const PAGE_SIZE = 500;
+const DB = supabase as any;
+
+function dateBounds(from: string, to: string) {
+  // مدخلات التاريخ تُفسّر على توقيت اليمن (UTC+3)، ونهاية النطاق شاملة.
+  const start = from ? new Date(`${from}T00:00:00+03:00`).toISOString() : null;
+  let end: string | null = null;
+  if (to) {
+    const [year, month, day] = to.split("-").map(Number);
+    const nextDay = new Date(Date.UTC(year, month - 1, day + 1));
+    const yyyy = nextDay.getUTCFullYear();
+    const mm = String(nextDay.getUTCMonth() + 1).padStart(2, "0");
+    const dd = String(nextDay.getUTCDate()).padStart(2, "0");
+    end = new Date(`${yyyy}-${mm}-${dd}T00:00:00+03:00`).toISOString();
   }
-];
+  return { start, end };
+}
+
+function formatDate(value: string) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? "—"
+    : date.toLocaleString("ar-YE", { dateStyle: "medium", timeStyle: "short" });
+}
+
+function formatAmount(value: number) {
+  return value.toLocaleString("ar-YE", { maximumFractionDigits: 2 });
+}
 
 function ClientReportsPage() {
   return (
-    <AdminRouteGuard>
+    <AdminRouteGuard allowStaff redirectTo="/client-reports">
       <ClientReportsPageContent />
     </AdminRouteGuard>
   );
@@ -96,265 +79,233 @@ function ClientReportsPage() {
 
 function ClientReportsPageContent() {
   const navigate = useNavigate();
+  const [clients, setClients] = useState<Client[]>([]);
+  const [selectedClientId, setSelectedClientId] = useState("");
   const [search, setSearch] = useState("");
-  const [selectedClientId, setSelectedClientId] = useState<string>("CL-8801");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [rows, setRows] = useState<StatementRow[]>([]);
+  const [clientsLoading, setClientsLoading] = useState(true);
+  const [rowsLoading, setRowsLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const selectedClient = useMemo(() => {
-    return INITIAL_CLIENTS.find(c => c.id === selectedClientId);
-  }, [selectedClientId]);
+  useEffect(() => {
+    let active = true;
+    async function loadClients() {
+      setClientsLoading(true);
+      setError("");
+      try {
+        const [{ data: profiles, error: profilesError }, { data: roles, error: rolesError }] =
+          await Promise.all([
+            DB.from("profiles")
+              .select("id, full_name, phone, created_at")
+              .order("created_at", { ascending: false })
+              .limit(PAGE_SIZE),
+            DB.from("user_roles").select("user_id, role").limit(PAGE_SIZE),
+          ]);
+        if (profilesError) throw profilesError;
+        if (rolesError) throw rolesError;
 
-  const activeClient = selectedClient ?? INITIAL_CLIENTS[0]!;
+        const staffIds = new Set(
+          ((roles ?? []) as RoleRow[])
+            .filter((row) => row.role === "admin" || row.role === "staff")
+            .map((row) => row.user_id),
+        );
+        const customerProfiles = ((profiles ?? []) as ProfileRow[]).filter(
+          (profile) => !staffIds.has(profile.id),
+        );
+        if (!active) return;
+        setClients(customerProfiles);
+        setSelectedClientId((current) => current || customerProfiles[0]?.id || "");
+      } catch (cause) {
+        console.error("Client statement: failed to load customers", cause);
+        if (active) setError("تعذر تحميل العملاء. تحقق من تسجيل الدخول وسياسات RLS للجداول.");
+      } finally {
+        if (active) setClientsLoading(false);
+      }
+    }
+    void loadClients();
+    return () => {
+      active = false;
+    };
+  }, []);
 
-  const filteredTransactions = useMemo(
-    () =>
-      activeClient.transactions.filter((transaction) => {
-        if (dateFrom && transaction.date < dateFrom) return false;
-        if (dateTo && transaction.date > dateTo) return false;
-        return true;
-      }),
-    [activeClient, dateFrom, dateTo],
-  );
+  useEffect(() => {
+    let active = true;
+    async function loadStatement() {
+      if (!selectedClientId) {
+        setRows([]);
+        return;
+      }
+      if (dateFrom && dateTo && dateFrom > dateTo) {
+        setRows([]);
+        setError("تاريخ البداية يجب أن يسبق تاريخ النهاية أو يساويه.");
+        return;
+      }
 
-  // تصفية العملاء في شريط البحث
+      setRowsLoading(true);
+      setError("");
+      try {
+        const { start, end } = dateBounds(dateFrom, dateTo);
+        let ordersQuery = DB.from("orders")
+          .select("id, tracking_code, product_name, status, created_at, user_id")
+          .eq("user_id", selectedClientId);
+        let paymentsQuery = DB.from("payments")
+          .select("id, tracking_code, customer_name, wallet, amount, currency, status, created_at, user_id")
+          .eq("user_id", selectedClientId)
+          .eq("status", "approved");
+
+        // نطاق التاريخ يطبّق في قاعدة البيانات قبل جلب النتائج.
+        if (start) {
+          ordersQuery = ordersQuery.gte("created_at", start);
+          paymentsQuery = paymentsQuery.gte("created_at", start);
+        }
+        if (end) {
+          ordersQuery = ordersQuery.lt("created_at", end);
+          paymentsQuery = paymentsQuery.lt("created_at", end);
+        }
+
+        const [ordersResult, paymentsResult] = await Promise.all([
+          ordersQuery.order("created_at", { ascending: false }).limit(1000),
+          paymentsQuery.order("created_at", { ascending: false }).limit(1000),
+        ]);
+        if (ordersResult.error) throw ordersResult.error;
+        if (paymentsResult.error) throw paymentsResult.error;
+
+        const orderRows: StatementRow[] = (ordersResult.data ?? []).map((order: any) => ({
+          id: `order-${order.id}`,
+          date: order.created_at,
+          ref: order.tracking_code || String(order.id).slice(0, 8),
+          kind: "طلب",
+          description: order.product_name || "طلب عميل",
+          amount: null,
+          currency: null,
+          status: order.status || "مسجل",
+        }));
+        const paymentRows: StatementRow[] = (paymentsResult.data ?? []).map((payment: any) => ({
+          id: `payment-${payment.id}`,
+          date: payment.created_at,
+          ref: payment.tracking_code || String(payment.id).slice(0, 8),
+          kind: "دفعة معتمدة",
+          description: `إيصال معتمد عبر ${payment.wallet || "وسيلة غير محددة"}`,
+          amount: Number(payment.amount ?? 0),
+          currency: payment.currency || "غير محدد",
+          status: "معتمد",
+        }));
+        const combined = [...orderRows, ...paymentRows].sort(
+          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+        );
+        if (active) setRows(combined);
+      } catch (cause) {
+        console.error("Client statement: failed to load transactions", cause);
+        if (active) {
+          setRows([]);
+          setError("تعذر تحميل الحركات. تحقق من أعمدة الجداول وسياسات RLS للمدير والموظفين.");
+        }
+      } finally {
+        if (active) setRowsLoading(false);
+      }
+    }
+    void loadStatement();
+    return () => {
+      active = false;
+    };
+  }, [selectedClientId, dateFrom, dateTo]);
+
   const filteredClients = useMemo(() => {
-    if (!search.trim()) return INITIAL_CLIENTS;
-    return INITIAL_CLIENTS.filter(c =>
-      c.name.includes(search) ||
-      c.phone.includes(search) ||
-      c.id.toLowerCase().includes(search.toLowerCase())
+    const needle = search.trim().toLocaleLowerCase();
+    if (!needle) return clients;
+    return clients.filter((client) =>
+      [client.full_name, client.phone, client.id]
+        .filter(Boolean)
+        .some((value) => String(value).toLocaleLowerCase().includes(needle)),
     );
-  }, [search]);
+  }, [clients, search]);
 
-  // حساب المجاميع المالية للعميل المحدد
-  const totals = useMemo(() => {
-    const totalDebit = filteredTransactions.reduce((sum, t) => sum + t.debit, 0);
-    const totalCredit = filteredTransactions.reduce((sum, t) => sum + t.credit, 0);
-    const netBalance = totalDebit - totalCredit;
-    return { totalDebit, totalCredit, netBalance };
-  }, [filteredTransactions]);
+  const activeClient = clients.find((client) => client.id === selectedClientId) ?? null;
+  const receivedTotals = useMemo(() => {
+    const totals = new Map<string, number>();
+    for (const row of rows) {
+      if (row.kind !== "دفعة معتمدة" || row.amount == null) continue;
+      const currency = row.currency || "غير محدد";
+      totals.set(currency, (totals.get(currency) || 0) + row.amount);
+    }
+    return Array.from(totals.entries());
+  }, [rows]);
 
-  // إرسال كشف الحساب عبر الواتساب للعميل
   const handleWhatsAppShare = () => {
-    const text = `السلام عليكم أخي/أختي ${activeClient.name}،\nكشف حسابك لدى *السوق الشامل*:\n- إجمالي العمليات: ${totals.totalDebit} $\n- إجمالي المدفوع: ${totals.totalCredit} $\n- المتبقي الواجب سداده: ${totals.netBalance} $\n\nشكراً لتعاملك معنا!`;
-    const cleanPhone = activeClient.phone.startsWith("967")? activeClient.phone : `967${activeClient.phone.replace(/^0+/, "")}`;
-    window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`, "_blank");
+    if (!activeClient?.phone) return;
+    const totalsText = receivedTotals.length
+      ? receivedTotals.map(([currency, amount]) => `- المقبوض المعتمد: ${formatAmount(amount)} ${currency}`).join("\n")
+      : "- لا توجد دفعات معتمدة ضمن الفترة المحددة";
+    const message = `السلام عليكم ${activeClient.full_name || "عميلنا"}،\nملخص الحركات المسجلة في السوق الشامل:\n${totalsText}\nالطلبات: ${rows.filter((row) => row.kind === "طلب").length}\nملاحظة: المبالغ المستحقة لا تظهر لأن الفواتير/تكاليف الطلبات غير مسجلة في مصدر مالي مرتبط بالحساب.`;
+    const phone = activeClient.phone.replace(/\D/g, "").replace(/^0+/, "");
+    const internationalPhone = phone.startsWith("967") ? phone : `967${phone}`;
+    window.open(`https://wa.me/${internationalPhone}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
   };
 
   return (
-    <div dir="rtl" className="min-h-screen bg-gradient-to-br from-[#F0F7FF] via-[#F8FAFC] to-[#FFF9F5] p-4 md:p-8 font-['Cairo',sans-serif]">
-      <div className="max-w-6xl mx-auto space-y-6">
-
-        {/* الترويسة وأزرار الرجوع والطباعة */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl shadow-sm border border-sky-100">
+    <main dir="rtl" className="min-h-screen bg-gradient-to-br from-[#F0F7FF] via-[#F8FAFC] to-[#FFF9F5] p-4 md:p-8">
+      <div className="mx-auto max-w-6xl space-y-5">
+        <header className="flex flex-col justify-between gap-4 rounded-2xl border border-sky-100 bg-white p-5 shadow-sm md:flex-row md:items-center">
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate({ to: "/admin" })}
-              className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition"
-            >
-              <ArrowRight className="w-5 h-5" />
+            <button type="button" onClick={() => navigate({ to: "/admin" })} className="grid size-10 place-items-center rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200" aria-label="رجوع">
+              <ArrowRight className="size-5" />
             </button>
             <div>
-              <h1 className="text-xl md:text-2xl font-black text-[#0F4C81] flex items-center gap-2">
-                <FileText className="w-6 h-6 text-[#F97316]" />
-                تقارير وكشوفات حساب العملاء
-              </h1>
-              <p className="text-xs md:text-sm text-slate-500 font-medium">سجل الحركات المالية، المديونيات، وسندات القبض لكل عميل</p>
+              <h1 className="flex items-center gap-2 text-xl font-black text-[#0F4C81]"><FileText className="size-6 text-orange-500" /> كشف حساب العملاء</h1>
+              <p className="mt-1 text-xs text-slate-500">الطلبات والدفعات المعتمدة المسجلة للعميل</p>
             </div>
           </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleWhatsAppShare}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-sm transition"
-            >
-              <Share2 className="w-4 h-4" />
-              مشاركة بالواتساب
-            </button>
-            <button
-              onClick={() => window.print()}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0F4C81] hover:bg-[#0c3c66] text-white font-bold text-sm shadow-sm transition"
-            >
-              <Printer className="w-4 h-4" />
-              طباعة الكشف الرسمي
-            </button>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={handleWhatsAppShare} disabled={!activeClient?.phone} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"><Share2 className="size-4" /> مشاركة واتساب</button>
+            <button type="button" onClick={() => window.print()} className="inline-flex items-center gap-2 rounded-xl bg-[#0F4C81] px-4 py-2.5 text-sm font-bold text-white"><Printer className="size-4" /> طباعة</button>
           </div>
-        </div>
+        </header>
 
-        {/* شريط اختيار والبحث عن العميل */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="md:col-span-2 relative">
-            <Search className="w-5 h-5 text-slate-400 absolute right-4 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="ابحث باسم العميل أو رقم الهاتف أو كود العميل..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full h-12 pr-12 pl-4 rounded-xl bg-white border border-slate-200 focus:border-[#0F4C81] focus:ring-2 focus:ring-sky-100 outline-none text-sm font-medium shadow-sm"
-            />
+        <section className="grid gap-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm md:grid-cols-3">
+          <label className="relative md:col-span-2">
+            <span className="sr-only">البحث عن عميل</span>
+            <Search className="absolute right-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="ابحث بالاسم أو الهاتف" className="h-11 w-full rounded-xl border border-slate-200 pr-11 pl-3 text-sm outline-none focus:border-sky-500" />
+          </label>
+          <select value={selectedClientId} onChange={(event) => setSelectedClientId(event.target.value)} disabled={clientsLoading} className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm font-bold text-[#0F4C81]">
+            {filteredClients.length === 0 && <option value="">لا يوجد عميل مطابق</option>}
+            {filteredClients.map((client) => <option key={client.id} value={client.id}>{client.full_name || "عميل بدون اسم"} · {client.phone || "بلا هاتف"}</option>)}
+          </select>
+          <label className="text-xs font-bold text-slate-600">من تاريخ<input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} className="mt-1 h-10 w-full rounded-xl border border-slate-200 px-3 text-sm" /></label>
+          <label className="text-xs font-bold text-slate-600">إلى تاريخ<input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} className="mt-1 h-10 w-full rounded-xl border border-slate-200 px-3 text-sm" /></label>
+          <button type="button" onClick={() => { setDateFrom(""); setDateTo(""); }} className="self-end rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50">مسح التاريخ</button>
+        </section>
+
+        {error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-800">{error}</div>}
+
+        {activeClient && <section className="flex flex-col justify-between gap-3 rounded-2xl border border-sky-100 bg-white p-5 shadow-sm sm:flex-row sm:items-center">
+          <div><h2 className="text-lg font-black text-slate-900">{activeClient.full_name || "عميل بدون اسم"}</h2><p className="mt-1 text-xs text-slate-500">{activeClient.phone || "لا يوجد هاتف"} · عضو منذ {new Date(activeClient.created_at).toLocaleDateString("ar-YE")}</p></div>
+          <span className="inline-flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2 text-sm font-bold text-slate-700"><Package className="size-4 text-orange-500" /> {rows.filter((row) => row.kind === "طلب").length} طلب ضمن الفترة</span>
+        </section>}
+
+        <section className="grid gap-3 sm:grid-cols-2">
+          <article className="rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm">
+            <p className="flex items-center gap-2 text-sm font-bold text-emerald-700"><Wallet className="size-4" /> المقبوض من الدفعات المعتمدة ضمن الفترة</p>
+            {receivedTotals.length ? receivedTotals.map(([currency, amount]) => <p key={currency} className="mt-2 text-xl font-black text-slate-900">{formatAmount(amount)} {currency}</p>) : <p className="mt-2 text-xl font-black text-slate-400">لا توجد دفعات معتمدة</p>}
+          </article>
+          <article className="rounded-2xl border border-amber-100 bg-amber-50/60 p-5 shadow-sm">
+            <p className="text-sm font-bold text-amber-800">الرصيد المستحق / المدين</p>
+            <p className="mt-2 text-lg font-black text-amber-900">غير متاح من المخطط الحالي</p>
+            <p className="mt-1 text-xs leading-5 text-amber-800">الطلبات لا تحمل مبالغ، وجدول فواتير المبيعات غير موجود حاليًا؛ لذلك لن أقدّر رصيدًا غير موثّق.</p>
+          </article>
+        </section>
+
+        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 p-4">
+            <h3 className="font-black text-[#0F4C81]">الحركات الفعلية ضمن الفترة</h3>
+            <span className="text-xs font-bold text-slate-500">{rows.length} حركة</span>
           </div>
-
-          <div>
-            <select
-              value={selectedClientId}
-              onChange={(e) => setSelectedClientId(e.target.value)}
-              className="w-full h-12 px-4 rounded-xl bg-white border border-slate-200 focus:border-[#0F4C81] outline-none text-sm font-bold text-[#0F4C81] shadow-sm"
-            >
-              {filteredClients.map(c => (
-                <option key={c.id} value={c.id}>
-                  {c.name} ({c.id}) - {c.phone}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <label className="text-xs font-bold text-slate-600">
-              من تاريخ
-              <input
-                type="date"
-                value={dateFrom}
-                onChange={(event) => setDateFrom(event.target.value)}
-                className="mt-1 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm"
-              />
-            </label>
-            <label className="text-xs font-bold text-slate-600">
-              إلى تاريخ
-              <input
-                type="date"
-                value={dateTo}
-                onChange={(event) => setDateTo(event.target.value)}
-                className="mt-1 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm"
-              />
-            </label>
-          </div>
-        </div>
-
-        {/* بطاقة بيانات العميل المختار */}
-        <div className="bg-white p-5 rounded-2xl border border-sky-100 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-[#0F4C81] to-sky-600 text-white flex items-center justify-center font-black text-xl shadow-md">
-              {activeClient.name.charAt(0)}
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg font-black text-slate-900">{activeClient.name}</h2>
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-sky-100 text-[#0F4C81] font-bold">{activeClient.id}</span>
-              </div>
-              <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 mt-1 font-medium">
-                <span className="flex items-center gap-1"><Phone className="w-3.5 h-3.5" /> {activeClient.phone}</span>
-                <span>•</span>
-                <span>{activeClient.city}</span>
-                <span>•</span>
-                <span>عميل منذ: {activeClient.joinDate}</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-100 text-xs">
-            <Package className="w-4 h-4 text-[#F97316]" />
-            <span className="text-slate-600">إجمالي الشحنات:</span>
-            <span className="font-black text-slate-900">{activeClient.totalOrders} شحنة</span>
-          </div>
-        </div>
-
-        {/* بطاقات المؤشرات المالية للعميل (KPIs) */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-white p-5 rounded-2xl border border-rose-100 shadow-sm">
-            <div className="flex items-center justify-between text-rose-600 mb-2">
-              <span className="text-xs font-bold">إجمالي المطالبات (مدين)</span>
-              <ArrowDownLeft className="w-5 h-5 bg-rose-50 p-1 rounded-lg" />
-            </div>
-            <div className="text-2xl font-black text-slate-900">${totals.totalDebit.toLocaleString()}</div>
-            <p className="text-[11px] text-slate-400 mt-1">تكلفة الشراء والشحن والجمارك</p>
-          </div>
-
-          <div className="bg-white p-5 rounded-2xl border border-emerald-100 shadow-sm">
-            <div className="flex items-center justify-between text-emerald-600 mb-2">
-              <span className="text-xs font-bold">إجمالي المدفوعات (دائن)</span>
-              <ArrowUpRight className="w-5 h-5 bg-emerald-50 p-1 rounded-lg" />
-            </div>
-            <div className="text-2xl font-black text-slate-900">${totals.totalCredit.toLocaleString()}</div>
-            <p className="text-[11px] text-slate-400 mt-1">سندات القبض والدفعات المستلمة</p>
-          </div>
-
-          <div className={`p-5 rounded-2xl border shadow-sm ${totals.netBalance > 0? 'bg-amber-50/50 border-amber-200' : 'bg-emerald-50/50 border-emerald-200'}`}>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-slate-700">الرصيد المتبقي (مستحق السداد)</span>
-              <Wallet className="w-5 h-5 text-[#F97316]" />
-            </div>
-            <div className={`text-2xl font-black ${totals.netBalance > 0? 'text-[#F97316]' : 'text-emerald-700'}`}>
-              ${totals.netBalance.toLocaleString()}
-            </div>
-            <p className="text-[11px] text-slate-500 mt-1">
-              {totals.netBalance > 0? "يستحق التحصيل من العميل عند التسليم" : "الحساب مسدد بالكامل ولا توجد ذمم"}
-            </p>
-          </div>
-        </div>
-
-        {/* جدول كشف الحساب التفصيلي */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
-            <h3 className="font-black text-[#0F4C81] text-sm md:text-base flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-[#F97316]" />
-              كشف الحساب التفصيلي للعمليات
-            </h3>
-            <span className="text-xs text-slate-500 font-bold">
-              {filteredTransactions.length} حركات مسجلة
-            </span>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-right text-sm">
-              <thead className="bg-[#0F4C81]/5 text-[#0F4C81] text-xs font-bold border-b border-sky-100">
-                <tr>
-                  <th className="py-3 px-4">التاريخ</th>
-                  <th className="py-3 px-4">المرجع</th>
-                  <th className="py-3 px-4">نوع الحركة</th>
-                  <th className="py-3 px-4">البيان / الوصف</th>
-                  <th className="py-3 px-4 text-center">مدين (+)</th>
-                  <th className="py-3 px-4 text-center">دائن (-)</th>
-                  <th className="py-3 px-4 text-center">الحالة</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-medium">
-                {filteredTransactions.map((tx) => (
-                  <tr key={tx.id} className="hover:bg-slate-50/80 transition">
-                    <td className="py-3.5 px-4 text-xs text-slate-600">{tx.date}</td>
-                    <td className="py-3.5 px-4">
-                      <span className="font-mono text-xs font-bold text-[#0F4C81] bg-sky-50 px-2 py-0.5 rounded">
-                        {tx.refNo}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
-                        tx.type === 'سند قبض'? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
-                      }`}>
-                        {tx.type}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-slate-700 text-xs md:text-sm">{tx.description}</td>
-                    <td className="py-3.5 px-4 text-center font-bold text-rose-600">
-                      {tx.debit > 0? `$${tx.debit}` : "-"}
-                    </td>
-                    <td className="py-3.5 px-4 text-center font-bold text-emerald-600">
-                      {tx.credit > 0? `$${tx.credit}` : "-"}
-                    </td>
-                    <td className="py-3.5 px-4 text-center">
-                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
-                        <CheckCircle2 className="w-3 h-3" />
-                        {tx.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
+          {clientsLoading || rowsLoading ? <div role="status" className="flex items-center justify-center gap-2 p-10 text-sm text-slate-500"><Loader2 className="size-4 animate-spin" /> جارٍ تحميل البيانات…</div> : !activeClient ? <p className="p-10 text-center text-sm text-slate-500">اختر عميلًا لعرض حركاته.</p> : rows.length === 0 ? <div className="p-10 text-center text-sm text-slate-500"><RefreshCw className="mx-auto mb-2 size-5" />لا توجد حركات مرتبطة بهذا الحساب ضمن الفترة المحددة.</div> :
+            <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-right text-sm"><thead className="bg-sky-50 text-xs font-bold text-[#0F4C81]"><tr><th className="p-3">التاريخ</th><th className="p-3">المرجع</th><th className="p-3">الحركة</th><th className="p-3">البيان</th><th className="p-3">المبلغ</th><th className="p-3">الحالة</th></tr></thead><tbody className="divide-y divide-slate-100">{rows.map((row) => <tr key={row.id} className="hover:bg-slate-50"><td className="whitespace-nowrap p-3 text-xs text-slate-600">{formatDate(row.date)}</td><td className="p-3 font-mono text-xs font-bold text-[#0F4C81]">{row.ref}</td><td className="p-3"><span className={`rounded-full px-2 py-1 text-xs font-bold ${row.kind === "دفعة معتمدة" ? "bg-emerald-100 text-emerald-800" : "bg-sky-100 text-sky-800"}`}>{row.kind}</span></td><td className="p-3">{row.description}</td><td className="whitespace-nowrap p-3 font-bold">{row.amount == null ? "—" : `${formatAmount(row.amount)} ${row.currency}`}</td><td className="p-3"><span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700"><CheckCircle2 className="size-3" />{row.status}</span></td></tr>)}</tbody></table></div>}
+        </section>
       </div>
-    </div>
+    </main>
   );
 }
