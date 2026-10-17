@@ -272,7 +272,7 @@ function ClientReportsPageContent() {
   const activeClient = clients.find((client) => client.id === selectedClientId) ?? null;
   const receivedSummary = useMemo(() => calculateApprovedReceived(rows), [rows]);
   const receivedPresentation = useMemo(
-    () => buildReceivedPresentation(receivedSummary, formatAmount),
+    () => buildReceivedPresentation(receivedSummary),
     [receivedSummary],
   );
 
@@ -340,7 +340,7 @@ function ClientReportsPageContent() {
                   {receivedPresentation.partialText && <p className="mt-2 text-sm font-bold text-slate-600">{receivedPresentation.partialText}</p>}
                 </div>
               ) : (
-                <p className={`mt-2 text-xl font-black ${receivedPresentation.state === "none" ? "text-slate-400" : "text-slate-900"}`}>
+                <p className={`mt-2 whitespace-pre-line text-xl font-black ${receivedPresentation.state === "none" ? "text-slate-500" : "text-slate-900"}`}>
                   {receivedPresentation.reportText}
                 </p>
               )
