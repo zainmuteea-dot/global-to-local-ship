@@ -72,6 +72,7 @@ const CSS = `
 .notif-item-time{font-size:10px;color:#94a3b8;margin-top:4px}
 .notif-empty{padding:24px 10px;text-align:center;color:var(--muted);font-size:12.5px}
 .notif-error{margin-bottom:8px;padding:8px 10px;border-radius:10px;background:#fff1f2;color:#be123c;font-size:11px}
+
 /* Top Floating Banner Toast */
 .pay-banner-wrap{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:9999;
   width:92%;max-width:540px;animation:slideDownBanner .38s cubic-bezier(0.16,1,0.3,1)}
@@ -135,7 +136,8 @@ const CSS = `
 .stat.total .num{color:var(--blue-900)}
 .stat.paid .num{color:var(--green)}
 .stat.rest .num{color:var(--red)}
-/* ===== Payment method list (polished) ===== */
+
+/* ===== Payment method list ===== */
 .pay-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px;padding:4px}
 @media (max-width:460px){.pay-grid{grid-template-columns:1fr}}
 .wbtn{position:relative;display:flex;direction:rtl;align-items:center;gap:12px;width:100%;min-height:64px;
@@ -144,8 +146,8 @@ const CSS = `
   box-shadow:0 2px 8px -4px rgba(0,74,141,.12)}
 .wbtn:hover{transform:translateY(-2px);border-color:#cfe0f1;box-shadow:0 10px 22px -12px rgba(0,74,141,.35)}
 .wbtn .wchip{display:grid;place-items:center;flex:0 0 46px;width:46px;height:46px;overflow:hidden;
-  border-radius:13px;box-shadow:0 4px 12px -5px rgba(0,0,0,.35)}
-.wbtn .wchip svg{width:46px;height:46px;display:block}
+  border-radius:13px;box-shadow:0 4px 12px -5px rgba(0,0,0,.15);background:#fff}
+.wbtn .wchip img{width:100%;height:100%;object-fit:contain;display:block}
 .wbtn .wname{min-width:0;color:#2a3a52;font-size:13px;font-weight:800;line-height:1.3}
 .wbtn.active{border-color:#e6c76e;background:linear-gradient(180deg,#fffdf5,#fff8e8);
   box-shadow:0 12px 26px -12px rgba(230,172,40,.6)}
@@ -157,8 +159,8 @@ const CSS = `
 .pay-acc{margin-top:16px;border-radius:16px;padding:16px;color:#fff;position:relative;overflow:hidden;box-shadow:0 12px 26px -12px rgba(0,0,0,.4)}
 .pay-acc .atop{display:flex;align-items:center;gap:12px;margin-bottom:12px}
 .pay-acc .wlogo{width:54px;height:54px;border-radius:14px;overflow:hidden;flex:0 0 auto;
-  background:#fff;box-shadow:0 6px 16px -6px rgba(0,0,0,.45)}
-.pay-acc .wlogo svg{width:54px;height:54px;display:block}
+  background:#fff;box-shadow:0 6px 16px -6px rgba(0,0,0,.25);display:grid;place-items:center;padding:2px}
+.pay-acc .wlogo img{width:100%;height:100%;object-fit:contain;display:block}
 .pay-acc .at{font-size:12px;opacity:.9}
 .pay-acc .an{font-size:16px;font-weight:800}
 .pay-accnum{display:flex;flex-direction:column;gap:8px;background:rgba(0,0,0,.22);border-radius:14px;padding:14px}
@@ -213,42 +215,90 @@ const Logo = () => (
   </svg>
 )
 
-type Wallet = { key: string; label: string; color: string; grad: [string, string]; mark: string; markSize?: number }
+type Wallet = {
+  key: string
+  label: string
+  color: string
+  grad: [string, string]
+  logoUrl: string
+}
 
-/* شعارات المحافظ: SVG مدمجة (تدرّج لوني + حرف) لا تعتمد على روابط خارجية فلا تنكسر. */
+/* شعارات المحافظ: جلب الشعار الحقيقي من المصدر الرسمي مع بديل تلقائي عند انقطاع الاتصال */
 function WalletLogo({ brand, size = 46 }: { brand: Wallet; size?: number }) {
-  const gid = `wg-${brand.key}`
-  const sid = `ws-${brand.key}`
+  const [loadFailed, setLoadFailed] = useState(false)
+
+  if (loadFailed || !brand.logoUrl) {
+    return (
+      <div
+        style={{
+          width: size,
+          height: size,
+          background: `linear-gradient(135deg, ${brand.grad[0]}, ${brand.grad[1]})`,
+        }}
+        className="grid place-items-center text-white text-[11px] font-black rounded-[13px]"
+      >
+        {brand.label.slice(0, 3)}
+      </div>
+    )
+  }
+
   return (
-    <svg viewBox="0 0 48 48" width={size} height={size} role="img" aria-label={brand.label}>
-      <defs>
-        <linearGradient id={gid} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor={brand.grad[0]} />
-          <stop offset="1" stopColor={brand.grad[1]} />
-        </linearGradient>
-        <linearGradient id={sid} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#ffffff" stopOpacity="0.38" />
-          <stop offset="0.55" stopColor="#ffffff" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <rect width="48" height="48" rx="13" fill={`url(#${gid})`} />
-      <rect width="48" height="25" rx="13" fill={`url(#${sid})`} />
-      {brand.key === 'najm' ? (
-        <path d="M24 10.5 l3.4 6.9 7.6 1.1 -5.5 5.4 1.3 7.6 L24 29 l-6.8 3.5 1.3 -7.6 -5.5 -5.4 7.6 -1.1 Z" fill="#fff" />
-      ) : (
-        <text x="24" y="25" textAnchor="middle" dominantBaseline="central" fontFamily="'Cairo',system-ui,sans-serif" fontWeight="900" fontSize={brand.markSize ?? 20} fill="#fff">{brand.mark}</text>
-      )}
-    </svg>
+    <img
+      src={brand.logoUrl}
+      alt={brand.label}
+      width={size}
+      height={size}
+      style={{ width: size, height: size }}
+      className="object-contain rounded-[13px] bg-white p-1 border border-slate-100 shadow-sm"
+      loading="lazy"
+      onError={() => setLoadFailed(true)}
+    />
   )
 }
 
 const WALLETS: Wallet[] = [
-  { key: 'kuraimi', label: 'الكريمي جوال / حاسب', color: '#0e7090', grad: ['#13b0cf', '#0e6f8e'], mark: 'K' },
-  { key: 'onecash', label: 'ون كاش OneCash', color: '#7c3aed', grad: ['#9f67f0', '#6d28d9'], mark: '1C', markSize: 16 },
-  { key: 'floosak', label: 'فلوسك Floosak', color: '#2563eb', grad: ['#5b8def', '#1d4ed8'], mark: 'F' },
-  { key: 'jawali', label: 'جوالي Jawali', color: '#be185d', grad: ['#ec4899', '#9d174d'], mark: 'J' },
-  { key: 'jeeb', label: 'جيب Jeeb', color: '#0284c7', grad: ['#2bc0ea', '#0369a1'], mark: 'Je', markSize: 16 },
-  { key: 'najm', label: 'حوالة النجم', color: '#ea580c', grad: ['#fb923c', '#ea580c'], mark: '*' },
+  {
+    key: 'kuraimi',
+    label: 'الكريمي جوال / حاسب',
+    color: '#0e7090',
+    grad: ['#13b0cf', '#0e6f8e'],
+    logoUrl: 'https://play-lh.googleusercontent.com/6IZttTeyjm-9x0Do0AMsmTzFOIAYnLGO08ykQRkZfwd4d5YcTFyJFhsn6wNIToHBvHrK17wz--r3kmPwpR1tSw=w240-h240',
+  },
+  {
+    key: 'onecash',
+    label: 'ون كاش OneCash',
+    color: '#7c3aed',
+    grad: ['#9f67f0', '#6d28d9'],
+    logoUrl: 'https://play-lh.googleusercontent.com/WqrsU_pFeqT63UuvAH8vavDeee22oJWtrp6TuVyqbWddB8EtkSToVwPUzp-arwD_3em6VnzDHF-8STWhujko1Q=w240-h240',
+  },
+  {
+    key: 'floosak',
+    label: 'فلوسك Floosak',
+    color: '#2563eb',
+    grad: ['#5b8def', '#1d4ed8'],
+    logoUrl: 'https://play-lh.googleusercontent.com/zFQM3P20sCb90Z6JHrp7vHAPJAPxXNDyMzVHxABxSMTWVA6i2mCKPQJhtLf3FUlV01jkVS87iDT_wa80NUaQLw=w240-h240',
+  },
+  {
+    key: 'jawali',
+    label: 'جوالي Jawali',
+    color: '#be185d',
+    grad: ['#ec4899', '#9d174d'],
+    logoUrl: 'https://play-lh.googleusercontent.com/cdKHQ0C8LHUZ957w5cNWEXtZzCwntobKsfM4cipF0KR9_1Tv9ys0_5oNh0RCSwjpTzosfJ5J-fQGFvBq3vH2YA=w240-h240',
+  },
+  {
+    key: 'jeeb',
+    label: 'جيب Jeeb',
+    color: '#0284c7',
+    grad: ['#2bc0ea', '#0369a1'],
+    logoUrl: 'https://play-lh.googleusercontent.com/DD6sJ8x9gQZ0uu84r5xD7-yUR2Ckc8CotMJmAhTrTM5pl8NEUdZA0rqBtXUqOyzoSzWC0OfuMvyvoDRRO6EpjQ=w240-h240',
+  },
+  {
+    key: 'najm',
+    label: 'حوالة النجم',
+    color: '#ea580c',
+    grad: ['#fb923c', '#ea580c'],
+    logoUrl: 'https://iconape.com/wp-content/files/uw/365504/png/alnajm-01.png',
+  },
 ]
 
 const UNIFIED_PHONE = '772399744'
@@ -848,7 +898,6 @@ function PayPage() {
       )}
 
       <div className="pay-wrap">
-
         <header className="pay-topbar">
           <div className="pay-badge"><Logo /></div>
           <div className="pay-brand">
@@ -898,80 +947,65 @@ function PayPage() {
                   </div>
 
                   {notificationError && <div className="notif-error" role="alert">{notificationError}</div>}
+
                   {notifications.length === 0 ? (
-                    <div className="notif-empty">
-                      لا توجد إشعارات جديدة حالياً
-                    </div>
+                    <div className="notif-empty">لا توجد إشعارات اعتماد لهذا الطلب حتى الآن</div>
                   ) : (
                     <div className="notif-list">
-                      {notifications.map((n) => (
-                        <div
-                          key={n.id}
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => void handleMarkRead(n.id)}
-                          onKeyDown={(event) => {
-                            if (event.key === 'Enter' || event.key === ' ') {
-                              event.preventDefault()
-                              void handleMarkRead(n.id)
-                            }
-                          }}
-                          className={`notif-item ${/اعتماد|approved/i.test(n.title + (n.message || '')) ? 'approved' : ''} ${!readNotificationIds.has(n.id) ? 'notif-unread' : ''}`}
-                        >
-                          <div className="notif-item-title">
-                            <span>{n.title}</span>
-                            {!readNotificationIds.has(n.id) && (
-                              <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444', display: 'inline-block' }} />
-                            )}
+                      {notifications.map((n) => {
+                        const isRead = readNotificationIds.has(n.id)
+                        return (
+                          <div
+                            key={n.id}
+                            className={`notif-item approved ${isRead ? 'read' : 'unread'}`}
+                            onClick={() => void handleMarkRead(n.id)}
+                          >
+                            <div className="notif-item-title">
+                              <span>{n.title || 'تم اعتماد دفعتك ✓'}</span>
+                              <span style={{ fontSize: 10, color: '#059669', fontWeight: 700 }}>
+                                {isRead ? 'مقروء' : 'جديد'}
+                              </span>
+                            </div>
+                            <div className="notif-item-desc">{notificationMessage(n)}</div>
+                            <div className="notif-item-time">
+                              {n.created_at ? new Date(n.created_at).toLocaleTimeString('ar-YE', { hour: '2-digit', minute: '2-digit' }) : ''}
+                            </div>
                           </div>
-                          <div className="notif-item-desc">{notificationMessage(n)}</div>
-                          <div className="notif-item-time">
-                            {n.created_at
-                              ? new Date(n.created_at).toLocaleTimeString('ar-YE', { hour: '2-digit', minute: '2-digit' })
-                              : 'الآن'}
-                          </div>
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   )}
                 </div>
               )}
             </div>
 
-            <button className="pay-arrow" type="button" title="رجوع" onClick={() => navigate({ to: '/dashboard' })}>
+            <button
+              type="button"
+              className="pay-arrow"
+              onClick={() => navigate({ to: '/' })}
+              title="العودة للرئيسية"
+            >
               <Arrow />
             </button>
           </div>
         </header>
 
-        {loadError && (
-          <div className="pay-card" role="alert" aria-live="assertive">
-            <div className="pay-error" style={{ marginTop: 0 }}>
-              <div>{loadError}</div>
-              <button className="pay-retry" type="button" onClick={() => void loadOrderData()} disabled={loading}>
-                {loading ? 'جارٍ التحقق...' : 'إعادة المحاولة'}
-              </button>
-            </div>
-          </div>
-        )}
-
         <section className="pay-card">
           <div className="pay-head">
             <div className="pay-ico"><Receipt /></div>
-            <div className="pay-title">تفاصيل الطلب</div>
+            <div className="pay-title">بيانات الطلب والتأكيد</div>
           </div>
+
           <div className="pay-ord">
             <div className="od-top">
-              <div className="od-box num">
-                <div className="od-k">رقم الطلب</div>
-                <div className="od-v"><Hash />{orderNo}</div>
+              <div className="od-box">
+                <div className="od-k">رقم الطلب / التتبع</div>
+                <div className="od-v"><Hash />{orderNo || 'غير محدد'}</div>
               </div>
-              <div className="od-box stat">
-                <div className="od-k">حالة الدفع</div>
+              <div className="od-box">
+                <div className="od-k">حالة السداد الحالية</div>
                 <div className="od-v">
-                  <span className={'badge ' + (isPaid ? 'ok' : 'warn')}>
-                    {loading ? '...' : status}
-                  </span>
+                  <span className={`badge ${isPaid ? 'ok' : 'warn'}`}>{status}</span>
                 </div>
               </div>
             </div>
@@ -1168,9 +1202,7 @@ function PayPage() {
             )}
           </section>
         )}
-
       </div>
     </div>
   )
 }
-
