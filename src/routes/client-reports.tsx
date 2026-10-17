@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
+import { AdminRouteGuard } from "@/components/admin/AdminRouteGuard";
 import {
   ArrowRight, Search, Printer, Share2, Calendar,
   FileText, ArrowDownLeft, ArrowUpRight, DollarSign,
@@ -85,20 +86,36 @@ const INITIAL_CLIENTS: ClientData[] = [
   }
 ];
 
-export default function ClientReportsPage() {
+function ClientReportsPage() {
+  return (
+    <AdminRouteGuard>
+      <ClientReportsPageContent />
+    </AdminRouteGuard>
+  );
+}
+
+function ClientReportsPageContent() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [selectedClientId, setSelectedClientId] = useState<string>("CL-8801");
-  const [dateFilter, setDateFilter] = useState("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   const selectedClient = useMemo(() => {
     return INITIAL_CLIENTS.find(c => c.id === selectedClientId);
   }, [selectedClientId]);
 
-  const activeClient = selectedClient?? INITIAL_CLIENTS[0]!;
-  if (!activeClient) {
-    return <div className="p-8 text-center">لا يوجد عملاء لعرض التقرير</div>;
-  }
+  const activeClient = selectedClient ?? INITIAL_CLIENTS[0]!;
+
+  const filteredTransactions = useMemo(
+    () =>
+      activeClient.transactions.filter((transaction) => {
+        if (dateFrom && transaction.date < dateFrom) return false;
+        if (dateTo && transaction.date > dateTo) return false;
+        return true;
+      }),
+    [activeClient, dateFrom, dateTo],
+  );
 
   // تصفية العملاء في شريط البحث
   const filteredClients = useMemo(() => {
@@ -112,11 +129,11 @@ export default function ClientReportsPage() {
 
   // حساب المجاميع المالية للعميل المحدد
   const totals = useMemo(() => {
-    const totalDebit = activeClient.transactions.reduce((sum, t) => sum + t.debit, 0);
-    const totalCredit = activeClient.transactions.reduce((sum, t) => sum + t.credit, 0);
+    const totalDebit = filteredTransactions.reduce((sum, t) => sum + t.debit, 0);
+    const totalCredit = filteredTransactions.reduce((sum, t) => sum + t.credit, 0);
     const netBalance = totalDebit - totalCredit;
     return { totalDebit, totalCredit, netBalance };
-  }, [activeClient]);
+  }, [filteredTransactions]);
 
   // إرسال كشف الحساب عبر الواتساب للعميل
   const handleWhatsAppShare = () => {
@@ -191,6 +208,27 @@ export default function ClientReportsPage() {
               ))}
             </select>
           </div>
+
+          <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label className="text-xs font-bold text-slate-600">
+              من تاريخ
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(event) => setDateFrom(event.target.value)}
+                className="mt-1 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm"
+              />
+            </label>
+            <label className="text-xs font-bold text-slate-600">
+              إلى تاريخ
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(event) => setDateTo(event.target.value)}
+                className="mt-1 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm"
+              />
+            </label>
+          </div>
         </div>
 
         {/* بطاقة بيانات العميل المختار */}
@@ -263,7 +301,7 @@ export default function ClientReportsPage() {
               كشف الحساب التفصيلي للعمليات
             </h3>
             <span className="text-xs text-slate-500 font-bold">
-              {activeClient.transactions.length} حركات مسجلة
+              {filteredTransactions.length} حركات مسجلة
             </span>
           </div>
 
@@ -281,7 +319,7 @@ export default function ClientReportsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">
-                {activeClient.transactions.map((tx) => (
+                {filteredTransactions.map((tx) => (
                   <tr key={tx.id} className="hover:bg-slate-50/80 transition">
                     <td className="py-3.5 px-4 text-xs text-slate-600">{tx.date}</td>
                     <td className="py-3.5 px-4">
