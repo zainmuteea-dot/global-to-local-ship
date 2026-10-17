@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { Send, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { supabase } from "@/integrations/supabase/client";
 
-type Msg = { from: "bot" | "user"; text: string };
+type Msg = { from: "bot" | "user" | "staff"; text: string };
 
 const replies: { match: RegExp; text: string }[] = [
   { match: /سلام|مرحبا|اهلا|أهلا|هلا|هاي/, text: "هلا والله! أنا شامِل بوت 🤖 أسعى لخدمتك أكثر من عامل التوصيل نفسه!" },
@@ -22,6 +23,65 @@ const fallback = [
   "هممم.. دعني أفكر.. طيب فكرت، ما فهمت 😂 اسألني عن المتاجر أو الطلب!",
   "هذا خارج تغطيتي، أنا أغطي بس السوق الشامل.. زي الشبكة تمامًا 📶",
 ];
+
+type ChatSession = { conversationId: string; accessToken: string };
+type StoredChatMessage = {
+  id: string;
+  sender_type: "visitor" | "bot" | "staff";
+  body: string;
+  created_at: string;
+};
+
+const CHAT_STORAGE_KEY = "alsouk_chat_session_v2";
+const CHAT_WELCOME =
+  "أهلاً! أنا شامِل بوت 🤖 اسألني عن السوق الشامل أو اترك رسالتك لفريق الدعم.";
+const db = supabase as any;
+
+function readChatSession(): ChatSession | null {
+  try {
+    const raw = window.localStorage.getItem(CHAT_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed: unknown = JSON.parse(raw);
+    if (
+      typeof parsed === "object" &&
+      parsed !== null &&
+      "conversationId" in parsed &&
+      "accessToken" in parsed &&
+      typeof parsed.conversationId === "string" &&
+      typeof parsed.accessToken === "string"
+    ) {
+      return {
+        conversationId: parsed.conversationId,
+        accessToken: parsed.accessToken,
+      };
+    }
+  } catch (error) {
+    console.error("Could not read saved chat session", error);
+  }
+  return null;
+}
+
+function createChatAccessToken(): string {
+  if (typeof window.crypto.randomUUID === "function") {
+    return window.crypto.randomUUID();
+  }
+  const bytes = new Uint8Array(16);
+  window.crypto.getRandomValues(bytes);
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0"));
+  return `${hex.slice(0, 4).join("")}-${hex.slice(4, 6).join("")}-${hex.slice(6, 8).join("")}-${hex.slice(8, 10).join("")}-${hex.slice(10, 16).join("")}`;
+}
+
+function mapStoredMessages(rows: StoredChatMessage[]): Msg[] {
+  return [
+    { from: "bot", text: CHAT_WELCOME },
+    ...rows.map((row) => ({
+      from: row.sender_type === "visitor" ? "user" : row.sender_type,
+      text: row.body,
+    })),
+  ];
+}
 
 // مكون الروبوت الأزرق المطابق للصورة تماماً
 export function BlueRobotMascot({ size = 44, className = "" }: { size?: number; className?: string }) {
@@ -146,36 +206,147 @@ export function ChatBot() {
   const [open, setOpen] = useState(false);
   const [gone, setGone] = useState(false);
   const [isGiggling, setIsGiggling] = useState(false);
-  const [msgs, setMsgs] = useState<Msg[]>([
-    {
-      from: "bot",
-      text: "أهلاً! أنا شامِل بوت 🤖 اسألني أي شي عن السوق الشامل.. أو اطلب نكتة، أنا مضحك (على قول أمي) 😄",
-    },
-  ]);
+  const [msgs, setMsgs] = useState<Msg[]>([{ from: "bot", text: CHAT_WELCOME }]);
   const [text, setText] = useState("");
+  const [chatSession, setChatSession] = useState<ChatSession | null>(null);
+  const [chatReady, setChatReady] = useState(false);
+  const [chatBusy, setChatBusy] = useState(false);
+  const [chatError, setChatError] = useState("");
+  const [initAttempt, setInitAttempt] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
+  const sendingRef = useRef(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const initializeChat = async () => {
+      setChatReady(false);
+      setChatError("");
+      try {
+        let saved = readChatSession();
+        if (!saved) {
+          const accessToken = createChatAccessToken();
+          const { data, error } = await db.rpc("chat_create_conversation", {
+            _access_token: accessToken,
+          });
+          if (error) throw error;
+          if (typeof data !== "string" || !data) {
+            throw new Error("The chat creation RPC returned no conversation ID");
+          }
+          saved = { conversationId: data, accessToken };
+          try {
+            window.localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(saved));
+          } catch (storageError) {
+            console.error("Could not persist chat session in this browser", storageError);
+            throw new Error("تعذر حفظ جلسة المحادثة على هذا الجهاز.");
+          }
+        }
+        if (cancelled) return;
+        setChatSession(saved);
+        setChatReady(true);
+      } catch (error) {
+        console.error("Chat initialization failed", error);
+        if (!cancelled) {
+          setChatError("تعذر بدء المحادثة. تأكد من إعداد دوال قاعدة البيانات وسياسات الوصول ثم أعد المحاولة.");
+        }
+      }
+    };
+
+    void initializeChat();
+    return () => {
+      cancelled = true;
+    };
+  }, [initAttempt]);
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
   }, [msgs, open]);
 
-  if (gone) return null;
+  useEffect(() => {
+    if (!open || !chatSession || !chatReady) return;
+    let cancelled = false;
+    let loadingMessages = false;
 
-  const send = () => {
-    const q = text.trim();
-    if (!q) return;
+    const refreshMessages = async () => {
+      if (loadingMessages) return;
+      loadingMessages = true;
+      const { data, error } = await db.rpc("chat_get_messages", {
+        _conversation_id: chatSession.conversationId,
+        _access_token: chatSession.accessToken,
+      });
+      loadingMessages = false;
+      if (cancelled) return;
+      if (error) {
+        console.error("Loading chat messages failed", error);
+        setChatError("تعذر تحميل الرسائل. قد تكون المحادثة غير متاحة؛ أعد المحاولة أو ابدأ محادثة جديدة.");
+        return;
+      }
+      setChatError("");
+      setMsgs(mapStoredMessages((data ?? []) as StoredChatMessage[]));
+    };
 
-    // تفعيل هزة الضحك الخفيفة للروبوت عند الإرسال
-    setIsGiggling(true);
-    setTimeout(() => setIsGiggling(false), 800);
+    void refreshMessages();
+    const timer = window.setInterval(() => void refreshMessages(), 5000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [open, chatSession, chatReady]);
 
-    const hit = replies.find((r) => r.match.test(q));
-    const answer =
-      hit ? hit.text : (fallback[Math.floor(Math.random() * fallback.length)] ?? fallback[0]!);
-
-    setMsgs((m) => [...m, { from: "user", text: q }, { from: "bot", text: answer }]);
-    setText("");
+  const startNewConversation = () => {
+    try {
+      window.localStorage.removeItem(CHAT_STORAGE_KEY);
+    } catch (error) {
+      console.error("Could not clear saved chat session", error);
+    }
+    setChatSession(null);
+    setChatReady(false);
+    setMsgs([{ from: "bot", text: CHAT_WELCOME }]);
+    setChatError("");
+    setInitAttempt((attempt) => attempt + 1);
   };
+
+  const send = async () => {
+    const q = text.trim();
+    if (!q || q.length > 1000 || !chatSession || !chatReady || sendingRef.current) return;
+
+    sendingRef.current = true;
+    setChatBusy(true);
+    setChatError("");
+    setIsGiggling(true);
+    window.setTimeout(() => setIsGiggling(false), 800);
+
+    const hit = replies.find((item) => item.match.test(q));
+    const answer = hit
+      ? hit.text
+      : fallback[Math.floor(Math.random() * fallback.length)] ?? fallback[0]!;
+
+    try {
+      const { error } = await db.rpc("chat_send_visitor_message", {
+        _conversation_id: chatSession.conversationId,
+        _access_token: chatSession.accessToken,
+        _body: q,
+        _bot_reply: answer,
+      });
+      if (error) throw error;
+
+      setText("");
+      const { data, error: refreshError } = await db.rpc("chat_get_messages", {
+        _conversation_id: chatSession.conversationId,
+        _access_token: chatSession.accessToken,
+      });
+      if (refreshError) throw refreshError;
+      setMsgs(mapStoredMessages((data ?? []) as StoredChatMessage[]));
+    } catch (error) {
+      console.error("Sending chat message failed", error);
+      setChatError("لم تُرسل الرسالة. تحقق من الاتصال وحاول مجددًا.");
+    } finally {
+      sendingRef.current = false;
+      setChatBusy(false);
+    }
+  };
+
+  if (gone) return null;
 
   return (
     <div className="chatbot" dir="rtl">
@@ -192,8 +363,8 @@ export function ChatBot() {
               <Button
                 variant="ghost"
                 size="icon"
-                aria-label="حذف الروبوت نهائيًا"
-                title="حذف الروبوت"
+                aria-label="إخفاء الروبوت"
+                title="إخفاء الروبوت"
                 onClick={() => setGone(true)}
               >
                 <Trash2 size={15} />
@@ -201,7 +372,7 @@ export function ChatBot() {
               <Button
                 variant="ghost"
                 size="icon"
-                aria-label="إغلاق المحادثة"
+                aria-label="إغلاق نافذة المحادثة"
                 onClick={() => setOpen(false)}
               >
                 <X size={15} />
@@ -209,31 +380,58 @@ export function ChatBot() {
             </span>
           </div>
 
-          <div className="chatbot-msgs" ref={listRef}>
-            {msgs.map((m, i) => (
+          <div className="chatbot-msgs" ref={listRef} aria-live="polite">
+            {!chatReady && !chatError && (
+              <div className="chatbot-msg bot" role="status">جارٍ الاتصال بصندوق المحادثات…</div>
+            )}
+            {msgs.map((message, index) => (
               <div
-                key={i}
-                className={`chatbot-msg ${m.from === "bot" ? "bot" : "user"} animate-pop-in`}
+                key={`${message.from}-${index}`}
+                className={`chatbot-msg ${message.from === "user" ? "user" : "bot"} animate-pop-in`}
               >
-                {m.text}
+                {message.text}
               </div>
             ))}
           </div>
 
+          {chatError && (
+            <div className="px-3 pb-2 text-xs text-red-200" role="alert">
+              <p>{chatError}</p>
+              <div className="mt-2 flex gap-2">
+                <Button type="button" variant="secondary" size="sm" onClick={() => setInitAttempt((attempt) => attempt + 1)}>
+                  إعادة المحاولة
+                </Button>
+                {chatSession && (
+                  <Button type="button" variant="ghost" size="sm" onClick={startNewConversation}>
+                    محادثة جديدة
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+
           <form
             className="chatbot-form"
-            onSubmit={(e) => {
-              e.preventDefault();
-              send();
+            onSubmit={(event) => {
+              event.preventDefault();
+              void send();
             }}
           >
             <Input
               value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="اسألني عن المتاجر، الشحن، أو نكتة..."
+              onChange={(event) => setText(event.target.value)}
+              maxLength={1000}
+              placeholder={chatReady ? "اسألني عن المتاجر، الشحن، أو اكتب للدعم…" : "جارٍ تجهيز المحادثة…"}
               aria-label="رسالتك للروبوت"
+              disabled={!chatReady || chatBusy}
             />
-            <Button type="submit" size="icon" aria-label="إرسال" className="bg-sky-600 hover:bg-sky-500 text-white">
+            <Button
+              type="submit"
+              size="icon"
+              aria-label="إرسال"
+              className="bg-sky-600 text-white hover:bg-sky-500"
+              disabled={!chatReady || chatBusy || !text.trim()}
+            >
               <Send size={15} />
             </Button>
           </form>
@@ -242,11 +440,7 @@ export function ChatBot() {
 
       {!open && (
         <div className="chatbot-fab-container">
-          {/* فقاعة دعوة للدردشة تطفو فوق الروبوت */}
-          <div className="chatbot-badge-callout">
-            اسألني! 😄
-          </div>
-
+          <div className="chatbot-badge-callout">اسألني! 😄</div>
           <Button
             variant="ghost"
             size="icon"
