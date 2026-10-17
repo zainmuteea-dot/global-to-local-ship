@@ -61,19 +61,19 @@ export interface OrderItem {
   updatedAt?: string;
 }
 
-// واجهة العميل المجمّع
+// هيكل العميل المجمّع بحسب آخر 9 أرقام
 export interface GroupedClient {
   phoneLast9: string;      // آخر 9 أرقام من الهاتف (مفتاح التجميع)
-  originalPhone: string;   // رقم الهاتف الكامل
-  clientName: string;      // اسم العميل
-  city: string;            // المدينة
-  ordersCount: number;     // عدد الطلبات = orders.length
-  total_cost: number;      // إجمالي التكلفة = sum(total_cost)
-  paid: number;            // إجمالي المدفوع = sum(paid)
+  originalPhone: string;   // رقم الهاتف الكامل (phone)
+  clientName: string;      // اسم العميل (name)
+  city: string;            // المدينة (city)
+  ordersCount: number;     // count = orders.length
+  total_cost: number;      // مجموع التكلفة = sum(total_cost)
+  paid: number;            // مجموع المبالغ المدفوعة = sum(paid)
   remaining: number;       // total_cost - paid
-  profit: number;          // إجمالي الربح = sum(profit)
-  orders: OrderItem[];     // طلبات هذا العميل
-  latestOrderDate: string; // تاريخ آخر طلب
+  profit: number;          // مجموع الأرباح = sum(profit)
+  orders: OrderItem[];     // قائمة طلبات هذا العميل
+  latestOrderDate: string; // تاريخ أحدث طلب
 }
 
 // دالة استخراج آخر 9 أرقام من رقم الهاتف
@@ -84,7 +84,7 @@ export const extractLast9Digits = (rawPhone?: string): string => {
   return digits.slice(-9);
 };
 
-// دالة تجميع الطلبات حسب آخر 9 أرقام وحساب المجاميع بدقة
+// تجميع الطلبات حسب آخر 9 أرقام من هاتف العميل
 export const groupOrdersByLast9 = (orders: OrderItem[]): GroupedClient[] => {
   const map = new Map<string, OrderItem[]>();
 
@@ -153,7 +153,7 @@ export const groupOrdersByLast9 = (orders: OrderItem[]): GroupedClient[] => {
 };
 
 // ==========================================
-// 2. مكون الشعار المضيء
+// 2. مكون الشعار
 // ==========================================
 const EmbeddedLogo: React.FC<{ size?: "sm" | "md" | "lg" }> = ({ size = "sm" }) => {
   const iconSizes = { sm: "w-8 h-8", md: "w-10 h-10", lg: "w-12 h-12" };
@@ -223,7 +223,7 @@ export function AdminOperationsDashboard({
   const [searchQuery, setSearchQuery] = useState("");
   const [copiedTracking, setCopiedTracking] = useState<string | null>(null);
 
-  // تصنيف العملاء المجمعين
+  // تصفية العملاء
   const [clientFilterType, setClientFilterType] = useState<"all" | "remaining" | "paid">("all");
 
   // النوافذ المنبثقة
@@ -247,14 +247,14 @@ export function AdminOperationsDashboard({
     trackingNumber: ""
   });
 
-  // حفظ في التخزين المحلي
+  // حفظ في localStorage
   useEffect(() => {
     try {
       localStorage.setItem("alsouk_admin_shipments_v1", JSON.stringify(orders));
     } catch {}
   }, [orders]);
 
-  // جلب الطلبات من Supabase أو التخزين المحلي
+  // جلب الطلبات من Supabase مع دعم كافة تسميات الأعمدة: (id, name, phone, city)
   const fetchOrders = async () => {
     setLoading(true);
     if (supabaseClientInstance) {
@@ -268,15 +268,25 @@ export function AdminOperationsDashboard({
           const mapped: OrderItem[] = data.map((item: any) => ({
             id: String(item.id),
             orderNumber: item.order_number || item.orderNumber || `SQ-${item.id}`,
-            customerName: item.customer_name || item.customerName || "عميل بدون اسم",
-            customerPhone: item.customer_phone || item.customerPhone || "770000000",
-            customerCity: item.customer_city || item.customerCity || "صنعاء",
-            productTitle: item.product_title || item.productTitle || "شحنة دولية",
+            // توافق مباشر مع عمود name أو customer_name
+            customerName: item.customer_name || item.customerName || item.name || "عميل بدون اسم",
+            // توافق مباشر مع عمود phone أو customer_phone
+            customerPhone: item.customer_phone || item.customerPhone || item.phone || "770000000",
+            // توافق مباشر مع عمود city أو customer_city
+            customerCity: item.customer_city || item.customerCity || item.city || "صنعاء",
+            productTitle: item.product_title || item.productTitle || item.title || "شحنة دولية",
             productUrl: item.product_url || item.productUrl || "",
             storeName: item.store_name || item.storeName || "SHEIN",
             status: (item.status as OrderStatus) || "new",
-            originalPrice: Number(item.original_price || item.originalPrice || 0),
-            total_cost: Number(item.total_cost || item.original_price || item.originalPrice || 0),
+            originalPrice: Number(item.original_price || item.originalPrice || item.price || 0),
+            total_cost: Number(
+              item.total_cost ||
+                item.totalCost ||
+                item.original_price ||
+                item.originalPrice ||
+                item.price ||
+                0
+            ),
             paid:
               item.paid !== undefined
                 ? Number(item.paid)
@@ -304,12 +314,12 @@ export function AdminOperationsDashboard({
     fetchOrders();
   }, []);
 
-  // العملاء المجمعين حسب آخر 9 أرقام
+  // تجميع الطلبات حسب آخر 9 أرقام
   const groupedClients = useMemo(() => {
     return groupOrdersByLast9(orders);
   }, [orders]);
 
-  // بطاقات الملخص الـ 4 المطلوبة
+  // حسابات بطاقات الملخص الـ 4 المطلوبة
   const summaryTotals = useMemo(() => {
     let sumRemaining = 0;
     let sumPaid = 0;
@@ -333,7 +343,7 @@ export function AdminOperationsDashboard({
     };
   }, [groupedClients, orders]);
 
-  // تحديث حالة الشحنة
+  // تغيير الحالة السريع
   const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
     setOrders((prev) =>
       prev.map((o) =>
@@ -361,7 +371,7 @@ export function AdminOperationsDashboard({
     }
   };
 
-  // إضافة شحنة جديدة
+  // إنشاء شحنة جديدة
   const handleCreateNewOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newOrderForm.customerName.trim() || !newOrderForm.customerPhone.trim()) {
@@ -514,7 +524,7 @@ export function AdminOperationsDashboard({
     }
   };
 
-  // قائمة المدن الفريدة
+  // المدن الفريدة
   const uniqueCities = useMemo(() => {
     const c = new Set<string>();
     orders.forEach((o) => {
@@ -523,7 +533,7 @@ export function AdminOperationsDashboard({
     return Array.from(c);
   }, [orders]);
 
-  // تصفية الشحنات الفردية
+  // تصفية الشحنات
   const filteredOrders = useMemo(() => {
     return orders.filter((o) => {
       if (statusFilter !== "all" && o.status !== statusFilter) return false;
@@ -825,8 +835,8 @@ export function AdminOperationsDashboard({
                 <table className="w-full text-right text-xs">
                   <thead className="bg-gradient-to-r from-[#F0F7FF] via-[#E0F2FE] to-[#F0F7FF] border-b border-sky-200 text-[#0F4C81] font-black">
                     <tr>
-                      <th className="py-3.5 px-4">العميل والمدينة</th>
-                      <th className="py-3.5 px-4">رقم الهاتف (آخر 9 أرقام)</th>
+                      <th className="py-3.5 px-4">العميل والمدينة (name / city)</th>
+                      <th className="py-3.5 px-4">رقم الهاتف (آخر 9 أرقام - phone)</th>
                       <th className="py-3.5 px-4 text-center">الطلبات (count)</th>
                       <th className="py-3.5 px-4 text-left">التكلفة (total_cost)</th>
                       <th className="py-3.5 px-4 text-left">المدفوع (paid)</th>
@@ -988,8 +998,8 @@ export function AdminOperationsDashboard({
                   <thead className="bg-gradient-to-r from-[#F0F7FF] to-[#E0F2FE] border-b border-sky-200 text-[#0F4C81] font-black">
                     <tr>
                       <th className="py-4 px-4">رقم الطلب</th>
-                      <th className="py-4 px-4">العميل والمدينة</th>
-                      <th className="py-4 px-4">رقم الهاتف</th>
+                      <th className="py-4 px-4">العميل والمدينة (name / city)</th>
+                      <th className="py-4 px-4">رقم الهاتف (phone)</th>
                       <th className="py-4 px-4">رقم التتبع</th>
                       <th className="py-4 px-4 text-center">حالة الشحنة</th>
                       <th className="py-4 px-4">التاريخ</th>
@@ -1189,12 +1199,16 @@ export function AdminOperationsDashboard({
             </div>
             <div className="space-y-2 text-xs">
               <div className="flex justify-between py-1 border-b border-dashed">
-                <span className="text-slate-500">اسم العميل:</span>
+                <span className="text-slate-500">اسم العميل (name):</span>
                 <span className="font-bold">{statementClient.clientName}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-dashed">
-                <span className="text-slate-500">الهاتف:</span>
+                <span className="text-slate-500">الهاتف (phone):</span>
                 <span className="font-mono font-bold">{statementClient.originalPhone}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-dashed">
+                <span className="text-slate-500">المدينة (city):</span>
+                <span className="font-bold">{statementClient.city}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-dashed">
                 <span className="text-slate-500">مفتاح الحساب (آخر 9 أرقام):</span>
@@ -1254,7 +1268,7 @@ export function AdminOperationsDashboard({
 
             <form onSubmit={handleCreateNewOrder} className="space-y-3.5 text-xs">
               <div>
-                <label className="block text-slate-700 font-bold mb-1">اسم العميل المستلم *</label>
+                <label className="block text-slate-700 font-bold mb-1">اسم العميل المستلم (name) *</label>
                 <input
                   type="text"
                   required
@@ -1267,7 +1281,7 @@ export function AdminOperationsDashboard({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-700 font-bold mb-1">رقم الهاتف أو الجوال *</label>
+                  <label className="block text-slate-700 font-bold mb-1">رقم الهاتف (phone) *</label>
                   <input
                     type="text"
                     required
@@ -1279,7 +1293,7 @@ export function AdminOperationsDashboard({
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-700 font-bold mb-1">المدينة / المحافظة</label>
+                  <label className="block text-slate-700 font-bold mb-1">المدينة (city)</label>
                   <input
                     type="text"
                     placeholder="صنعاء / عدن / تعز"
@@ -1416,9 +1430,9 @@ export function AdminOperationsDashboard({
               <p className="text-xs text-slate-500 font-mono mt-0.5">{printingOrder.orderNumber}</p>
             </div>
             <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-right space-y-1.5">
-              <div><strong>العميل:</strong> {printingOrder.customerName}</div>
-              <div><strong>الهاتف:</strong> {printingOrder.customerPhone}</div>
-              <div><strong>المدينة:</strong> {printingOrder.customerCity || "صنعاء"}</div>
+              <div><strong>العميل (name):</strong> {printingOrder.customerName}</div>
+              <div><strong>الهاتف (phone):</strong> {printingOrder.customerPhone}</div>
+              <div><strong>المدينة (city):</strong> {printingOrder.customerCity || "صنعاء"}</div>
               <div><strong>المحتوى:</strong> {printingOrder.productTitle}</div>
               <div><strong>المبلغ المطلوب:</strong> {printingOrder.originalPrice} ر.س</div>
             </div>
@@ -1446,7 +1460,7 @@ export function AdminOperationsDashboard({
   );
 }
 
-// تصدير الاسم المستعار للتوافق الكامل
+// تصدير الاسم المستعار لضمان التوافق مع كامل التطبيق
 export const AdminClientsPage = AdminOperationsDashboard;
 
 // تسجيل مسار TanStack Router
