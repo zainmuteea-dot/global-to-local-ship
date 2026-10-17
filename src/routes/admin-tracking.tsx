@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
+import { AdminRouteGuard } from '@/components/admin/AdminRouteGuard';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertCircle, Bell, Check, CheckCircle2, ChevronLeft, Circle, Clock3, CreditCard, MapPin, Package, Plane, RefreshCw, Search, ShieldCheck, ShoppingBag, Truck, Warehouse, X, MessageCircle, Loader2, History, UserRound, Phone, Pencil, Trash2, Save } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -6,7 +7,11 @@ import { supabase } from '@/integrations/supabase/client';
 const db = supabase as any;
 export const Route = createFileRoute('/admin-tracking')({
   head: () => ({ meta: [{ title: 'تتبع الشحنات المباشر — الإدارة | السوق الشامل' }] }),
-  component: LiveTrackingAdminRoute,
+  component: () => (
+    <AdminRouteGuard allowStaff redirectTo="/admin-tracking">
+      <LiveTrackingAdminRoute />
+    </AdminRouteGuard>
+  ),
 });
 
 type StageCode = 'new' | 'payment_review' | 'purchased' | 'international_warehouse' | 'international_transit' | 'customs_local' | 'out_for_delivery' | 'delivered';
@@ -71,10 +76,19 @@ function LiveTrackingAdminRoute() {
   useEffect(() => {
     let alive = true;
     (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { if (alive) setAccess('denied'); return; }
-      const { data, error } = await db.from('user_roles').select('role').eq('user_id', user.id);
-      if (alive) setAccess(error ? 'denied' : data?.some((r: any) => r.role === 'admin') ? 'admin' : data?.some((r: any) => r.role === 'staff') ? 'staff' : 'denied');
+      try {
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError || !user) { if (alive) setAccess('denied'); return; }
+        const [{ data: isAdmin, error: adminError }, { data: isStaff, error: staffError }] = await Promise.all([
+          supabase.rpc('has_role', { _user_id: user.id, _role: 'admin' } as any),
+          supabase.rpc('has_role', { _user_id: user.id, _role: 'staff' } as any),
+        ]);
+        if (!alive) return;
+        if (adminError || staffError) { setAccess('denied'); setNotice('تعذر التحقق من دور الحساب. راجع صلاحيات RPC has_role.'); return; }
+        setAccess(isAdmin === true ? 'admin' : isStaff === true ? 'staff' : 'denied');
+      } catch {
+        if (alive) { setAccess('denied'); setNotice('تعذر التحقق من صلاحيات الحساب.'); }
+      }
     })();
     return () => { alive = false; };
   }, []);
