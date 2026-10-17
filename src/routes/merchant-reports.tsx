@@ -75,66 +75,78 @@ export function MerchantReportsPage() {
   const [orders, setOrders] = useState<ReportOrderRow[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
-  const [isSupabaseConnected, setIsSupabaseConnected] = useState<boolean>(true);
+  const [isSupabaseConnected, setIsSupabaseConnected] = useState<boolean>(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [storeFilter, setStoreFilter] = useState<string>('all');
   const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month'>('all');
 
-  const fetchSupabaseOrders = async (isBackground = false) => {
-    if (!isBackground) setLoading(true);
+  const fetchSupabaseOrders = async (_isBackground = false) => {
+    setLoading(true);
     setIsSyncing(true);
+    setLoadError(null);
 
     try {
-      const { data, error } = await supabase
-        .from('orders')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const allData: any[] = [];
+      let from = 0;
 
-      if (error) throw error;
+      while (true) {
+        const { data, error } = await supabase
+          .from('orders')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .range(from, from + 499);
 
-      if (data) {
-        const mapped: ReportOrderRow[] = data.map((row: any) => {
-          const totalUSD = toNullableNumber(row.total_cost_usd);
-          const totalYER = toNullableNumber(row.total_cost_yer);
-          const paid = toNullableNumber(row.paid_amount);
-          const storedRemaining = toNullableNumber(row.remaining_amount);
-          const remaining =
-            storedRemaining !== null
-              ? storedRemaining
-              : totalYER !== null && paid !== null
-                ? Math.max(0, totalYER - paid)
-                : null;
-          const profit = toNullableNumber(row.profit_amount);
+        if (error) throw error;
 
-          return {
-            id: String(row.id),
-            orderNumber: row.order_number || row.tracking_code || `ORD-${row.id}`,
-            intlTrackingNumber: row.intl_tracking_number || row.tracking_code || row.order_number || `INTL-${row.id}`,
-            customerName: row.customer_name || 'عميل كريم',
-            customerPhone: row.customer_phone || row.phone || '770000000',
-            customerCity: row.customer_city || 'صنعاء',
-            storeName: row.store_name || 'SHEIN',
-            productTitle: row.product_title || 'شحنة متجر دولي',
-            quantity: Number(row.quantity || 1),
-            totalCostUSD: totalUSD,
-            totalCostYER: totalYER,
-            paidAmount: paid,
-            remainingAmount: remaining,
-            profitAmount: profit,
-            paymentStatus: row.payment_status || 'unknown',
-            paymentMethod: row.payment_method || 'الدفع عند الاستلام (COD)',
-            status: row.status || 'new',
-            createdAt: row.created_at || new Date().toISOString(),
-          };
-        });
-
-        setOrders(mapped);
+        const page = data ?? [];
+        allData.push(...page);
+        if (page.length < 500) break;
+        from += 500;
       }
+
+      const mapped: ReportOrderRow[] = allData.map((row: any) => {
+        const totalUSD = toNullableNumber(row.total_cost_usd);
+        const totalYER = toNullableNumber(row.total_cost_yer);
+        const paid = toNullableNumber(row.paid_amount);
+        const storedRemaining = toNullableNumber(row.remaining_amount);
+        const remaining =
+          storedRemaining !== null
+            ? storedRemaining
+            : totalYER !== null && paid !== null
+              ? Math.max(0, totalYER - paid)
+              : null;
+        const profit = toNullableNumber(row.profit_amount);
+
+        return {
+          id: String(row.id),
+          orderNumber: row.order_number || row.tracking_code || `ORD-${row.id}`,
+          intlTrackingNumber: row.intl_tracking_number || row.tracking_code || row.order_number || `INTL-${row.id}`,
+          customerName: row.customer_name || 'عميل كريم',
+          customerPhone: row.customer_phone || row.phone || '770000000',
+          customerCity: row.customer_city || 'صنعاء',
+          storeName: row.store_name || 'SHEIN',
+          productTitle: row.product_title || 'شحنة متجر دولي',
+          quantity: Number(row.quantity || 1),
+          totalCostUSD: totalUSD,
+          totalCostYER: totalYER,
+          paidAmount: paid,
+          remainingAmount: remaining,
+          profitAmount: profit,
+          paymentStatus: row.payment_status || 'unknown',
+          paymentMethod: row.payment_method || 'الدفع عند الاستلام (COD)',
+          status: row.status || 'new',
+          createdAt: row.created_at || new Date().toISOString(),
+        };
+      });
+
+      setOrders(mapped);
       setIsSupabaseConnected(true);
     } catch (err) {
       console.warn('Supabase fetch note:', err);
       setIsSupabaseConnected(false);
+      setLoadError('تعذرت قراءة الطلبات من Supabase. تحقق من الاتصال وسياسات الوصول، ولم تُعرض النتيجة كأنها صفر.');
     } finally {
       setLoading(false);
       setIsSyncing(false);
@@ -149,9 +161,7 @@ export function MerchantReportsPage() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
         fetchSupabaseOrders(true);
       })
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') setIsSupabaseConnected(true);
-      });
+      .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
@@ -274,10 +284,16 @@ export function MerchantReportsPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-[11px] font-black text-emerald-800 shadow-2xs">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <Database className="w-3.5 h-3.5 text-emerald-600" />
-              <span className="hidden md:inline">مربوط تلقائياً بـ Supabase ⚡</span>
+            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[11px] font-black shadow-2xs ${
+              loading
+                ? 'bg-amber-50 border-amber-200 text-amber-800'
+                : isSupabaseConnected
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                  : 'bg-red-50 border-red-200 text-red-800'
+            }`} role="status">
+              <span className={`w-2 h-2 rounded-full ${loading ? 'bg-amber-500 animate-pulse' : isSupabaseConnected ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
+              <Database className="w-3.5 h-3.5" />
+              <span>{loading ? "جارٍ التحميل…" : isSupabaseConnected ? `تمت القراءة · ${orders.length} طلب` : "تعذر الاتصال/القراءة"}</span>
             </div>
             <button
               onClick={() => fetchSupabaseOrders()}
@@ -307,19 +323,25 @@ export function MerchantReportsPage() {
 
       {/* Main KPI Cards */}
       <main className="max-w-7xl mx-auto px-4 mt-6 space-y-6">
+        {loadError && (
+          <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-800">
+            {loadError}
+            {orders.length > 0 && <span className="block mt-1 text-xs font-medium">المعروض أدناه آخر قراءة ناجحة، وليس نتيجة التحديث الذي فشل.</span>}
+          </div>
+        )}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <div className="bg-white/95 backdrop-blur-md border-2 border-sky-100 rounded-3xl p-4 sm:p-5 shadow-xs hover:border-[#0F4C81] transition-all">
             <span className="text-xs font-bold text-slate-500 block mb-1">إجمالي المبيعات</span>
             <div className="text-xl sm:text-2xl font-black text-[#0F4C81] font-mono">
-              {formatMoney(stats.totalSalesYER)} <span className="text-xs font-sans">ر.ي</span>
+              {loading ? "جارٍ التحميل…" : !isSupabaseConnected && orders.length === 0 ? "غير متاح" : formatMoney(stats.totalSalesYER)} <span className="text-xs font-sans">ر.ي</span>
             </div>
-            <div className="text-[11px] font-bold text-slate-500 mt-1 font-mono">${formatMoney(stats.totalSalesUSD)} USD</div>
+            <div className="text-[11px] font-bold text-slate-500 mt-1 font-mono">${loading ? "جارٍ التحميل…" : !isSupabaseConnected && orders.length === 0 ? "غير متاح" : formatMoney(stats.totalSalesUSD)} USD</div>
           </div>
 
           <div className="bg-white/95 backdrop-blur-md border-2 border-orange-100 rounded-3xl p-4 sm:p-5 shadow-xs hover:border-[#FF7A00] transition-all">
             <span className="text-xs font-bold text-slate-500 block mb-1">صافي الأرباح المحققة</span>
             <div className="text-xl sm:text-2xl font-black text-[#EA580C] font-mono">
-              {formatMoney(stats.totalProfitYER)} <span className="text-xs font-sans">ر.ي</span>
+              {loading ? "جارٍ التحميل…" : !isSupabaseConnected && orders.length === 0 ? "غير متاح" : formatMoney(stats.totalProfitYER)} <span className="text-xs font-sans">ر.ي</span>
             </div>
             <div className="text-[11px] font-bold text-emerald-600 mt-1 flex items-center gap-1">
               <Sparkles className="w-3 h-3" />
@@ -330,17 +352,17 @@ export function MerchantReportsPage() {
           <div className="bg-white/95 backdrop-blur-md border-2 border-emerald-100 rounded-3xl p-4 sm:p-5 shadow-xs hover:border-emerald-500 transition-all">
             <span className="text-xs font-bold text-slate-500 block mb-1">السيولة المحصلة</span>
             <div className="text-xl sm:text-2xl font-black text-emerald-700 font-mono">
-              {formatMoney(stats.totalCollectedYER)} <span className="text-xs font-sans">ر.ي</span>
+              {loading ? "جارٍ التحميل…" : !isSupabaseConnected && orders.length === 0 ? "غير متاح" : formatMoney(stats.totalCollectedYER)} <span className="text-xs font-sans">ر.ي</span>
             </div>
-            <div className="text-[11px] font-bold text-amber-700 mt-1 font-mono">المتبقي: {formatMoney(stats.totalRemainingYER)} ر.ي</div>
+            <div className="text-[11px] font-bold text-amber-700 mt-1 font-mono">المتبقي: {loading ? "جارٍ التحميل…" : !isSupabaseConnected && orders.length === 0 ? "غير متاح" : formatMoney(stats.totalRemainingYER)} ر.ي</div>
           </div>
 
           <div className="bg-white/95 backdrop-blur-md border-2 border-indigo-100 rounded-3xl p-4 sm:p-5 shadow-xs hover:border-indigo-500 transition-all">
             <span className="text-xs font-bold text-slate-500 block mb-1">إجمالي الطرود المشحونة</span>
             <div className="text-xl sm:text-2xl font-black text-indigo-900 font-mono">
-              {stats.totalOrdersCount} <span className="text-xs font-sans">طرد</span>
+              {loading ? "جارٍ التحميل…" : !isSupabaseConnected && orders.length === 0 ? "غير متاح" : stats.totalOrdersCount} <span className="text-xs font-sans">طرد</span>
             </div>
-            <div className="text-[11px] font-bold text-indigo-600 mt-1">نسبة الإنجاز: {stats.deliveryRate}% ✓</div>
+            <div className="text-[11px] font-bold text-indigo-600 mt-1">نسبة الإنجاز: {loading ? "جارٍ التحميل…" : !isSupabaseConnected && orders.length === 0 ? "غير متاح" : `${stats.deliveryRate}%`} ✓</div>
           </div>
         </div>
 
@@ -411,10 +433,18 @@ export function MerchantReportsPage() {
                       جاري مزامنة وجلب تقارير التاجر من Supabase...
                     </td>
                   </tr>
+                ) : loadError && orders.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-12 text-center text-red-700 font-bold">
+                      تعذرت القراءة؛ لا يمكن اعتبار ذلك نتيجة فارغة.
+                    </td>
+                  </tr>
                 ) : filteredOrders.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-12 text-center text-slate-400 font-bold">
-                      لا توجد شحنات مطابقة للمعايير المحددة.
+                    <td colSpan={7} className="py-12 text-center text-slate-500 font-bold">
+                      {orders.length === 0
+                        ? "قراءة ناجحة، لا توجد سجلات ظاهرة"
+                        : "لا توجد نتائج مطابقة للفلاتر"}
                     </td>
                   </tr>
                 ) : (
