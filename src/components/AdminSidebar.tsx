@@ -563,6 +563,22 @@ export function AdminSidebar({
 
         </div>
 
+        {/* زر كشف حساب العملاء في موضع العلامة أسفل القائمة */}
+        <div className="px-3 py-2 border-t border-slate-800/80 bg-[#071426]">
+          <button
+            type="button"
+            onClick={() => handleLinkClick("/client-reports")}
+            className={`w-full flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-right font-bold transition ${
+              currentPath === "/client-reports"
+                ? "bg-sky-600 text-white"
+                : "bg-[#0B1E36] text-slate-200 hover:bg-sky-700 hover:text-white"
+            }`}
+          >
+            <FileSpreadsheet className="size-4 text-sky-300" />
+            <span className="text-xs">كشف حساب العملاء: إجمالي وتفصيلي وتاريخ</span>
+          </button>
+        </div>
+
         {/* 4. فوتر القائمة الجانبية */}
         <div className="p-3 border-t border-slate-800/80 bg-[#06101f] text-center text-[10px] font-bold text-sky-400/90 tracking-wide">
           السوق الشامل © 2026 • إصدار النظام V2.8
