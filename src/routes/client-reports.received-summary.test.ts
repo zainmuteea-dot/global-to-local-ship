@@ -1,144 +1,93 @@
-export type ApprovedPaymentRow = {
-  kind: string;
-  status: string;
-  amount: number | null;
-  currency: string | null;
-};
+import { describe, expect, it } from "vitest";
+import {
+  buildReceivedPresentation,
+  calculateApprovedReceived,
+  type ApprovedPaymentRow,
+} from "./client-reports.received-summary";
 
-export type ReceivedSummary = {
-  paymentCount: number;
-  approvedCount: number;
-  hasMissingApprovedAmount: boolean;
-  totals: Array<[currency: string, amount: number]>;
-};
+const controlledCurrencyFormat = (amount: number, currency: string) =>
+  `${amount.toLocaleString("en-US")} ${currency}`;
 
-export type ReceivedPresentation = {
-  state: "none" | "complete" | "incomplete";
-  reportText: string;
-  partialText: string | null;
-  whatsappText: string;
-  totals: Array<[currency: string, amount: number]>;
-};
-
-const CURRENCY_CODES: Record<string, string> = {
-  YER: "YER",
-  YR: "YER",
-  "ر.ي": "YER",
-  "رياليمني": "YER",
-  USD: "USD",
-  "$": "USD",
-  SAR: "SAR",
-  "ر.س": "SAR",
-  AED: "AED",
-  "د.إ": "AED",
-  CNY: "CNY",
-  RMB: "CNY",
-  "¥": "CNY",
-};
-
-function normalizeCurrency(currency: string | null): string {
-  const value = currency?.trim() ?? "";
-  if (!value) return "غير محدد";
-  return CURRENCY_CODES[value.toUpperCase().replace(/\s+/g, "")] ?? value;
+function present(rows: ApprovedPaymentRow[]) {
+  return buildReceivedPresentation(
+    calculateApprovedReceived(rows),
+    controlledCurrencyFormat,
+  );
 }
 
-function formatNumber(amount: number): string {
-  return amount.toLocaleString("ar-YE", { maximumFractionDigits: 2 });
-}
+describe("ملخص المقبوض المعتمد في كشف حساب العملاء", () => {
+  it("يوضح عدم وجود أي دفعات بدل عرض صفر", () => {
+    const result = present([
+      { kind: "طلب", status: "مسجل", amount: null, currency: null },
+    ]);
 
-function formatCurrencyAmount(amount: number, currency: string): string {
-  try {
-    return new Intl.NumberFormat("ar-YE", {
+    expect(result.state).toBe("none");
+    expect(result.reportText).toBe("لا توجد دفعات ضمن الفترة المحددة");
+    expect(result.whatsappText).toBe("- لا توجد دفعات ضمن الفترة المحددة");
+  });
+
+  it("يميّز وجود دفعات معلقة أو مرفوضة عن عدم وجود دفعات", () => {
+    const result = present([
+      { kind: "دفعة", status: "معلق", amount: 20, currency: "YER" },
+      { kind: "دفعة", status: "مرفوض", amount: null, currency: "YER" },
+    ]);
+
+    expect(result.state).toBe("none");
+    expect(result.reportText).toBe("لا توجد دفعات معتمدة ضمن الفترة المحددة");
+    expect(result.whatsappText).toContain("توجد دفعات مسجلة");
+  });
+
+  it("يعرض المقبوض غير مكتمل في التقرير وواتساب عند غياب مبلغ دفعة معتمدة", () => {
+    const result = present([
+      { kind: "دفعة", status: "معتمد", amount: 100, currency: "YER" },
+      { kind: "دفعة", status: "معتمد", amount: null, currency: "YER" },
+      { kind: "دفعة", status: "معلق", amount: 900, currency: "YER" },
+    ]);
+
+    expect(result.state).toBe("incomplete");
+    expect(result.reportText).toBe("غير مكتمل");
+    expect(result.partialText).toContain("100 YER");
+    expect(result.whatsappText).toContain("المقبوض المعتمد: غير مكتمل");
+    expect(result.whatsappText).toContain("100 YER");
+    expect(result.whatsappText).not.toContain("المقبوض المعتمد: 100 YER");
+  });
+
+  it("يجمع المبالغ بحسب العملة ويعرض كل إجمالي في سطر مستقل", () => {
+    const result = present([
+      { kind: "دفعة", status: "معتمد", amount: 100, currency: "YER" },
+      { kind: "دفعة", status: "معتمد", amount: 50, currency: "YER" },
+      { kind: "دفعة", status: "معتمد", amount: 7, currency: "USD" },
+      { kind: "دفعة", status: "مرفوض", amount: 999, currency: "YER" },
+    ]);
+
+    expect(result.state).toBe("complete");
+    expect(result.reportText).toBe("150 YER\n7 USD");
+    expect(result.whatsappText).toBe(
+      "- المقبوض المعتمد: 150 YER\n- المقبوض المعتمد: 7 USD",
+    );
+  });
+
+  it("ينسق العملة برمز العملة المحلي عند استخدام المنسق الافتراضي", () => {
+    const summary = calculateApprovedReceived([
+      { kind: "دفعة", status: "معتمد", amount: 125, currency: "YER" },
+      { kind: "دفعة", status: "معتمد", amount: 8, currency: "USD" },
+    ]);
+    const result = buildReceivedPresentation(summary);
+    const expectedYER = new Intl.NumberFormat("ar-YE", {
       style: "currency",
-      currency,
+      currency: "YER",
       currencyDisplay: "symbol",
       maximumFractionDigits: 2,
-    }).format(amount);
-  } catch {
-    return `${formatNumber(amount)} ${currency}`;
-  }
-}
+    }).format(125);
+    const expectedUSD = new Intl.NumberFormat("ar-YE", {
+      style: "currency",
+      currency: "USD",
+      currencyDisplay: "symbol",
+      maximumFractionDigits: 2,
+    }).format(8);
 
-export function calculateApprovedReceived(
-  rows: readonly ApprovedPaymentRow[],
-): ReceivedSummary {
-  const totals = new Map<string, number>();
-  let paymentCount = 0;
-  let approvedCount = 0;
-  let hasMissingApprovedAmount = false;
-
-  for (const row of rows) {
-    if (row.kind !== "دفعة") continue;
-    paymentCount += 1;
-    if (row.status !== "معتمد") continue;
-
-    approvedCount += 1;
-    if (row.amount === null || !Number.isFinite(row.amount)) {
-      hasMissingApprovedAmount = true;
-      continue;
-    }
-
-    const currency = normalizeCurrency(row.currency);
-    totals.set(currency, (totals.get(currency) ?? 0) + row.amount);
-  }
-
-  return {
-    paymentCount,
-    approvedCount,
-    hasMissingApprovedAmount,
-    totals: Array.from(totals.entries()),
-  };
-}
-
-export function buildReceivedPresentation(
-  summary: ReceivedSummary,
-  formatAmount: (amount: number, currency: string) => string = formatCurrencyAmount,
-): ReceivedPresentation {
-  const totals = summary.totals;
-
-  if (summary.approvedCount === 0) {
-    const noPayments = summary.paymentCount === 0;
-    return {
-      state: "none",
-      reportText: noPayments
-        ? "لا توجد دفعات ضمن الفترة المحددة"
-        : "لا توجد دفعات معتمدة ضمن الفترة المحددة",
-      partialText: null,
-      whatsappText: noPayments
-        ? "- لا توجد دفعات ضمن الفترة المحددة"
-        : "- توجد دفعات مسجلة، لكن لا توجد دفعات معتمدة ضمن الفترة المحددة",
-      totals,
-    };
-  }
-
-  const partialTotals = totals
-    .map(([currency, amount]) => formatAmount(amount, currency))
-    .join("، ");
-
-  if (summary.hasMissingApprovedAmount) {
-    return {
-      state: "incomplete",
-      reportText: "غير مكتمل",
-      partialText: partialTotals
-        ? `المبالغ المعتمدة الموثقة جزئيًا: ${partialTotals}`
-        : "لا توجد مبالغ معتمدة موثقة لعرضها جزئيًا.",
-      whatsappText: `- المقبوض المعتمد: غير مكتمل؛ توجد دفعة معتمدة بلا مبلغ موثق${
-        partialTotals ? `\n- المبالغ المعتمدة الموثقة جزئيًا: ${partialTotals}` : ""
-      }`,
-      totals,
-    };
-  }
-
-  const lines = totals.map(
-    ([currency, amount]) => `- المقبوض المعتمد: ${formatAmount(amount, currency)}`,
-  );
-  return {
-    state: "complete",
-    reportText: totals
-      .map(([currency, amount]) => formatAmount(amount, currency))
-      .join("\n"),
-    partialText: null,
-    whatsappText: lines.join("\n"),
-    totals,
-  };
-}
+    expect(result.reportText).toBe(`${expectedYER}\n${expectedUSD}`);
+    expect(result.whatsappText).toContain(expectedYER);
+    expect(result.whatsappText).toContain(expectedUSD);
+  });
+});
