@@ -334,15 +334,25 @@ function ClientReportsPageContent() {
             <p className="flex items-center gap-2 text-sm font-bold text-emerald-700"><Wallet className="size-4" /> المقبوض من الدفعات المعتمدة ضمن الفترة</p>
             {rowsLoadState === "loaded" ? (
               receivedPresentation.state === "incomplete" ? (
-                <div className="mt-2">
-                  <p className="text-xl font-black text-amber-700">{receivedPresentation.reportText}</p>
+                <div className="mt-2 rounded-xl border border-amber-200 bg-amber-50 p-3">
+                  <p className="text-xl font-black text-amber-800">{receivedPresentation.reportText}</p>
                   <p className="mt-1 text-xs leading-5 text-amber-800">توجد دفعة معتمدة بلا مبلغ موثق، لذلك لا يُعرض مجموع جزئي كإجمالي كامل.</p>
-                  {receivedPresentation.partialText && <p className="mt-2 text-sm font-bold text-slate-600">{receivedPresentation.partialText}</p>}
+                  {receivedPresentation.partialText && <p className="mt-2 text-sm font-bold text-slate-700">{receivedPresentation.partialText}</p>}
+                </div>
+              ) : receivedPresentation.state === "none" ? (
+                <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <p className="text-lg font-black text-slate-600">{receivedPresentation.reportText}</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    {receivedSummary.paymentCount === 0
+                      ? "لم تُسجل أي دفعات للعميل ضمن الفترة المحددة."
+                      : `تم تحميل ${receivedSummary.paymentCount} دفعة، لكن لا توجد دفعة معتمدة لاحتساب المقبوض.`}
+                  </p>
                 </div>
               ) : (
-                <p className={`mt-2 whitespace-pre-line text-xl font-black ${receivedPresentation.state === "none" ? "text-slate-500" : "text-slate-900"}`}>
-                  {receivedPresentation.reportText}
-                </p>
+                <div className="mt-2 rounded-xl border border-emerald-100 bg-emerald-50/50 p-3">
+                  <p className="mb-2 text-xs font-bold text-emerald-800">الإجمالي المعتمد حسب العملة، دون جمع عملات مختلفة:</p>
+                  <p className="whitespace-pre-line text-xl font-black leading-8 text-slate-900">{receivedPresentation.reportText}</p>
+                </div>
               )
             ) : (
               <p className="mt-2 text-xl font-black text-slate-400">
