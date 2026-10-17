@@ -57,12 +57,12 @@
   --glass-border: oklch(1 0 0 / 0.2);
 }
 
-/* ================== تنسيقات روبوت شامِل بوت الأزرق المتحرك ================== */
+/* ================== تنسيقات روبوت شامل بوت الأزرق المتحرك ================== */
 
 .chatbot {
   position: fixed;
-  bottom: 22px;
-  inset-inline-start: 22px;
+  bottom: max(22px, env(safe-area-inset-bottom));
+  inset-inline-start: max(22px, env(safe-area-inset-left));
   z-index: 60;
   display: flex;
   flex-direction: column;
@@ -77,7 +77,7 @@
   align-items: center;
 }
 
-/* فقاعة الترحيب اللطيفة فوق الروبوت */
+/* فقاعة الترحيب فوق الروبوت */
 .chatbot-badge-callout {
   position: absolute;
   top: -26px;
@@ -96,7 +96,7 @@
   animation: bot-badge-bob 2.6s ease-in-out infinite;
 }
 
-/* زر الروبوت العائم الدائري الشفاف بنمط زجاجي أزرق */
+/* زر الروبوت العائم */
 .chatbot-fab {
   width: 60px;
   height: 60px;
@@ -106,25 +106,39 @@
   border: 1.5px solid rgba(56, 189, 248, 0.4);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  box-shadow: 0 10px 28px rgba(2, 132, 199, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.25);
-  animation: blue-bot-hover 3.4s ease-in-out infinite, bot-pulse-glow 2.8s ease-in-out infinite;
+  box-shadow:
+    0 10px 28px rgba(2, 132, 199, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  animation:
+    blue-bot-hover 3.4s ease-in-out infinite,
+    bot-pulse-glow 2.8s ease-in-out infinite;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition:
+    transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
 }
 
 .chatbot-fab:hover {
-  transform: scale(1.1) translateY(-4px);
+  /* أوقف الحركة هنا حتى لا تتعارض مع transform عند المرور */
+  animation: none;
+  transform: scale(1.08) translateY(-3px);
   border-color: rgba(56, 189, 248, 0.7);
   box-shadow: 0 14px 34px rgba(2, 132, 199, 0.6);
 }
 
 .chatbot-fab:active {
-  transform: scale(0.92);
+  transform: scale(0.94);
 }
 
-/* شخصية الروبوت الأزرق */
+.chatbot-fab:focus-visible {
+  outline: 3px solid #7dd3fc;
+  outline-offset: 4px;
+}
+
+/* شخصية الروبوت */
 .blue-robot-character {
   display: block;
   filter: drop-shadow(0 4px 10px rgba(2, 132, 199, 0.35));
@@ -135,7 +149,7 @@
   animation: beacon-glow 1.6s ease-in-out infinite alternate;
 }
 
-/* رمش العيون */
+/* رمش العينين */
 .robot-eye {
   transform-origin: center;
   animation: robot-blink 4s infinite;
@@ -152,7 +166,7 @@
   animation: arm-wave-right 3.4s ease-in-out infinite;
 }
 
-/* هزة الضحك */
+/* حركة الضحك */
 .animate-giggle {
   display: inline-block;
   animation: giggle-wiggle 0.55s ease-in-out;
@@ -161,19 +175,24 @@
 /* لوحة المحادثة الزجاجية */
 .chatbot-panel {
   width: min(324px, calc(100vw - 36px));
+  max-height: min(72dvh, 460px);
   border-radius: 20px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  color: #f0f9ff;
   background: color-mix(in oklch, var(--glass-stage) 82%, transparent);
   backdrop-filter: blur(28px);
   -webkit-backdrop-filter: blur(28px);
-  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  box-shadow:
+    0 16px 44px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
   border: 1px solid rgba(56, 189, 248, 0.25);
   animation: pop-in 0.28s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .chatbot-head {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -188,20 +207,26 @@
 }
 
 .chatbot-msgs {
-  max-height: 260px;
+  flex: 1 1 auto;
+  min-height: 90px;
+  max-height: min(260px, 42dvh);
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 8px;
   font-size: 12.5px;
   line-height: 1.65;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(125, 211, 252, 0.45) transparent;
 }
 
 .chatbot-msg {
   padding: 8px 12px;
   border-radius: 14px;
   max-width: 85%;
+  overflow-wrap: anywhere;
   white-space: pre-line;
 }
 
@@ -221,7 +246,13 @@
   color: #ffffff;
 }
 
+/* مستخدمة في chat-bot.tsx لظهور الرسائل الجديدة */
+.animate-pop-in {
+  animation: pop-in 0.24s ease-out both;
+}
+
 .chatbot-form {
+  flex: 0 0 auto;
   display: flex;
   gap: 6px;
   padding: 10px 12px;
@@ -230,9 +261,15 @@
 
 .chatbot-form input {
   height: 36px;
+  min-width: 0;
   font-size: 12.5px;
+  color: #f0f9ff;
   background: var(--glass-surface);
   border-color: var(--glass-border);
+}
+
+.chatbot-form input::placeholder {
+  color: rgba(224, 242, 254, 0.68);
 }
 
 .chatbot-form button {
@@ -241,32 +278,45 @@
   flex-shrink: 0;
 }
 
-/* ================== تعريف الحركات (Keyframes) ================== */
+/* ================== الحركات ================== */
 
 @keyframes blue-bot-hover {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0) rotate(0deg);
   }
+
   30% {
     transform: translateY(-8px) rotate(3deg);
   }
+
   70% {
     transform: translateY(-4px) rotate(-3deg);
   }
 }
 
 @keyframes bot-pulse-glow {
-  0%, 100% {
+  0%,
+  100% {
     box-shadow: 0 10px 24px rgba(2, 132, 199, 0.35);
   }
+
   50% {
-    box-shadow: 0 12px 32px rgba(56, 189, 248, 0.65), 0 0 18px rgba(2, 132, 199, 0.3);
+    box-shadow:
+      0 12px 32px rgba(56, 189, 248, 0.65),
+      0 0 18px rgba(2, 132, 199, 0.3);
   }
 }
 
 @keyframes bot-badge-bob {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-5px); }
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-5px);
+  }
 }
 
 @keyframes beacon-glow {
@@ -274,6 +324,7 @@
     fill: #38bdf8;
     filter: drop-shadow(0 0 2px #38bdf8);
   }
+
   to {
     fill: #bae6fd;
     filter: drop-shadow(0 0 7px #38bdf8);
@@ -281,29 +332,57 @@
 }
 
 @keyframes robot-blink {
-  0%, 94%, 98%, 100% {
+  0%,
+  94%,
+  98%,
+  100% {
     transform: scaleY(1);
   }
+
   96% {
     transform: scaleY(0.1);
   }
 }
 
 @keyframes arm-wave-left {
-  0%, 100% { transform: rotate(0deg); }
-  50% { transform: rotate(5deg); }
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+
+  50% {
+    transform: rotate(5deg);
+  }
 }
 
 @keyframes arm-wave-right {
-  0%, 100% { transform: rotate(0deg); }
-  50% { transform: rotate(-5deg); }
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+
+  50% {
+    transform: rotate(-5deg);
+  }
 }
 
 @keyframes giggle-wiggle {
-  0%, 100% { transform: rotate(0deg) scale(1); }
-  25% { transform: rotate(-10deg) scale(1.1); }
-  50% { transform: rotate(10deg) scale(1.1); }
-  75% { transform: rotate(-6deg) scale(1.05); }
+  0%,
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+
+  25% {
+    transform: rotate(-10deg) scale(1.1);
+  }
+
+  50% {
+    transform: rotate(10deg) scale(1.1);
+  }
+
+  75% {
+    transform: rotate(-6deg) scale(1.05);
+  }
 }
 
 @keyframes pop-in {
@@ -311,8 +390,21 @@
     opacity: 0;
     transform: scale(0.92) translateY(8px);
   }
+
   to {
     opacity: 1;
     transform: scale(1) translateY(0);
+  }
+}
+
+/* احترام إعداد تقليل الحركة في الجهاز */
+@media (prefers-reduced-motion: reduce) {
+  .chatbot *,
+  .chatbot *::before,
+  .chatbot *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
   }
 }
