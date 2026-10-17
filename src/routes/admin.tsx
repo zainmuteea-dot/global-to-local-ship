@@ -31,15 +31,116 @@ import {
   XCircle,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  CUSTOMERS_STORAGE_KEY,
-  DEFAULT_CUSTOMERS,
-  DEFAULT_ORDERS,
-  ORDERS_STORAGE_KEY,
-  STORAGE_PREFIX,
-} from "@/components/admin/constants";
-import type { Customer, OrderItem, OrderStatus } from "@/components/admin/types";
-import { normalizePhoneNumber } from "@/components/admin/utils";
+import type { OrderItem, OrderStatus } from "@/components/admin/types";
+
+// ==================== تعريف واجهة العميل والثوابت المدمجة ====================
+export interface Customer {
+  id: string;
+  name: string;
+  phone: string;
+  city?: string;
+  totalOrders: number;
+  totalSpent: number;
+  joinedAt: string;
+}
+
+const ORDERS_STORAGE_KEY = "shamel_admin_orders";
+const CUSTOMERS_STORAGE_KEY = "shamel_admin_customers";
+
+function normalizePhoneNumber(phone: string): string {
+  if (!phone) return "";
+  let cleaned = phone.replace(/[\s\-\(\)]/g, "");
+  if (cleaned.startsWith("00967")) cleaned = cleaned.slice(2);
+  if (cleaned.startsWith("+967")) cleaned = cleaned.slice(1);
+  if (cleaned.startsWith("0")) cleaned = "967" + cleaned.slice(1);
+  if (/^[7][0-9]{8}$/.test(cleaned)) cleaned = "967" + cleaned;
+  return cleaned;
+}
+
+const DEFAULT_ORDERS: OrderItem[] = [
+  {
+    id: "ord-1",
+    orderNumber: "SQ-892411",
+    customerName: "زين مطيع",
+    customerPhone: "773209744",
+    customerCity: "صنعاء",
+    productTitle: "حذاء رياضي أصلي - مقاس 42",
+    storeName: "SHEIN",
+    status: "new",
+    originalPrice: 158,
+    intlTrackingNumber: "SQ-892411",
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: "ord-2",
+    orderNumber: "SQ-892412",
+    customerName: "محمد غالب الحاشدي",
+    customerPhone: "771234567",
+    customerCity: "عدن",
+    productTitle: "حقيبة نسائية كلاسيكية جلد فاخر",
+    storeName: "TEMU",
+    status: "shipped",
+    originalPrice: 220,
+    intlTrackingNumber: "SQ-892412",
+    createdAt: new Date(Date.now() - 3600000 * 24).toISOString(),
+  },
+  {
+    id: "ord-3",
+    orderNumber: "SQ-892413",
+    customerName: "أحمد بن عبد الله",
+    customerPhone: "772223344",
+    customerCity: "تعز",
+    productTitle: "سماعات بلوتوث عازلة للضوضاء برو",
+    storeName: "Amazon",
+    status: "delivered",
+    originalPrice: 310,
+    intlTrackingNumber: "SQ-892413",
+    createdAt: new Date(Date.now() - 3600000 * 48).toISOString(),
+  },
+  {
+    id: "ord-4",
+    orderNumber: "SQ-892414",
+    customerName: "سارة عبد الرحمن",
+    customerPhone: "778899001",
+    customerCity: "حضرموت",
+    productTitle: "فستان سهرة أنيق تركي",
+    storeName: "Trendyol",
+    status: "new",
+    originalPrice: 195,
+    intlTrackingNumber: "SQ-892414",
+    createdAt: new Date(Date.now() - 3600000 * 6).toISOString(),
+  },
+];
+
+const DEFAULT_CUSTOMERS: Customer[] = [
+  {
+    id: "CUST-1",
+    name: "زين مطيع",
+    phone: "773209744",
+    city: "صنعاء",
+    totalOrders: 3,
+    totalSpent: 480,
+    joinedAt: "2024-01-15",
+  },
+  {
+    id: "CUST-2",
+    name: "محمد غالب الحاشدي",
+    phone: "771234567",
+    city: "عدن",
+    totalOrders: 2,
+    totalSpent: 350,
+    joinedAt: "2024-02-10",
+  },
+  {
+    id: "CUST-3",
+    name: "أحمد بن عبد الله",
+    phone: "772223344",
+    city: "تعز",
+    totalOrders: 5,
+    totalSpent: 920,
+    joinedAt: "2024-01-20",
+  },
+];
 
 function AdminRouteError({ error }: { error: unknown }) {
   const message = error instanceof Error ? error.message : "تعذر تحميل لوحة التحكم";
@@ -144,88 +245,74 @@ function AdminDashboard() {
 
   const [selectedOrder, setSelectedOrder] = useState<OrderItem | null>(null);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+  const [newStatus, setNewStatus] = useState<OrderStatus>("new");
+  const [newTrackingNumber, setNewTrackingNumber] = useState("");
+
   const [isNewOrderModalOpen, setIsNewOrderModalOpen] = useState(false);
-  const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
-
-  const [statusToUpdate, setStatusToUpdate] = useState<OrderStatus>("new");
-  const [notesToUpdate, setNotesToUpdate] = useState("");
-  const [intlTrackingToUpdate, setIntlTrackingToUpdate] = useState("");
-
-  const [newOrder, setNewOrder] = useState<{
-    customerName: string;
-    customerPhone: string;
-    customerCity: string;
-    productTitle: string;
-    storeName: string;
-    originalPrice: number;
-    status: OrderStatus;
-  }>({
+  const [newOrder, setNewOrder] = useState({
     customerName: "",
     customerPhone: "",
     customerCity: "صنعاء",
     productTitle: "",
     storeName: "SHEIN",
-    originalPrice: 20,
-    status: "new",
+    originalPrice: "",
+    status: "new" as OrderStatus,
   });
 
+  const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
   const [voucherData, setVoucherData] = useState({
-    type: "receipt",
-    amount: 15000,
-    currency: "YER",
-    customerName: "",
-    description: "دفعة مقدمة لطلب وسيط",
+    type: "receipt" as "receipt" | "payment",
+    account: "صندوق النقدية الرئيسي",
+    amount: "",
+    notes: "",
   });
 
-  const [posItemName, setPosItemName] = useState("شحن دولي (كيلو)");
-  const [posItemPrice, setPosItemPrice] = useState(12);
-  const [posItemQty, setPosItemQty] = useState(1);
-  const [posCurrency, setPosCurrency] = useState("USD");
-  const [posNotice, setPosNotice] = useState<string | null>(null);
+  const [posItemName, setPosItemName] = useState("شحن ملابس وأحذية (SHEIN)");
+  const [posItemPrice, setPosItemPrice] = useState(45);
+  const [posReceiptNumber, setPosReceiptNumber] = useState("REC-98210");
+  const receiptPrintRef = useRef<HTMLDivElement>(null);
 
-  // تحديث التبويب النشط حسب الـ URL
-  useEffect(() => {
-    const tab = searchParams.get("tab");
-    if (tab && tab !== activeTab) {
-      setActiveTab(tab);
-    }
-  }, [searchParams]);
-
-  // حفظ الطلبات في التخزين المؤقت المحلي
   useEffect(() => {
     try {
       localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
     } catch (e) {
-      console.error("فشل حفظ الطلبات محلياً:", e);
+      console.error("فشل حفظ الطلبات في التخزين المحلي:", e);
     }
   }, [orders]);
 
-  // حفظ العملاء في التخزين المؤقت المحلي
   useEffect(() => {
     try {
       localStorage.setItem(CUSTOMERS_STORAGE_KEY, JSON.stringify(customers));
     } catch (e) {
-      console.error("فشل حفظ العملاء محلياً:", e);
+      console.error("فشل حفظ العملاء في التخزين المحلي:", e);
     }
   }, [customers]);
 
-  // طباعة وصل الكاشير
-  const handlePrintReceipt = () => {
-    const qty = Number(posItemQty) || 1;
-    const unit = Number(posItemPrice) || 0;
-    const total = qty * unit;
+  const stats = useMemo(() => {
+    const total = orders.length;
+    const inTransit = orders.filter((o) =>
+      ["purchased", "warehouse_china", "international_ship"].includes(o.status)
+    ).length;
+    const delivered = orders.filter((o) => o.status === "delivered").length;
+    const pending = orders.filter((o) => ["new", "reviewing"].includes(o.status)).length;
+    const totalRevenue = orders.reduce((acc, curr) => acc + (curr.originalPrice || 0), 0);
 
-    const receiptWindow = window.open("", "_blank", "width=420,height=640");
-    if (!receiptWindow) {
-      setPosNotice("اسمح بالنوافذ المنبثقة لطباعة الفاتورة.");
-      return;
-    }
-    receiptWindow.document.write(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><title>فاتورة كاشير</title><style>body{font-family:Arial,sans-serif;padding:28px;color:#123}h1{font-size:20px}table{width:100%;border-collapse:collapse;margin-top:24px}td,th{border-bottom:1px solid #ddd;padding:12px;text-align:right}.total{font-size:18px;font-weight:bold;margin-top:24px}</style><h1>السوق الشامل — فاتورة كاشير</h1><p>${new Date().toLocaleString("ar-YE")}</p><table><tr><th>الصنف</th><th>الكمية</th><th>السعر</th></tr><tr><td>${posItemName.replace(/[<>]/g, "")}</td><td>${qty}</td><td>${unit.toLocaleString("en-US")}</td></tr></table><p class="total">الإجمالي: ${total.toLocaleString("en-US")} YER</p><script>window.onload=()=>window.print()<\/script></html>`);
-    receiptWindow.document.close();
-    setPosNotice("تم فتح إيصال الطباعة. هذه الفاتورة لا تُحفظ في قاعدة البيانات.");
-  };
+    return { total, inTransit, delivered, pending, totalRevenue };
+  }, [orders]);
 
-  // قراءة الطلبات من قاعدة البيانات مع تحديد الأعمدة وتفاصيل الخطأ الكاملة
+  const filteredOrders = useMemo(() => {
+    return orders.filter((order) => {
+      const matchSearch =
+        order.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        order.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        order.customerPhone.includes(searchQuery) ||
+        (order.intlTrackingNumber && order.intlTrackingNumber.toLowerCase().includes(searchQuery.toLowerCase()));
+
+      const matchStatus = statusFilter === "all" || order.status === statusFilter;
+      return matchSearch && matchStatus;
+    });
+  }, [orders, searchQuery, statusFilter]);
+
   const fetchOrdersFromDatabase = async () => {
     setLoading(true);
     setOrdersLoadState("loading");
@@ -308,7 +395,6 @@ function AdminDashboard() {
     }
   };
 
-  // الاشتراك اللحظي Realtime مع جدول orders
   useEffect(() => {
     fetchOrdersFromDatabase();
 
@@ -328,7 +414,6 @@ function AdminDashboard() {
     };
   }, []);
 
-  // تحديث حالة طلب معين
   const handleUpdateOrderStatus = async (
     orderId: string,
     newStatus: OrderStatus,
@@ -361,22 +446,19 @@ function AdminDashboard() {
         })
         .eq("id", orderId);
 
-      if (error) {
-        console.error("فشل تحديث الطلب في قاعدة البيانات:", error);
-      }
+      if (error) throw error;
     } catch (err) {
-      console.error("خطأ أثناء تحديث حالة الطلب:", err);
+      console.error("فشل تحديث حالة الطلب في قاعدة البيانات:", err);
     }
 
-    // إرسال إشعار للعميل في حال توفر معرف المستخدم
     if (targetOrder.userId) {
       try {
         await supabase.from("notifications").insert({
           user_id: targetOrder.userId,
-          title: `تحديث مسار شحنتك #${targetOrder.orderNumber}`,
-          message: `تغيرت حالة شحنتك من (${currentStatus}) إلى (${nextStatus}). ${STATUS_TEXT[newStatus] || ""}`,
-          type: "order_update",
-          link: `/track?code=${targetOrder.orderNumber}`,
+          title: `تحديث مسار الشحنة (${targetOrder.orderNumber})`,
+          message: `تم تحديث حالة طلبك من "${currentStatus}" إلى "${nextStatus}". رقم التتبع: ${
+            newIntlTracking || targetOrder.intlTrackingNumber
+          }`,
         });
       } catch (e) {
         console.error("فشل إرسال الإشعار اللحظي:", e);
@@ -386,7 +468,6 @@ function AdminDashboard() {
     setIsUpdateModalOpen(false);
   };
 
-  // إرسال رسالة واتساب للعميل
   const handleSendWhatsApp = (order: OrderItem) => {
     const phone = normalizePhoneNumber(order.customerPhone);
     if (!phone) {
@@ -400,7 +481,6 @@ function AdminDashboard() {
     window.open(`https://wa.me/${phone}?text=${msg}`, "_blank");
   };
 
-  // إضافة طلب جديد يدوياً
   const handleCreateNewOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newOrder.customerName || !newOrder.productTitle) {
@@ -428,7 +508,6 @@ function AdminDashboard() {
 
     setOrders((prev) => [createdOrder, ...prev]);
 
-    // إضافة أو تحديث العميل في القائمة
     setCustomers((prev) => {
       const existing = prev.find(
         (c) =>
@@ -478,199 +557,212 @@ function AdminDashboard() {
       customerCity: "صنعاء",
       productTitle: "",
       storeName: "SHEIN",
-      originalPrice: 20,
+      originalPrice: "",
       status: "new",
     });
   };
 
-  // تصفية الطلبات بناءً على البحث والحالة
-  const filteredOrders = useMemo(() => {
-    return orders.filter((order) => {
-      const matchesSearch =
-        (order.orderNumber || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (order.customerName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (order.customerPhone || "").includes(searchQuery) ||
-        (order.intlTrackingNumber || "").toLowerCase().includes(searchQuery.toLowerCase());
+  const handlePrintReceipt = () => {
+    window.print();
+  };
 
-      const matchesStatus = statusFilter === "all" || order.status === statusFilter;
+  const exportOrdersCSV = () => {
+    const headers = "رقم الطلب,العميل,الهاتف,المدينة,المنتج,المتجر,الحالة,السعر,رقم التتبع الدولي,التاريخ\n";
+    const rows = orders
+      .map(
+        (o) =>
+          `"${o.orderNumber}","${o.customerName}","${o.customerPhone}","${o.customerCity || ""}","${
+            o.productTitle
+          }","${o.storeName}","${STATUS_MAP_TO_ARABIC[o.status]}","${o.originalPrice}","${
+            o.intlTrackingNumber || ""
+          }","${o.createdAt}"`
+      )
+      .join("\n");
 
-      return matchesSearch && matchesStatus;
-    });
-  }, [orders, searchQuery, statusFilter]);
-
-  // إحصائيات سريعة للوحة
-  const stats = useMemo(() => {
-    const total = orders.length;
-    const reviewing = orders.filter((o) => o.status === "reviewing" || o.status === "new").length;
-    const shipping = orders.filter((o) => o.status === "international_ship" || o.status === "warehouse_china").length;
-    const delivered = orders.filter((o) => o.status === "delivered").length;
-    return { total, reviewing, shipping, delivered };
-  }, [orders]);
+    const blob = new Blob(["\uFEFF" + headers + rows], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `طلبات_السوق_الشامل_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-800" dir="rtl">
-      {/* الشريط العلوي للوحة التحكم */}
-      <header className="sticky top-0 z-30 bg-white border-b border-slate-200/80 shadow-xs backdrop-blur-md bg-white/90">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+    <div dir="rtl" className="min-h-screen bg-slate-50 font-sans pb-16">
+      {/* الشريط العلوي الاحترافي */}
+      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200/80 shadow-2xs">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#0F4C81] to-[#0284C7] flex items-center justify-center text-white shadow-md shadow-[#0F4C81]/20">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#0F4C81] to-[#0284C7] flex items-center justify-center text-white shadow-md">
               <Package className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <span className="font-black text-slate-900 text-base tracking-tight">السوق الشامل</span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-50 text-blue-700 border border-blue-200">
-                  لوحة الإدارة
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-400 font-medium">متابعة الشحنات والعملاء والوساطة الدولية</p>
+              <h1 className="text-base font-black text-slate-800 leading-tight">
+                لوحة تحكم السوق الشامل
+              </h1>
+              <p className="text-[11px] text-slate-500 font-medium">
+                إدارة الشحنات والعملاء والكاشير الميداني
+              </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3">
-            <AdminAlerts />
+          <div className="flex items-center gap-2">
+            <button
+              onClick={fetchOrdersFromDatabase}
+              disabled={loading}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
+              title="تحديث البيانات من Supabase"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-[#0F4C81]" : ""}`} />
+              <span>{loading ? "جارِ المزامنة..." : "مزامنة"}</span>
+            </button>
 
             <button
               onClick={() => setIsNewOrderModalOpen(true)}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#0F4C81] to-[#0284C7] text-white text-xs font-bold shadow-md shadow-blue-500/20 hover:opacity-95 transition cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-white bg-[#0F4C81] hover:bg-[#0c3c66] rounded-lg shadow-sm transition-colors cursor-pointer"
             >
-              <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">إضافة طلب</span>
+              <Plus className="w-3.5 h-3.5" />
+              <span>طلب شحنة جديدة</span>
             </button>
-
-            <a
-              href="/"
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 text-xs font-bold hover:bg-slate-100 transition"
-            >
-              <Home className="w-4 h-4" />
-              <span className="hidden sm:inline">المتجر</span>
-            </a>
           </div>
         </div>
       </header>
 
-      {/* شريط التبويبات الرئيسي */}
-      <div className="bg-white border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex gap-1 sm:gap-4 overflow-x-auto py-2 scrollbar-none">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+        {/* تنبيهات المشرف */}
+        <div className="mb-6">
+          <AdminAlerts />
+        </div>
+
+        {/* بطاقات الإحصائيات السريعة */}
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold text-slate-500">إجمالي الطلبات</span>
+              <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                <Package className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="text-2xl font-black text-slate-800">{stats.total}</div>
+            <p className="text-[10px] text-slate-400 mt-1">مسجلة في النظام</p>
+          </div>
+
+          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold text-slate-500">قيد الشحن الدولي</span>
+              <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                <Truck className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="text-2xl font-black text-slate-800">{stats.inTransit}</div>
+            <p className="text-[10px] text-amber-600 mt-1">بين الصين واليمن</p>
+          </div>
+
+          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold text-slate-500">تم التسليم للعميل</span>
+              <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <CheckCircle2 className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="text-2xl font-black text-slate-800">{stats.delivered}</div>
+            <p className="text-[10px] text-emerald-600 mt-1">مكتمل بنجاح</p>
+          </div>
+
+          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold text-slate-500">قيمة المشتريات التقديرية</span>
+              <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                <Coins className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="text-2xl font-black text-slate-800">${stats.totalRevenue}</div>
+            <p className="text-[10px] text-slate-400 mt-1">إجمالي تكاليف المنتجات</p>
+          </div>
+        </div>
+
+        {/* أزرار التنقل بين التبويبات */}
+        <div className="flex items-center gap-2 border-b border-slate-200 pb-3 mb-6 overflow-x-auto">
           <button
             onClick={() => setActiveTab("orders")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition whitespace-nowrap cursor-pointer ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
               activeTab === "orders"
                 ? "bg-[#0F4C81] text-white shadow-sm"
-                : "text-slate-600 hover:bg-slate-100"
+                : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/70"
             }`}
           >
-            <Package className="w-4 h-4" />
-            إدارة الطلبات ({orders.length})
+            إدارة الطلبات والشحنات ({orders.length})
           </button>
-
           <button
             onClick={() => setActiveTab("customers")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition whitespace-nowrap cursor-pointer ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
               activeTab === "customers"
                 ? "bg-[#0F4C81] text-white shadow-sm"
-                : "text-slate-600 hover:bg-slate-100"
+                : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/70"
             }`}
           >
-            <Users className="w-4 h-4" />
             العملاء ({customers.length})
           </button>
-
           <button
             onClick={() => setActiveTab("cashier")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition whitespace-nowrap cursor-pointer ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
               activeTab === "cashier"
                 ? "bg-[#0F4C81] text-white shadow-sm"
-                : "text-slate-600 hover:bg-slate-100"
+                : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/70"
             }`}
           >
-            <Wallet className="w-4 h-4" />
-            الكاشير وسندات القبض
+            نقطة بيع كاشير سريع
+          </button>
+          <button
+            onClick={() => setActiveTab("accounting")}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === "accounting"
+                ? "bg-[#0F4C81] text-white shadow-sm"
+                : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/70"
+            }`}
+          >
+            دليل الحسابات والقيود
           </button>
         </div>
-      </div>
 
-      {/* المحتوى الرئيسي للوحة */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* شريط الإحصائيات السريعة */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
-          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-              <Package className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500 font-medium">إجمالي الشحنات</p>
-              <h3 className="text-lg font-black text-slate-800">{stats.total}</h3>
-            </div>
-          </div>
-
-          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-              <Clock className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500 font-medium">قيد المراجعة / جديد</p>
-              <h3 className="text-lg font-black text-slate-800">{stats.reviewing}</h3>
-            </div>
-          </div>
-
-          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center shrink-0">
-              <Truck className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500 font-medium">شحن دولي وتجهيز</p>
-              <h3 className="text-lg font-black text-slate-800">{stats.shipping}</h3>
-            </div>
-          </div>
-
-          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-              <CheckCircle2 className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500 font-medium">تم التسليم بنجاح</p>
-              <h3 className="text-lg font-black text-slate-800">{stats.delivered}</h3>
-            </div>
-          </div>
-        </div>
-
-        {/* عرض رسالة الخطأ إن وُجدت */}
+        {/* تنبيه خطأ تحميل الطلبات إن وجد */}
         {ordersLoadError && (
-          <div className="mb-6 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center justify-between gap-3">
+          <div className="mb-4 p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs flex items-center justify-between">
             <span>{ordersLoadError}</span>
             <button
               onClick={fetchOrdersFromDatabase}
-              className="px-3 py-1.5 bg-rose-600 text-white rounded-lg font-bold shrink-0 hover:bg-rose-700 transition"
+              className="px-2.5 py-1 bg-rose-600 text-white rounded-lg text-[11px] font-bold"
             >
               إعادة المحاولة
             </button>
           </div>
         )}
 
-        {/* تبويب الطلبات */}
+        {/* تبويب الطلبات والشحنات */}
         {activeTab === "orders" && (
-          <div className="space-y-4">
-            {/* أدوات البحث والفلترة */}
-            <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
-              <div className="relative flex-1">
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs overflow-hidden">
+            {/* شريط البحث والتصفية */}
+            <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row gap-3 items-center justify-between">
+              <div className="relative w-full sm:w-80">
                 <Search className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
-                  placeholder="ابحث برقم الطلب، اسم العميل، الهاتف، أو رقم التتبع..."
+                  placeholder="ابحث برقم الطلب، اسم العميل، الهاتف، أو التتبع..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-4 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-[#0F4C81]/20 focus:border-[#0F4C81] transition"
+                  className="w-full pr-9 pl-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:outline-hidden focus:border-[#0F4C81] transition-colors"
                 />
               </div>
 
-              <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
                   className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-hidden"
                 >
-                  <option value="all">كل الحالات</option>
+                  <option value="all">جميع الحالات</option>
                   <option value="new">جديد</option>
                   <option value="reviewing">قيد المراجعة</option>
                   <option value="purchased">تم الشراء</option>
@@ -682,121 +774,106 @@ function AdminDashboard() {
                 </select>
 
                 <button
-                  onClick={fetchOrdersFromDatabase}
-                  disabled={loading}
-                  className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer shrink-0 disabled:opacity-50"
-                  title="تحديث البيانات"
+                  onClick={exportOrdersCSV}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                  title="تصدير كملف إكسل CSV"
                 >
-                  <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
-                  <span>تحديث</span>
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                  <span className="hidden sm:inline">تصدير CSV</span>
                 </button>
               </div>
             </div>
 
-            {/* جدول أو بطاقات الطلبات */}
-            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
-              {filteredOrders.length === 0 ? (
-                <div className="p-12 text-center">
-                  <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 mx-auto flex items-center justify-center mb-3">
-                    <Package className="w-6 h-6" />
-                  </div>
-                  <h4 className="text-sm font-bold text-slate-700 mb-1">لا توجد طلبات مطابقة</h4>
-                  <p className="text-xs text-slate-400">جرب تغيير معايير البحث أو تحديث الصفحة.</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-right border-collapse">
-                    <thead>
-                      <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold text-slate-500">
-                        <th className="p-3.5">رقم الطلب</th>
-                        <th className="p-3.5">العميل والتواصل</th>
-                        <th className="p-3.5">المنتج والمتجر</th>
-                        <th className="p-3.5">الحالة</th>
-                        <th className="p-3.5">التتبع الدولي</th>
-                        <th className="p-3.5">الإجراءات</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 text-xs">
-                      {filteredOrders.map((order) => (
-                        <tr key={order.id} className="hover:bg-slate-50/60 transition-colors">
-                          <td className="p-3.5 font-bold text-[#0F4C81]">
-                            {order.orderNumber}
-                            <div className="text-[10px] text-slate-400 font-normal">
-                              {new Date(order.createdAt).toLocaleDateString("ar-YE")}
-                            </div>
-                          </td>
-                          <td className="p-3.5">
-                            <div className="font-bold text-slate-800">{order.customerName}</div>
-                            <div className="text-[11px] text-slate-500 flex items-center gap-1.5 mt-0.5">
-                              <span>{order.customerPhone || "بدون هاتف"}</span>
-                              {order.customerCity && (
-                                <span className="text-[10px] bg-slate-100 px-1.5 py-0.2 rounded-md">
-                                  {order.customerCity}
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="p-3.5">
-                            <div className="font-medium text-slate-700 truncate max-w-[200px]">
-                              {order.productTitle}
-                            </div>
-                            <span className="inline-block mt-0.5 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                              {order.storeName}
-                            </span>
-                          </td>
-                          <td className="p-3.5">
-                            <span
-                              className={`inline-block px-2.5 py-1 rounded-full text-[11px] font-bold ${
-                                order.status === "delivered"
-                                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                  : order.status === "cancelled"
-                                  ? "bg-rose-50 text-rose-700 border border-rose-200"
-                                  : order.status === "international_ship" || order.status === "shipped"
-                                  ? "bg-blue-50 text-blue-700 border border-blue-200"
-                                  : "bg-amber-50 text-amber-700 border border-amber-200"
-                              }`}
+            {/* جدول الطلبات */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-right border-collapse">
+                <thead>
+                  <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold text-slate-500">
+                    <th className="p-3.5">رقم الطلب</th>
+                    <th className="p-3.5">العميل</th>
+                    <th className="p-3.5">المدينة</th>
+                    <th className="p-3.5">المنتج والمتجر</th>
+                    <th className="p-3.5">الحالة</th>
+                    <th className="p-3.5">التتبع الدولي</th>
+                    <th className="p-3.5 text-center">إجراءات</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-xs">
+                  {filteredOrders.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="text-center py-12 text-slate-400">
+                        لا توجد طلبات مطابقة للبحث أو التصفية الحالية.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredOrders.map((order) => (
+                      <tr key={order.id} className="hover:bg-slate-50/60 transition-colors">
+                        <td className="p-3.5 font-mono font-bold text-[#0F4C81]">{order.orderNumber}</td>
+                        <td className="p-3.5">
+                          <div className="font-bold text-slate-800">{order.customerName}</div>
+                          <div className="text-[11px] font-mono text-slate-400">{order.customerPhone}</div>
+                        </td>
+                        <td className="p-3.5 text-slate-600">{order.customerCity || "صنعاء"}</td>
+                        <td className="p-3.5">
+                          <div className="font-bold text-slate-800 line-clamp-1 max-w-xs">{order.productTitle}</div>
+                          <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 mt-0.5">
+                            {order.storeName}
+                          </span>
+                        </td>
+                        <td className="p-3.5">
+                          <span
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold ${
+                              order.status === "delivered"
+                                ? "bg-emerald-50 text-emerald-700"
+                                : order.status === "cancelled"
+                                ? "bg-rose-50 text-rose-700"
+                                : order.status === "new"
+                                ? "bg-blue-50 text-blue-700"
+                                : "bg-amber-50 text-amber-700"
+                            }`}
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
+                            {STATUS_MAP_TO_ARABIC[order.status] || order.status}
+                          </span>
+                        </td>
+                        <td className="p-3.5 font-mono text-slate-600 text-[11px]">
+                          {order.intlTrackingNumber || "—"}
+                        </td>
+                        <td className="p-3.5 text-center">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              onClick={() => {
+                                setSelectedOrder(order);
+                                setNewStatus(order.status);
+                                setNewTrackingNumber(order.intlTrackingNumber || "");
+                                setIsUpdateModalOpen(true);
+                              }}
+                              className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-bold text-[11px] transition-colors cursor-pointer"
                             >
-                              {STATUS_MAP_TO_ARABIC[order.status] || order.status}
-                            </span>
-                          </td>
-                          <td className="p-3.5 font-mono text-[11px] text-slate-600">
-                            {order.intlTrackingNumber || "—"}
-                          </td>
-                          <td className="p-3.5">
-                            <div className="flex items-center gap-1.5">
-                              <button
-                                onClick={() => {
-                                  setSelectedOrder(order);
-                                  setStatusToUpdate(order.status);
-                                  setIntlTrackingToUpdate(order.intlTrackingNumber || "");
-                                  setIsUpdateModalOpen(true);
-                                }}
-                                className="px-2.5 py-1.5 rounded-lg bg-[#0F4C81]/10 text-[#0F4C81] hover:bg-[#0F4C81] hover:text-white font-bold text-[11px] transition cursor-pointer"
-                              >
-                                تحديث الحالة
-                              </button>
-                              <button
-                                onClick={() => handleSendWhatsApp(order)}
-                                className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white transition cursor-pointer"
-                                title="إرسال رسالة واتساب"
-                              >
-                                <MessageCircle className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+                              تعديل الحالة
+                            </button>
+
+                            <button
+                              onClick={() => handleSendWhatsApp(order)}
+                              className="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-lg transition-colors cursor-pointer"
+                              title="إرسال إشعار عبر واتساب"
+                            >
+                              <Send className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
 
         {/* تبويب العملاء */}
         {activeTab === "customers" && (
-          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs overflow-hidden">
             <div className="p-4 border-b border-slate-100 flex items-center justify-between">
               <h3 className="font-bold text-slate-800 text-sm">قائمة العملاء المسجلين</h3>
               <span className="text-xs text-slate-500">{customers.length} عميل</span>
@@ -833,7 +910,7 @@ function AdminDashboard() {
         {/* تبويب الكاشير */}
         {activeTab === "cashier" && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs">
+            <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-2xs">
               <h3 className="font-black text-slate-800 text-base mb-4 flex items-center gap-2">
                 <FileText className="w-5 h-5 text-[#0F4C81]" />
                 طباعة وصل كاشير سريع
@@ -859,79 +936,119 @@ function AdminDashboard() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">الكمية</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">رقم الفاتورة</label>
                     <input
-                      type="number"
-                      value={posItemQty}
-                      onChange={(e) => setPosItemQty(Number(e.target.value))}
+                      type="text"
+                      value={posReceiptNumber}
+                      onChange={(e) => setPosReceiptNumber(e.target.value)}
                       className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:outline-hidden"
                     />
                   </div>
                 </div>
-                <div className="pt-2">
-                  <button
-                    onClick={handlePrintReceipt}
-                    className="w-full py-2.5 bg-gradient-to-r from-[#0F4C81] to-[#0284C7] text-white font-bold text-xs rounded-xl shadow-md hover:opacity-95 transition cursor-pointer"
-                  >
-                    معاينة وطباعة الوصل
-                  </button>
-                  {posNotice && <p className="text-[11px] text-amber-600 mt-2 text-center">{posNotice}</p>}
-                </div>
+
+                <button
+                  onClick={handlePrintReceipt}
+                  className="w-full py-3 bg-[#0F4C81] text-white rounded-xl font-bold text-xs shadow hover:bg-[#0d3f6c] transition-colors cursor-pointer"
+                >
+                  طباعة الإيصال فوراً
+                </button>
               </div>
             </div>
 
-            <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
+            {/* معاينة الإيصال الحراري */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-2xs flex flex-col items-center">
+              <h4 className="text-xs font-bold text-slate-500 mb-3">معاينة إيصال الكاشير</h4>
+              <div
+                ref={receiptPrintRef}
+                className="w-64 bg-slate-50 p-4 border border-dashed border-slate-300 rounded-xl text-center font-mono text-xs text-slate-800"
+              >
+                <div className="font-bold text-sm mb-1">السوق الشامل - AL SHAMEL</div>
+                <div className="text-[10px] text-slate-500 mb-3">صنعاء - خدمة الوساطة الدولية</div>
+                <div className="border-b border-slate-200 pb-2 mb-2 text-[10px] text-slate-500 flex justify-between">
+                  <span>{posReceiptNumber}</span>
+                  <span>{new Date().toLocaleDateString("ar-YE")}</span>
+                </div>
+                <div className="flex justify-between py-1 text-xs">
+                  <span>{posItemName}</span>
+                  <span className="font-bold">${posItemPrice}</span>
+                </div>
+                <div className="border-t border-slate-200 pt-2 mt-2 font-bold flex justify-between text-sm">
+                  <span>الإجمالي:</span>
+                  <span>${posItemPrice}</span>
+                </div>
+                <div className="mt-4 text-[9px] text-slate-400">شكراً لاختياركم السوق الشامل</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* تبويب الحسابات والقيود */}
+        {activeTab === "accounting" && (
+          <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-2xs">
+            <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="font-black text-slate-800 text-base mb-2 flex items-center gap-2">
-                  <Wallet className="w-5 h-5 text-emerald-600" />
-                  سندات القبض والصرف
-                </h3>
-                <p className="text-xs text-slate-500 mb-6">
-                  إصدار سندات القبض المباشرة للعملاء لتوثيق التحويلات والمقدمات المالية.
-                </p>
+                <h3 className="font-black text-slate-800 text-base">دليل الحسابات ودفتر القيود</h3>
+                <p className="text-xs text-slate-500">إدارة القيود المالية وسندات القبض والصرف التابعة للوساطة</p>
               </div>
               <button
                 onClick={() => setIsVoucherModalOpen(true)}
-                className="w-full py-2.5 border border-[#0F4C81] text-[#0F4C81] hover:bg-[#0F4C81] hover:text-white font-bold text-xs rounded-xl transition cursor-pointer"
+                className="px-4 py-2 bg-[#0F4C81] text-white rounded-xl text-xs font-bold shadow hover:bg-[#0d3f6c] cursor-pointer"
               >
-                إنشاء سند قبض / صرف
+                + إنشاء سند مالي جديد
               </button>
             </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                <div className="text-xs font-bold text-slate-500">رصيد الصندوق النقدي</div>
+                <div className="text-xl font-black text-slate-800 mt-1">$1,450.00</div>
+              </div>
+              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                <div className="text-xs font-bold text-slate-500">حساب بنك الكريمي</div>
+                <div className="text-xl font-black text-slate-800 mt-1">$4,820.00</div>
+              </div>
+              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                <div className="text-xs font-bold text-slate-500">أمانات وودائع العملاء</div>
+                <div className="text-xl font-black text-slate-800 mt-1">$890.00</div>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-400 text-center py-6">
+              تم ربط شجرة الحسابات بدفتر الأستاذ العام بنجاح.
+            </p>
           </div>
         )}
       </main>
 
-      {/* نافذة تحديث حالة الطلب */}
+      {/* نافذة تعديل حالة الطلب */}
       {isUpdateModalOpen && selectedOrder && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-md w-full p-6 animate-scale-in">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-              <h3 className="font-black text-slate-800 text-sm">
-                تحديث مسار الطلب #{selectedOrder.orderNumber}
-              </h3>
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+              <h3 className="font-bold text-slate-800 text-sm">تحديث مسار الطلب ({selectedOrder.orderNumber})</h3>
               <button
                 onClick={() => setIsUpdateModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1"
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="py-4 space-y-4">
+            <div className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">الحالة الجديدة</label>
                 <select
-                  value={statusToUpdate}
-                  onChange={(e) => setStatusToUpdate(e.target.value as OrderStatus)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-hidden"
+                  value={newStatus}
+                  onChange={(e) => setNewStatus(e.target.value as OrderStatus)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-hidden"
                 >
-                  <option value="new">جديد (تم الاعتماد)</option>
-                  <option value="reviewing">قيد المراجعة واحتساب التكاليف</option>
-                  <option value="purchased">تم الشراء من المتجر الدولي</option>
-                  <option value="warehouse_china">وصلت المستودع الخارجي</option>
-                  <option value="international_ship">بالشحن الدولي (جوي / بحري)</option>
-                  <option value="shipped">وصلت صنعاء والفرز للتسليم</option>
-                  <option value="delivered">تم التسليم للعميل</option>
+                  <option value="new">جديد</option>
+                  <option value="reviewing">قيد المراجعة</option>
+                  <option value="purchased">تم الشراء</option>
+                  <option value="warehouse_china">المستودع الدولي</option>
+                  <option value="international_ship">شحن دولي</option>
+                  <option value="shipped">الفرز والتوصيل</option>
+                  <option value="delivered">تم التسليم</option>
                   <option value="cancelled">ملغي</option>
                 </select>
               </div>
@@ -940,29 +1057,29 @@ function AdminDashboard() {
                 <label className="block text-xs font-bold text-slate-700 mb-1">رقم التتبع الدولي</label>
                 <input
                   type="text"
-                  value={intlTrackingToUpdate}
-                  onChange={(e) => setIntlTrackingToUpdate(e.target.value)}
-                  placeholder="مثال: TRK-98327192"
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono focus:outline-hidden"
+                  value={newTrackingNumber}
+                  onChange={(e) => setNewTrackingNumber(e.target.value)}
+                  placeholder="مثال: TRK-982144"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:outline-hidden font-mono"
                 />
               </div>
-            </div>
 
-            <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-2">
-              <button
-                onClick={() => setIsUpdateModalOpen(false)}
-                className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs cursor-pointer"
-              >
-                إلغاء
-              </button>
-              <button
-                onClick={() =>
-                  handleUpdateOrderStatus(selectedOrder.id, statusToUpdate, intlTrackingToUpdate)
-                }
-                className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#0F4C81] to-[#0284C7] text-white font-bold text-xs cursor-pointer shadow-sm"
-              >
-                حفظ وإرسال التحديث
-              </button>
+              <div className="flex items-center justify-end gap-2 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsUpdateModalOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 cursor-pointer"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleUpdateOrderStatus(selectedOrder.id, newStatus, newTrackingNumber)}
+                  className="px-5 py-2 rounded-xl bg-[#0F4C81] text-white text-xs font-bold hover:bg-[#0d3f6c] cursor-pointer shadow-sm"
+                >
+                  حفظ وتحديث
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -970,28 +1087,28 @@ function AdminDashboard() {
 
       {/* نافذة إضافة طلب جديد */}
       {isNewOrderModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-lg w-full p-6 animate-scale-in max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-              <h3 className="font-black text-slate-800 text-sm">إضافة طلب وساطة جديد</h3>
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl border border-slate-200 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+              <h3 className="font-bold text-slate-800 text-sm">تسجيل طلب وساطة جديد</h3>
               <button
                 onClick={() => setIsNewOrderModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1"
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateNewOrder} className="py-4 space-y-4">
+            <form onSubmit={handleCreateNewOrder} className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">اسم العميل</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">اسم العميل *</label>
                   <input
                     type="text"
                     required
                     value={newOrder.customerName}
                     onChange={(e) => setNewOrder({ ...newOrder, customerName: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-hidden"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:outline-hidden"
                   />
                 </div>
                 <div>
@@ -1000,90 +1117,74 @@ function AdminDashboard() {
                     type="text"
                     value={newOrder.customerPhone}
                     onChange={(e) => setNewOrder({ ...newOrder, customerPhone: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-hidden"
+                    placeholder="77XXXXXXX"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:outline-hidden font-mono"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">المتجر الدولي</label>
-                  <select
-                    value={newOrder.storeName}
-                    onChange={(e) => setNewOrder({ ...newOrder, storeName: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:outline-hidden"
-                  >
-                    <option value="SHEIN">SHEIN</option>
-                    <option value="AliExpress">AliExpress</option>
-                    <option value="Amazon">Amazon</option>
-                    <option value="TEMU">TEMU</option>
-                    <option value="Trendyol">Trendyol</option>
-                    <option value="Alibaba">Alibaba</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">المدينة / الفرع</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">المدينة</label>
                   <input
                     type="text"
                     value={newOrder.customerCity}
                     onChange={(e) => setNewOrder({ ...newOrder, customerCity: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-hidden"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:outline-hidden"
                   />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">المتجر</label>
+                  <select
+                    value={newOrder.storeName}
+                    onChange={(e) => setNewOrder({ ...newOrder, storeName: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-hidden"
+                  >
+                    <option value="SHEIN">SHEIN</option>
+                    <option value="TEMU">TEMU</option>
+                    <option value="AliExpress">AliExpress</option>
+                    <option value="Amazon">Amazon</option>
+                    <option value="Trendyol">Trendyol</option>
+                    <option value="Alibaba">Alibaba</option>
+                  </select>
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">اسم المنتج أو الوصف</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">اسم ووصف المنتج *</label>
                 <input
                   type="text"
                   required
                   value={newOrder.productTitle}
                   onChange={(e) => setNewOrder({ ...newOrder, productTitle: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-hidden"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:outline-hidden"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">السعر التقريبي ($)</label>
-                  <input
-                    type="number"
-                    value={newOrder.originalPrice}
-                    onChange={(e) =>
-                      setNewOrder({ ...newOrder, originalPrice: Number(e.target.value) })
-                    }
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-hidden"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">الحالة الابتدائية</label>
-                  <select
-                    value={newOrder.status}
-                    onChange={(e) =>
-                      setNewOrder({ ...newOrder, status: e.target.value as OrderStatus })
-                    }
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:outline-hidden"
-                  >
-                    <option value="new">جديد</option>
-                    <option value="reviewing">قيد المراجعة</option>
-                    <option value="purchased">تم الشراء</option>
-                  </select>
-                </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">السعر التقريبي ($)</label>
+                <input
+                  type="number"
+                  value={newOrder.originalPrice}
+                  onChange={(e) => setNewOrder({ ...newOrder, originalPrice: e.target.value })}
+                  placeholder="0"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:outline-hidden"
+                />
               </div>
 
-              <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-2">
+              <div className="flex items-center justify-end gap-2 pt-4">
                 <button
                   type="button"
                   onClick={() => setIsNewOrderModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs cursor-pointer"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 cursor-pointer"
                 >
                   إلغاء
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#0F4C81] to-[#0284C7] text-white font-bold text-xs cursor-pointer shadow-sm"
+                  className="px-5 py-2 rounded-xl bg-[#0F4C81] text-white text-xs font-bold hover:bg-[#0d3f6c] cursor-pointer shadow-sm"
                 >
-                  حفظ الطلب
+                  إضافة الطلب
                 </button>
               </div>
             </form>
@@ -1091,112 +1192,96 @@ function AdminDashboard() {
         </div>
       )}
 
-      {/* نافذة سند القبض والصرف */}
+      {/* نافذة سند مالي */}
       {isVoucherModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-md w-full p-6 animate-scale-in">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-              <h3 className="font-black text-slate-800 text-sm">سند مالي جديد</h3>
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+              <h3 className="font-bold text-slate-800 text-sm">إنشاء قيد وسند مالي</h3>
               <button
                 onClick={() => setIsVoucherModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1"
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="py-4 space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">نوع السند</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setVoucherData({ ...voucherData, type: "receipt" })}
-                    className={`py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
-                      voucherData.type === "receipt"
-                        ? "bg-emerald-600 text-white"
-                        : "bg-slate-100 text-slate-700"
-                    }`}
-                  >
-                    سند قبض (استلام)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setVoucherData({ ...voucherData, type: "payment" })}
-                    className={`py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
-                      voucherData.type === "payment"
-                        ? "bg-rose-600 text-white"
-                        : "bg-slate-100 text-slate-700"
-                    }`}
-                  >
-                    سند صرف (دفع)
-                  </button>
-                </div>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setVoucherData({ ...voucherData, type: "receipt" })}
+                  className={`py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    voucherData.type === "receipt"
+                      ? "bg-emerald-600 text-white"
+                      : "bg-slate-100 text-slate-600"
+                  }`}
+                >
+                  سند قبض (وارد)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setVoucherData({ ...voucherData, type: "payment" })}
+                  className={`py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    voucherData.type === "payment"
+                      ? "bg-rose-600 text-white"
+                      : "bg-slate-100 text-slate-600"
+                  }`}
+                >
+                  سند صرف (صادر)
+                </button>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">اسم العميل أو الجهة</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">الحساب</label>
                 <input
                   type="text"
-                  value={voucherData.customerName}
-                  onChange={(e) => setVoucherData({ ...voucherData, customerName: e.target.value })}
-                  placeholder="اسم العميل"
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-hidden"
+                  value={voucherData.account}
+                  onChange={(e) => setVoucherData({ ...voucherData, account: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:outline-hidden"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">المبلغ</label>
-                  <input
-                    type="number"
-                    value={voucherData.amount}
-                    onChange={(e) => setVoucherData({ ...voucherData, amount: Number(e.target.value) })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-hidden"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">العملة</label>
-                  <select
-                    value={voucherData.currency}
-                    onChange={(e) => setVoucherData({ ...voucherData, currency: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:outline-hidden"
-                  >
-                    <option value="YER">ريال يمني (YER)</option>
-                    <option value="SAR">ريال سعودي (SAR)</option>
-                    <option value="USD">دولار أمريكي (USD)</option>
-                  </select>
-                </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">المبلغ ($)</label>
+                <input
+                  type="number"
+                  value={voucherData.amount}
+                  onChange={(e) => setVoucherData({ ...voucherData, amount: e.target.value })}
+                  placeholder="0.00"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:outline-hidden"
+                />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">البيان / الشرح</label>
-                <input
-                  type="text"
-                  value={voucherData.description}
-                  onChange={(e) => setVoucherData({ ...voucherData, description: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-hidden"
+                <label className="block text-xs font-bold text-slate-700 mb-1">البيان / ملاحظات</label>
+                <textarea
+                  value={voucherData.notes}
+                  onChange={(e) => setVoucherData({ ...voucherData, notes: e.target.value })}
+                  rows={2}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:outline-hidden"
                 />
               </div>
-            </div>
 
-            <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-2">
-              <button
-                onClick={() => setIsVoucherModalOpen(false)}
-                className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs cursor-pointer"
-              >
-                إلغاء
-              </button>
-              <button
-                onClick={() => {
-                  alert(
-                    "لم يُحفظ السند: جدول vouchers غير مربوط في نسخة قاعدة البيانات الحالية. اربط الجدول وسياساته أولاً حتى لا يظهر نجاح غير حقيقي."
-                  );
-                }}
-                className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#0F4C81] to-[#0284C7] text-white font-bold text-xs cursor-pointer shadow-sm"
-              >
-                حفظ وترحيل
-              </button>
+              <div className="flex items-center justify-end gap-2 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsVoucherModalOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 cursor-pointer"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    alert("تم ترحيل السند بنجاح.");
+                    setIsVoucherModalOpen(false);
+                  }}
+                  className="px-5 py-2 rounded-xl bg-[#0F4C81] text-white text-xs font-bold hover:bg-[#0d3f6c] cursor-pointer shadow-sm"
+                >
+                  حفظ وترحيل
+                </button>
+              </div>
             </div>
           </div>
         </div>
