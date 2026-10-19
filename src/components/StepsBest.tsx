@@ -40,9 +40,16 @@ const steps = [
   },
 ];
 
+const dottedBackground = {
+  backgroundColor: "#0f2a5a",
+  backgroundImage: "radial-gradient(circle, #3b82f6 1.8px, transparent 1.8px)",
+  backgroundSize: "30px 30px",
+};
+
 export default function StepsBest() {
   return (
     <section
+      style={dottedBackground}
       className="mx-auto max-w-4xl px-4 py-10 sm:py-14"
       aria-labelledby="steps-best-title"
     >
@@ -66,11 +73,10 @@ export default function StepsBest() {
         {steps.map(({ number, title, description, Icon }, index) => (
           <li
             key={number}
-            className={`group relative flex min-h-[92px] items-center gap-3 rounded-xl border border-cyan-300/70 bg-[#12366a]/90 p-3 text-right shadow-[0_0_12px_rgba(0,220,255,.16),0_0_22px_rgba(249,115,22,.10)] transition duration-300 hover:-translate-y-0.5 hover:border-orange-300 hover:shadow-[0_0_20px_rgba(0,220,255,.3),0_0_28px_rgba(249,115,22,.2)] sm:p-4 ${
-              index === steps.length - 1 ? "sm:col-span-2 sm:mx-auto sm:w-[calc(50%-0.5rem)]" : ""
-            }`}
+            className="card-fixed group relative flex min-h-[92px] items-center gap-3 text-right"
+            style={{ padding: "16px 18px" }}
           >
-            <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-orange-300/35 bg-orange-500 text-white shadow-[0_0_15px_rgba(249,115,22,.35)] sm:size-11">
+            <span className="grid size-[44px] shrink-0 place-items-center rounded-xl border border-orange-300/35 bg-orange-500 text-white shadow-[0_0_15px_rgba(249,115,22,.35)]">
               <Icon className="size-5" aria-hidden="true" />
             </span>
             <span className="min-w-0 flex-1">
