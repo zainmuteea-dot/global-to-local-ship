@@ -1,16 +1,8 @@
-import { createFileRoute } from '@tanstack/react-router';
-import { useCallback, useEffect, useState, type FormEvent, type SyntheticEvent } from 'react';
-import {
-  ArrowRight,
-  ExternalLink,
-  Pencil,
-  Plus,
-  RefreshCw,
-  Trash2,
-  X,
-} from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { AdminRouteGuard } from '@/components/admin/AdminRouteGuard';
+import { createFileRoute } from "@tanstack/react-router";
+import { useCallback, useEffect, useState, type FormEvent, type SyntheticEvent } from "react";
+import { ArrowRight, ExternalLink, Pencil, Plus, RefreshCw, Trash2, X } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { AdminRouteGuard } from "@/components/admin/AdminRouteGuard";
 
 // نستخدم any لأن مخطط قاعدة البيانات المحلي قد لا يحتوي بعد على image_url وproduct_url.
 // لا تضع service_role أو أي مفتاح سري في هذا الملف.
@@ -38,16 +30,16 @@ type ProductDraft = {
 };
 
 const blankDraft: ProductDraft = {
-  name: '',
-  sku: '',
-  quantity: '0',
-  sell_price: '0',
-  image_url: '',
-  product_url: '',
+  name: "",
+  sku: "",
+  quantity: "0",
+  sell_price: "0",
+  image_url: "",
+  product_url: "",
 };
 
 const FALLBACK_IMAGE =
-  'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=600&auto=format&fit=crop&q=80';
+  "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=600&auto=format&fit=crop&q=80";
 
 function ProductsManageRoute() {
   return (
@@ -57,7 +49,7 @@ function ProductsManageRoute() {
   );
 }
 
-export const Route = createFileRoute('/products/manage')({
+export const Route = createFileRoute("/products/manage")({
   component: ProductsManageRoute,
 });
 
@@ -68,20 +60,18 @@ function ProductsManager() {
   const [busy, setBusy] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
-    setError('');
+    setError("");
 
     try {
       const { data, error: loadError } = await db
-        .from('products')
-        .select(
-          'id,name,sku,store_id,quantity,sell_price,image_url,product_url,created_at',
-        )
-        .order('created_at', { ascending: false });
+        .from("products")
+        .select("id,name,sku,store_id,quantity,sell_price,image_url,product_url,created_at")
+        .order("created_at", { ascending: false });
 
       if (loadError) {
         setError(`تعذر تحميل المنتجات: ${loadError.message}`);
@@ -90,7 +80,7 @@ function ProductsManager() {
 
       setProducts((data ?? []) as ProductRow[]);
     } catch (cause) {
-      const message = cause instanceof Error ? cause.message : 'خطأ غير معروف';
+      const message = cause instanceof Error ? cause.message : "خطأ غير معروف";
       setError(`تعذر الاتصال بقاعدة البيانات: ${message}`);
     } finally {
       setLoading(false);
@@ -108,7 +98,7 @@ function ProductsManager() {
   const isValidHttpsUrl = (value: string) => {
     if (!value) return true;
     try {
-      return new URL(value).protocol === 'https:';
+      return new URL(value).protocol === "https:";
     } catch {
       return false;
     }
@@ -131,20 +121,20 @@ function ProductsManager() {
       !Number.isFinite(sellPrice) ||
       sellPrice < 0
     ) {
-      setError('تحقق من الاسم والكمية وسعر البيع. يجب أن تكون الأرقام غير سالبة.');
-      setNotice('');
+      setError("تحقق من الاسم والكمية وسعر البيع. يجب أن تكون الأرقام غير سالبة.");
+      setNotice("");
       return;
     }
 
     if (!isValidHttpsUrl(imageUrl) || !isValidHttpsUrl(productUrl)) {
-      setError('رابط الصورة ورابط المنتج يجب أن يكونا رابطين صحيحين ويبدآ بـ https://');
-      setNotice('');
+      setError("رابط الصورة ورابط المنتج يجب أن يكونا رابطين صحيحين ويبدآ بـ https://");
+      setNotice("");
       return;
     }
 
     setBusy(true);
-    setError('');
-    setNotice('');
+    setError("");
+    setNotice("");
 
     const values = {
       name,
@@ -157,13 +147,8 @@ function ProductsManager() {
 
     try {
       const result = editingId
-        ? await db
-            .from('products')
-            .update(values)
-            .eq('id', editingId)
-            .select('id')
-            .maybeSingle()
-        : await db.from('products').insert(values).select('id').single();
+        ? await db.from("products").update(values).eq("id", editingId).select("id").maybeSingle()
+        : await db.from("products").insert(values).select("id").single();
 
       if (result.error) {
         setError(`تعذر حفظ المنتج: ${result.error.message}`);
@@ -171,19 +156,17 @@ function ProductsManager() {
       }
 
       if (!result.data) {
-        setError(
-          'لم يتم الحفظ. تحقق من دور المدير وسياسات RLS وصلاحيات القراءة بعد التعديل.',
-        );
+        setError("لم يتم الحفظ. تحقق من دور المدير وسياسات RLS وصلاحيات القراءة بعد التعديل.");
         return;
       }
 
       const wasEditing = Boolean(editingId);
       setDraft(blankDraft);
       setEditingId(null);
-      setNotice(wasEditing ? 'تم تحديث بطاقة المنتج.' : 'تمت إضافة بطاقة المنتج.');
+      setNotice(wasEditing ? "تم تحديث بطاقة المنتج." : "تمت إضافة بطاقة المنتج.");
       await loadProducts();
     } catch (cause) {
-      const message = cause instanceof Error ? cause.message : 'خطأ غير معروف';
+      const message = cause instanceof Error ? cause.message : "خطأ غير معروف";
       setError(`حدث خطأ أثناء حفظ المنتج: ${message}`);
     } finally {
       setBusy(false);
@@ -193,23 +176,23 @@ function ProductsManager() {
   const beginEdit = (product: ProductRow) => {
     setEditingId(product.id);
     setDraft({
-      name: product.name ?? '',
-      sku: product.sku ?? '',
+      name: product.name ?? "",
+      sku: product.sku ?? "",
       quantity: String(product.quantity ?? 0),
       sell_price: String(product.sell_price ?? 0),
-      image_url: product.image_url ?? '',
-      product_url: product.product_url ?? '',
+      image_url: product.image_url ?? "",
+      product_url: product.product_url ?? "",
     });
-    setError('');
-    setNotice('');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setError("");
+    setNotice("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const cancelEdit = () => {
     setEditingId(null);
     setDraft(blankDraft);
-    setError('');
-    setNotice('');
+    setError("");
+    setNotice("");
   };
 
   const deleteProduct = async (product: ProductRow) => {
@@ -219,15 +202,15 @@ function ProductsManager() {
     }
 
     setDeletingId(product.id);
-    setError('');
-    setNotice('');
+    setError("");
+    setNotice("");
 
     try {
       const { data, error: deleteError } = await db
-        .from('products')
+        .from("products")
         .delete()
-        .eq('id', product.id)
-        .select('id')
+        .eq("id", product.id)
+        .select("id")
         .maybeSingle();
 
       if (deleteError) {
@@ -236,15 +219,15 @@ function ProductsManager() {
       }
 
       if (!data) {
-        setError('لم يُحذف المنتج. تحقق من دور المدير وسياسة الحذف في RLS.');
+        setError("لم يُحذف المنتج. تحقق من دور المدير وسياسة الحذف في RLS.");
         return;
       }
 
-      setNotice('تم حذف المنتج.');
+      setNotice("تم حذف المنتج.");
       if (editingId === product.id) cancelEdit();
       await loadProducts();
     } catch (cause) {
-      const message = cause instanceof Error ? cause.message : 'خطأ غير معروف';
+      const message = cause instanceof Error ? cause.message : "خطأ غير معروف";
       setError(`حدث خطأ أثناء حذف المنتج: ${message}`);
     } finally {
       setDeletingId(null);
@@ -288,15 +271,18 @@ function ProductsManager() {
         <section className="rounded-2xl border bg-white p-4 shadow-sm sm:p-6">
           <h2 className="mb-4 flex items-center gap-2 text-lg font-black">
             {editingId ? <Pencil className="size-5" /> : <Plus className="size-5" />}
-            {editingId ? 'تعديل بطاقة' : 'إضافة بطاقة جديدة'}
+            {editingId ? "تعديل بطاقة" : "إضافة بطاقة جديدة"}
           </h2>
 
-          <form onSubmit={saveProduct} className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <form
+            onSubmit={saveProduct}
+            className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
+          >
             <input
               required
               maxLength={200}
               value={draft.name}
-              onChange={(event) => updateDraft('name', event.target.value)}
+              onChange={(event) => updateDraft("name", event.target.value)}
               placeholder="اسم المنتج"
               className="rounded-xl border p-3 text-sm"
             />
@@ -304,7 +290,7 @@ function ProductsManager() {
             <input
               maxLength={100}
               value={draft.sku}
-              onChange={(event) => updateDraft('sku', event.target.value)}
+              onChange={(event) => updateDraft("sku", event.target.value)}
               placeholder="كود المنتج (اختياري)"
               className="rounded-xl border p-3 text-sm"
             />
@@ -317,7 +303,7 @@ function ProductsManager() {
                 step="1"
                 required
                 value={draft.quantity}
-                onChange={(event) => updateDraft('quantity', event.target.value)}
+                onChange={(event) => updateDraft("quantity", event.target.value)}
                 className="mt-1 w-full rounded-xl border p-3 text-sm font-normal text-slate-900"
               />
             </label>
@@ -330,7 +316,7 @@ function ProductsManager() {
                 step="0.01"
                 required
                 value={draft.sell_price}
-                onChange={(event) => updateDraft('sell_price', event.target.value)}
+                onChange={(event) => updateDraft("sell_price", event.target.value)}
                 className="mt-1 w-full rounded-xl border p-3 text-sm font-normal text-slate-900"
               />
             </label>
@@ -340,7 +326,7 @@ function ProductsManager() {
               <input
                 type="url"
                 value={draft.image_url}
-                onChange={(event) => updateDraft('image_url', event.target.value)}
+                onChange={(event) => updateDraft("image_url", event.target.value)}
                 placeholder="https://..."
                 className="mt-1 w-full rounded-xl border p-3 text-sm font-normal text-slate-900"
               />
@@ -351,7 +337,7 @@ function ProductsManager() {
               <input
                 type="url"
                 value={draft.product_url}
-                onChange={(event) => updateDraft('product_url', event.target.value)}
+                onChange={(event) => updateDraft("product_url", event.target.value)}
                 placeholder="https://..."
                 className="mt-1 w-full rounded-xl border p-3 text-sm font-normal text-slate-900"
               />
@@ -363,7 +349,7 @@ function ProductsManager() {
                 type="submit"
                 className="inline-flex items-center gap-2 rounded-xl bg-[#005696] px-5 py-3 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {busy ? 'جارٍ الحفظ…' : editingId ? 'حفظ التعديل' : 'إضافة البطاقة'}
+                {busy ? "جارٍ الحفظ…" : editingId ? "حفظ التعديل" : "إضافة البطاقة"}
               </button>
 
               {editingId && (
@@ -384,7 +370,7 @@ function ProductsManager() {
                 onClick={() => void loadProducts()}
                 className="mr-auto inline-flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-bold disabled:opacity-50"
               >
-                <RefreshCw className={`size-4 ${loading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} />
                 تحديث
               </button>
             </div>
@@ -400,12 +386,18 @@ function ProductsManager() {
           )}
 
           {error && (
-            <p role="alert" className="mt-4 rounded-xl bg-red-50 p-3 text-sm font-bold text-red-800">
+            <p
+              role="alert"
+              className="mt-4 rounded-xl bg-red-50 p-3 text-sm font-bold text-red-800"
+            >
               {error}
             </p>
           )}
           {notice && (
-            <p role="status" className="mt-4 rounded-xl bg-emerald-50 p-3 text-sm font-bold text-emerald-800">
+            <p
+              role="status"
+              className="mt-4 rounded-xl bg-emerald-50 p-3 text-sm font-bold text-emerald-800"
+            >
               {notice}
             </p>
           )}
@@ -418,7 +410,9 @@ function ProductsManager() {
           </div>
 
           {loading ? (
-            <p role="status" className="p-6 text-sm text-slate-500">جارٍ تحميل المنتجات…</p>
+            <p role="status" className="p-6 text-sm text-slate-500">
+              جارٍ تحميل المنتجات…
+            </p>
           ) : products.length === 0 ? (
             <p className="p-6 text-sm text-slate-500">لا توجد بطاقات محفوظة بعد.</p>
           ) : (
@@ -447,7 +441,7 @@ function ProductsManager() {
                         />
                       </td>
                       <td className="p-3 font-bold">{product.name}</td>
-                      <td className="p-3">{product.sku || '—'}</td>
+                      <td className="p-3">{product.sku || "—"}</td>
                       <td className="p-3">{product.quantity ?? 0}</td>
                       <td className="p-3">{Number(product.sell_price ?? 0).toLocaleString()}</td>
                       <td className="p-3">
@@ -460,7 +454,9 @@ function ProductsManager() {
                           >
                             فتح الرابط
                           </a>
-                        ) : '—'}
+                        ) : (
+                          "—"
+                        )}
                       </td>
                       <td className="p-3">
                         <div className="flex gap-2">
@@ -480,7 +476,7 @@ function ProductsManager() {
                             className="inline-flex items-center gap-1 rounded-lg bg-rose-100 px-3 py-2 text-xs font-bold text-rose-800 disabled:opacity-50"
                           >
                             <Trash2 className="size-3.5" />
-                            {deletingId === product.id ? 'جارٍ الحذف…' : 'حذف'}
+                            {deletingId === product.id ? "جارٍ الحذف…" : "حذف"}
                           </button>
                         </div>
                       </td>

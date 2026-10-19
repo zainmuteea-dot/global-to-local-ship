@@ -52,13 +52,10 @@ async function getStaffIdsForAdmin(): Promise<Set<string>> {
     throw new Error("سجّل الدخول بحساب إداري لعرض قائمة العملاء.");
   }
 
-  const { data: isAdmin, error: roleCheckError } = await supabase.rpc(
-    "has_role",
-    {
-      _user_id: authData.user.id,
-      _role: "admin",
-    },
-  );
+  const { data: isAdmin, error: roleCheckError } = await supabase.rpc("has_role", {
+    _user_id: authData.user.id,
+    _role: "admin",
+  });
 
   if (roleCheckError) throw roleCheckError;
 
@@ -79,10 +76,7 @@ async function getStaffIdsForAdmin(): Promise<Set<string>> {
   );
 }
 
-function toCustomers(
-  profiles: ProfileRow[],
-  staffIds: Set<string>,
-): Customer[] {
+function toCustomers(profiles: ProfileRow[], staffIds: Set<string>): Customer[] {
   return profiles
     .filter((profile) => !staffIds.has(profile.id))
     .map((profile) => ({
@@ -164,9 +158,7 @@ function CustomersPage() {
       setCustomers([]);
       setHasMore(false);
       setLoadError(
-        error instanceof Error
-          ? error.message
-          : "حدث خطأ غير متوقع أثناء تحميل العملاء.",
+        error instanceof Error ? error.message : "حدث خطأ غير متوقع أثناء تحميل العملاء.",
       );
     } finally {
       setLoading(false);
@@ -192,11 +184,7 @@ function CustomersPage() {
       setHasMore(batch.hasMore);
     } catch (error) {
       console.error("تعذر تحميل دفعة أخرى من العملاء:", error);
-      setLoadError(
-        error instanceof Error
-          ? error.message
-          : "تعذر تحميل المزيد من العملاء.",
-      );
+      setLoadError(error instanceof Error ? error.message : "تعذر تحميل المزيد من العملاء.");
     } finally {
       setLoadingMore(false);
     }
@@ -219,9 +207,7 @@ function CustomersPage() {
       <div className="mx-auto max-w-5xl space-y-5">
         <header className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-black text-[#0A2540]">
-              كشف العملاء
-            </h1>
+            <h1 className="text-2xl font-black text-[#0A2540]">كشف العملاء</h1>
             <p className="mt-1 text-sm text-slate-600">
               الحسابات المسجلة، مع استبعاد حسابات الإدارة والموظفين.
             </p>
@@ -233,9 +219,7 @@ function CustomersPage() {
             disabled={loading || loadingMore}
             className="inline-flex items-center gap-2 rounded-xl bg-[#0F4C81] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#0b3b65] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <RefreshCw
-              className={`size-4 ${loading ? "animate-spin" : ""}`}
-            />
+            <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} />
             تحديث القائمة
           </button>
         </header>
@@ -247,9 +231,7 @@ function CustomersPage() {
             </span>
 
             <div>
-              <p className="text-sm font-bold text-slate-600">
-                العملاء المحمّلون
-              </p>
+              <p className="text-sm font-bold text-slate-600">العملاء المحمّلون</p>
               <p className="text-2xl font-black text-[#0A2540]">
                 {loading ? "—" : customers.length}
               </p>
@@ -275,10 +257,8 @@ function CustomersPage() {
           >
             {loadError}
             <p className="mt-2 font-normal">
-              إذا كان الخطأ متعلقًا بالصلاحيات، فتحقق من منح المشرف صلاحية
-              قراءة الصفوف المطلوبة في RLS على جدولي{" "}
-              <code dir="ltr">profiles</code> و{" "}
-              <code dir="ltr">user_roles</code>.
+              إذا كان الخطأ متعلقًا بالصلاحيات، فتحقق من منح المشرف صلاحية قراءة الصفوف المطلوبة في
+              RLS على جدولي <code dir="ltr">profiles</code> و <code dir="ltr">user_roles</code>.
             </p>
           </div>
         )}
@@ -313,13 +293,8 @@ function CustomersPage() {
                 <tbody className="divide-y divide-slate-100">
                   {filteredCustomers.map((customer) => (
                     <tr key={customer.id} className="hover:bg-slate-50">
-                      <td className="px-4 py-3 font-bold text-[#0A2540]">
-                        {customer.name}
-                      </td>
-                      <td
-                        dir="ltr"
-                        className="px-4 py-3 text-right font-mono text-slate-700"
-                      >
+                      <td className="px-4 py-3 font-bold text-[#0A2540]">{customer.name}</td>
+                      <td dir="ltr" className="px-4 py-3 text-right font-mono text-slate-700">
                         {customer.phone || "—"}
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-600">
@@ -347,9 +322,7 @@ function CustomersPage() {
               disabled={loadingMore}
               className="inline-flex items-center gap-2 rounded-xl border border-sky-200 bg-white px-6 py-3 text-sm font-bold text-[#0F4C81] shadow-sm transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {loadingMore && (
-                <RefreshCw className="size-4 animate-spin" />
-              )}
+              {loadingMore && <RefreshCw className="size-4 animate-spin" />}
               {loadingMore ? "جارٍ تحميل المزيد..." : "تحميل المزيد"}
             </button>
           </div>

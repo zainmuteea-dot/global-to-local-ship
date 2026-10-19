@@ -17,13 +17,12 @@ export function useSidebarMenu(section: string) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    db
-     .from("sidebar_menu")
-     .select("*")
-     .eq("section", section)
-     .eq("is_active", true)
-     .order("sort_order")
-     .then(({ data }: any) => {
+    db.from("sidebar_menu")
+      .select("*")
+      .eq("section", section)
+      .eq("is_active", true)
+      .order("sort_order")
+      .then(({ data }: any) => {
         if (data) setItems(data as MenuItem[]);
         setLoading(false);
       });

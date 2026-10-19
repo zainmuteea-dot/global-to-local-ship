@@ -1,15 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import React, { useState } from "react";
-import { 
-  User, 
-  Lock, 
-  Phone, 
-  Mail, 
-  ArrowLeft, 
-  Loader2, 
-  AlertCircle, 
-  Sparkles, 
-  ShoppingBag 
+import {
+  User,
+  Lock,
+  Phone,
+  Mail,
+  ArrowLeft,
+  Loader2,
+  AlertCircle,
+  Sparkles,
+  ShoppingBag,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -31,15 +31,34 @@ export const Route = createFileRoute("/login")({
    ========================================================================= */
 const AlShamelLogo: React.FC<{ size?: number }> = ({ size = 64 }) => (
   <div className="relative shrink-0 drop-shadow-md" style={{ width: size, height: size }}>
-    <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+    <svg
+      viewBox="0 0 200 200"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className="w-full h-full"
+    >
       <defs>
-        <linearGradient id="loginBlue" x1="20" y1="20" x2="180" y2="180" gradientUnits="userSpaceOnUse">
+        <linearGradient
+          id="loginBlue"
+          x1="20"
+          y1="20"
+          x2="180"
+          y2="180"
+          gradientUnits="userSpaceOnUse"
+        >
           <stop offset="0%" stopColor="#29B6F6" />
           <stop offset="35%" stopColor="#0284C7" />
           <stop offset="70%" stopColor="#0F4C81" />
           <stop offset="100%" stopColor="#0A2540" />
         </linearGradient>
-        <linearGradient id="loginOrange" x1="40" y1="60" x2="160" y2="160" gradientUnits="userSpaceOnUse">
+        <linearGradient
+          id="loginOrange"
+          x1="40"
+          y1="60"
+          x2="160"
+          y2="160"
+          gradientUnits="userSpaceOnUse"
+        >
           <stop offset="0%" stopColor="#FDBA74" />
           <stop offset="30%" stopColor="#FB923C" />
           <stop offset="75%" stopColor="#F97316" />
@@ -50,15 +69,65 @@ const AlShamelLogo: React.FC<{ size?: number }> = ({ size = 64 }) => (
           <stop offset="100%" stopColor="#F97316" />
         </linearGradient>
       </defs>
-      <path d="M 108 42 C 122 48, 140 48, 152 38" stroke="url(#loginBlue)" strokeWidth="5" strokeLinecap="round" />
-      <path d="M 158 35 L 160.5 40 L 166 40.5 L 162 44 L 163.5 49.5 L 158 46.5 L 152.5 49.5 L 154 44 L 150 40.5 L 155.5 40 Z" fill="url(#loginStar)" />
-      <path d="M 44 42 C 48 42, 53 43, 56 47 C 60 52, 62 60, 68 76 L 76 96" stroke="url(#loginBlue)" strokeWidth="11" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M 68 56 L 80 56 C 84 56, 92 68, 96 74 L 122 110" stroke="url(#loginOrange)" strokeWidth="9" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M 68 96 L 96 38 C 98 34, 102 34, 104 38 L 132 94" stroke="url(#loginBlue)" strokeWidth="11" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M 114 56 L 148 56 C 152 56, 155 60, 153 64 L 144 86" stroke="url(#loginBlue)" strokeWidth="10" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M 144 86 C 142 98, 126 102, 114 102 C 90 102, 80 118, 96 124 L 134 124 C 144 124, 148 116, 146 108" stroke="url(#loginOrange)" strokeWidth="11" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M 104 38 C 120 38, 138 48, 142 66 C 144 78, 132 86, 116 88 L 94 90" stroke="url(#loginBlue)" strokeWidth="10" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M 68 126 C 64 126, 60 128, 60 133 C 60 138, 64 140, 72 140 L 136 140 C 142 140, 146 136, 146 130" stroke="url(#loginBlue)" strokeWidth="10" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M 108 42 C 122 48, 140 48, 152 38"
+        stroke="url(#loginBlue)"
+        strokeWidth="5"
+        strokeLinecap="round"
+      />
+      <path
+        d="M 158 35 L 160.5 40 L 166 40.5 L 162 44 L 163.5 49.5 L 158 46.5 L 152.5 49.5 L 154 44 L 150 40.5 L 155.5 40 Z"
+        fill="url(#loginStar)"
+      />
+      <path
+        d="M 44 42 C 48 42, 53 43, 56 47 C 60 52, 62 60, 68 76 L 76 96"
+        stroke="url(#loginBlue)"
+        strokeWidth="11"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M 68 56 L 80 56 C 84 56, 92 68, 96 74 L 122 110"
+        stroke="url(#loginOrange)"
+        strokeWidth="9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M 68 96 L 96 38 C 98 34, 102 34, 104 38 L 132 94"
+        stroke="url(#loginBlue)"
+        strokeWidth="11"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M 114 56 L 148 56 C 152 56, 155 60, 153 64 L 144 86"
+        stroke="url(#loginBlue)"
+        strokeWidth="10"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M 144 86 C 142 98, 126 102, 114 102 C 90 102, 80 118, 96 124 L 134 124 C 144 124, 148 116, 146 108"
+        stroke="url(#loginOrange)"
+        strokeWidth="11"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M 104 38 C 120 38, 138 48, 142 66 C 144 78, 132 86, 116 88 L 94 90"
+        stroke="url(#loginBlue)"
+        strokeWidth="10"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M 68 126 C 64 126, 60 128, 60 133 C 60 138, 64 140, 72 140 L 136 140 C 142 140, 146 136, 146 130"
+        stroke="url(#loginBlue)"
+        strokeWidth="10"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
       <circle cx="82" cy="154" r="14" fill="url(#loginOrange)" />
       <circle cx="82" cy="154" r="6" fill="#FFFFFF" />
       <circle cx="128" cy="154" r="14" fill="url(#loginOrange)" />
@@ -76,12 +145,28 @@ const ADMIN_WHATSAPP_NUMBER = "967773370041";
  */
 function normalizePhoneE164(value: string) {
   const digitMap: Record<string, string> = {
-    "٠": "0", "١": "1", "٢": "2", "٣": "3", "٤": "4",
-    "٥": "5", "٦": "6", "٧": "7", "٨": "8", "٩": "9",
-    "۰": "0", "۱": "1", "۲": "2", "۳": "3", "۴": "4",
-    "۵": "5", "۶": "6", "۷": "7", "۸": "8", "۹": "9",
+    "٠": "0",
+    "١": "1",
+    "٢": "2",
+    "٣": "3",
+    "٤": "4",
+    "٥": "5",
+    "٦": "6",
+    "٧": "7",
+    "٨": "8",
+    "٩": "9",
+    "۰": "0",
+    "۱": "1",
+    "۲": "2",
+    "۳": "3",
+    "۴": "4",
+    "۵": "5",
+    "۶": "6",
+    "۷": "7",
+    "۸": "8",
+    "۹": "9",
   };
-  const asciiValue = value.replace(/[٠-٩۰-۹]/g, (digit) => digitMap[digit]);
+  const asciiValue = value.replace(/[٠-٩۰-۹]/g, (digit) => digitMap[digit] ?? digit);
   const trimmed = asciiValue.trim();
 
   if (!/^[+0-9\s().-]+$/.test(trimmed)) {
@@ -174,7 +259,7 @@ export function LoginPage() {
         if (error) throw error;
         if (!data.user || !data.session) {
           throw new Error(
-            "تم إنشاء الحساب، لكن الدخول لم يكتمل. عطّل Confirm phone في إعدادات Supabase إذا كنت تريد الدخول دون رمز."
+            "تم إنشاء الحساب، لكن الدخول لم يكتمل. عطّل Confirm phone في إعدادات Supabase إذا كنت تريد الدخول دون رمز.",
           );
         }
 
@@ -208,11 +293,7 @@ export function LoginPage() {
           supabase.rpc("has_role", { _user_id: user.id, _role: "staff" }),
         ]);
 
-        if (
-          adminRole.error ||
-          staffRole.error ||
-          !(adminRole.data || staffRole.data)
-        ) {
+        if (adminRole.error || staffRole.error || !(adminRole.data || staffRole.data)) {
           await supabase.auth.signOut();
           throw new Error("هذا الحساب غير مصرح له بدخول الإدارة.");
         }
@@ -259,9 +340,9 @@ export function LoginPage() {
         .maybeSingle();
 
       const resolvedName =
-        profile?.full_name || user.user_metadata?.full_name || fullName.trim();
+        profile?.full_name || user.user_metadata?.["full_name"] || fullName.trim();
       const resolvedPhone =
-        profile?.phone || user.user_metadata?.phone || normalizePhoneE164(identifier);
+        profile?.phone || user.user_metadata?.["phone"] || normalizePhoneE164(identifier);
 
       localStorage.setItem("alsouk_customer_logged_in", "true");
       localStorage.setItem(
@@ -270,7 +351,7 @@ export function LoginPage() {
           full_name: resolvedName,
           phone: resolvedPhone,
           user_id: user.id,
-        })
+        }),
       );
       localStorage.setItem("sc_phone", resolvedPhone);
       sessionStorage.setItem("sc_phone", resolvedPhone);
@@ -281,9 +362,7 @@ export function LoginPage() {
 
       window.location.href = getSafeCustomerReturnPath();
     } catch (err: any) {
-      setErrorMessage(
-        err?.message || "تعذر إكمال العملية. تحقق من البيانات وحاول مرة أخرى."
-      );
+      setErrorMessage(err?.message || "تعذر إكمال العملية. تحقق من البيانات وحاول مرة أخرى.");
     } finally {
       setLoading(false);
     }
@@ -301,12 +380,11 @@ export function LoginPage() {
         return;
       }
 
-      const message =
-        `السلام عليكم، نسيت كلمة مرور حسابي في السوق الشامل. رقم الهاتف المسجل: ${phone}`;
+      const message = `السلام عليكم، نسيت كلمة مرور حسابي في السوق الشامل. رقم الهاتف المسجل: ${phone}`;
       window.open(
         `https://wa.me/${ADMIN_WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`,
         "_blank",
-        "noopener,noreferrer"
+        "noopener,noreferrer",
       );
       return;
     }
@@ -353,7 +431,10 @@ export function LoginPage() {
         <div className="flex p-1 bg-sky-50/80 rounded-2xl border border-sky-200/70">
           <button
             type="button"
-            onClick={() => { setMode("login"); setErrorMessage(""); }}
+            onClick={() => {
+              setMode("login");
+              setErrorMessage("");
+            }}
             className={`flex-1 py-2.5 text-xs font-black rounded-xl transition cursor-pointer ${
               mode === "login"
                 ? "bg-gradient-to-r from-[#0F4C81] to-[#0284C7] text-white shadow-md"
@@ -364,7 +445,11 @@ export function LoginPage() {
           </button>
           <button
             type="button"
-            onClick={() => { setMode("signup"); setAccountType("customer"); setErrorMessage(""); }}
+            onClick={() => {
+              setMode("signup");
+              setAccountType("customer");
+              setErrorMessage("");
+            }}
             className={`flex-1 py-2.5 text-xs font-black rounded-xl transition cursor-pointer ${
               mode === "signup"
                 ? "bg-gradient-to-r from-[#0F4C81] to-[#0284C7] text-white shadow-md"
@@ -416,17 +501,13 @@ export function LoginPage() {
                 type={mode === "login" && accountType === "staff" ? "email" : "tel"}
                 required
                 placeholder={
-                  mode === "login" && accountType === "staff"
-                    ? "name@example.com"
-                    : "770000000"
+                  mode === "login" && accountType === "staff" ? "name@example.com" : "770000000"
                 }
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
                 className="w-full pl-3 pr-10 py-3 rounded-xl bg-[#F8FAFC] border border-sky-200 text-xs font-mono text-[#0A2540] focus:outline-none focus:border-[#0284C7] focus:ring-2 focus:ring-sky-400/20"
                 dir="ltr"
-                autoComplete={
-                  mode === "login" && accountType === "staff" ? "username" : "tel"
-                }
+                autoComplete={mode === "login" && accountType === "staff" ? "username" : "tel"}
                 aria-label={
                   mode === "login" && accountType === "staff"
                     ? "البريد الإلكتروني للموظف"
@@ -448,9 +529,7 @@ export function LoginPage() {
 
           {/* كلمة المرور */}
           <div>
-            <label className="block text-[11px] font-bold text-[#0F4C81] mb-1">
-              كلمة المرور *
-            </label>
+            <label className="block text-[11px] font-bold text-[#0F4C81] mb-1">كلمة المرور *</label>
             <div className="relative">
               <input
                 type="password"
@@ -520,7 +599,9 @@ export function LoginPage() {
                   : "bg-white text-slate-700 border border-sky-200 hover:bg-sky-50"
               }`}
             >
-              <span className={`size-2 rounded-full ${accountType === "customer" ? "bg-orange-400" : "bg-slate-300"}`} />
+              <span
+                className={`size-2 rounded-full ${accountType === "customer" ? "bg-orange-400" : "bg-slate-300"}`}
+              />
               <span>عميل</span>
             </button>
 
@@ -534,7 +615,9 @@ export function LoginPage() {
                     : "bg-white text-slate-700 border border-sky-200 hover:bg-sky-50"
                 }`}
               >
-                <span className={`size-2 rounded-full ${accountType === "staff" ? "bg-orange-400" : "bg-slate-300"}`} />
+                <span
+                  className={`size-2 rounded-full ${accountType === "staff" ? "bg-orange-400" : "bg-slate-300"}`}
+                />
                 <span>موظفين</span>
               </button>
             )}

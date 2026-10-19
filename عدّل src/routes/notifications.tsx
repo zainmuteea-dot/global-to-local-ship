@@ -1,12 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import {
-  Bell,
-  CheckCheck,
-  MessageCircle,
-  PackagePlus,
-  Phone,
-} from "lucide-react";
+import { Bell, CheckCheck, MessageCircle, PackagePlus, Phone } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
 import { AccountShell, EmptyState } from "@/components/AccountShell";
@@ -58,18 +52,16 @@ function NotificationsPage() {
     setIsAdmin(null);
     setRoleError(null);
 
-    void supabase
-      .rpc("has_role", { _user_id: user.id, _role: "admin" })
-      .then(({ data, error }) => {
-        if (!active) return;
-        if (error) {
-          console.error("تعذر التحقق من صلاحية الإدارة:", error);
-          setIsAdmin(false);
-          setRoleError("تعذر التحقق من الصلاحية. لم نعرض إشعارات الإدارة.");
-          return;
-        }
-        setIsAdmin(data === true);
-      });
+    void supabase.rpc("has_role", { _user_id: user.id, _role: "admin" }).then(({ data, error }) => {
+      if (!active) return;
+      if (error) {
+        console.error("تعذر التحقق من صلاحية الإدارة:", error);
+        setIsAdmin(false);
+        setRoleError("تعذر التحقق من الصلاحية. لم نعرض إشعارات الإدارة.");
+        return;
+      }
+      setIsAdmin(data === true);
+    });
 
     return () => {
       active = false;
@@ -79,7 +71,10 @@ function NotificationsPage() {
   if (sessionLoading || (user && isAdmin === null)) {
     return (
       <AccountShell title="الإشعارات">
-        <p role="status" className="rounded-2xl border border-slate-200 bg-white p-4 text-center text-sm text-slate-600">
+        <p
+          role="status"
+          className="rounded-2xl border border-slate-200 bg-white p-4 text-center text-sm text-slate-600"
+        >
           جارٍ تحميل الإشعارات…
         </p>
       </AccountShell>
@@ -128,10 +123,7 @@ function CustomerNotificationsPage({
           .eq("user_id", userId)
           .order("created_at", { ascending: false })
           .limit(50),
-        supabase
-          .from("notification_reads")
-          .select("notification_id")
-          .eq("user_id", userId),
+        supabase.from("notification_reads").select("notification_id").eq("user_id", userId),
       ]);
 
       if (!active) return;
@@ -189,10 +181,12 @@ function CustomerNotificationsPage({
     if (readIds.has(notificationId)) return;
     setSavingRead(true);
 
-    const { error: saveError } = await supabase.from("notification_reads").upsert(
-      { notification_id: notificationId, user_id: userId },
-      { onConflict: "notification_id,user_id" },
-    );
+    const { error: saveError } = await supabase
+      .from("notification_reads")
+      .upsert(
+        { notification_id: notificationId, user_id: userId },
+        { onConflict: "notification_id,user_id" },
+      );
 
     setSavingRead(false);
     if (saveError) {
@@ -250,13 +244,19 @@ function CustomerNotificationsPage({
       </div>
 
       {error && (
-        <p role="alert" className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+        <p
+          role="alert"
+          className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800"
+        >
           {error}
         </p>
       )}
 
       {loading ? (
-        <p role="status" className="rounded-2xl border border-slate-200 bg-white p-4 text-center text-sm text-slate-600">
+        <p
+          role="status"
+          className="rounded-2xl border border-slate-200 bg-white p-4 text-center text-sm text-slate-600"
+        >
           جارٍ تحميل إشعاراتك…
         </p>
       ) : notifications.length === 0 ? (
@@ -361,10 +361,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
           .or(`user_id.is.null,user_id.eq.${userId}`)
           .order("created_at", { ascending: false })
           .limit(50),
-        supabase
-          .from("notification_reads")
-          .select("notification_id")
-          .eq("user_id", userId),
+        supabase.from("notification_reads").select("notification_id").eq("user_id", userId),
       ]);
 
       if (!active) return;
@@ -400,7 +397,10 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "orders" }, (payload) => {
         const order = payload.new as Omit<OrderNotification, "read">;
         setOrders((current) =>
-          [{ ...order, read: false }, ...current.filter((item) => item.id !== order.id)].slice(0, 30),
+          [{ ...order, read: false }, ...current.filter((item) => item.id !== order.id)].slice(
+            0,
+            30,
+          ),
         );
         playSound();
         if ("Notification" in window && Notification.permission === "granted") {
@@ -413,15 +413,19 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
 
     const systemChannel = supabase
       .channel(`admin-system-notifications-${userId}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications" }, (payload) => {
-        const notification = payload.new as SystemNotification;
-        if (notification.user_id !== null && notification.user_id !== userId) return;
-        setNotifications((current) =>
-          [notification, ...current.filter((item) => item.id !== notification.id)].slice(0, 50),
-        );
-        setError(null);
-        playSound();
-      })
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "notifications" },
+        (payload) => {
+          const notification = payload.new as SystemNotification;
+          if (notification.user_id !== null && notification.user_id !== userId) return;
+          setNotifications((current) =>
+            [notification, ...current.filter((item) => item.id !== notification.id)].slice(0, 50),
+          );
+          setError(null);
+          playSound();
+        },
+      )
       .subscribe();
 
     return () => {
@@ -508,13 +512,19 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
       </div>
 
       {error && (
-        <p role="alert" className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+        <p
+          role="alert"
+          className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800"
+        >
           {error}
         </p>
       )}
 
       {loading ? (
-        <p role="status" className="rounded-2xl border border-slate-200 bg-white p-4 text-center text-sm text-slate-600">
+        <p
+          role="status"
+          className="rounded-2xl border border-slate-200 bg-white p-4 text-center text-sm text-slate-600"
+        >
           جارٍ تحميل بيانات الإدارة…
         </p>
       ) : orders.length === 0 ? (
@@ -539,9 +549,13 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="font-bold text-slate-900">{order.customer_name}</h3>
                       {!order.read && (
-                        <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700">جديد</span>
+                        <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700">
+                          جديد
+                        </span>
                       )}
-                      <span className="font-mono text-xs text-slate-500">{order.tracking_code}</span>
+                      <span className="font-mono text-xs text-slate-500">
+                        {order.tracking_code}
+                      </span>
                     </div>
                     {order.notes && <p className="mt-1 text-sm text-slate-600">{order.notes}</p>}
                     <p className="mt-1 text-xs text-slate-500">
@@ -551,7 +565,11 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
                   <div className="flex items-center gap-2">
                     {phone && (
                       <>
-                        <a aria-label="اتصال بالعميل" href={`tel:${phone}`} className="rounded-xl bg-sky-700 p-2.5 text-white">
+                        <a
+                          aria-label="اتصال بالعميل"
+                          href={`tel:${phone}`}
+                          className="rounded-xl bg-sky-700 p-2.5 text-white"
+                        >
                           <Phone className="size-4" />
                         </a>
                         <a
@@ -623,7 +641,10 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
                           {notification.message}
                         </p>
                       )}
-                      <time className="mt-2 block text-xs text-slate-400" dateTime={notification.created_at}>
+                      <time
+                        className="mt-2 block text-xs text-slate-400"
+                        dateTime={notification.created_at}
+                      >
                         {new Date(notification.created_at).toLocaleString("ar-YE")}
                       </time>
                     </div>

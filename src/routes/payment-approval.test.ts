@@ -54,9 +54,9 @@ describe("approvePaymentOnce", () => {
   it("يرفض مبلغ الصفر قبل تحديث الحالة أو إرسال الإشعار", async () => {
     const dependencies = makeDependencies();
 
-    await expect(
-      approvePaymentOnce({ ...payment, amount: 0 }, dependencies),
-    ).rejects.toThrow("أكبر من صفر");
+    await expect(approvePaymentOnce({ ...payment, amount: 0 }, dependencies)).rejects.toThrow(
+      "أكبر من صفر",
+    );
 
     expect(dependencies.approvePending).not.toHaveBeenCalled();
     expect(dependencies.insertCustomerNotice).not.toHaveBeenCalled();
@@ -66,18 +66,13 @@ describe("approvePaymentOnce", () => {
     const dependencies = makeDependencies();
     dependencies.approvePending.mockRejectedValue(new Error("فشل الاعتماد"));
 
-    await expect(approvePaymentOnce(payment, dependencies)).rejects.toThrow(
-      "فشل الاعتماد",
-    );
+    await expect(approvePaymentOnce(payment, dependencies)).rejects.toThrow("فشل الاعتماد");
     expect(dependencies.insertCustomerNotice).not.toHaveBeenCalled();
   });
 
   it("لا يرسل إشعارًا إذا لم تعد الحالة بانتظار الاعتماد", async () => {
     const dependencies = makeDependencies();
-    const result = await approvePaymentOnce(
-      { ...payment, status: "approved" },
-      dependencies,
-    );
+    const result = await approvePaymentOnce({ ...payment, status: "approved" }, dependencies);
 
     expect(result.approved).toBe(false);
     expect(dependencies.approvePending).not.toHaveBeenCalled();

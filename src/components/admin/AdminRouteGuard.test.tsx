@@ -135,7 +135,7 @@ describe("/admin route guard", () => {
     const onUnauthorized = renderProtectedAdmin();
 
     await waitFor(() => {
-      expect(onUnauthorized).toHaveBeenCalledWith("not-admin");
+      expect(onUnauthorized).toHaveBeenCalledWith("role-check-failed");
     });
 
     expect(screen.queryByText("محتوى لوحة الإدارة")).toBeNull();

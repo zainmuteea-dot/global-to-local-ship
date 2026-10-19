@@ -69,7 +69,10 @@ export function AddShipmentModal({
               <p className="text-xs text-slate-500">تسجيل طرد وشحنة جديدة في منظومة التوزيع</p>
             </div>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 cursor-pointer">
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 cursor-pointer"
+          >
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -77,22 +80,47 @@ export function AddShipmentModal({
         <form onSubmit={handleSubmit} className="space-y-3.5 text-xs">
           <div>
             <label className="block text-slate-700 font-bold mb-1">اسم العميل المستلم *</label>
-            <input type="text" required placeholder="مثال: محمد عبد الله" value={form.customerName} onChange={(e) => setForm({ ...form, customerName: e.target.value })} className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] border border-slate-200 text-[#0A2540] outline-none focus:bg-white focus:border-[#0284C7]" />
+            <input
+              type="text"
+              required
+              placeholder="مثال: محمد عبد الله"
+              value={form.customerName}
+              onChange={(e) => setForm({ ...form, customerName: e.target.value })}
+              className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] border border-slate-200 text-[#0A2540] outline-none focus:bg-white focus:border-[#0284C7]"
+            />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-slate-700 font-bold mb-1">رقم الهاتف *</label>
-              <input type="text" required dir="ltr" placeholder="770000000" value={form.customerPhone} onChange={(e) => setForm({ ...form, customerPhone: e.target.value })} className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] border border-slate-200 text-[#0A2540] font-mono text-left outline-none focus:bg-white focus:border-[#0284C7]" />
+              <input
+                type="text"
+                required
+                dir="ltr"
+                placeholder="770000000"
+                value={form.customerPhone}
+                onChange={(e) => setForm({ ...form, customerPhone: e.target.value })}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] border border-slate-200 text-[#0A2540] font-mono text-left outline-none focus:bg-white focus:border-[#0284C7]"
+              />
             </div>
             <div>
               <label className="block text-slate-700 font-bold mb-1">المدينة</label>
-              <input type="text" placeholder="صنعاء / عدن / تعز" value={form.customerCity} onChange={(e) => setForm({ ...form, customerCity: e.target.value })} className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] border border-slate-200 text-[#0A2540] outline-none focus:bg-white focus:border-[#0284C7]" />
+              <input
+                type="text"
+                placeholder="صنعاء / عدن / تعز"
+                value={form.customerCity}
+                onChange={(e) => setForm({ ...form, customerCity: e.target.value })}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] border border-slate-200 text-[#0A2540] outline-none focus:bg-white focus:border-[#0284C7]"
+              />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-slate-700 font-bold mb-1">المتجر / المصدر</label>
-              <select value={form.storeName} onChange={(e) => setForm({ ...form, storeName: e.target.value })} className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] border border-slate-200 text-[#0A2540] font-bold outline-none focus:bg-white focus:border-[#0284C7]">
+              <select
+                value={form.storeName}
+                onChange={(e) => setForm({ ...form, storeName: e.target.value })}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] border border-slate-200 text-[#0A2540] font-bold outline-none focus:bg-white focus:border-[#0284C7]"
+              >
                 <option value="SHEIN">شي إن (SHEIN)</option>
                 <option value="TEMU">تيمو (TEMU)</option>
                 <option value="Amazon">أمازون (Amazon)</option>
@@ -102,16 +130,39 @@ export function AddShipmentModal({
             </div>
             <div>
               <label className="block text-slate-700 font-bold mb-1">المبلغ (SAR)</label>
-              <input type="number" placeholder="150" value={form.originalPrice} onChange={(e) => setForm({ ...form, originalPrice: e.target.value })} className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] border border-slate-200 text-[#0A2540] font-mono outline-none focus:bg-white focus:border-[#0284C7]" />
+              <input
+                type="number"
+                placeholder="150"
+                value={form.originalPrice}
+                onChange={(e) => setForm({ ...form, originalPrice: e.target.value })}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] border border-slate-200 text-[#0A2540] font-mono outline-none focus:bg-white focus:border-[#0284C7]"
+              />
             </div>
           </div>
           <div>
             <label className="block text-slate-700 font-bold mb-1">وصف المنتج</label>
-            <input type="text" placeholder="مثال: فستان + حذاء" value={form.productTitle} onChange={(e) => setForm({ ...form, productTitle: e.target.value })} className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] border border-slate-200 text-[#0A2540] outline-none focus:bg-white focus:border-[#0284C7]" />
+            <input
+              type="text"
+              placeholder="مثال: فستان + حذاء"
+              value={form.productTitle}
+              onChange={(e) => setForm({ ...form, productTitle: e.target.value })}
+              className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] border border-slate-200 text-[#0A2540] outline-none focus:bg-white focus:border-[#0284C7]"
+            />
           </div>
           <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-2 mt-4">
-            <button type="button" onClick={onClose} className="px-4 py-2.5 rounded-xl text-slate-500 hover:text-slate-800 cursor-pointer font-bold">إلغاء</button>
-            <button type="submit" className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#F97316] to-[#EA580C] hover:from-[#EA580C] text-white font-black shadow-md shadow-orange-500/25 cursor-pointer">حفظ وتسجيل</button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2.5 rounded-xl text-slate-500 hover:text-slate-800 cursor-pointer font-bold"
+            >
+              إلغاء
+            </button>
+            <button
+              type="submit"
+              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#F97316] to-[#EA580C] hover:from-[#EA580C] text-white font-black shadow-md shadow-orange-500/25 cursor-pointer"
+            >
+              حفظ وتسجيل
+            </button>
           </div>
         </form>
       </div>

@@ -19,11 +19,7 @@ export function AccountShell({
 
   return (
     <div dir="rtl" lang="ar" className="min-h-screen bg-background px-4 py-6 font-body">
-      <div
-        className={`mx-auto w-full max-w-md ${
-          wide ? "lg:max-w-6xl" : ""
-        }`}
-      >
+      <div className={`mx-auto w-full max-w-md ${wide ? "lg:max-w-6xl" : ""}`}>
         <div className="mb-6 flex items-center justify-between">
           <button
             type="button"
@@ -34,9 +30,7 @@ export function AccountShell({
             رجوع
           </button>
 
-          <h1 className="font-display text-lg font-black text-cocoadeep">
-            {title}
-          </h1>
+          <h1 className="font-display text-lg font-black text-cocoadeep">{title}</h1>
 
           <span className="w-16" aria-hidden="true" />
         </div>

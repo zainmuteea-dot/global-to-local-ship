@@ -23,14 +23,9 @@ type CustomerNotice = {
 
 type ApprovalDependencies = {
   /** Must atomically update only while payment.status is one of pendingStatuses. */
-  approvePending: (
-    paymentId: string,
-    pendingStatuses: string[],
-  ) => Promise<boolean>;
+  approvePending: (paymentId: string, pendingStatuses: string[]) => Promise<boolean>;
   getOrderNotes: (trackingCode: string) => Promise<string | null>;
-  listApprovedPayments: (
-    trackingCode: string,
-  ) => Promise<ApprovedPaymentRow[]>;
+  listApprovedPayments: (trackingCode: string) => Promise<ApprovedPaymentRow[]>;
   insertCustomerNotice: (notice: CustomerNotice) => Promise<void>;
 };
 
@@ -41,8 +36,7 @@ export type ApprovalResult = {
   reason?: "not_pending" | "already_reviewed" | "missing_user";
 };
 
-const formatAmount = (value: number) =>
-  Math.round(value).toLocaleString("en-US");
+const formatAmount = (value: number) => Math.round(value).toLocaleString("en-US");
 
 function normalizedCurrency(value: string | null | undefined): string {
   const currency = (value || "ر.ي").trim().toUpperCase();
@@ -52,9 +46,7 @@ function normalizedCurrency(value: string | null | undefined): string {
   return currency;
 }
 
-function readOrderTotal(
-  notes: string | null,
-): { amount: number; currency: string } | null {
+function readOrderTotal(notes: string | null): { amount: number; currency: string } | null {
   const match = notes?.match(/السعر المعلن:\s*([\d.]+)\s*([^|]*)/);
   if (!match) return null;
 
@@ -90,10 +82,7 @@ export async function approvePaymentOnce(
   }
 
   // Compare-and-set in the database prevents concurrent/double approval.
-  const updated = await dependencies.approvePending(
-    payment.id,
-    PENDING_APPROVAL_STATUSES,
-  );
+  const updated = await dependencies.approvePending(payment.id, PENDING_APPROVAL_STATUSES);
   if (!updated) {
     return {
       approved: false,
@@ -120,19 +109,12 @@ export async function approvePaymentOnce(
     const notes = await dependencies.getOrderNotes(payment.tracking_code);
     const total = readOrderTotal(notes);
 
-    if (
-      total &&
-      normalizedCurrency(total.currency) === normalizedCurrency(payment.currency)
-    ) {
-      const approved = await dependencies.listApprovedPayments(
-        payment.tracking_code,
-      );
+    if (total && normalizedCurrency(total.currency) === normalizedCurrency(payment.currency)) {
+      const approved = await dependencies.listApprovedPayments(payment.tracking_code);
       const matchingCurrency = approved.every(
         (row) => normalizedCurrency(row.currency) === normalizedCurrency(payment.currency),
       );
-      const includesCurrentPayment = approved.some(
-        (row) => row.id === payment.id,
-      );
+      const includesCurrentPayment = approved.some((row) => row.id === payment.id);
 
       if (matchingCurrency && includesCurrentPayment) {
         const paid = approved.reduce((sum, row) => sum + Number(row.amount || 0), 0);

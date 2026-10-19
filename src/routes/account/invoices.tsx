@@ -26,6 +26,7 @@ function AccountInvoicesPage() {
   useEffect(() => {
     if (sessionLoading || !user) return;
 
+    const userId = user.id;
     let active = true;
 
     async function loadInvoices() {
@@ -37,7 +38,7 @@ function AccountInvoicesPage() {
       const { data, error: queryError } = await db
         .from("sales_invoices")
         .select("id,client,total,created_at,order_id")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .order("created_at", { ascending: false });
 
       if (!active) return;
@@ -88,9 +89,7 @@ function AccountInvoicesPage() {
             <article key={invoice.id} className="rounded-2xl border border-border p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="font-bold text-cocoadeep">
-                    فاتورة {invoice.id.slice(0, 8)}
-                  </p>
+                  <p className="font-bold text-cocoadeep">فاتورة {invoice.id.slice(0, 8)}</p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {invoice.created_at
                       ? new Date(invoice.created_at).toLocaleDateString("ar")
@@ -99,14 +98,10 @@ function AccountInvoicesPage() {
                 </div>
                 <Receipt className="size-5 text-clay" />
               </div>
-              <p className="mt-3 text-sm">
-                العميل: {invoice.client || "غير محدد"}
-              </p>
+              <p className="mt-3 text-sm">العميل: {invoice.client || "غير محدد"}</p>
               <p className="mt-1 text-sm font-bold">
                 الإجمالي المسجل:{" "}
-                {invoice.total == null
-                  ? "غير محدد"
-                  : Number(invoice.total).toLocaleString("ar")}
+                {invoice.total == null ? "غير محدد" : Number(invoice.total).toLocaleString("ar")}
               </p>
             </article>
           ))

@@ -1,9 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-type Session = Awaited<
-  ReturnType<typeof supabase.auth.getSession>
->["data"]["session"];
+type Session = Awaited<ReturnType<typeof supabase.auth.getSession>>["data"]["session"];
 
 type AdminRouteGuardProps = {
   children: ReactNode;
@@ -16,10 +14,7 @@ type AdminRouteGuardProps = {
 };
 
 /** Accept only same-origin absolute paths; reject protocol-relative and backslash paths. */
-function getSafeInternalRedirect(
-  value: string | null | undefined,
-  fallback = "/admin",
-): string {
+function getSafeInternalRedirect(value: string | null | undefined, fallback = "/admin"): string {
   if (
     typeof window === "undefined" ||
     !value ||
@@ -90,13 +85,10 @@ export function AdminRouteGuard({
         return;
       }
 
-      const { data: isAdmin, error: adminError } = await supabase.rpc(
-        "has_role",
-        {
-          _user_id: session.user.id,
-          _role: "admin",
-        },
-      );
+      const { data: isAdmin, error: adminError } = await supabase.rpc("has_role", {
+        _user_id: session.user.id,
+        _role: "admin",
+      });
 
       if (!active) return;
       if (adminError) {
@@ -106,13 +98,10 @@ export function AdminRouteGuard({
 
       let isStaff = false;
       if (allowStaff) {
-        const { data: staffRole, error: staffError } = await supabase.rpc(
-          "has_role",
-          {
-            _user_id: session.user.id,
-            _role: "staff",
-          },
-        );
+        const { data: staffRole, error: staffError } = await supabase.rpc("has_role", {
+          _user_id: session.user.id,
+          _role: "staff",
+        });
 
         if (!active) return;
         if (staffError) {
@@ -159,9 +148,7 @@ export function AdminRouteGuard({
           className="flex items-center gap-3 rounded-2xl bg-white px-5 py-4 shadow-sm"
         >
           <span className="size-5 animate-spin rounded-full border-2 border-[#873512]/20 border-t-[#873512]" />
-          <span className="text-sm font-bold">
-            جارٍ التحقق من صلاحية الإدارة…
-          </span>
+          <span className="text-sm font-bold">جارٍ التحقق من صلاحية الإدارة…</span>
         </div>
       </main>
     );

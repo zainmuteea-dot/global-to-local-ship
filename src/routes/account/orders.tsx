@@ -1,17 +1,17 @@
-import { createFileRoute, Link } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
-import { ChevronLeft, Package, Plus, RefreshCw } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { useSession } from '@/hooks/use-session';
-import { AccountShell, EmptyState } from '@/components/AccountShell';
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { ChevronLeft, Package, Plus, RefreshCw } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useSession } from "@/hooks/use-session";
+import { AccountShell, EmptyState } from "@/components/AccountShell";
 
-export const Route = createFileRoute('/account/orders')({
+export const Route = createFileRoute("/account/orders")({
   head: () => ({
     meta: [
-      { title: 'طلباتي — السوق الشامل' },
+      { title: "طلباتي — السوق الشامل" },
       {
-        name: 'description',
-        content: 'كل طلباتك وحالتها في السوق الشامل.',
+        name: "description",
+        content: "كل طلباتك وحالتها في السوق الشامل.",
       },
     ],
   }),
@@ -28,21 +28,21 @@ type OrderRow = {
 };
 
 const statusLabels: Record<string, string> = {
-  new: 'جديد',
-  reviewing: 'قيد المراجعة',
-  purchased: 'تم الشراء',
-  warehouse_china: 'مستودع الصين',
-  international_ship: 'شحن دولي',
-  shipped: 'تم الشحن',
-  delivered: 'تم التسليم',
-  cancelled: 'ملغي',
+  new: "جديد",
+  reviewing: "قيد المراجعة",
+  purchased: "تم الشراء",
+  warehouse_china: "مستودع الصين",
+  international_ship: "شحن دولي",
+  shipped: "تم الشحن",
+  delivered: "تم التسليم",
+  cancelled: "ملغي",
 };
 
 function OrdersPage() {
   const { user, loading: sessionLoading } = useSession();
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
@@ -54,19 +54,18 @@ function OrdersPage() {
       return;
     }
 
+    const userId = user.id;
     let isActive = true;
 
     async function loadOrders() {
       setLoading(true);
-      setError('');
+      setError("");
 
       const { data, error: queryError } = await supabase
-        .from('orders')
-        .select(
-          'id,tracking_code,status,product_name,product_link,created_at',
-        )
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+        .from("orders")
+        .select("id,tracking_code,status,product_name,product_link,created_at")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false });
 
       if (!isActive) return;
 
@@ -91,9 +90,7 @@ function OrdersPage() {
     <AccountShell title="طلباتي">
       <section className="rounded-3xl bg-card p-4 ring-1 ring-border">
         <div className="mb-3 flex items-center justify-between">
-          <p className="font-display font-black text-cocoadeep">
-            {orders.length} طلب
-          </p>
+          <p className="font-display font-black text-cocoadeep">{orders.length} طلب</p>
 
           <Link
             to="/new-order"
@@ -105,10 +102,7 @@ function OrdersPage() {
         </div>
 
         {loading ? (
-          <div
-            role="status"
-            className="py-8 text-center text-sm text-muted-foreground"
-          >
+          <div role="status" className="py-8 text-center text-sm text-muted-foreground">
             جارٍ تحميل طلباتك…
           </div>
         ) : error ? (
@@ -133,7 +127,7 @@ function OrdersPage() {
         ) : (
           <div className="space-y-2">
             {orders.map((order) => {
-              const status = order.status ?? '';
+              const status = order.status ?? "";
               const content = (
                 <>
                   <Package className="size-5 shrink-0 text-clay" />
@@ -143,24 +137,22 @@ function OrdersPage() {
                       dir="ltr"
                       className="text-right font-display text-sm font-black text-cocoadeep"
                     >
-                      {order.tracking_code || 'طلب بدون رمز تتبع'}
+                      {order.tracking_code || "طلب بدون رمز تتبع"}
                     </p>
 
                     <p className="truncate text-[11px] text-muted-foreground">
-                      {order.product_name ||
-                        order.product_link ||
-                        'طلب تسوق'}
+                      {order.product_name || order.product_link || "طلب تسوق"}
                     </p>
 
                     {order.created_at && (
                       <p className="mt-1 text-[10px] text-muted-foreground">
-                        {new Date(order.created_at).toLocaleDateString('ar')}
+                        {new Date(order.created_at).toLocaleDateString("ar")}
                       </p>
                     )}
                   </div>
 
                   <span className="shrink-0 rounded-full bg-secondary px-2.5 py-1 text-[11px] font-bold text-clay">
-                    {statusLabels[status] || status || 'غير محدد'}
+                    {statusLabels[status] || status || "غير محدد"}
                   </span>
 
                   {order.tracking_code && (

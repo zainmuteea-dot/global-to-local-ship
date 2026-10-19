@@ -34,9 +34,15 @@ function AccountSuccessPage() {
           <ShieldCheck className="w-3.5 h-3.5" /> تم التحقق بنجاح
         </span>
         <h1 className="text-2xl font-black text-[#2B1E16] mb-2">أهلاً بك، {userName}!</h1>
-        <p className="text-sm text-[#7D6E63] mb-8">تم إنشاء حسابك بنجاح. جاهز الآن للطلب وتتبع شحناتك.</p>
-        <button onClick={() => navigate({ to: "/my-account" })} className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-[#4A3728] to-[#8B5E3C] text-white font-bold flex items-center justify-center gap-2">
-          <span>الانتقال إلى إدارة الحساب</span><ArrowLeft className="w-4 h-4" />
+        <p className="text-sm text-[#7D6E63] mb-8">
+          تم إنشاء حسابك بنجاح. جاهز الآن للطلب وتتبع شحناتك.
+        </p>
+        <button
+          onClick={() => navigate({ to: "/my-account" })}
+          className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-[#4A3728] to-[#8B5E3C] text-white font-bold flex items-center justify-center gap-2"
+        >
+          <span>الانتقال إلى إدارة الحساب</span>
+          <ArrowLeft className="w-4 h-4" />
         </button>
         <p className="text-xs text-[#A89F91] mt-4 animate-pulse">سيتم تحويلك تلقائياً...</p>
       </div>

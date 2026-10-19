@@ -150,7 +150,8 @@ function AddressesPage() {
     }
   };
 
-  const field = "mt-1 w-full rounded-2xl bg-background px-4 py-3 text-sm text-cocoadeep outline-none ring-1 ring-border focus:ring-2 focus:ring-cocoa";
+  const field =
+    "mt-1 w-full rounded-2xl bg-background px-4 py-3 text-sm text-cocoadeep outline-none ring-1 ring-border focus:ring-2 focus:ring-cocoa";
 
   return (
     <AccountShell title="إدارة العناوين">
@@ -163,7 +164,10 @@ function AddressesPage() {
           <button
             type="button"
             disabled={!user || busy}
-            onClick={() => { setErr(""); setStep("locate"); }}
+            onClick={() => {
+              setErr("");
+              setStep("locate");
+            }}
             className="flex items-center gap-1 rounded-xl bg-cocoa px-4 py-2.5 text-xs font-bold text-cream shadow disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Plus className="size-4" /> أضف عنوان
@@ -186,32 +190,50 @@ function AddressesPage() {
 
         <div className="mt-5 space-y-2">
           {sessionLoading || loading ? (
-            <p role="status" className="py-8 text-center text-sm text-muted-foreground">جارٍ تحميل العناوين…</p>
+            <p role="status" className="py-8 text-center text-sm text-muted-foreground">
+              جارٍ تحميل العناوين…
+            </p>
           ) : list.length === 0 && user && !pageError ? (
-            <EmptyState icon={<Map className="size-6" />} title="لا يوجد لديك أي عنوان" text="أضف عنوانك لنتمكن من توصيل شحناتك بكل سهولة وسرعة." />
-          ) : list.map((address) => (
-            <div key={address.id} className="flex items-start gap-3 rounded-2xl bg-background p-3 ring-1 ring-border">
-              <MapPin className="mt-0.5 size-5 shrink-0 text-clay" />
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-bold text-cocoadeep">{address.label} · {address.city}</p>
-                <p className="text-xs text-muted-foreground">{address.details}</p>
-                {address.latitude != null && address.longitude != null && (
-                  <a className="text-[11px] font-bold text-clay" target="_blank" rel="noreferrer" href={`https://maps.google.com/?q=${address.latitude},${address.longitude}`}>
-                    عرض على الخريطة
-                  </a>
-                )}
-              </div>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void remove(address)}
-                aria-label={`حذف العنوان ${address.label}`}
-                className="text-destructive disabled:opacity-50"
+            <EmptyState
+              icon={<Map className="size-6" />}
+              title="لا يوجد لديك أي عنوان"
+              text="أضف عنوانك لنتمكن من توصيل شحناتك بكل سهولة وسرعة."
+            />
+          ) : (
+            list.map((address) => (
+              <div
+                key={address.id}
+                className="flex items-start gap-3 rounded-2xl bg-background p-3 ring-1 ring-border"
               >
-                <Trash2 className="size-4" />
-              </button>
-            </div>
-          ))}
+                <MapPin className="mt-0.5 size-5 shrink-0 text-clay" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-cocoadeep">
+                    {address.label} · {address.city}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{address.details}</p>
+                  {address.latitude != null && address.longitude != null && (
+                    <a
+                      className="text-[11px] font-bold text-clay"
+                      target="_blank"
+                      rel="noreferrer"
+                      href={`https://maps.google.com/?q=${address.latitude},${address.longitude}`}
+                    >
+                      عرض على الخريطة
+                    </a>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void remove(address)}
+                  aria-label={`حذف العنوان ${address.label}`}
+                  className="text-destructive disabled:opacity-50"
+                >
+                  <Trash2 className="size-4" />
+                </button>
+              </div>
+            ))
+          )}
         </div>
       </div>
 
@@ -220,11 +242,27 @@ function AddressesPage() {
           <div dir="rtl" className="w-full max-w-sm rounded-3xl bg-card p-6 shadow-xl">
             {step === "locate" ? (
               <div className="text-center">
-                <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-cocoa text-cream"><MapPin className="size-7" /></span>
-                <p className="mt-4 text-sm font-bold leading-7 text-cocoadeep">لضمان وصول الطلب إلى المكان الصحيح، اسمح للمتصفح باستخدام موقعك الحالي.</p>
+                <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-cocoa text-cream">
+                  <MapPin className="size-7" />
+                </span>
+                <p className="mt-4 text-sm font-bold leading-7 text-cocoadeep">
+                  لضمان وصول الطلب إلى المكان الصحيح، اسمح للمتصفح باستخدام موقعك الحالي.
+                </p>
                 <div className="mt-5 flex gap-2">
-                  <button type="button" onClick={locate} className="flex flex-1 items-center justify-center gap-1.5 rounded-2xl bg-cocoa py-3 text-sm font-bold text-cream"><Crosshair className="size-4" /> استخدام موقعي</button>
-                  <button type="button" onClick={() => setStep("form")} className="flex items-center gap-1 rounded-2xl bg-background px-4 text-sm font-bold text-cocoa ring-1 ring-border"><X className="size-4" /> تخطي</button>
+                  <button
+                    type="button"
+                    onClick={locate}
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-2xl bg-cocoa py-3 text-sm font-bold text-cream"
+                  >
+                    <Crosshair className="size-4" /> استخدام موقعي
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStep("form")}
+                    className="flex items-center gap-1 rounded-2xl bg-background px-4 text-sm font-bold text-cocoa ring-1 ring-border"
+                  >
+                    <X className="size-4" /> تخطي
+                  </button>
                 </div>
               </div>
             ) : (
@@ -232,15 +270,50 @@ function AddressesPage() {
                 <p className="font-display font-black text-cocoadeep">عنوان جديد</p>
                 {coords && <p className="mt-1 text-[11px] font-bold text-clay">تم تحديد موقعك ✓</p>}
                 <label className="mt-3 block text-xs font-bold text-cocoa">اسم العنوان</label>
-                <input value={form.label} onChange={(event) => setForm({ ...form, label: event.target.value })} className={field} />
+                <input
+                  value={form.label}
+                  onChange={(event) => setForm({ ...form, label: event.target.value })}
+                  className={field}
+                />
                 <label className="mt-3 block text-xs font-bold text-cocoa">المدينة</label>
-                <input value={form.city} onChange={(event) => setForm({ ...form, city: event.target.value })} placeholder="صنعاء" className={field} />
+                <input
+                  value={form.city}
+                  onChange={(event) => setForm({ ...form, city: event.target.value })}
+                  placeholder="صنعاء"
+                  className={field}
+                />
                 <label className="mt-3 block text-xs font-bold text-cocoa">التفاصيل</label>
-                <textarea value={form.details} onChange={(event) => setForm({ ...form, details: event.target.value })} placeholder="الحي، الشارع، أقرب معلم" rows={3} className={field} />
-                {err && <p role="alert" className="mt-2 text-xs font-bold text-destructive">{err}</p>}
+                <textarea
+                  value={form.details}
+                  onChange={(event) => setForm({ ...form, details: event.target.value })}
+                  placeholder="الحي، الشارع، أقرب معلم"
+                  rows={3}
+                  className={field}
+                />
+                {err && (
+                  <p role="alert" className="mt-2 text-xs font-bold text-destructive">
+                    {err}
+                  </p>
+                )}
                 <div className="mt-4 flex gap-2">
-                  <button type="button" onClick={() => void save()} disabled={busy} className="flex-1 rounded-2xl bg-cocoa py-3 text-sm font-bold text-cream disabled:opacity-50">{busy ? "جارٍ الحفظ…" : "حفظ العنوان"}</button>
-                  <button type="button" onClick={() => { setStep(null); setErr(""); }} className="rounded-2xl bg-background px-4 text-sm font-bold text-cocoa ring-1 ring-border">إلغاء</button>
+                  <button
+                    type="button"
+                    onClick={() => void save()}
+                    disabled={busy}
+                    className="flex-1 rounded-2xl bg-cocoa py-3 text-sm font-bold text-cream disabled:opacity-50"
+                  >
+                    {busy ? "جارٍ الحفظ…" : "حفظ العنوان"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStep(null);
+                      setErr("");
+                    }}
+                    className="rounded-2xl bg-background px-4 text-sm font-bold text-cocoa ring-1 ring-border"
+                  >
+                    إلغاء
+                  </button>
                 </div>
               </div>
             )}

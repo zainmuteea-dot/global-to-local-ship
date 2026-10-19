@@ -10,11 +10,18 @@ export function AccountsTreeModal({ onClose }: { onClose: () => void }) {
               <FolderTree className="w-5 h-5 text-orange-300" />
             </div>
             <div>
-              <h3 className="text-base font-black text-[#0A2540]">شجرة الحسابات المحاسبية العامة</h3>
-              <p className="text-xs text-slate-500">الدليل المحاسبي الشامل لعمليات الاستيراد والطرود</p>
+              <h3 className="text-base font-black text-[#0A2540]">
+                شجرة الحسابات المحاسبية العامة
+              </h3>
+              <p className="text-xs text-slate-500">
+                الدليل المحاسبي الشامل لعمليات الاستيراد والطرود
+              </p>
             </div>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 cursor-pointer">
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 cursor-pointer"
+          >
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -56,7 +63,10 @@ export function AccountsTreeModal({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="pt-3 border-t border-slate-100 flex items-center justify-end">
-          <button onClick={onClose} className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#0F4C81] to-[#0284C7] text-white text-xs font-bold shadow-sm">
+          <button
+            onClick={onClose}
+            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#0F4C81] to-[#0284C7] text-white text-xs font-bold shadow-sm"
+          >
             إغلاق الدليل
           </button>
         </div>

@@ -1,5 +1,5 @@
-import { createFileRoute, Link } from '@tanstack/react-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
   Bell,
@@ -16,75 +16,75 @@ import {
   Volume2,
   VolumeX,
   Warehouse,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { findTrackedOrder } from '@/lib/order-tracking.functions';
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { findTrackedOrder } from "@/lib/order-tracking.functions";
 
-export const Route = createFileRoute('/track/$trackingCode')({
-  head: () => ({ meta: [{ title: 'مسار الشحنة — السوق الشامل' }] }),
+export const Route = createFileRoute("/track/$trackingCode")({
+  head: () => ({ meta: [{ title: "مسار الشحنة — السوق الشامل" }] }),
   component: TrackingDetailPage,
 });
 
 const STEPS = [
   {
-    key: 'new',
-    title: 'استلام الطلب والتدقيق',
-    location: 'مكتب الاستقبال المركزي',
-    desc: 'تسجيل الطلب وتدقيق روابط السلع والكميات والمقاسات والألوان.',
+    key: "new",
+    title: "استلام الطلب والتدقيق",
+    location: "مكتب الاستقبال المركزي",
+    desc: "تسجيل الطلب وتدقيق روابط السلع والكميات والمقاسات والألوان.",
     icon: Package,
   },
   {
-    key: 'payment_review',
-    title: 'التدقيق المالي والدفع',
-    location: 'قسم الحسابات والوساطة',
-    desc: 'حساب التكلفة والعملات وتأكيد استلام الدفعة.',
+    key: "payment_review",
+    title: "التدقيق المالي والدفع",
+    location: "قسم الحسابات والوساطة",
+    desc: "حساب التكلفة والعملات وتأكيد استلام الدفعة.",
     icon: CreditCard,
   },
   {
-    key: 'purchased',
-    title: 'الشراء من المتجر الدولي',
-    location: 'الصين / أمريكا / الإمارات / تركيا',
-    desc: 'إتمام الشراء وإصدار كود الشحن وفاتورة المورد.',
+    key: "purchased",
+    title: "الشراء من المتجر الدولي",
+    location: "الصين / أمريكا / الإمارات / تركيا",
+    desc: "إتمام الشراء وإصدار كود الشحن وفاتورة المورد.",
     icon: ShoppingBag,
   },
   {
-    key: 'international_warehouse',
-    title: 'وصول مستودع التجميع الدولي',
-    location: 'كوانزو / دبي / الرياض',
-    desc: 'فحص الجودة ومطابقة الوزن والتغليف الآمن.',
+    key: "international_warehouse",
+    title: "وصول مستودع التجميع الدولي",
+    location: "كوانزو / دبي / الرياض",
+    desc: "فحص الجودة ومطابقة الوزن والتغليف الآمن.",
     icon: Warehouse,
   },
   {
-    key: 'international_transit',
-    title: 'الشحن الدولي في الترانزيت',
-    location: 'في الطريق إلى الجمهورية اليمنية',
-    desc: 'انطلاق الشحن الجوي أو البحري نحو اليمن.',
+    key: "international_transit",
+    title: "الشحن الدولي في الترانزيت",
+    location: "في الطريق إلى الجمهورية اليمنية",
+    desc: "انطلاق الشحن الجوي أو البحري نحو اليمن.",
     icon: Plane,
   },
   {
-    key: 'customs_local',
-    title: 'الجمارك والفرز بالمستودع المحلي',
-    location: 'صنعاء / عدن',
-    desc: 'التخليص الجمركي والفرز حسب المحافظات والمدن.',
+    key: "customs_local",
+    title: "الجمارك والفرز بالمستودع المحلي",
+    location: "صنعاء / عدن",
+    desc: "التخليص الجمركي والفرز حسب المحافظات والمدن.",
     icon: MapPin,
   },
   {
-    key: 'out_for_delivery',
-    title: 'جاري التوصيل مع المندوب',
-    location: 'مندوب التوصيل الميداني',
-    desc: 'خرجت الشحنة مع المندوب إلى عنوان العميل.',
+    key: "out_for_delivery",
+    title: "جاري التوصيل مع المندوب",
+    location: "مندوب التوصيل الميداني",
+    desc: "خرجت الشحنة مع المندوب إلى عنوان العميل.",
     icon: Truck,
   },
   {
-    key: 'delivered',
-    title: 'تم التسليم للعميل بنجاح',
-    location: 'عنوان العميل النهائي',
-    desc: 'تم استلام الطرد وإغلاق الطلب.',
+    key: "delivered",
+    title: "تم التسليم للعميل بنجاح",
+    location: "عنوان العميل النهائي",
+    desc: "تم استلام الطرد وإغلاق الطلب.",
     icon: Home,
   },
 ] as const;
 
-type StepCode = (typeof STEPS)[number]['key'];
+type StepCode = (typeof STEPS)[number]["key"];
 type TrackedOrder = {
   trackingCode: string;
   status: string;
@@ -96,20 +96,20 @@ type TrackedOrder = {
 const stepCodes: StepCode[] = STEPS.map((step) => step.key);
 
 function getStepIndex(rawStatus: string): number {
-  const status = (rawStatus || '').trim().toLowerCase();
+  const status = (rawStatus || "").trim().toLowerCase();
   const legacyStatuses: Record<string, StepCode> = {
-    جديد: 'new',
-    reviewing: 'new',
-    'قيد المراجعة': 'new',
-    'قيد الشراء والتجهيز': 'purchased',
-    warehouse_china: 'international_warehouse',
-    'المستودع الدولي': 'international_warehouse',
-    international_ship: 'international_transit',
-    shipped: 'international_transit',
-    'شحن دولي': 'international_transit',
-    local_warehouse: 'customs_local',
-    'الفرز والتوصيل': 'customs_local',
-    'تم التسليم': 'delivered',
+    جديد: "new",
+    reviewing: "new",
+    "قيد المراجعة": "new",
+    "قيد الشراء والتجهيز": "purchased",
+    warehouse_china: "international_warehouse",
+    "المستودع الدولي": "international_warehouse",
+    international_ship: "international_transit",
+    shipped: "international_transit",
+    "شحن دولي": "international_transit",
+    local_warehouse: "customs_local",
+    "الفرز والتوصيل": "customs_local",
+    "تم التسليم": "delivered",
   };
   const normalized = legacyStatuses[status] ?? status;
   const index = stepCodes.indexOf(normalized as StepCode);
@@ -119,7 +119,8 @@ function getStepIndex(rawStatus: string): number {
 function playNotificationSound() {
   try {
     const AudioContextClass =
-      window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      window.AudioContext ||
+      (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!AudioContextClass) return;
 
     const context = new AudioContextClass();
@@ -128,7 +129,7 @@ function playNotificationSound() {
       const oscillator = context.createOscillator();
       const gain = context.createGain();
       const offset = index * 0.16;
-      oscillator.type = 'sine';
+      oscillator.type = "sine";
       oscillator.frequency.value = frequency;
       gain.gain.setValueAtTime(0.0001, startAt + offset);
       gain.gain.exponentialRampToValueAtTime(0.13, startAt + offset + 0.025);
@@ -145,21 +146,21 @@ function playNotificationSound() {
 }
 
 function formatDate(value: string | null | undefined): string {
-  if (!value) return 'غير متاح';
+  if (!value) return "غير متاح";
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? 'غير متاح' : date.toLocaleDateString('ar-YE');
+  return Number.isNaN(date.getTime()) ? "غير متاح" : date.toLocaleDateString("ar-YE");
 }
 
 function TrackingDetailPage() {
   const { trackingCode } = Route.useParams();
-  const [phoneInput, setPhoneInput] = useState('');
-  const [verifiedPhone, setVerifiedPhone] = useState('');
+  const [phoneInput, setPhoneInput] = useState("");
+  const [verifiedPhone, setVerifiedPhone] = useState("");
   const [order, setOrder] = useState<TrackedOrder | null>(null);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState('');
-  const [refreshError, setRefreshError] = useState('');
-  const [banner, setBanner] = useState('');
+  const [error, setError] = useState("");
+  const [refreshError, setRefreshError] = useState("");
+  const [banner, setBanner] = useState("");
   const [soundOn, setSoundOn] = useState(false);
   const previousStatus = useRef<string | null>(null);
   const refreshInFlight = useRef(false);
@@ -167,7 +168,7 @@ function TrackingDetailPage() {
   const lookupOrder = useCallback(
     async (phone: string, isInitialLookup: boolean) => {
       if (!trackingCode?.trim()) {
-        setError('رقم التتبع غير موجود في الرابط.');
+        setError("رقم التتبع غير موجود في الرابط.");
         return;
       }
       if (!isInitialLookup && refreshInFlight.current) return;
@@ -189,9 +190,9 @@ function TrackingDetailPage() {
           if (isInitialLookup) {
             setOrder(null);
             previousStatus.current = null;
-            setError('لم نجد شحنة تطابق رقم التتبع ورقم الهاتف. تحقق منهما وحاول مجدداً.');
+            setError("لم نجد شحنة تطابق رقم التتبع ورقم الهاتف. تحقق منهما وحاول مجدداً.");
           } else {
-            setRefreshError('تعذر تحديث حالة الشحنة الآن. سنحاول مجدداً تلقائياً.');
+            setRefreshError("تعذر تحديث حالة الشحنة الآن. سنحاول مجدداً تلقائياً.");
           }
           return;
         }
@@ -205,18 +206,20 @@ function TrackingDetailPage() {
         };
 
         if (previousStatus.current && previousStatus.current !== safeOrder.status) {
-          setBanner(`تحديث جديد: ${STEPS[getStepIndex(safeOrder.status)].title}`);
+          setBanner(
+            `تحديث جديد: ${STEPS[getStepIndex(safeOrder.status)]?.title ?? "تحديث الحالة"}`,
+          );
           if (soundOn) playNotificationSound();
         }
         previousStatus.current = safeOrder.status;
         setOrder(safeOrder);
-        setError('');
-        setRefreshError('');
+        setError("");
+        setRefreshError("");
       } catch {
         if (isInitialLookup) {
-          setError('تعذر التحقق من الشحنة حالياً. تحقق من اتصالك وحاول مرة أخرى.');
+          setError("تعذر التحقق من الشحنة حالياً. تحقق من اتصالك وحاول مرة أخرى.");
         } else {
-          setRefreshError('تعذر تحديث حالة الشحنة الآن. سنحاول مجدداً تلقائياً.');
+          setRefreshError("تعذر تحديث حالة الشحنة الآن. سنحاول مجدداً تلقائياً.");
         }
       } finally {
         if (isInitialLookup) setLoading(false);
@@ -233,10 +236,10 @@ function TrackingDetailPage() {
     event.preventDefault();
     const phone = phoneInput.trim();
     if (phone.length < 9 || phone.length > 30) {
-      setError('أدخل رقم الهاتف المرتبط بالطلب، من 9 إلى 30 خانة.');
+      setError("أدخل رقم الهاتف المرتبط بالطلب، من 9 إلى 30 خانة.");
       return;
     }
-    setError('');
+    setError("");
     setLoading(true);
     setVerifiedPhone(phone);
     void lookupOrder(phone, true);
@@ -252,17 +255,17 @@ function TrackingDetailPage() {
 
   useEffect(() => {
     if (!banner) return;
-    const timer = window.setTimeout(() => setBanner(''), 10_000);
+    const timer = window.setTimeout(() => setBanner(""), 10_000);
     return () => window.clearTimeout(timer);
   }, [banner]);
 
   const startOver = () => {
     setOrder(null);
-    setVerifiedPhone('');
-    setPhoneInput('');
-    setError('');
-    setRefreshError('');
-    setBanner('');
+    setVerifiedPhone("");
+    setPhoneInput("");
+    setError("");
+    setRefreshError("");
+    setBanner("");
     previousStatus.current = null;
   };
 
@@ -299,15 +302,19 @@ function TrackingDetailPage() {
               onChange={(event) => setPhoneInput(event.target.value)}
               placeholder="مثال: 7XXXXXXXX أو +9677XXXXXXXX"
               className="w-full rounded-xl border border-[#dfd4c3] bg-white px-4 py-3 text-left outline-none transition focus:border-[#8B5E34] focus:ring-2 focus:ring-[#8B5E34]/20"
-              aria-describedby={error ? 'tracking-error' : undefined}
+              aria-describedby={error ? "tracking-error" : undefined}
             />
             {error && (
               <p id="tracking-error" role="alert" className="text-sm font-medium text-red-700">
                 {error}
               </p>
             )}
-            <Button type="submit" disabled={loading} className="w-full rounded-xl bg-[#8B5E34] hover:bg-[#704820]">
-              {loading ? 'جارٍ التحقق...' : 'عرض مسار الشحنة'}
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-xl bg-[#8B5E34] hover:bg-[#704820]"
+            >
+              {loading ? "جارٍ التحقق..." : "عرض مسار الشحنة"}
             </Button>
           </form>
           <Button asChild variant="outline" className="mt-3 w-full rounded-xl">
@@ -335,7 +342,7 @@ function TrackingDetailPage() {
               <Bell className="size-5 animate-pulse" aria-hidden="true" />
               {banner}
             </div>
-            <button onClick={() => setBanner('')} aria-label="إغلاق التنبيه" className="text-xl">
+            <button onClick={() => setBanner("")} aria-label="إغلاق التنبيه" className="text-xl">
               ×
             </button>
           </div>
@@ -344,7 +351,9 @@ function TrackingDetailPage() {
         <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#e8d7bb] bg-white p-4 shadow-sm">
           <div>
             <p className="text-xs text-slate-500">حالة الشحنة</p>
-            <h1 className="mt-1 font-black text-[#4A3728]">{STEPS[activeStep].title}</h1>
+            <h1 className="mt-1 font-black text-[#4A3728]">
+              {STEPS[activeStep]?.title ?? "قيد المتابعة"}
+            </h1>
             {refreshing && <p className="mt-1 text-xs text-slate-500">جارٍ تحديث الحالة...</p>}
           </div>
           <div className="flex gap-2">
@@ -357,10 +366,10 @@ function TrackingDetailPage() {
                 });
               }}
               className="flex items-center gap-1 rounded-xl border px-3 py-2 text-xs font-bold"
-              aria-label={soundOn ? 'إيقاف صوت التنبيه' : 'تفعيل صوت التنبيه'}
+              aria-label={soundOn ? "إيقاف صوت التنبيه" : "تفعيل صوت التنبيه"}
             >
               {soundOn ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
-              {soundOn ? 'الصوت مفعل' : 'تفعيل الصوت'}
+              {soundOn ? "الصوت مفعل" : "تفعيل الصوت"}
             </button>
             <button
               type="button"
@@ -375,7 +384,9 @@ function TrackingDetailPage() {
         <section className="mt-3 flex items-center justify-between rounded-2xl border border-[#e8d7bb] bg-white p-4">
           <div>
             <p className="text-xs text-slate-500">رقم الشحنة</p>
-            <p dir="ltr" className="font-mono font-black text-[#8B5E34]">{order.trackingCode}</p>
+            <p dir="ltr" className="font-mono font-black text-[#8B5E34]">
+              {order.trackingCode}
+            </p>
           </div>
           <div className="text-left">
             <p className="text-xs text-slate-500">نسبة الإنجاز</p>
@@ -390,13 +401,16 @@ function TrackingDetailPage() {
           aria-valuemax={100}
           aria-valuenow={progress}
         >
-          <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${progress}%` }} />
+          <div
+            className="h-full rounded-full bg-emerald-500 transition-all"
+            style={{ width: `${progress}%` }}
+          />
         </div>
 
         <section className="mt-4 grid grid-cols-2 gap-3 rounded-2xl border border-[#e8d7bb] bg-white p-4 text-sm">
           <div>
             <span className="text-xs text-slate-500">المنتج</span>
-            <p className="font-bold">{order.productName || 'شحنة'}</p>
+            <p className="font-bold">{order.productName || "شحنة"}</p>
           </div>
           <div>
             <span className="text-xs text-slate-500">تاريخ الطلب</span>
@@ -409,7 +423,10 @@ function TrackingDetailPage() {
         </section>
 
         {refreshError && (
-          <p role="status" className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          <p
+            role="status"
+            className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900"
+          >
             {refreshError}
           </p>
         )}
@@ -426,7 +443,7 @@ function TrackingDetailPage() {
                   {index < STEPS.length - 1 && (
                     <span
                       className={`absolute right-4 top-9 h-[calc(100%+12px)] w-0.5 ${
-                        index < activeStep ? 'bg-emerald-500' : 'bg-slate-200'
+                        index < activeStep ? "bg-emerald-500" : "bg-slate-200"
                       }`}
                       aria-hidden="true"
                     />
@@ -434,17 +451,19 @@ function TrackingDetailPage() {
                   <span
                     className={`relative z-10 grid size-9 shrink-0 place-items-center rounded-full ${
                       complete
-                        ? 'bg-emerald-600 text-white'
+                        ? "bg-emerald-600 text-white"
                         : current
-                          ? 'bg-[#8B5E34] text-white ring-4 ring-[#8B5E34]/20'
-                          : 'border bg-slate-100 text-slate-400'
+                          ? "bg-[#8B5E34] text-white ring-4 ring-[#8B5E34]/20"
+                          : "border bg-slate-100 text-slate-400"
                     }`}
                   >
                     {complete ? <Check className="size-4" /> : <Icon className="size-4" />}
                   </span>
-                  <div className={`flex-1 rounded-xl ${current ? 'border border-[#8B5E34]/20 bg-[#FAF4E6] p-3' : ''}`}>
+                  <div
+                    className={`flex-1 rounded-xl ${current ? "border border-[#8B5E34]/20 bg-[#FAF4E6] p-3" : ""}`}
+                  >
                     <div className="flex flex-wrap items-center gap-2">
-                      <b className={complete || current ? 'text-[#4A3728]' : 'text-slate-400'}>
+                      <b className={complete || current ? "text-[#4A3728]" : "text-slate-400"}>
                         {index + 1}. {step.title}
                       </b>
                       {current && (
@@ -463,7 +482,12 @@ function TrackingDetailPage() {
         </section>
 
         <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-          <Button type="button" variant="outline" onClick={startOver} className="rounded-xl bg-white">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={startOver}
+            className="rounded-xl bg-white"
+          >
             التحقق برقم هاتف آخر
           </Button>
           <Button asChild variant="outline" className="rounded-xl bg-white">

@@ -25,11 +25,51 @@ export interface ServicePrice {
 
 // أسعار الشحن الدولي الافتراضية لكل كجم
 const INTERNATIONAL_RATES = [
-  { id: "cn-air", country: "الصين", flag: "🇨🇳", type: "air", typeLabel: "شحن جوي سريع (7-12 يوم)", ratePerKg: 14, minKg: 0.5 },
-  { id: "cn-sea", country: "الصين", flag: "🇨🇳", type: "sea", typeLabel: "شحن بحري اقتصادي (25-35 يوم)", ratePerKg: 4.5, minKg: 5 },
-  { id: "tr-air", country: "تركيا", flag: "🇹🇷", type: "air", typeLabel: "شحن جوي سريع (5-8 أيام)", ratePerKg: 12, minKg: 0.5 },
-  { id: "us-air", country: "أمريكا", flag: "🇺🇸", type: "air", typeLabel: "شحن جوي سريع (7-10 أيام)", ratePerKg: 18, minKg: 0.5 },
-  { id: "ae-air", country: "الإمارات", flag: "🇦🇪", type: "air", typeLabel: "شحن جوي سريع (3-5 أيام)", ratePerKg: 9, minKg: 0.5 },
+  {
+    id: "cn-air",
+    country: "الصين",
+    flag: "🇨🇳",
+    type: "air",
+    typeLabel: "شحن جوي سريع (7-12 يوم)",
+    ratePerKg: 14,
+    minKg: 0.5,
+  },
+  {
+    id: "cn-sea",
+    country: "الصين",
+    flag: "🇨🇳",
+    type: "sea",
+    typeLabel: "شحن بحري اقتصادي (25-35 يوم)",
+    ratePerKg: 4.5,
+    minKg: 5,
+  },
+  {
+    id: "tr-air",
+    country: "تركيا",
+    flag: "🇹🇷",
+    type: "air",
+    typeLabel: "شحن جوي سريع (5-8 أيام)",
+    ratePerKg: 12,
+    minKg: 0.5,
+  },
+  {
+    id: "us-air",
+    country: "أمريكا",
+    flag: "🇺🇸",
+    type: "air",
+    typeLabel: "شحن جوي سريع (7-10 أيام)",
+    ratePerKg: 18,
+    minKg: 0.5,
+  },
+  {
+    id: "ae-air",
+    country: "الإمارات",
+    flag: "🇦🇪",
+    type: "air",
+    typeLabel: "شحن جوي سريع (3-5 أيام)",
+    ratePerKg: 9,
+    minKg: 0.5,
+  },
 ];
 
 // أسعار التوصيل الافتراضية للمحافظات اليمنية (بالريال اليمني)
@@ -58,7 +98,8 @@ function PricesPage() {
   const [showAddCity, setShowAddCity] = useState(false);
 
   // حساب التكاليف
-  const activeRoute = INTERNATIONAL_RATES.find((r) => r.id === selectedRoute)?? INTERNATIONAL_RATES[0]!;
+  const activeRoute =
+    INTERNATIONAL_RATES.find((r) => r.id === selectedRoute) ?? INTERNATIONAL_RATES[0]!;
   const effectiveWeight = Math.max(weight, activeRoute.minKg);
   const shippingCost = effectiveWeight * activeRoute.ratePerKg;
   const customsEstimated = Number((declaredValue * 0.05).toFixed(1)); // تقدير 5% جمارك ورسوم
@@ -89,8 +130,10 @@ function PricesPage() {
   };
 
   return (
-    <div dir="rtl" className="min-h-screen bg-gradient-to-b from-[#F0F7FF] via-[#F8FAFC] to-[#FFF9F5] text-slate-800 font-sans pb-16">
-      
+    <div
+      dir="rtl"
+      className="min-h-screen bg-gradient-to-b from-[#F0F7FF] via-[#F8FAFC] to-[#FFF9F5] text-slate-800 font-sans pb-16"
+    >
       {/* 1. الشريط العلوي */}
       <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-sky-100 shadow-xs">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
@@ -108,7 +151,9 @@ function PricesPage() {
                 <Calculator className="size-5 text-[#EA580C]" />
                 الأسعار وأجور الشحن والتوصيل
               </h1>
-              <p className="text-[11px] font-semibold text-slate-500">حاسبة الشحن الدولي ودليل توصيل المحافظات</p>
+              <p className="text-[11px] font-semibold text-slate-500">
+                حاسبة الشحن الدولي ودليل توصيل المحافظات
+              </p>
             </div>
           </div>
 
@@ -120,7 +165,6 @@ function PricesPage() {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 mt-6 space-y-6">
-        
         {/* 2. حاسبة الشحن الدولي التفاعلية */}
         <section className="bg-white rounded-3xl p-6 border border-sky-100 shadow-sm shadow-sky-900/5">
           <div className="flex items-center justify-between mb-5">
@@ -129,18 +173,23 @@ function PricesPage() {
                 <Globe2 className="size-5" />
               </div>
               <div>
-                <h2 className="text-lg font-black text-slate-900">حاسبة تكلفة الشحن الدولي التقديرية</h2>
-                <p className="text-xs text-slate-500">اختر بلد المصدر والوزن لحساب الشحن والعمولة والجمارك</p>
+                <h2 className="text-lg font-black text-slate-900">
+                  حاسبة تكلفة الشحن الدولي التقديرية
+                </h2>
+                <p className="text-xs text-slate-500">
+                  اختر بلد المصدر والوزن لحساب الشحن والعمولة والجمارك
+                </p>
               </div>
             </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            
             {/* مدخلات الحاسبة */}
             <div className="lg:col-span-7 space-y-4">
               <div>
-                <label className="block text-xs font-black text-slate-700 mb-2">بلد المصدر ونوع الشحن:</label>
+                <label className="block text-xs font-black text-slate-700 mb-2">
+                  بلد المصدر ونوع الشحن:
+                </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   {INTERNATIONAL_RATES.map((rate) => {
                     const isSelected = rate.id === selectedRoute;
@@ -170,7 +219,9 @@ function PricesPage() {
                           </div>
                         </div>
                         <div className="text-left font-mono">
-                          <span className="text-xs font-black text-[#EA580C]">${rate.ratePerKg}</span>
+                          <span className="text-xs font-black text-[#EA580C]">
+                            ${rate.ratePerKg}
+                          </span>
                           <span className="text-[10px] text-slate-400">/كجم</span>
                         </div>
                       </button>
@@ -209,7 +260,9 @@ function PricesPage() {
                     onChange={(e) => setDeclaredValue(Math.max(1, Number(e.target.value) || 1))}
                     className="w-full h-11 px-3 rounded-xl border border-slate-200 focus:border-[#0F4C81] focus:ring-2 focus:ring-sky-100 font-mono text-sm font-bold text-center outline-none"
                   />
-                  <span className="text-[10px] text-slate-400 mt-1 block">تستخدم لاحتساب الجمارك التقريبية (5%)</span>
+                  <span className="text-[10px] text-slate-400 mt-1 block">
+                    تستخدم لاحتساب الجمارك التقريبية (5%)
+                  </span>
                 </div>
               </div>
             </div>
@@ -235,7 +288,9 @@ function PricesPage() {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sky-200">عمولة وسيط السوق الشامل الثابتة:</span>
-                    <span className="font-mono font-bold text-amber-300">${brokerageFee.toFixed(2)}</span>
+                    <span className="font-mono font-bold text-amber-300">
+                      ${brokerageFee.toFixed(2)}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -244,7 +299,9 @@ function PricesPage() {
               <div className="mt-5 pt-4 border-t border-sky-800/80 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-black text-orange-400">الإجمالي بالدولار:</span>
-                  <span className="text-2xl font-black font-mono text-white">${totalUSD.toFixed(2)}</span>
+                  <span className="text-2xl font-black font-mono text-white">
+                    ${totalUSD.toFixed(2)}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between text-xs text-sky-200 font-mono">
                   <span>ما يعادل بالريال السعودي:</span>
@@ -256,7 +313,6 @@ function PricesPage() {
                 </div>
               </div>
             </div>
-
           </div>
         </section>
 
@@ -268,8 +324,12 @@ function PricesPage() {
                 <MapPin className="size-5" />
               </div>
               <div>
-                <h2 className="text-lg font-black text-slate-900">أسعار التوصيل الداخلي للمحافظات</h2>
-                <p className="text-xs text-slate-500">أجور توصيل الطرد لباب بيت العميل بعد وصوله لصنعاء أو عدن</p>
+                <h2 className="text-lg font-black text-slate-900">
+                  أسعار التوصيل الداخلي للمحافظات
+                </h2>
+                <p className="text-xs text-slate-500">
+                  أجور توصيل الطرد لباب بيت العميل بعد وصوله لصنعاء أو عدن
+                </p>
               </div>
             </div>
 
@@ -286,7 +346,9 @@ function PricesPage() {
           {showAddCity && (
             <div className="mb-4 p-4 rounded-2xl bg-slate-50 border border-slate-200 grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 mb-1">اسم المحافظة / المنطقة:</label>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                  اسم المحافظة / المنطقة:
+                </label>
                 <input
                   type="text"
                   placeholder="مثال: شبوة"
@@ -296,7 +358,9 @@ function PricesPage() {
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 mb-1">سعر التوصيل (ريال يمني):</label>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                  سعر التوصيل (ريال يمني):
+                </label>
                 <input
                   type="number"
                   placeholder="مثال: 4500"
@@ -306,7 +370,9 @@ function PricesPage() {
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 mb-1">مدة التوصيل المقدرة:</label>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                  مدة التوصيل المقدرة:
+                </label>
                 <input
                   type="text"
                   placeholder="مثال: 48 ساعة"
@@ -361,7 +427,6 @@ function PricesPage() {
             </table>
           </div>
         </section>
-
       </main>
     </div>
   );
@@ -371,7 +436,10 @@ export const Route = createFileRoute("/prices")({
   head: () => ({
     meta: [
       { title: "الأسعار وأجور الشحن والتوصيل | السوق الشامل" },
-      { name: "description", content: "حاسبة الشحن الدولي ودليل أسعار التوصيل لجميع المحافظات اليمنية." },
+      {
+        name: "description",
+        content: "حاسبة الشحن الدولي ودليل أسعار التوصيل لجميع المحافظات اليمنية.",
+      },
     ],
   }),
   component: PricesPage,

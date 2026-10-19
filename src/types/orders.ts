@@ -1,12 +1,12 @@
 export type OrderStatus =
-  | 'new'
-  | 'reviewing'
-  | 'purchased'
-  | 'warehouse_china'
-  | 'international_ship'
-  | 'shipped'
-  | 'delivered'
-  | 'cancelled';
+  | "new"
+  | "reviewing"
+  | "purchased"
+  | "warehouse_china"
+  | "international_ship"
+  | "shipped"
+  | "delivered"
+  | "cancelled";
 
 export interface OrderItem {
   id: string;

@@ -51,10 +51,14 @@ Deno.serve(async (req) => {
   } catch {
     return json(400, { error: "بيانات الطلب غير صالحة." });
   }
-  if (typeof userId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId)) {
+  if (
+    typeof userId !== "string" ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId)
+  ) {
     return json(400, { error: "معرّف المستخدم غير صالح." });
   }
-  if (userId === authData.user.id) return json(400, { error: "لا يمكن حذف حساب المدير الذي يستخدم الصفحة." });
+  if (userId === authData.user.id)
+    return json(400, { error: "لا يمكن حذف حساب المدير الذي يستخدم الصفحة." });
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -70,7 +74,10 @@ Deno.serve(async (req) => {
   if (!targetRoles?.length) return json(404, { error: "الحساب غير موجود ضمن الموظفين." });
 
   if (targetRoles.some((row) => row.role === "admin")) {
-    return json(409, { error: "لا يُحذف حساب المدير مباشرة. غيّر دوره إلى موظف أولاً؛ قاعدة البيانات تمنع خفض آخر مدير." });
+    return json(409, {
+      error:
+        "لا يُحذف حساب المدير مباشرة. غيّر دوره إلى موظف أولاً؛ قاعدة البيانات تمنع خفض آخر مدير.",
+    });
   }
 
   const { error: deleteError } = await adminClient.auth.admin.deleteUser(userId, false);

@@ -35,7 +35,7 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({ error }: { error: Error }) {
+function ErrorComponent({ error }: { error: unknown }) {
   console.error(error);
   const router = useRouter();
   useEffect(() => {
@@ -78,7 +78,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "السوق الشامل | AL SHAMEL SHOPPING" },
-      { name: "description", content: "وسيطكم العالمي للتسوق من TEMU وSHEIN وAmazon وAliExpress مع التوصيل لباب البيت في اليمن" },
+      {
+        name: "description",
+        content:
+          "وسيطكم العالمي للتسوق من TEMU وSHEIN وAmazon وAliExpress مع التوصيل لباب البيت في اليمن",
+      },
       { property: "og:title", content: "السوق الشامل | AL SHAMEL SHOPPING" },
       { property: "og:description", content: "تسوق عالمياً واستلم محلياً — وسيط شراء يمني موثوق" },
       { property: "og:type", content: "website" },
@@ -123,8 +127,8 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
     }
   }, []);
 

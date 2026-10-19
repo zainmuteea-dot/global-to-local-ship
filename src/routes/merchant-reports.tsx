@@ -1,6 +1,6 @@
-import { createFileRoute } from '@tanstack/react-router';
-import { AdminRouteGuard } from '@/components/admin/AdminRouteGuard';
-import React, { useState, useEffect, useMemo } from 'react';
+import { createFileRoute } from "@tanstack/react-router";
+import { AdminRouteGuard } from "@/components/admin/AdminRouteGuard";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   TrendingUp,
   DollarSign,
@@ -26,11 +26,10 @@ import {
   ChevronDown,
   AlertCircle,
   ShoppingBag,
-  Bell
-} from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { AlShamelLogo } from './index';
-
+  Bell,
+} from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { AlShamelLogo } from "./index";
 
 export interface ReportOrderRow {
   id: string;
@@ -59,10 +58,7 @@ function toNullableNumber(value: unknown): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function sumIfComplete<T>(
-  rows: T[],
-  getValue: (row: T) => number | null,
-): number | null {
+function sumIfComplete<T>(rows: T[], getValue: (row: T) => number | null): number | null {
   if (rows.some((row) => getValue(row) === null)) return null;
   return rows.reduce((sum, row) => sum + (getValue(row) ?? 0), 0);
 }
@@ -77,10 +73,10 @@ export function MerchantReportsPage() {
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [isSupabaseConnected, setIsSupabaseConnected] = useState<boolean>(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [storeFilter, setStoreFilter] = useState<string>('all');
-  const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month'>('all');
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [storeFilter, setStoreFilter] = useState<string>("all");
+  const [dateFilter, setDateFilter] = useState<"all" | "today" | "week" | "month">("all");
 
   const fetchSupabaseOrders = async (_isBackground = false) => {
     setLoading(true);
@@ -93,9 +89,9 @@ export function MerchantReportsPage() {
 
       while (true) {
         const { data, error } = await supabase
-          .from('orders')
-          .select('*')
-          .order('created_at', { ascending: false })
+          .from("orders")
+          .select("*")
+          .order("created_at", { ascending: false })
           .range(from, from + 499);
 
         if (error) throw error;
@@ -122,21 +118,22 @@ export function MerchantReportsPage() {
         return {
           id: String(row.id),
           orderNumber: row.order_number || row.tracking_code || `ORD-${row.id}`,
-          intlTrackingNumber: row.intl_tracking_number || row.tracking_code || row.order_number || `INTL-${row.id}`,
-          customerName: row.customer_name || 'عميل كريم',
-          customerPhone: row.customer_phone || row.phone || '770000000',
-          customerCity: row.customer_city || 'صنعاء',
-          storeName: row.store_name || 'SHEIN',
-          productTitle: row.product_title || 'شحنة متجر دولي',
+          intlTrackingNumber:
+            row.intl_tracking_number || row.tracking_code || row.order_number || `INTL-${row.id}`,
+          customerName: row.customer_name || "عميل كريم",
+          customerPhone: row.customer_phone || row.phone || "770000000",
+          customerCity: row.customer_city || "صنعاء",
+          storeName: row.store_name || "SHEIN",
+          productTitle: row.product_title || "شحنة متجر دولي",
           quantity: Number(row.quantity || 1),
           totalCostUSD: totalUSD,
           totalCostYER: totalYER,
           paidAmount: paid,
           remainingAmount: remaining,
           profitAmount: profit,
-          paymentStatus: row.payment_status || 'unknown',
-          paymentMethod: row.payment_method || 'الدفع عند الاستلام (COD)',
-          status: row.status || 'new',
+          paymentStatus: row.payment_status || "unknown",
+          paymentMethod: row.payment_method || "الدفع عند الاستلام (COD)",
+          status: row.status || "new",
           createdAt: row.created_at || new Date().toISOString(),
         };
       });
@@ -144,9 +141,11 @@ export function MerchantReportsPage() {
       setOrders(mapped);
       setIsSupabaseConnected(true);
     } catch (err) {
-      console.warn('Supabase fetch note:', err);
+      console.warn("Supabase fetch note:", err);
       setIsSupabaseConnected(false);
-      setLoadError('تعذرت قراءة الطلبات من Supabase. تحقق من الاتصال وسياسات الوصول، ولم تُعرض النتيجة كأنها صفر.');
+      setLoadError(
+        "تعذرت قراءة الطلبات من Supabase. تحقق من الاتصال وسياسات الوصول، ولم تُعرض النتيجة كأنها صفر.",
+      );
     } finally {
       setLoading(false);
       setIsSyncing(false);
@@ -157,8 +156,8 @@ export function MerchantReportsPage() {
     fetchSupabaseOrders();
 
     const channel = supabase
-      .channel('merchant-reports-live')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+      .channel("merchant-reports-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => {
         fetchSupabaseOrders(true);
       })
       .subscribe();
@@ -179,20 +178,23 @@ export function MerchantReportsPage() {
         ord.customerPhone.includes(q) ||
         ord.productTitle.toLowerCase().includes(q);
 
-      const matchStatus = statusFilter === 'all' || ord.status === statusFilter;
-      const matchStore = storeFilter === 'all' || ord.storeName.toLowerCase() === storeFilter.toLowerCase();
+      const matchStatus = statusFilter === "all" || ord.status === statusFilter;
+      const matchStore =
+        storeFilter === "all" || ord.storeName.toLowerCase() === storeFilter.toLowerCase();
 
       let matchDate = true;
-      if (dateFilter !== 'all') {
+      if (dateFilter !== "all") {
         const orderDate = new Date(ord.createdAt);
         const now = new Date();
-        if (dateFilter === 'today') {
+        if (dateFilter === "today") {
           matchDate = orderDate.toDateString() === now.toDateString();
-        } else if (dateFilter === 'week') {
+        } else if (dateFilter === "week") {
           const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
           matchDate = orderDate >= sevenDaysAgo;
-        } else if (dateFilter === 'month') {
-          matchDate = orderDate.getMonth() === now.getMonth() && orderDate.getFullYear() === now.getFullYear();
+        } else if (dateFilter === "month") {
+          matchDate =
+            orderDate.getMonth() === now.getMonth() &&
+            orderDate.getFullYear() === now.getFullYear();
         }
       }
 
@@ -202,13 +204,14 @@ export function MerchantReportsPage() {
 
   const stats = useMemo(() => {
     const totalOrdersCount = filteredOrders.length;
-    const deliveredCount = filteredOrders.filter((o) => o.status === 'delivered').length;
+    const deliveredCount = filteredOrders.filter((o) => o.status === "delivered").length;
     const totalSalesUSD = sumIfComplete(filteredOrders, (o) => o.totalCostUSD);
     const totalSalesYER = sumIfComplete(filteredOrders, (o) => o.totalCostYER);
     const totalProfitYER = sumIfComplete(filteredOrders, (o) => o.profitAmount);
     const totalCollectedYER = sumIfComplete(filteredOrders, (o) => o.paidAmount);
     const totalRemainingYER = sumIfComplete(filteredOrders, (o) => o.remainingAmount);
-    const deliveryRate = totalOrdersCount > 0 ? Math.round((deliveredCount / totalOrdersCount) * 100) : 0;
+    const deliveryRate =
+      totalOrdersCount > 0 ? Math.round((deliveredCount / totalOrdersCount) * 100) : 0;
 
     return {
       totalOrdersCount,
@@ -224,19 +227,44 @@ export function MerchantReportsPage() {
 
   const handleExportCSV = () => {
     const headers = [
-      'رقم الطلب', 'كود التتبع الدولي', 'العميل', 'الهاتف', 'المدينة',
-      'المتجر', 'السلعة', 'التكلفة (USD)', 'التكلفة (YER)', 'المسدد', 'المتبقي', 'الربح', 'الحالة', 'التاريخ'
+      "رقم الطلب",
+      "كود التتبع الدولي",
+      "العميل",
+      "الهاتف",
+      "المدينة",
+      "المتجر",
+      "السلعة",
+      "التكلفة (USD)",
+      "التكلفة (YER)",
+      "المسدد",
+      "المتبقي",
+      "الربح",
+      "الحالة",
+      "التاريخ",
     ];
     const rows = filteredOrders.map((o) => [
-      o.orderNumber, o.intlTrackingNumber, o.customerName, o.customerPhone, o.customerCity,
-      o.storeName, `"${o.productTitle.replace(/"/g, '""')}"`, o.totalCostUSD ?? "غير مكتمل", o.totalCostYER ?? "غير مكتمل",
-      o.paidAmount ?? "غير مكتمل", o.remainingAmount ?? "غير مكتمل", o.profitAmount ?? "غير مكتمل", o.status, o.createdAt.split('T')[0]
+      o.orderNumber,
+      o.intlTrackingNumber,
+      o.customerName,
+      o.customerPhone,
+      o.customerCity,
+      o.storeName,
+      `"${o.productTitle.replace(/"/g, '""')}"`,
+      o.totalCostUSD ?? "غير مكتمل",
+      o.totalCostYER ?? "غير مكتمل",
+      o.paidAmount ?? "غير مكتمل",
+      o.remainingAmount ?? "غير مكتمل",
+      o.profitAmount ?? "غير مكتمل",
+      o.status,
+      o.createdAt.split("T")[0],
     ]);
 
-    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
-    const link = document.createElement('a');
-    link.setAttribute('href', encodeURI(csvContent));
-    link.setAttribute('download', `merchant_report_${new Date().toISOString().split('T')[0]}.csv`);
+    const csvContent =
+      "data:text/csv;charset=utf-8,\uFEFF" +
+      [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
+    const link = document.createElement("a");
+    link.setAttribute("href", encodeURI(csvContent));
+    link.setAttribute("download", `merchant_report_${new Date().toISOString().split("T")[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -244,27 +272,31 @@ export function MerchantReportsPage() {
 
   const getStatusLabel = (status: string) => {
     const map: Record<string, string> = {
-      new: 'استلام الطلب والاعتماد',
-      purchased: 'تم الشراء من المتجر',
-      international_ship: 'بالمستودع الدولي',
-      shipped: 'تم الشحن الدولي ✈️',
-      local_warehouse: 'بالمستودع المحلي 🏢',
-      out_for_delivery: 'مع المندوب للتوصيل 🚚',
-      delivered: 'تم التوصيل بنجاح ✓',
-      cancelled: 'ملغي',
+      new: "استلام الطلب والاعتماد",
+      purchased: "تم الشراء من المتجر",
+      international_ship: "بالمستودع الدولي",
+      shipped: "تم الشحن الدولي ✈️",
+      local_warehouse: "بالمستودع المحلي 🏢",
+      out_for_delivery: "مع المندوب للتوصيل 🚚",
+      delivered: "تم التوصيل بنجاح ✓",
+      cancelled: "ملغي",
     };
     return map[status] || status;
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#F0F7FF] via-[#FAF9F6] to-[#FFF7ED] text-[#0A2540] font-sans selection:bg-[#0F4C81] selection:text-white pb-20" dir="rtl">
-      
+    <div
+      className="min-h-screen bg-gradient-to-b from-[#F0F7FF] via-[#FAF9F6] to-[#FFF7ED] text-[#0A2540] font-sans selection:bg-[#0F4C81] selection:text-white pb-20"
+      dir="rtl"
+    >
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b-2 border-sky-100 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 py-3 sm:py-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => { if (typeof window !== 'undefined') window.location.href = '/admin'; }}
+              onClick={() => {
+                if (typeof window !== "undefined") window.location.href = "/admin";
+              }}
               className="px-3.5 py-2 rounded-2xl bg-white hover:bg-sky-50 border-2 border-sky-100 hover:border-[#0F4C81] text-xs font-black text-[#0F4C81] transition flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 group"
             >
               <ArrowRight className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
@@ -284,16 +316,27 @@ export function MerchantReportsPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[11px] font-black shadow-2xs ${
-              loading
-                ? 'bg-amber-50 border-amber-200 text-amber-800'
-                : isSupabaseConnected
-                  ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                  : 'bg-red-50 border-red-200 text-red-800'
-            }`} role="status">
-              <span className={`w-2 h-2 rounded-full ${loading ? 'bg-amber-500 animate-pulse' : isSupabaseConnected ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
+            <div
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[11px] font-black shadow-2xs ${
+                loading
+                  ? "bg-amber-50 border-amber-200 text-amber-800"
+                  : isSupabaseConnected
+                    ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                    : "bg-red-50 border-red-200 text-red-800"
+              }`}
+              role="status"
+            >
+              <span
+                className={`w-2 h-2 rounded-full ${loading ? "bg-amber-500 animate-pulse" : isSupabaseConnected ? "bg-emerald-500" : "bg-red-500"}`}
+              ></span>
               <Database className="w-3.5 h-3.5" />
-              <span>{loading ? "جارٍ التحميل…" : isSupabaseConnected ? `تمت القراءة · ${orders.length} طلب` : "تعذر الاتصال/القراءة"}</span>
+              <span>
+                {loading
+                  ? "جارٍ التحميل…"
+                  : isSupabaseConnected
+                    ? `تمت القراءة · ${orders.length} طلب`
+                    : "تعذر الاتصال/القراءة"}
+              </span>
             </div>
             <button
               onClick={() => fetchSupabaseOrders()}
@@ -301,7 +344,7 @@ export function MerchantReportsPage() {
               className="p-2 rounded-xl bg-white hover:bg-sky-50 border border-sky-200 text-[#0F4C81] transition cursor-pointer shadow-xs active:scale-95"
               title="تحديث البيانات"
             >
-              <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin text-[#FF7A00]' : ''}`} />
+              <RefreshCw className={`w-4 h-4 ${isSyncing ? "animate-spin text-[#FF7A00]" : ""}`} />
             </button>
             <button
               onClick={handleExportCSV}
@@ -324,24 +367,51 @@ export function MerchantReportsPage() {
       {/* Main KPI Cards */}
       <main className="max-w-7xl mx-auto px-4 mt-6 space-y-6">
         {loadError && (
-          <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-800">
+          <div
+            role="alert"
+            className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-800"
+          >
             {loadError}
-            {orders.length > 0 && <span className="block mt-1 text-xs font-medium">المعروض أدناه آخر قراءة ناجحة، وليس نتيجة التحديث الذي فشل.</span>}
+            {orders.length > 0 && (
+              <span className="block mt-1 text-xs font-medium">
+                المعروض أدناه آخر قراءة ناجحة، وليس نتيجة التحديث الذي فشل.
+              </span>
+            )}
           </div>
         )}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <div className="bg-white/95 backdrop-blur-md border-2 border-sky-100 rounded-3xl p-4 sm:p-5 shadow-xs hover:border-[#0F4C81] transition-all">
             <span className="text-xs font-bold text-slate-500 block mb-1">إجمالي المبيعات</span>
             <div className="text-xl sm:text-2xl font-black text-[#0F4C81] font-mono">
-              {loading ? "جارٍ التحميل…" : !isSupabaseConnected && orders.length === 0 ? "غير متاح" : formatMoney(stats.totalSalesYER)} <span className="text-xs font-sans">ر.ي</span>
+              {loading
+                ? "جارٍ التحميل…"
+                : !isSupabaseConnected && orders.length === 0
+                  ? "غير متاح"
+                  : formatMoney(stats.totalSalesYER)}{" "}
+              <span className="text-xs font-sans">ر.ي</span>
             </div>
-            <div className="text-[11px] font-bold text-slate-500 mt-1 font-mono">${loading ? "جارٍ التحميل…" : !isSupabaseConnected && orders.length === 0 ? "غير متاح" : formatMoney(stats.totalSalesUSD)} USD</div>
+            <div className="text-[11px] font-bold text-slate-500 mt-1 font-mono">
+              $
+              {loading
+                ? "جارٍ التحميل…"
+                : !isSupabaseConnected && orders.length === 0
+                  ? "غير متاح"
+                  : formatMoney(stats.totalSalesUSD)}{" "}
+              USD
+            </div>
           </div>
 
           <div className="bg-white/95 backdrop-blur-md border-2 border-orange-100 rounded-3xl p-4 sm:p-5 shadow-xs hover:border-[#FF7A00] transition-all">
-            <span className="text-xs font-bold text-slate-500 block mb-1">صافي الأرباح المحققة</span>
+            <span className="text-xs font-bold text-slate-500 block mb-1">
+              صافي الأرباح المحققة
+            </span>
             <div className="text-xl sm:text-2xl font-black text-[#EA580C] font-mono">
-              {loading ? "جارٍ التحميل…" : !isSupabaseConnected && orders.length === 0 ? "غير متاح" : formatMoney(stats.totalProfitYER)} <span className="text-xs font-sans">ر.ي</span>
+              {loading
+                ? "جارٍ التحميل…"
+                : !isSupabaseConnected && orders.length === 0
+                  ? "غير متاح"
+                  : formatMoney(stats.totalProfitYER)}{" "}
+              <span className="text-xs font-sans">ر.ي</span>
             </div>
             <div className="text-[11px] font-bold text-emerald-600 mt-1 flex items-center gap-1">
               <Sparkles className="w-3 h-3" />
@@ -352,17 +422,45 @@ export function MerchantReportsPage() {
           <div className="bg-white/95 backdrop-blur-md border-2 border-emerald-100 rounded-3xl p-4 sm:p-5 shadow-xs hover:border-emerald-500 transition-all">
             <span className="text-xs font-bold text-slate-500 block mb-1">السيولة المحصلة</span>
             <div className="text-xl sm:text-2xl font-black text-emerald-700 font-mono">
-              {loading ? "جارٍ التحميل…" : !isSupabaseConnected && orders.length === 0 ? "غير متاح" : formatMoney(stats.totalCollectedYER)} <span className="text-xs font-sans">ر.ي</span>
+              {loading
+                ? "جارٍ التحميل…"
+                : !isSupabaseConnected && orders.length === 0
+                  ? "غير متاح"
+                  : formatMoney(stats.totalCollectedYER)}{" "}
+              <span className="text-xs font-sans">ر.ي</span>
             </div>
-            <div className="text-[11px] font-bold text-amber-700 mt-1 font-mono">المتبقي: {loading ? "جارٍ التحميل…" : !isSupabaseConnected && orders.length === 0 ? "غير متاح" : formatMoney(stats.totalRemainingYER)} ر.ي</div>
+            <div className="text-[11px] font-bold text-amber-700 mt-1 font-mono">
+              المتبقي:{" "}
+              {loading
+                ? "جارٍ التحميل…"
+                : !isSupabaseConnected && orders.length === 0
+                  ? "غير متاح"
+                  : formatMoney(stats.totalRemainingYER)}{" "}
+              ر.ي
+            </div>
           </div>
 
           <div className="bg-white/95 backdrop-blur-md border-2 border-indigo-100 rounded-3xl p-4 sm:p-5 shadow-xs hover:border-indigo-500 transition-all">
-            <span className="text-xs font-bold text-slate-500 block mb-1">إجمالي الطرود المشحونة</span>
+            <span className="text-xs font-bold text-slate-500 block mb-1">
+              إجمالي الطرود المشحونة
+            </span>
             <div className="text-xl sm:text-2xl font-black text-indigo-900 font-mono">
-              {loading ? "جارٍ التحميل…" : !isSupabaseConnected && orders.length === 0 ? "غير متاح" : stats.totalOrdersCount} <span className="text-xs font-sans">طرد</span>
+              {loading
+                ? "جارٍ التحميل…"
+                : !isSupabaseConnected && orders.length === 0
+                  ? "غير متاح"
+                  : stats.totalOrdersCount}{" "}
+              <span className="text-xs font-sans">طرد</span>
             </div>
-            <div className="text-[11px] font-bold text-indigo-600 mt-1">نسبة الإنجاز: {loading ? "جارٍ التحميل…" : !isSupabaseConnected && orders.length === 0 ? "غير متاح" : `${stats.deliveryRate}%`} ✓</div>
+            <div className="text-[11px] font-bold text-indigo-600 mt-1">
+              نسبة الإنجاز:{" "}
+              {loading
+                ? "جارٍ التحميل…"
+                : !isSupabaseConnected && orders.length === 0
+                  ? "غير متاح"
+                  : `${stats.deliveryRate}%`}{" "}
+              ✓
+            </div>
           </div>
         </div>
 
@@ -381,15 +479,23 @@ export function MerchantReportsPage() {
             </div>
 
             <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl border border-slate-200 text-xs font-bold">
-              {(['all', 'today', 'week', 'month'] as const).map((mode) => (
+              {(["all", "today", "week", "month"] as const).map((mode) => (
                 <button
                   key={mode}
                   onClick={() => setDateFilter(mode)}
                   className={`px-3 py-1.5 rounded-xl transition cursor-pointer ${
-                    dateFilter === mode ? 'bg-[#0F4C81] text-white' : 'text-slate-600 hover:text-slate-900'
+                    dateFilter === mode
+                      ? "bg-[#0F4C81] text-white"
+                      : "text-slate-600 hover:text-slate-900"
                   }`}
                 >
-                  {mode === 'all' ? 'الكل' : mode === 'today' ? 'اليوم' : mode === 'week' ? 'آخر 7 أيام' : 'هذا الشهر'}
+                  {mode === "all"
+                    ? "الكل"
+                    : mode === "today"
+                      ? "اليوم"
+                      : mode === "week"
+                        ? "آخر 7 أيام"
+                        : "هذا الشهر"}
                 </button>
               ))}
             </div>
@@ -456,21 +562,29 @@ export function MerchantReportsPage() {
                       </td>
                       <td className="py-3.5 px-4">
                         <div className="font-bold text-slate-900">{ord.customerName}</div>
-                        <div className="text-[11px] text-slate-500 font-mono" dir="ltr">{ord.customerPhone}</div>
+                        <div className="text-[11px] text-slate-500 font-mono" dir="ltr">
+                          {ord.customerPhone}
+                        </div>
                         <div className="text-[10px] text-slate-400">{ord.customerCity}</div>
                       </td>
                       <td className="py-3.5 px-4">
                         <span className="inline-block px-2 py-0.5 rounded-md bg-sky-50 text-[#0F4C81] font-black text-[10px] border border-sky-200 mb-0.5">
                           {ord.storeName}
                         </span>
-                        <div className="text-slate-800 font-bold truncate max-w-[180px]">{ord.productTitle}</div>
+                        <div className="text-slate-800 font-bold truncate max-w-[180px]">
+                          {ord.productTitle}
+                        </div>
                       </td>
                       <td className="py-3.5 px-4 font-mono font-black">
                         <div className="text-[#0F4C81]">{formatMoney(ord.totalCostYER)} ر.ي</div>
-                        <div className="text-[10px] text-slate-400">${formatMoney(ord.totalCostUSD)} USD</div>
+                        <div className="text-[10px] text-slate-400">
+                          ${formatMoney(ord.totalCostUSD)} USD
+                        </div>
                       </td>
                       <td className="py-3.5 px-4 font-mono text-xs">
-                        <div className="text-emerald-700 font-bold">مدفوع: {formatMoney(ord.paidAmount)}</div>
+                        <div className="text-emerald-700 font-bold">
+                          مدفوع: {formatMoney(ord.paidAmount)}
+                        </div>
                         {ord.remainingAmount === null ? (
                           <div className="text-amber-700 font-bold">المتبقي: غير متاح</div>
                         ) : ord.remainingAmount > 0 ? (
@@ -482,25 +596,32 @@ export function MerchantReportsPage() {
                         )}
                       </td>
                       <td className="py-3.5 px-4 text-center">
-                        <span className={`inline-block px-2.5 py-1 rounded-full text-[11px] font-black shadow-2xs ${
-                          ord.status === 'delivered' ? 'bg-emerald-50 text-emerald-700 border border-emerald-300' :
-                          ord.status === 'shipped' || ord.status === 'international_ship' ? 'bg-sky-50 text-[#0284C7] border border-sky-300' :
-                          'bg-orange-50 text-[#EA580C] border border-orange-300'
-                        }`}>
+                        <span
+                          className={`inline-block px-2.5 py-1 rounded-full text-[11px] font-black shadow-2xs ${
+                            ord.status === "delivered"
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-300"
+                              : ord.status === "shipped" || ord.status === "international_ship"
+                                ? "bg-sky-50 text-[#0284C7] border border-sky-300"
+                                : "bg-orange-50 text-[#EA580C] border border-orange-300"
+                          }`}
+                        >
                           {getStatusLabel(ord.status)}
                         </span>
                       </td>
                       <td className="py-3.5 px-4 text-center">
                         <div className="flex items-center justify-center gap-1.5">
                           <button
-                            onClick={() => { if (typeof window !== 'undefined') window.location.href = `/track?order=${ord.orderNumber}`; }}
+                            onClick={() => {
+                              if (typeof window !== "undefined")
+                                window.location.href = `/track?order=${ord.orderNumber}`;
+                            }}
                             className="p-1.5 rounded-lg bg-sky-50 hover:bg-sky-100 text-[#0F4C81] border border-sky-200 transition cursor-pointer"
                             title="تتبع الشحنة"
                           >
                             <Truck className="w-3.5 h-3.5" />
                           </button>
                           <a
-                            href={`https://wa.me/${ord.customerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(`مرحباً أستاذ ${ord.customerName}، شحنتك رقم (${ord.orderNumber}) حالتها: (${getStatusLabel(ord.status)}). منصة السوق الشامل: ${typeof window !== 'undefined' ? window.location.origin : ''}/track?order=${ord.orderNumber}`)}`}
+                            href={`https://wa.me/${ord.customerPhone.replace(/\D/g, "")}?text=${encodeURIComponent(`مرحباً أستاذ ${ord.customerName}، شحنتك رقم (${ord.orderNumber}) حالتها: (${getStatusLabel(ord.status)}). منصة السوق الشامل: ${typeof window !== "undefined" ? window.location.origin : ""}/track?order=${ord.orderNumber}`)}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 transition"
@@ -522,7 +643,7 @@ export function MerchantReportsPage() {
   );
 }
 
-export const Route = (createFileRoute as any)('/merchant-reports')({
+export const Route = (createFileRoute as any)("/merchant-reports")({
   component: () => (
     <AdminRouteGuard allowStaff redirectTo="/merchant-reports">
       <MerchantReportsPage />

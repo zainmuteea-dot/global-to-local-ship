@@ -86,7 +86,7 @@ function WalletPage() {
     setError("");
     setSuccess("");
     if (!file) return;
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
       setError("ارفع صورة بصيغة JPG أو PNG أو WEBP.");
       return;
     }
@@ -158,7 +158,9 @@ function WalletPage() {
         .single();
 
       if (insertError) throw insertError;
-      setSuccess(`تم حفظ الطلب ${data?.request_code ?? ""} وإرساله للمراجعة. لن يُضاف الرصيد حتى تعتمد الإدارة الطلب.`);
+      setSuccess(
+        `تم حفظ الطلب ${data?.request_code ?? ""} وإرساله للمراجعة. لن يُضاف الرصيد حتى تعتمد الإدارة الطلب.`,
+      );
       setAmount("");
       setReceipt(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -180,78 +182,174 @@ function WalletPage() {
             {fmt(adds - subs)} <span className="text-sm">ر.ي</span>
           </p>
         </div>
-        <a href="#topup-form" aria-label="إنشاء طلب شحن" className="grid size-12 place-items-center rounded-2xl bg-cocoa text-cream shadow">
+        <a
+          href="#topup-form"
+          aria-label="إنشاء طلب شحن"
+          className="grid size-12 place-items-center rounded-2xl bg-cocoa text-cream shadow"
+        >
           <Plus className="size-5" />
         </a>
       </div>
 
       <div className="mt-3 grid grid-cols-3 gap-2">
-        {[["عدد العمليات", tx.length], ["الإضافات", adds], ["الخصومات", subs]].map(([label, value]) => (
-          <div key={label as string} className="rounded-2xl bg-card p-3 text-center ring-1 ring-border">
+        {[
+          ["عدد العمليات", tx.length],
+          ["الإضافات", adds],
+          ["الخصومات", subs],
+        ].map(([label, value]) => (
+          <div
+            key={label as string}
+            className="rounded-2xl bg-card p-3 text-center ring-1 ring-border"
+          >
             <p className="text-[11px] text-muted-foreground">{label}</p>
             <p className="font-display font-black text-cocoadeep">{fmt(value as number)}</p>
           </div>
         ))}
       </div>
 
-      <form id="topup-form" onSubmit={submitTopup} className="mt-4 space-y-4 rounded-3xl bg-card p-5 ring-1 ring-border">
+      <form
+        id="topup-form"
+        onSubmit={submitTopup}
+        className="mt-4 space-y-4 rounded-3xl bg-card p-5 ring-1 ring-border"
+      >
         <div>
           <h2 className="font-display text-lg font-black text-cocoadeep">طلب شحن الرصيد</h2>
-          <p className="mt-1 text-sm text-muted-foreground">أرسل بيانات التحويل والسند. الطلب يذهب للمراجعة ولا يضيف الرصيد تلقائيًا.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            أرسل بيانات التحويل والسند. الطلب يذهب للمراجعة ولا يضيف الرصيد تلقائيًا.
+          </p>
         </div>
 
         <label className="block space-y-1.5 text-sm font-bold">
           <span>اسم العميل</span>
-          <input required minLength={2} maxLength={120} value={customerName} onChange={(e) => setCustomerName(e.target.value)} className="w-full rounded-xl border border-border bg-background px-3 py-3" autoComplete="name" />
+          <input
+            required
+            minLength={2}
+            maxLength={120}
+            value={customerName}
+            onChange={(e) => setCustomerName(e.target.value)}
+            className="w-full rounded-xl border border-border bg-background px-3 py-3"
+            autoComplete="name"
+          />
         </label>
 
         <label className="block space-y-1.5 text-sm font-bold">
           <span>رقم الهاتف أو المحفظة</span>
-          <input required minLength={7} maxLength={30} value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full rounded-xl border border-border bg-background px-3 py-3" inputMode="tel" autoComplete="tel" />
+          <input
+            required
+            minLength={7}
+            maxLength={30}
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            className="w-full rounded-xl border border-border bg-background px-3 py-3"
+            inputMode="tel"
+            autoComplete="tel"
+          />
         </label>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <label className="block space-y-1.5 text-sm font-bold">
             <span>مبلغ الشحن (ر.ي)</span>
-            <input required type="number" min="1" max="100000000" step="1" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-full rounded-xl border border-border bg-background px-3 py-3" inputMode="decimal" />
+            <input
+              required
+              type="number"
+              min="1"
+              max="100000000"
+              step="1"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className="w-full rounded-xl border border-border bg-background px-3 py-3"
+              inputMode="decimal"
+            />
           </label>
           <label className="block space-y-1.5 text-sm font-bold">
             <span>وسيلة الدفع</span>
-            <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className="w-full rounded-xl border border-border bg-background px-3 py-3">
-              {PAYMENT_METHODS.map((method) => <option key={method} value={method}>{method}</option>)}
+            <select
+              value={paymentMethod}
+              onChange={(e) => setPaymentMethod(e.target.value)}
+              className="w-full rounded-xl border border-border bg-background px-3 py-3"
+            >
+              {PAYMENT_METHODS.map((method) => (
+                <option key={method} value={method}>
+                  {method}
+                </option>
+              ))}
             </select>
           </label>
         </div>
 
         <div className="space-y-2">
           <span className="block text-sm font-bold">سند التحويل (JPG / PNG / WEBP، حتى 2MB)</span>
-          <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => handleReceipt(e.target.files?.[0])} className="block w-full text-sm file:me-3 file:rounded-lg file:border-0 file:bg-cocoa file:px-4 file:py-2 file:font-bold file:text-cream" />
-          {receipt && <div className="flex items-center gap-2 text-sm text-emerald-700"><CheckCircle2 className="size-4" />{receipt.fileName}</div>}
-          <p className="text-xs text-muted-foreground">يرفع السند إلى سجل الطلب بشكل خاص. لا ترسل معلومات بطاقة أو كلمة مرور.</p>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={(e) => handleReceipt(e.target.files?.[0])}
+            className="block w-full text-sm file:me-3 file:rounded-lg file:border-0 file:bg-cocoa file:px-4 file:py-2 file:font-bold file:text-cream"
+          />
+          {receipt && (
+            <div className="flex items-center gap-2 text-sm text-emerald-700">
+              <CheckCircle2 className="size-4" />
+              {receipt.fileName}
+            </div>
+          )}
+          <p className="text-xs text-muted-foreground">
+            يرفع السند إلى سجل الطلب بشكل خاص. لا ترسل معلومات بطاقة أو كلمة مرور.
+          </p>
         </div>
 
-        {error && <p role="alert" className="rounded-xl bg-destructive/10 p-3 text-sm font-bold text-destructive">{error}</p>}
-        {success && <p role="status" className="rounded-xl bg-emerald-50 p-3 text-sm font-bold text-emerald-800">{success}</p>}
+        {error && (
+          <p
+            role="alert"
+            className="rounded-xl bg-destructive/10 p-3 text-sm font-bold text-destructive"
+          >
+            {error}
+          </p>
+        )}
+        {success && (
+          <p
+            role="status"
+            className="rounded-xl bg-emerald-50 p-3 text-sm font-bold text-emerald-800"
+          >
+            {success}
+          </p>
+        )}
 
-        <button type="submit" disabled={saving || !user} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-cocoa px-4 py-3 font-bold text-cream disabled:cursor-wait disabled:opacity-60">
-          <UploadCloud className="size-5" />{saving ? "جارٍ حفظ الطلب…" : "إرسال طلب الشحن للمراجعة"}
+        <button
+          type="submit"
+          disabled={saving || !user}
+          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-cocoa px-4 py-3 font-bold text-cream disabled:cursor-wait disabled:opacity-60"
+        >
+          <UploadCloud className="size-5" />
+          {saving ? "جارٍ حفظ الطلب…" : "إرسال طلب الشحن للمراجعة"}
         </button>
       </form>
 
       <div className="mt-4 rounded-3xl bg-card p-4 ring-1 ring-border">
-        <p className="mb-3 flex items-center gap-2 font-display text-sm font-black text-cocoadeep"><List className="size-4 text-clay" />سجل عمليات الرصيد</p>
+        <p className="mb-3 flex items-center gap-2 font-display text-sm font-black text-cocoadeep">
+          <List className="size-4 text-clay" />
+          سجل عمليات الرصيد
+        </p>
         {tx.length === 0 ? (
           <EmptyState icon={<Wallet className="size-6" />} title="لا توجد عمليات رصيد حتى الآن" />
         ) : (
           <div className="space-y-2">
             {tx.map((item) => (
-              <div key={item.id} className="flex items-center justify-between rounded-2xl bg-background p-3 ring-1 ring-border">
+              <div
+                key={item.id}
+                className="flex items-center justify-between rounded-2xl bg-background p-3 ring-1 ring-border"
+              >
                 <div>
                   <p className="text-sm font-bold text-cocoadeep">{item.description || "عملية"}</p>
-                  <p className="text-[11px] text-muted-foreground">{new Date(item.created_at).toLocaleDateString("ar")}</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {new Date(item.created_at).toLocaleDateString("ar")}
+                  </p>
                 </div>
-                <p dir="ltr" className={`font-display font-black ${item.amount >= 0 ? "text-clay" : "text-destructive"}`}>
-                  {item.amount >= 0 ? "+" : ""}{fmt(item.amount)}
+                <p
+                  dir="ltr"
+                  className={`font-display font-black ${item.amount >= 0 ? "text-clay" : "text-destructive"}`}
+                >
+                  {item.amount >= 0 ? "+" : ""}
+                  {fmt(item.amount)}
                 </p>
               </div>
             ))}

@@ -115,7 +115,10 @@ function NotificationsPage() {
   if (sessionLoading || (user && canManage === null)) {
     return (
       <AccountShell title="الإشعارات">
-        <p role="status" className="rounded-2xl border border-slate-200 bg-white p-4 text-center text-sm text-slate-600">
+        <p
+          role="status"
+          className="rounded-2xl border border-slate-200 bg-white p-4 text-center text-sm text-slate-600"
+        >
           جارٍ تحميل الإشعارات…
         </p>
       </AccountShell>
@@ -173,7 +176,7 @@ function CustomerNotificationsPage({
         setError("تعذر تحميل الإشعارات. تحقق من الاتصال والصلاحيات ثم حاول مجددًا.");
       } else {
         const rows = (notificationsResult.data ?? []).filter(
-          (item) => !ADMIN_ONLY_NOTIFICATION_KINDS.has(item.type),
+          (item: SystemNotification) => !ADMIN_ONLY_NOTIFICATION_KINDS.has(item.type),
         );
         setNotifications(rows as SystemNotification[]);
         setError(roleError);
@@ -193,8 +196,7 @@ function CustomerNotificationsPage({
 
     const isVisibleToCustomer = (notification: SystemNotification) => {
       const isOwnNotification = notification.user_id === userId;
-      const isActiveBroadcast =
-        notification.user_id === null && notification.is_active === true;
+      const isActiveBroadcast = notification.user_id === null && notification.is_active === true;
 
       return (
         (isOwnNotification || isActiveBroadcast) &&
@@ -314,13 +316,19 @@ function CustomerNotificationsPage({
       </div>
 
       {error && (
-        <p role="alert" className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+        <p
+          role="alert"
+          className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800"
+        >
           {error}
         </p>
       )}
 
       {loading ? (
-        <p role="status" className="rounded-2xl border border-slate-200 bg-white p-4 text-center text-sm text-slate-600">
+        <p
+          role="status"
+          className="rounded-2xl border border-slate-200 bg-white p-4 text-center text-sm text-slate-600"
+        >
           جارٍ تحميل إشعاراتك…
         </p>
       ) : notifications.length === 0 ? (
@@ -427,10 +435,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
           .select("id,user_id,title,message,type,created_at,sent_by,href,is_active")
           .order("created_at", { ascending: false })
           .limit(100),
-        supabase
-          .from("notification_reads")
-          .select("notification_id")
-          .eq("user_id", userId),
+        supabase.from("notification_reads").select("notification_id").eq("user_id", userId),
       ]);
 
       if (!active) return;
@@ -466,7 +471,10 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "orders" }, (payload) => {
         const order = payload.new as Omit<OrderNotification, "read">;
         setOrders((current) =>
-          [{ ...order, read: false }, ...current.filter((item) => item.id !== order.id)].slice(0, 30),
+          [{ ...order, read: false }, ...current.filter((item) => item.id !== order.id)].slice(
+            0,
+            30,
+          ),
         );
         playSound();
         if ("Notification" in window && Notification.permission === "granted") {
@@ -479,15 +487,19 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
 
     const systemChannel = supabase
       .channel(`admin-system-notifications-${userId}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications" }, (payload) => {
-        const notification = payload.new as SystemNotification;
-        if (notification.user_id !== null && notification.user_id !== userId) return;
-        setNotifications((current) =>
-          [notification, ...current.filter((item) => item.id !== notification.id)].slice(0, 50),
-        );
-        setError(null);
-        playSound();
-      })
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "notifications" },
+        (payload) => {
+          const notification = payload.new as SystemNotification;
+          if (notification.user_id !== null && notification.user_id !== userId) return;
+          setNotifications((current) =>
+            [notification, ...current.filter((item) => item.id !== notification.id)].slice(0, 50),
+          );
+          setError(null);
+          playSound();
+        },
+      )
       .subscribe();
 
     return () => {
@@ -573,16 +585,22 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
       return;
     }
 
-    setNotifications((current) => [data as SystemNotification, ...current.filter((item) => item.id !== data.id)]);
+    setNotifications((current) => [
+      data as SystemNotification,
+      ...current.filter((item) => item.id !== data.id),
+    ]);
     setDraftTitle("");
     setDraftMessage("");
     setError("تم إرسال الإشعار لجميع العملاء.");
   };
 
   const deleteCustomerNotification = async (notification: SystemNotification) => {
-    if (!window.confirm(`حذف الإشعار «${notification.title}» نهائيًا؟ لن يظهر للعملاء بعد الحذف.`)) return;
+    if (!window.confirm(`حذف الإشعار «${notification.title}» نهائيًا؟ لن يظهر للعملاء بعد الحذف.`))
+      return;
     setError(null);
-    const { error: deleteError } = await (supabase.from("notifications") as any).delete().eq("id", notification.id);
+    const { error: deleteError } = await (supabase.from("notifications") as any)
+      .delete()
+      .eq("id", notification.id);
     if (deleteError) {
       console.error("تعذر حذف الإشعار:", deleteError);
       setError("تعذر حذف الإشعار. تحقق من صلاحيات المدير/الموظف ثم حاول مرة أخرى.");
@@ -627,13 +645,19 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
       </div>
 
       {error && (
-        <p role="alert" className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+        <p
+          role="alert"
+          className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800"
+        >
           {error}
         </p>
       )}
 
       {loading ? (
-        <p role="status" className="rounded-2xl border border-slate-200 bg-white p-4 text-center text-sm text-slate-600">
+        <p
+          role="status"
+          className="rounded-2xl border border-slate-200 bg-white p-4 text-center text-sm text-slate-600"
+        >
           جارٍ تحميل بيانات الإدارة…
         </p>
       ) : orders.length === 0 ? (
@@ -658,9 +682,13 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="font-bold text-slate-900">{order.customer_name}</h3>
                       {!order.read && (
-                        <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700">جديد</span>
+                        <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700">
+                          جديد
+                        </span>
                       )}
-                      <span className="font-mono text-xs text-slate-500">{order.tracking_code}</span>
+                      <span className="font-mono text-xs text-slate-500">
+                        {order.tracking_code}
+                      </span>
                     </div>
                     {order.notes && <p className="mt-1 text-sm text-slate-600">{order.notes}</p>}
                     <p className="mt-1 text-xs text-slate-500">
@@ -670,7 +698,11 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
                   <div className="flex items-center gap-2">
                     {phone && (
                       <>
-                        <a aria-label="اتصال بالعميل" href={`tel:${phone}`} className="rounded-xl bg-sky-700 p-2.5 text-white">
+                        <a
+                          aria-label="اتصال بالعميل"
+                          href={`tel:${phone}`}
+                          className="rounded-xl bg-sky-700 p-2.5 text-white"
+                        >
                           <Phone className="size-4" />
                         </a>
                         <a
@@ -701,23 +733,53 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
 
       <section className="mt-6 rounded-2xl border border-orange-200 bg-orange-50 p-4">
         <div className="mb-3 flex items-center gap-2">
-          <span className="grid size-9 place-items-center rounded-xl bg-white text-orange-700"><Tag className="size-4" /></span>
+          <span className="grid size-9 place-items-center rounded-xl bg-white text-orange-700">
+            <Tag className="size-4" />
+          </span>
           <div>
             <h2 className="font-bold text-slate-900">إرسال إشعار أو عرض للعملاء</h2>
-            <p className="text-xs text-slate-600">سيصل الإشعار إلى حسابات العملاء، ويمكن حذفه من القائمة أدناه.</p>
+            <p className="text-xs text-slate-600">
+              سيصل الإشعار إلى حسابات العملاء، ويمكن حذفه من القائمة أدناه.
+            </p>
           </div>
         </div>
-        <form onSubmit={(event) => void sendCustomerNotification(event)} className="grid gap-2 md:grid-cols-2">
-          <input value={draftTitle} onChange={(event) => setDraftTitle(event.target.value)} required maxLength={120} placeholder="عنوان العرض أو الإشعار" className="rounded-xl border border-orange-200 bg-white px-3 py-2 text-sm" />
-          <select value={draftType} onChange={(event) => setDraftType(event.target.value)} className="rounded-xl border border-orange-200 bg-white px-3 py-2 text-sm">
+        <form
+          onSubmit={(event) => void sendCustomerNotification(event)}
+          className="grid gap-2 md:grid-cols-2"
+        >
+          <input
+            value={draftTitle}
+            onChange={(event) => setDraftTitle(event.target.value)}
+            required
+            maxLength={120}
+            placeholder="عنوان العرض أو الإشعار"
+            className="rounded-xl border border-orange-200 bg-white px-3 py-2 text-sm"
+          />
+          <select
+            value={draftType}
+            onChange={(event) => setDraftType(event.target.value)}
+            className="rounded-xl border border-orange-200 bg-white px-3 py-2 text-sm"
+          >
             <option value="offer">عرض</option>
             <option value="system">إشعار عام</option>
             <option value="shipment">تحديث شحن</option>
             <option value="purchase">تحديث شراء</option>
             <option value="support">دعم</option>
           </select>
-          <textarea value={draftMessage} onChange={(event) => setDraftMessage(event.target.value)} required maxLength={2000} rows={3} placeholder="اكتب تفاصيل العرض أو الإشعار" className="rounded-xl border border-orange-200 bg-white px-3 py-2 text-sm md:col-span-2" />
-          <button type="submit" disabled={sending} className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50 md:col-span-2">
+          <textarea
+            value={draftMessage}
+            onChange={(event) => setDraftMessage(event.target.value)}
+            required
+            maxLength={2000}
+            rows={3}
+            placeholder="اكتب تفاصيل العرض أو الإشعار"
+            className="rounded-xl border border-orange-200 bg-white px-3 py-2 text-sm md:col-span-2"
+          />
+          <button
+            type="submit"
+            disabled={sending}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50 md:col-span-2"
+          >
             <Send className="size-4" /> {sending ? "جارٍ الإرسال…" : "إرسال لجميع العملاء"}
           </button>
         </form>
@@ -766,15 +828,25 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
                           {notification.message}
                         </p>
                       )}
-                      <time className="mt-2 block text-xs text-slate-400" dateTime={notification.created_at}>
+                      <time
+                        className="mt-2 block text-xs text-slate-400"
+                        dateTime={notification.created_at}
+                      >
                         {new Date(notification.created_at).toLocaleString("ar-YE")}
                       </time>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
                       <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-600">
-                        {notification.user_id === null ? "إشعار عام" : "إشعار حساب"} · {isRead ? "مقروء" : "جديد"}
+                        {notification.user_id === null ? "إشعار عام" : "إشعار حساب"} ·{" "}
+                        {isRead ? "مقروء" : "جديد"}
                       </span>
-                      <button type="button" onClick={() => void deleteCustomerNotification(notification)} aria-label={`حذف إشعار ${notification.title}`} title="حذف الإشعار" className="rounded-lg border border-red-200 p-2 text-red-700 hover:bg-red-50">
+                      <button
+                        type="button"
+                        onClick={() => void deleteCustomerNotification(notification)}
+                        aria-label={`حذف إشعار ${notification.title}`}
+                        title="حذف الإشعار"
+                        className="rounded-lg border border-red-200 p-2 text-red-700 hover:bg-red-50"
+                      >
                         <Trash2 className="size-4" />
                       </button>
                     </div>
