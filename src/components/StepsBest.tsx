@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
+
 type Step = {
   num: number;
   title: string;
@@ -7,6 +8,7 @@ type Step = {
   href: string;
   wide?: boolean;
 };
+
 /* أيقونات SVG تأخذ التدرّج الذهبي من #goldGrad (الإيموجي لا يقبل التلوين الذهبي) */
 const svgProps = {
   className: "gold-icon",
@@ -16,6 +18,7 @@ const svgProps = {
   strokeLinecap: "round" as const,
   strokeLinejoin: "round" as const,
 };
+
 const LinkIcon = () => (
   <svg {...svgProps}>
     <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
@@ -48,6 +51,7 @@ const BoxIcon = () => (
     <line x1="12" y1="22.08" x2="12" y2="12" />
   </svg>
 );
+
 const steps: Step[] = [
   { num: 1, title: "أرسل الرابط", desc: "الصق رابط الصفحة من أي متجر إلكتروني", icon: <LinkIcon />, href: "/new-order" },
   { num: 2, title: "تعرف السعر", desc: "نوضح لك التكلفة بالريال اليمني أو الدولار", icon: <DollarIcon />, href: "/new-order" },
@@ -55,6 +59,7 @@ const steps: Step[] = [
   { num: 4, title: "تابع الشحنة", desc: "تتبع مسار شحنتك لحظة بلحظة برقم التتبع", icon: <SearchIcon />, href: "/track" },
   { num: 5, title: "الاستلام", desc: "توصيل موثوق حتى باب بيتك في كافة المحافظات", icon: <BoxIcon />, href: "/new-order", wide: true },
 ];
+
 const iconBox: CSSProperties = {
   width: "44px",
   height: "44px",
@@ -66,6 +71,7 @@ const iconBox: CSSProperties = {
   flexShrink: 0,
   boxShadow: "0 4px 15px rgba(255,122,0,0.5)",
 };
+
 export default function StepsBest() {
   return (
     <section id="steps" className="fx-steps-section" dir="rtl">
@@ -94,7 +100,9 @@ export default function StepsBest() {
 .gold-icon line, .gold-icon polyline { stroke: url(#goldGrad); }
 @media (prefers-reduced-motion: reduce) { .gold-icon { animation: none; } }
 `}</style>
+
       <h2 className="fx-steps-title">كيف تعمل؟ خطوات بسيطة</h2>
+
       <div
         style={{
           display: "grid",
@@ -135,10 +143,12 @@ export default function StepsBest() {
                 {step.desc}
               </span>
             </span>
+
             <span style={iconBox}>{step.icon}</span>
           </a>
         ))}
       </div>
+
       <div
         style={{
           display: "flex",
@@ -163,6 +173,7 @@ export default function StepsBest() {
           <span aria-hidden="true">🛒</span>
           <span>اطلب الآن فوراً</span>
         </a>
+
         <a
           href="#steps"
           style={{
@@ -177,6 +188,7 @@ export default function StepsBest() {
           <span aria-hidden="true">📣</span>
           <span>كيف نعمل</span>
         </a>
+
         <a
           href="/track"
           style={{
