@@ -563,18 +563,20 @@ export function HomePage() {
  }
 }
 .card-fixed {
-  animation: glowPulseFix 2.2s ease-in-out infinite !important;
-  border: 2.5px solid rgba(0,255,255,0.8) !important;
+  /* ⬇️ أزلنا !important عن animation و border و box-shadow حتى تستطيع الـkeyframes تحريكها (الـ!important كان يجمّد التوهج) */
+  animation: glowPulseFix 2.2s ease-in-out infinite;
+  border: 2.5px solid rgba(0,255,255,0.8);
   background: rgba(37,71,133,0.92) !important;
   border-radius: 14px !important;
-  box-shadow: 0 0 15px rgba(0,255,255,0.5), 0 0 25px rgba(255,122,0,0.4) !important;
+  box-shadow: 0 0 15px rgba(0,255,255,0.5), 0 0 25px rgba(255,122,0,0.4);
 }
 .testimonial-fixed {
-  animation: glowPulseFix 2.2s ease-in-out infinite !important;
-  border: 2.5px solid rgba(0,255,255,0.8) !important;
+  /* ⬇️ نفس الإصلاح: إزالة !important عن animation و border و box-shadow */
+  animation: glowPulseFix 2.2s ease-in-out infinite;
+  border: 2.5px solid rgba(0,255,255,0.8);
   background: rgba(25,55,110,0.95) !important;
   border-radius: 16px !important;
-  box-shadow: 0 0 15px rgba(0,255,255,0.5), 0 0 25px rgba(255,122,0,0.4) !important;
+  box-shadow: 0 0 15px rgba(0,255,255,0.5), 0 0 25px rgba(255,122,0,0.4);
 }
 @media (prefers-reduced-motion: reduce) {
   .card-fixed, .testimonial-fixed { animation: none !important; }
