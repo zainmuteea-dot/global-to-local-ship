@@ -14,7 +14,10 @@ import { Route as AccountSuccessRouteImport } from './routes/account-success'
 import { Route as AccountingRouteImport } from './routes/accounting'
 import { Route as AccountsRouteImport } from './routes/accounts'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AdminChatRouteImport } from './routes/admin-chat'
+import { Route as AdminClientDetailRouteImport } from './routes/admin-client-detail'
 import { Route as AdminClientsRouteImport } from './routes/admin-clients'
+import { Route as AdminLoginRouteImport } from './routes/admin-login'
 import { Route as AdminStepsRouteImport } from './routes/admin-steps'
 import { Route as AdminTrackingRouteImport } from './routes/admin-tracking'
 import { Route as ClientDailyRouteImport } from './routes/client-daily'
@@ -46,9 +49,11 @@ import { Route as SuppliersRouteImport } from './routes/suppliers'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as WarehousesRouteImport } from './routes/warehouses'
 import { Route as AccountAddressesRouteImport } from './routes/account/addresses'
+import { Route as AccountInvoicesRouteImport } from './routes/account/invoices'
 import { Route as AccountOrdersRouteImport } from './routes/account/orders'
 import { Route as AccountProfileRouteImport } from './routes/account/profile'
 import { Route as AccountWalletRouteImport } from './routes/account/wallet'
+import { Route as ProductsManageRouteImport } from './routes/products/manage'
 import { Route as TrackIndexRouteImport } from './routes/track/index'
 import { Route as TrackTrackingCodeRouteImport } from './routes/track/$trackingCode'
 import { Route as ApiPublicSheinPriceRouteImport } from './routes/api/public/shein-price'
@@ -78,9 +83,24 @@ const AdminRoute = AdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminChatRoute = AdminChatRouteImport.update({
+  id: '/admin-chat',
+  path: '/admin-chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminClientDetailRoute = AdminClientDetailRouteImport.update({
+  id: '/admin-client-detail',
+  path: '/admin-client-detail',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminClientsRoute = AdminClientsRouteImport.update({
   id: '/admin-clients',
   path: '/admin-clients',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminLoginRoute = AdminLoginRouteImport.update({
+  id: '/admin-login',
+  path: '/admin-login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminStepsRoute = AdminStepsRouteImport.update({
@@ -238,6 +258,11 @@ const AccountAddressesRoute = AccountAddressesRouteImport.update({
   path: '/account/addresses',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AccountInvoicesRoute = AccountInvoicesRouteImport.update({
+  id: '/account/invoices',
+  path: '/account/invoices',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AccountOrdersRoute = AccountOrdersRouteImport.update({
   id: '/account/orders',
   path: '/account/orders',
@@ -252,6 +277,11 @@ const AccountWalletRoute = AccountWalletRouteImport.update({
   id: '/account/wallet',
   path: '/account/wallet',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ProductsManageRoute = ProductsManageRouteImport.update({
+  id: '/manage',
+  path: '/manage',
+  getParentRoute: () => ProductsRoute,
 } as any)
 const TrackIndexRoute = TrackIndexRouteImport.update({
   id: '/track/',
@@ -275,7 +305,10 @@ export interface FileRoutesByFullPath {
   '/accounting': typeof AccountingRoute
   '/accounts': typeof AccountsRoute
   '/admin': typeof AdminRoute
+  '/admin-chat': typeof AdminChatRoute
+  '/admin-client-detail': typeof AdminClientDetailRoute
   '/admin-clients': typeof AdminClientsRoute
+  '/admin-login': typeof AdminLoginRoute
   '/admin-steps': typeof AdminStepsRoute
   '/admin-tracking': typeof AdminTrackingRoute
   '/client-daily': typeof ClientDailyRoute
@@ -295,7 +328,7 @@ export interface FileRoutesByFullPath {
   '/payments': typeof PaymentsRoute
   '/prices': typeof PricesRoute
   '/privacy': typeof PrivacyRoute
-  '/products': typeof ProductsRoute
+  '/products': typeof ProductsRouteWithChildren
   '/purchase-invoices': typeof PurchaseInvoicesRoute
   '/purchase-returns': typeof PurchaseReturnsRoute
   '/register': typeof RegisterRoute
@@ -307,9 +340,11 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/warehouses': typeof WarehousesRoute
   '/account/addresses': typeof AccountAddressesRoute
+  '/account/invoices': typeof AccountInvoicesRoute
   '/account/orders': typeof AccountOrdersRoute
   '/account/profile': typeof AccountProfileRoute
   '/account/wallet': typeof AccountWalletRoute
+  '/products/manage': typeof ProductsManageRoute
   '/track/$trackingCode': typeof TrackTrackingCodeRoute
   '/track/': typeof TrackIndexRoute
   '/api/public/shein-price': typeof ApiPublicSheinPriceRoute
@@ -320,7 +355,10 @@ export interface FileRoutesByTo {
   '/accounting': typeof AccountingRoute
   '/accounts': typeof AccountsRoute
   '/admin': typeof AdminRoute
+  '/admin-chat': typeof AdminChatRoute
+  '/admin-client-detail': typeof AdminClientDetailRoute
   '/admin-clients': typeof AdminClientsRoute
+  '/admin-login': typeof AdminLoginRoute
   '/admin-steps': typeof AdminStepsRoute
   '/admin-tracking': typeof AdminTrackingRoute
   '/client-daily': typeof ClientDailyRoute
@@ -340,7 +378,7 @@ export interface FileRoutesByTo {
   '/payments': typeof PaymentsRoute
   '/prices': typeof PricesRoute
   '/privacy': typeof PrivacyRoute
-  '/products': typeof ProductsRoute
+  '/products': typeof ProductsRouteWithChildren
   '/purchase-invoices': typeof PurchaseInvoicesRoute
   '/purchase-returns': typeof PurchaseReturnsRoute
   '/register': typeof RegisterRoute
@@ -352,9 +390,11 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/warehouses': typeof WarehousesRoute
   '/account/addresses': typeof AccountAddressesRoute
+  '/account/invoices': typeof AccountInvoicesRoute
   '/account/orders': typeof AccountOrdersRoute
   '/account/profile': typeof AccountProfileRoute
   '/account/wallet': typeof AccountWalletRoute
+  '/products/manage': typeof ProductsManageRoute
   '/track/$trackingCode': typeof TrackTrackingCodeRoute
   '/track': typeof TrackIndexRoute
   '/api/public/shein-price': typeof ApiPublicSheinPriceRoute
@@ -366,7 +406,10 @@ export interface FileRoutesById {
   '/accounting': typeof AccountingRoute
   '/accounts': typeof AccountsRoute
   '/admin': typeof AdminRoute
+  '/admin-chat': typeof AdminChatRoute
+  '/admin-client-detail': typeof AdminClientDetailRoute
   '/admin-clients': typeof AdminClientsRoute
+  '/admin-login': typeof AdminLoginRoute
   '/admin-steps': typeof AdminStepsRoute
   '/admin-tracking': typeof AdminTrackingRoute
   '/client-daily': typeof ClientDailyRoute
@@ -386,7 +429,7 @@ export interface FileRoutesById {
   '/payments': typeof PaymentsRoute
   '/prices': typeof PricesRoute
   '/privacy': typeof PrivacyRoute
-  '/products': typeof ProductsRoute
+  '/products': typeof ProductsRouteWithChildren
   '/purchase-invoices': typeof PurchaseInvoicesRoute
   '/purchase-returns': typeof PurchaseReturnsRoute
   '/register': typeof RegisterRoute
@@ -398,9 +441,11 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/warehouses': typeof WarehousesRoute
   '/account/addresses': typeof AccountAddressesRoute
+  '/account/invoices': typeof AccountInvoicesRoute
   '/account/orders': typeof AccountOrdersRoute
   '/account/profile': typeof AccountProfileRoute
   '/account/wallet': typeof AccountWalletRoute
+  '/products/manage': typeof ProductsManageRoute
   '/track/$trackingCode': typeof TrackTrackingCodeRoute
   '/track/': typeof TrackIndexRoute
   '/api/public/shein-price': typeof ApiPublicSheinPriceRoute
@@ -413,7 +458,10 @@ export interface FileRouteTypes {
     | '/accounting'
     | '/accounts'
     | '/admin'
+    | '/admin-chat'
+    | '/admin-client-detail'
     | '/admin-clients'
+    | '/admin-login'
     | '/admin-steps'
     | '/admin-tracking'
     | '/client-daily'
@@ -445,9 +493,11 @@ export interface FileRouteTypes {
     | '/terms'
     | '/warehouses'
     | '/account/addresses'
+    | '/account/invoices'
     | '/account/orders'
     | '/account/profile'
     | '/account/wallet'
+    | '/products/manage'
     | '/track/$trackingCode'
     | '/track/'
     | '/api/public/shein-price'
@@ -458,7 +508,10 @@ export interface FileRouteTypes {
     | '/accounting'
     | '/accounts'
     | '/admin'
+    | '/admin-chat'
+    | '/admin-client-detail'
     | '/admin-clients'
+    | '/admin-login'
     | '/admin-steps'
     | '/admin-tracking'
     | '/client-daily'
@@ -490,9 +543,11 @@ export interface FileRouteTypes {
     | '/terms'
     | '/warehouses'
     | '/account/addresses'
+    | '/account/invoices'
     | '/account/orders'
     | '/account/profile'
     | '/account/wallet'
+    | '/products/manage'
     | '/track/$trackingCode'
     | '/track'
     | '/api/public/shein-price'
@@ -503,7 +558,10 @@ export interface FileRouteTypes {
     | '/accounting'
     | '/accounts'
     | '/admin'
+    | '/admin-chat'
+    | '/admin-client-detail'
     | '/admin-clients'
+    | '/admin-login'
     | '/admin-steps'
     | '/admin-tracking'
     | '/client-daily'
@@ -535,9 +593,11 @@ export interface FileRouteTypes {
     | '/terms'
     | '/warehouses'
     | '/account/addresses'
+    | '/account/invoices'
     | '/account/orders'
     | '/account/profile'
     | '/account/wallet'
+    | '/products/manage'
     | '/track/$trackingCode'
     | '/track/'
     | '/api/public/shein-price'
@@ -549,7 +609,10 @@ export interface RootRouteChildren {
   AccountingRoute: typeof AccountingRoute
   AccountsRoute: typeof AccountsRoute
   AdminRoute: typeof AdminRoute
+  AdminChatRoute: typeof AdminChatRoute
+  AdminClientDetailRoute: typeof AdminClientDetailRoute
   AdminClientsRoute: typeof AdminClientsRoute
+  AdminLoginRoute: typeof AdminLoginRoute
   AdminStepsRoute: typeof AdminStepsRoute
   AdminTrackingRoute: typeof AdminTrackingRoute
   ClientDailyRoute: typeof ClientDailyRoute
@@ -569,7 +632,7 @@ export interface RootRouteChildren {
   PaymentsRoute: typeof PaymentsRoute
   PricesRoute: typeof PricesRoute
   PrivacyRoute: typeof PrivacyRoute
-  ProductsRoute: typeof ProductsRoute
+  ProductsRoute: typeof ProductsRouteWithChildren
   PurchaseInvoicesRoute: typeof PurchaseInvoicesRoute
   PurchaseReturnsRoute: typeof PurchaseReturnsRoute
   RegisterRoute: typeof RegisterRoute
@@ -581,6 +644,7 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   WarehousesRoute: typeof WarehousesRoute
   AccountAddressesRoute: typeof AccountAddressesRoute
+  AccountInvoicesRoute: typeof AccountInvoicesRoute
   AccountOrdersRoute: typeof AccountOrdersRoute
   AccountProfileRoute: typeof AccountProfileRoute
   AccountWalletRoute: typeof AccountWalletRoute
@@ -626,11 +690,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin-chat': {
+      id: '/admin-chat'
+      path: '/admin-chat'
+      fullPath: '/admin-chat'
+      preLoaderRoute: typeof AdminChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin-client-detail': {
+      id: '/admin-client-detail'
+      path: '/admin-client-detail'
+      fullPath: '/admin-client-detail'
+      preLoaderRoute: typeof AdminClientDetailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin-clients': {
       id: '/admin-clients'
       path: '/admin-clients'
       fullPath: '/admin-clients'
       preLoaderRoute: typeof AdminClientsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin-login': {
+      id: '/admin-login'
+      path: '/admin-login'
+      fullPath: '/admin-login'
+      preLoaderRoute: typeof AdminLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin-steps': {
@@ -850,6 +935,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccountAddressesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/account/invoices': {
+      id: '/account/invoices'
+      path: '/account/invoices'
+      fullPath: '/account/invoices'
+      preLoaderRoute: typeof AccountInvoicesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/account/orders': {
       id: '/account/orders'
       path: '/account/orders'
@@ -870,6 +962,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/account/wallet'
       preLoaderRoute: typeof AccountWalletRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/products/manage': {
+      id: '/products/manage'
+      path: '/manage'
+      fullPath: '/products/manage'
+      preLoaderRoute: typeof ProductsManageRouteImport
+      parentRoute: typeof ProductsRoute
     }
     '/track/': {
       id: '/track/'
@@ -895,13 +994,28 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface ProductsRouteChildren {
+  ProductsManageRoute: typeof ProductsManageRoute
+}
+
+const ProductsRouteChildren: ProductsRouteChildren = {
+  ProductsManageRoute: ProductsManageRoute,
+}
+
+const ProductsRouteWithChildren = ProductsRoute._addFileChildren(
+  ProductsRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountSuccessRoute: AccountSuccessRoute,
   AccountingRoute: AccountingRoute,
   AccountsRoute: AccountsRoute,
   AdminRoute: AdminRoute,
+  AdminChatRoute: AdminChatRoute,
+  AdminClientDetailRoute: AdminClientDetailRoute,
   AdminClientsRoute: AdminClientsRoute,
+  AdminLoginRoute: AdminLoginRoute,
   AdminStepsRoute: AdminStepsRoute,
   AdminTrackingRoute: AdminTrackingRoute,
   ClientDailyRoute: ClientDailyRoute,
@@ -921,7 +1035,7 @@ const rootRouteChildren: RootRouteChildren = {
   PaymentsRoute: PaymentsRoute,
   PricesRoute: PricesRoute,
   PrivacyRoute: PrivacyRoute,
-  ProductsRoute: ProductsRoute,
+  ProductsRoute: ProductsRouteWithChildren,
   PurchaseInvoicesRoute: PurchaseInvoicesRoute,
   PurchaseReturnsRoute: PurchaseReturnsRoute,
   RegisterRoute: RegisterRoute,
@@ -933,6 +1047,7 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   WarehousesRoute: WarehousesRoute,
   AccountAddressesRoute: AccountAddressesRoute,
+  AccountInvoicesRoute: AccountInvoicesRoute,
   AccountOrdersRoute: AccountOrdersRoute,
   AccountProfileRoute: AccountProfileRoute,
   AccountWalletRoute: AccountWalletRoute,
