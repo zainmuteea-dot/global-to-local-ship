@@ -11,7 +11,7 @@ const steps = [
   {
     number: "01",
     title: "اختر المتجر",
-    description: "تصفّح متجرك العالمي المفضّل واختر المنتج.",
+    description: "تصفّح متجرك العالمي المفضّل واختر المنتج الذي تريده.",
     Icon: ShoppingBag,
   },
   {
@@ -28,50 +28,65 @@ const steps = [
   },
   {
     number: "04",
-    title: "راجع حالة الطلب",
-    description: "استخدم حسابك وصفحة التتبع لمراجعة التحديثات.",
+    title: "راجع الطلب",
+    description: "تأكد من تفاصيل المنتج قبل متابعة طلبك.",
     Icon: PackageCheck,
   },
   {
     number: "05",
     title: "تابع الشحنة",
-    description: "تحقق من حالة الشحنة عبر صفحة التتبع عند توفرها.",
+    description: "استخدم صفحة التتبع لمراجعة آخر حالة متاحة.",
     Icon: Truck,
   },
 ];
 
 export default function StepsBest() {
   return (
-    <section className="mx-auto max-w-5xl px-4 py-12 sm:py-16" aria-labelledby="steps-best-title">
-      <div className="mb-7 text-center sm:mb-9">
-        <span className="inline-flex items-center gap-2 rounded-full border border-sky-200/15 bg-white/5 px-3 py-1.5 text-[10px] font-black text-sky-200 sm:text-xs">
+    <section
+      className="mx-auto max-w-4xl px-4 py-10 sm:py-14"
+      aria-labelledby="steps-best-title"
+    >
+      <div className="mb-6 text-center sm:mb-8">
+        <span className="inline-flex items-center gap-2 rounded-full border border-sky-200/20 bg-sky-300/10 px-3 py-1.5 text-[10px] font-black text-sky-100 sm:text-xs">
           <span className="size-1.5 rounded-full bg-orange-400" />
           خطوات بسيطة وواضحة
         </span>
-        <h2 id="steps-best-title" className="mt-3 text-xl font-black text-white sm:text-3xl">
+        <h2
+          id="steps-best-title"
+          className="mt-3 text-xl font-black text-white sm:text-2xl"
+        >
           كيف تطلب من المتاجر العالمية؟
         </h2>
-        <p className="mx-auto mt-2 max-w-2xl text-xs leading-6 text-sky-100/70 sm:text-sm">
-          ابدأ برابط المنتج، ثم تابع تفاصيل طلبك وشحنتك من صفحات الخدمة.
+        <p className="mx-auto mt-2 max-w-xl text-xs leading-6 text-sky-100/70 sm:text-sm">
+          خمس خطوات تساعدك على إرسال تفاصيل الطلب ومتابعته.
         </p>
       </div>
 
-      <ol className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <ol className="grid gap-3 sm:grid-cols-2 sm:gap-4">
         {steps.map(({ number, title, description, Icon }, index) => (
           <li
             key={number}
-            className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.055] p-4 text-right shadow-lg shadow-black/10 backdrop-blur-md transition duration-300 hover:-translate-y-1 hover:border-sky-300/35 hover:bg-white/[0.085]"
+            className={`group relative flex min-h-[92px] items-center gap-3 rounded-xl border border-cyan-300/70 bg-[#12366a]/90 p-3 text-right shadow-[0_0_12px_rgba(0,220,255,.16),0_0_22px_rgba(249,115,22,.10)] transition duration-300 hover:-translate-y-0.5 hover:border-orange-300 hover:shadow-[0_0_20px_rgba(0,220,255,.3),0_0_28px_rgba(249,115,22,.2)] sm:p-4 ${
+              index === steps.length - 1 ? "sm:col-span-2 sm:mx-auto sm:w-[calc(50%-0.5rem)]" : ""
+            }`}
           >
-            <div className="mb-4 flex items-center justify-between">
-              <span className="grid size-10 place-items-center rounded-xl border border-orange-300/20 bg-orange-500/10 text-orange-300 transition group-hover:bg-orange-500/20">
-                <Icon className="size-5" aria-hidden="true" />
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-orange-300/35 bg-orange-500 text-white shadow-[0_0_15px_rgba(249,115,22,.35)] sm:size-11">
+              <Icon className="size-5" aria-hidden="true" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="flex items-center justify-between gap-2">
+                <span className="text-xs font-black text-white sm:text-sm">{title}</span>
+                <span className="font-mono text-[10px] font-black tracking-widest text-sky-200/70">{number}</span>
               </span>
-              <span className="font-mono text-xs font-black tracking-widest text-sky-200/55">{number}</span>
-            </div>
-            <h3 className="text-sm font-black text-white">{title}</h3>
-            <p className="mt-2 text-[11px] leading-5 text-sky-100/70">{description}</p>
+              <span className="mt-1 block text-[10px] leading-5 text-sky-100/75 sm:text-[11px]">
+                {description}
+              </span>
+            </span>
             {index < steps.length - 1 && (
-              <ArrowLeft className="absolute left-3 top-1/2 hidden size-4 -translate-y-1/2 text-sky-300/30 lg:block" aria-hidden="true" />
+              <ArrowLeft
+                className="hidden size-3.5 shrink-0 text-sky-300/50 sm:block"
+                aria-hidden="true"
+              />
             )}
           </li>
         ))}
