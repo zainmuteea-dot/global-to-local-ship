@@ -21,9 +21,16 @@ const highlights = [
   },
 ];
 
+const dottedBackground = {
+  backgroundColor: "#0f2a5a",
+  backgroundImage: "radial-gradient(circle, #3b82f6 1.8px, transparent 1.8px)",
+  backgroundSize: "30px 30px",
+};
+
 export default function ReviewsBest() {
   return (
     <section
+      style={dottedBackground}
       className="mx-auto max-w-4xl px-4 pb-12 pt-2 sm:pb-16"
       aria-labelledby="reviews-best-title"
     >
@@ -47,9 +54,10 @@ export default function ReviewsBest() {
         {highlights.map(({ title, description, Icon, color }) => (
           <article
             key={title}
-            className="rounded-2xl border border-cyan-300/70 bg-[#12366a]/90 p-4 text-center shadow-[0_0_14px_rgba(0,220,255,.15),0_0_24px_rgba(249,115,22,.10)] transition duration-300 hover:-translate-y-1 hover:border-orange-300 hover:shadow-[0_0_22px_rgba(0,220,255,.28),0_0_30px_rgba(249,115,22,.18)] sm:p-5"
+            className="testimonial-fixed text-center"
+            style={{ padding: "16px 18px" }}
           >
-            <span className={`mx-auto mb-3 grid size-10 place-items-center rounded-xl border ${color}`}>
+            <span className={`mx-auto mb-3 grid size-[44px] place-items-center rounded-xl border ${color}`}>
               <Icon className="size-5" aria-hidden="true" />
             </span>
             <h3 className="text-xs font-black text-white sm:text-sm">{title}</h3>
