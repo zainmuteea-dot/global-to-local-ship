@@ -33,11 +33,7 @@ type PaymentFilter = PaymentStatus | "partial" | "all";
 export const AUTO_REFRESH_SECONDS = 30;
 const PAGE_SIZE = 10;
 
-export function matchesPeriod(
-  createdAt: string,
-  period: Period,
-  now: Date,
-): boolean {
+export function matchesPeriod(createdAt: string, period: Period, now: Date): boolean {
   const created = new Date(createdAt);
 
   if (Number.isNaN(created.getTime())) return false;
@@ -93,10 +89,8 @@ function escapePostgrestSearch(value: string) {
 export function paymentTotals(payments: Payment[]) {
   return {
     pending: payments.filter((payment) => payment.status === "pending").length,
-    approved: payments.filter((payment) => payment.status === "approved")
-      .length,
-    rejected: payments.filter((payment) => payment.status === "rejected")
-      .length,
+    approved: payments.filter((payment) => payment.status === "approved").length,
+    rejected: payments.filter((payment) => payment.status === "rejected").length,
     received: payments
       .filter((payment) => payment.status === "approved")
       .reduce((sum, payment) => sum + payment.amount, 0),
@@ -108,14 +102,7 @@ export function paymentTotals(payments: Payment[]) {
  * لا تستدعِ هذه الدالة لعرضها في الصفحة الفعلية.
  */
 export function createDemoPayments(now: Date): Payment[] {
-  const rows: [
-    string,
-    string,
-    number,
-    number,
-    PaymentStatus,
-    string,
-  ][] = [
+  const rows: [string, string, number, number, PaymentStatus, string][] = [
     ["SQ-160416", "أحمد محمد", 2458, 0, "pending", "الكريمي"],
     ["SQ-941280", "سارة عبدالله", 1000, 0, "pending", "جوال"],
     ["SQ-812502", "محمد علي", 2458, 2, "approved", "الكريمي"],
@@ -127,20 +114,16 @@ export function createDemoPayments(now: Date): Payment[] {
     ["SQ-517093", "نور محمد", 9000, 37, "rejected", "جوال"],
   ];
 
-  return rows.map(
-    ([tracking, customer, amount, days, status, method], index) => ({
-      id: `demo-${index}`,
-      tracking,
-      customer,
-      amount,
-      method,
-      status,
-      archived: false,
-      createdAt: new Date(
-        now.getTime() - days * 86400000 - index * 60000,
-      ).toISOString(),
-    }),
-  );
+  return rows.map(([tracking, customer, amount, days, status, method], index) => ({
+    id: `demo-${index}`,
+    tracking,
+    customer,
+    amount,
+    method,
+    status,
+    archived: false,
+    createdAt: new Date(now.getTime() - days * 86400000 - index * 60000).toISOString(),
+  }));
 }
 
 export const Route = createFileRoute("/payments")({
@@ -232,9 +215,7 @@ function normalizeStatus(value: unknown): PaymentStatus {
 
 function PaymentsPage() {
   const [rows, setRows] = useState<PaymentRecord[]>([]);
-  const [receivedInputs, setReceivedInputs] = useState<
-    Record<string, string>
-  >({});
+  const [receivedInputs, setReceivedInputs] = useState<Record<string, string>>({});
   const [filter, setFilter] = useState<PaymentFilter>("pending");
   const [period, setPeriod] = useState<Period>("all");
   const [search, setSearch] = useState("");
@@ -293,8 +274,7 @@ function PaymentsPage() {
     setErr("");
 
     try {
-      const { data: authData, error: authError } =
-        await supabase.auth.getUser();
+      const { data: authData, error: authError } = await supabase.auth.getUser();
 
       if (authError) {
         throw new Error(`تعذر التحقق من جلسة الدخول: ${authError.message}`);
@@ -317,9 +297,7 @@ function PaymentsPage() {
 
       if (adminRole.error || staffRole.error) {
         const roleError = adminRole.error ?? staffRole.error;
-        throw new Error(
-          `تعذر فحص دور الحساب: ${roleError?.message ?? "خطأ غير معروف"}`,
-        );
+        throw new Error(`تعذر فحص دور الحساب: ${roleError?.message ?? "خطأ غير معروف"}`);
       }
 
       if (!adminRole.data && !staffRole.data) {
@@ -335,9 +313,7 @@ function PaymentsPage() {
         let from = 0;
 
         while (true) {
-          const { data: orderRows, error: ordersError } = await (
-            supabase.from("orders") as any
-          )
+          const { data: orderRows, error: ordersError } = await (supabase.from("orders") as any)
             .select("tracking_code, paid_amount, remaining_amount")
             .gt("paid_amount", 0)
             .gt("remaining_amount", 0)
@@ -370,13 +346,17 @@ function PaymentsPage() {
       }
 
       // جلب صفحة واحدة من قاعدة البيانات مع العدد الدقيق لكل نتائج البحث والفلاتر.
-      const query = (supabase.from("payments") as any)
-        .select(
-          "id, order_tracking, customer_name, method, amount, status, created_at, currency, phone, tracking_code, payment_method, user_id, wallet, reviewed_at, updated_at, remaining_amount, settled_at, cancelled_at",
-          { count: "exact" },
-        );
+      const query = (supabase.from("payments") as any).select(
+        "id, order_tracking, customer_name, method, amount, status, created_at, currency, phone, tracking_code, payment_method, user_id, wallet, reviewed_at, updated_at, remaining_amount, settled_at, cancelled_at",
+        { count: "exact" },
+      );
 
-      if (filter === "pending" || filter === "approved" || filter === "rejected" || filter === "cancelled") {
+      if (
+        filter === "pending" ||
+        filter === "approved" ||
+        filter === "rejected" ||
+        filter === "cancelled"
+      ) {
         query.eq("status", filter);
       } else if (filter === "partial") {
         // اعرض الدفعات المعلقة والمعتمدة للطلبات المدفوعة جزئيًا، واستبعد المرفوضة.
@@ -386,9 +366,7 @@ function PaymentsPage() {
         if (trackingCodes.length > 0) {
           // بعض الدفعات تربط الطلب عبر order_tracking وبعضها عبر tracking_code.
           const inList = `(${trackingCodes.join(",")})`;
-          query.or(
-            `order_tracking.in.${inList},tracking_code.in.${inList}`,
-          );
+          query.or(`order_tracking.in.${inList},tracking_code.in.${inList}`);
         } else {
           // لا توجد طلبات دفع جزئي، فلا نعرض نتائج غير مطابقة.
           query.eq("id", "00000000-0000-0000-0000-000000000000");
@@ -416,9 +394,7 @@ function PaymentsPage() {
 
       if (error) {
         throw new Error(
-          `تعذر تحميل صفحة الدفعات: ${error.message}${
-            error.code ? ` (${error.code})` : ""
-          }`,
+          `تعذر تحميل صفحة الدفعات: ${error.message}${error.code ? ` (${error.code})` : ""}`,
         );
       }
 
@@ -426,73 +402,57 @@ function PaymentsPage() {
       if (requestSequence !== loadSequenceRef.current) return;
       setTotalCount(count ?? 0);
 
-      const nextRows: PaymentRecord[] = (data ?? []).map((row: any) => {
-        const status = normalizeStatus(row.status);
-        const baseAmount = Number(row.amount ?? 0);
-        const requestedAmount =
-          row.requested_amount == null
-            ? baseAmount
-            : Number(row.requested_amount);
-        const receivedAmount =
-          row.received_amount == null ? null : Number(row.received_amount);
-        const amount =
-          status === "approved"
-            ? receivedAmount ?? baseAmount
-            : baseAmount;
-        const orderTracking = String(row.order_tracking ?? "").trim();
-        const paymentTracking = String(
-          row.tracking_code ?? row.tracking ?? "",
-        ).trim();
-        const partialRemaining =
-          partialRemainingByTracking.get(orderTracking) ??
-          partialRemainingByTracking.get(paymentTracking);
+      const nextRows: PaymentRecord[] = (data ?? [])
+        .map((row: any) => {
+          const status = normalizeStatus(row.status);
+          const baseAmount = Number(row.amount ?? 0);
+          const requestedAmount =
+            row.requested_amount == null ? baseAmount : Number(row.requested_amount);
+          const receivedAmount = row.received_amount == null ? null : Number(row.received_amount);
+          const amount = status === "approved" ? (receivedAmount ?? baseAmount) : baseAmount;
+          const orderTracking = String(row.order_tracking ?? "").trim();
+          const paymentTracking = String(row.tracking_code ?? row.tracking ?? "").trim();
+          const partialRemaining =
+            partialRemainingByTracking.get(orderTracking) ??
+            partialRemainingByTracking.get(paymentTracking);
 
-        return {
-          id: String(row.id),
-          tracking: String(
-            row.tracking_code ?? row.order_tracking ?? row.tracking ?? "",
-          ),
-          customer: String(
-            row.customer_name ?? row.name ?? row.phone ?? "عميل",
-          ),
-          amount,
-          method: String(
-            row.wallet ?? row.payment_method ?? row.method ?? "غير محدد",
-          ),
-          createdAt: String(row.created_at ?? row.updated_at ?? ""),
-          status,
-          archived: false,
-          requestedAmount,
-          receivedAmount,
-          remainingAmount:
-            filter === "partial"
-              ? partialRemaining ??
-                (row.remaining_amount == null
+          return {
+            id: String(row.id),
+            tracking: String(row.tracking_code ?? row.order_tracking ?? row.tracking ?? ""),
+            customer: String(row.customer_name ?? row.name ?? row.phone ?? "عميل"),
+            amount,
+            method: String(row.wallet ?? row.payment_method ?? row.method ?? "غير محدد"),
+            createdAt: String(row.created_at ?? row.updated_at ?? ""),
+            status,
+            archived: false,
+            requestedAmount,
+            receivedAmount,
+            remainingAmount:
+              filter === "partial"
+                ? (partialRemaining ??
+                  (row.remaining_amount == null ? null : Number(row.remaining_amount)))
+                : row.remaining_amount == null
                   ? null
-                  : Number(row.remaining_amount))
-              : row.remaining_amount == null
-                ? null
-                : Number(row.remaining_amount),
-          // لا نحمل صورة السند ضمن القائمة لتقليل حجم التحديث الدوري.
-          receiptImage: null,
-          reviewedAt: row.reviewed_at ?? null,
-          userId: row.user_id ?? null,
-          settledAt: row.settled_at ?? null,
-          cancelledAt: row.cancelled_at ?? null,
-        };
-      }).sort((a: PaymentRecord, b: PaymentRecord) => {
-        const aTime = Date.parse(a.createdAt);
-        const bTime = Date.parse(b.createdAt);
-        if (!Number.isFinite(aTime)) return 1;
-        if (!Number.isFinite(bTime)) return -1;
-        return bTime - aTime;
-      });
+                  : Number(row.remaining_amount),
+            // لا نحمل صورة السند ضمن القائمة لتقليل حجم التحديث الدوري.
+            receiptImage: null,
+            reviewedAt: row.reviewed_at ?? null,
+            userId: row.user_id ?? null,
+            settledAt: row.settled_at ?? null,
+            cancelledAt: row.cancelled_at ?? null,
+          };
+        })
+        .sort((a: PaymentRecord, b: PaymentRecord) => {
+          const aTime = Date.parse(a.createdAt);
+          const bTime = Date.parse(b.createdAt);
+          if (!Number.isFinite(aTime)) return 1;
+          if (!Number.isFinite(bTime)) return -1;
+          return bTime - aTime;
+        });
 
       if (filter === "pending" && page === 1) {
         const nextPendingIds = new Set(
-          nextRows
-            .filter((payment) => payment.status === "pending")
-            .map((payment) => payment.id),
+          nextRows.filter((payment) => payment.status === "pending").map((payment) => payment.id),
         );
         const previouslyKnownIds = knownPendingIdsRef.current;
 
@@ -501,9 +461,7 @@ function PaymentsPage() {
           knownPendingIdsRef.current = nextPendingIds;
         } else {
           const newPendingPayments = nextRows.filter(
-            (payment) =>
-              payment.status === "pending" &&
-              !previouslyKnownIds.has(payment.id),
+            (payment) => payment.status === "pending" && !previouslyKnownIds.has(payment.id),
           );
 
           // حدّث خط الأساس قبل إصدار التنبيه لمنع التكرار.
@@ -513,9 +471,7 @@ function PaymentsPage() {
             const newestPayment = newPendingPayments[0];
             setIncomingAlert(
               `وصل ${newPendingPayments.length} طلب دفع جديد${
-                newestPayment.tracking
-                  ? ` • رقم الطلب ${newestPayment.tracking}`
-                  : ""
+                newestPayment?.tracking ? ` • رقم الطلب ${newestPayment?.tracking}` : ""
               }`,
             );
 
@@ -524,9 +480,7 @@ function PaymentsPage() {
               void context
                 .resume()
                 .then(() => playPaymentTone(context))
-                .catch((cause) =>
-                  console.error("تعذر تشغيل نغمة الدفعة الجديدة:", cause),
-                );
+                .catch((cause) => console.error("تعذر تشغيل نغمة الدفعة الجديدة:", cause));
             }
           }
         }
@@ -539,9 +493,7 @@ function PaymentsPage() {
 
         for (const payment of nextRows) {
           if (next[payment.id] === undefined) {
-            next[payment.id] = String(
-              payment.requestedAmount ?? payment.amount,
-            );
+            next[payment.id] = String(payment.requestedAmount ?? payment.amount);
           }
         }
 
@@ -550,9 +502,7 @@ function PaymentsPage() {
     } catch (cause) {
       if (requestSequence === loadSequenceRef.current) {
         console.error("تعذر تحميل طلبات الدفع:", cause);
-        setErr(
-          cause instanceof Error ? cause.message : "تعذر تحميل طلبات الدفع.",
-        );
+        setErr(cause instanceof Error ? cause.message : "تعذر تحميل طلبات الدفع.");
       }
     } finally {
       if (requestSequence === loadSequenceRef.current) {
@@ -603,10 +553,7 @@ function PaymentsPage() {
       )
       .subscribe();
 
-    const intervalId = window.setInterval(
-      () => void load(),
-      AUTO_REFRESH_SECONDS * 1000,
-    );
+    const intervalId = window.setInterval(() => void load(), AUTO_REFRESH_SECONDS * 1000);
 
     return () => {
       window.clearInterval(intervalId);
@@ -620,9 +567,7 @@ function PaymentsPage() {
       const context = audioContextRef.current;
       audioContextRef.current = null;
       if (context && context.state !== "closed") {
-        void context.close().catch((cause) =>
-          console.error("تعذر إغلاق سياق الصوت:", cause),
-        );
+        void context.close().catch((cause) => console.error("تعذر إغلاق سياق الصوت:", cause));
       }
     };
   }, []);
@@ -631,14 +576,10 @@ function PaymentsPage() {
     setErr("");
 
     const received = Number(receivedInputs[payment.id]);
-    const requested = Number(
-      payment.requestedAmount ?? payment.amount,
-    );
+    const requested = Number(payment.requestedAmount ?? payment.amount);
 
     if (!Number.isSafeInteger(received) || received <= 0) {
-      setErr(
-        `أدخل مبلغًا مقبوضًا صحيحًا أكبر من صفر للطلب ${payment.tracking}.`,
-      );
+      setErr(`أدخل مبلغًا مقبوضًا صحيحًا أكبر من صفر للطلب ${payment.tracking}.`);
       return;
     }
 
@@ -695,9 +636,7 @@ function PaymentsPage() {
     } catch (cause) {
       console.error("تعذر اعتماد الدفعة:", cause);
       setErr(
-        cause instanceof Error
-          ? cause.message
-          : "تعذر اعتماد الدفعة. لم يُعرض نجاح الاعتماد.",
+        cause instanceof Error ? cause.message : "تعذر اعتماد الدفعة. لم يُعرض نجاح الاعتماد.",
       );
     } finally {
       setBusy(null);
@@ -705,11 +644,7 @@ function PaymentsPage() {
   };
 
   const reject = async (payment: PaymentRecord) => {
-    if (
-      !window.confirm(
-        `هل تريد رفض سند الدفع للطلب ${payment.tracking}؟`,
-      )
-    ) {
+    if (!window.confirm(`هل تريد رفض سند الدفع للطلب ${payment.tracking}؟`)) {
       return;
     }
 
@@ -720,8 +655,7 @@ function PaymentsPage() {
     try {
       // لا نعتبر الرفض ناجحًا إلا إذا أعاد التحديث سجل الدفعة فعلًا.
       // شرط الحالة المعلّقة يمنع رفض دفعة سبق اعتمادها أو رفضها.
-      const { data: rejectedRow, error: rejectError } = await (supabase
-        .from("payments") as any)
+      const { data: rejectedRow, error: rejectError } = await (supabase.from("payments") as any)
         .update({
           status: "rejected",
           reviewed_at: new Date().toISOString(),
@@ -743,22 +677,18 @@ function PaymentsPage() {
 
       let notificationWarning = "";
       if (payment.userId) {
-        const { error: notificationError } = await (supabase
-          .from("notifications") as any)
-          .insert({
-            user_id: payment.userId,
-            title: `لم يتم قبول سند الدفع للطلب ${payment.tracking}`,
-            message:
-              "يرجى مراجعة السند أو التواصل مع خدمة العملاء لإعادة تقديمه.",
-            type: "payment",
-            href: "/account/wallet",
-            is_active: true,
-          });
+        const { error: notificationError } = await (supabase.from("notifications") as any).insert({
+          user_id: payment.userId,
+          title: `لم يتم قبول سند الدفع للطلب ${payment.tracking}`,
+          message: "يرجى مراجعة السند أو التواصل مع خدمة العملاء لإعادة تقديمه.",
+          type: "payment",
+          href: "/account/wallet",
+          is_active: true,
+        });
 
         if (notificationError) {
           console.error("تعذر إرسال إشعار رفض الدفع:", notificationError);
-          notificationWarning =
-            `تم رفض الدفعة، لكن تعذر إرسال إشعار العميل: ${notificationError.message}`;
+          notificationWarning = `تم رفض الدفعة، لكن تعذر إرسال إشعار العميل: ${notificationError.message}`;
         }
       }
 
@@ -775,18 +705,13 @@ function PaymentsPage() {
       }
     } catch (cause) {
       console.error("تعذر رفض الدفعة:", cause);
-      setErr(
-        cause instanceof Error ? cause.message : "تعذر رفض الدفعة.",
-      );
+      setErr(cause instanceof Error ? cause.message : "تعذر رفض الدفعة.");
     } finally {
       setBusy(null);
     }
   };
 
-  const recordPaymentAction = async (
-    payment: PaymentRecord,
-    action: "cancel" | "settle",
-  ) => {
+  const recordPaymentAction = async (payment: PaymentRecord, action: "cancel" | "settle") => {
     setErr("");
     setSuccess("");
 
@@ -809,14 +734,11 @@ function PaymentsPage() {
 
     setBusy(payment.id);
     try {
-      const { error } = await (supabase as any).rpc(
-        "admin_record_payment_action",
-        {
-          _payment_id: payment.id,
-          _action: action,
-          _note: note.trim(),
-        },
-      );
+      const { error } = await (supabase as any).rpc("admin_record_payment_action", {
+        _payment_id: payment.id,
+        _action: action,
+        _note: note.trim(),
+      });
 
       if (error) {
         throw new Error(error.message || `تعذر تنفيذ ${actionLabel}.`);
@@ -845,38 +767,23 @@ function PaymentsPage() {
     setPage(1);
   }, [filter, period, search]);
 
-  const totals = useMemo(
-    () => paymentTotals(rows.filter((payment) => !payment.archived)),
-    [rows],
-  );
+  const totals = useMemo(() => paymentTotals(rows.filter((payment) => !payment.archived)), [rows]);
 
   const ledger = useMemo(() => {
     const amounts: Record<string, number> = {};
 
     rows
-      .filter(
-        (payment) =>
-          payment.status === "approved" && !payment.archived,
-      )
+      .filter((payment) => payment.status === "approved" && !payment.archived)
       .forEach((payment) => {
-        amounts[payment.method] =
-          (amounts[payment.method] ?? 0) + payment.amount;
+        amounts[payment.method] = (amounts[payment.method] ?? 0) + payment.amount;
       });
 
     return amounts;
   }, [rows]);
 
   const pendingAmount = rows
-    .filter(
-      (payment) =>
-        payment.status === "pending" && !payment.archived,
-    )
-    .reduce(
-      (sum, payment) =>
-        sum +
-        Number(payment.requestedAmount ?? payment.amount),
-      0,
-    );
+    .filter((payment) => payment.status === "pending" && !payment.archived)
+    .reduce((sum, payment) => sum + Number(payment.requestedAmount ?? payment.amount), 0);
 
   return (
     <main dir="rtl" className="min-h-screen bg-slate-50 p-3 font-[Cairo] sm:p-6">
@@ -896,23 +803,37 @@ function PaymentsPage() {
             >
               {soundEnabled ? "🔔 الصوت مفعّل" : "🔕 تفعيل صوت التنبيه"}
             </button>
-            <Link to="/admin" className="rounded-xl bg-white/15 px-4 py-2 text-sm font-bold hover:bg-white/25">
+            <Link
+              to="/admin"
+              className="rounded-xl bg-white/15 px-4 py-2 text-sm font-bold hover:bg-white/25"
+            >
               ← لوحة الإدارة
             </Link>
           </div>
         </header>
 
         {success && (
-          <div role="status" aria-live="polite" className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold text-emerald-800">
+          <div
+            role="status"
+            aria-live="polite"
+            className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold text-emerald-800"
+          >
             {success}
           </div>
         )}
 
         {err && (
-          <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          <div
+            role="alert"
+            className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"
+          >
             <p className="font-black">تعذر تنفيذ العملية أو تحميل البيانات</p>
             <p className="mt-1 break-words">{err}</p>
-            <button type="button" onClick={() => void load()} className="mt-2 rounded-lg bg-red-100 px-3 py-1.5 font-bold">
+            <button
+              type="button"
+              onClick={() => void load()}
+              className="mt-2 rounded-lg bg-red-100 px-3 py-1.5 font-bold"
+            >
               إعادة تحميل البيانات
             </button>
           </div>
@@ -937,10 +858,22 @@ function PaymentsPage() {
 
         <section>
           <h2 className="mb-1 text-lg font-black text-[#0A2540]">ملخص الصفحة الحالية</h2>
-          <p className="mb-3 text-xs text-slate-500">الأعداد والمبالغ أدناه تخص السجلات المحمّلة في هذه الصفحة فقط.</p>
+          <p className="mb-3 text-xs text-slate-500">
+            الأعداد والمبالغ أدناه تخص السجلات المحمّلة في هذه الصفحة فقط.
+          </p>
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <Kpi label="بانتظار الاعتماد" value={totals.pending} sub={`${fmt(pendingAmount)} ر.ي مطلوب`} color="text-amber-600" />
-            <Kpi label="المقبوض المعتمد" value={fmt(totals.received)} sub="ر.ي" color="text-emerald-600" />
+            <Kpi
+              label="بانتظار الاعتماد"
+              value={totals.pending}
+              sub={`${fmt(pendingAmount)} ر.ي مطلوب`}
+              color="text-amber-600"
+            />
+            <Kpi
+              label="المقبوض المعتمد"
+              value={fmt(totals.received)}
+              sub="ر.ي"
+              color="text-emerald-600"
+            />
             <Kpi label="دفعات معتمدة" value={totals.approved} sub="عملية" color="text-[#0F4C81]" />
             <Kpi label="مرفوضة" value={totals.rejected} sub="عملية" color="text-red-600" />
           </div>
@@ -948,7 +881,9 @@ function PaymentsPage() {
 
         <section className="rounded-2xl border border-sky-100 bg-white p-4 shadow-sm">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-sm font-black text-[#0A2540]">المقبوض حسب وسيلة الدفع في هذه الصفحة</h2>
+            <h2 className="text-sm font-black text-[#0A2540]">
+              المقبوض حسب وسيلة الدفع في هذه الصفحة
+            </h2>
             <span className="text-xs text-slate-500">الدفعات المعتمدة الظاهرة حاليًا فقط</span>
           </div>
           {Object.keys(ledger).length === 0 ? (
@@ -956,7 +891,10 @@ function PaymentsPage() {
           ) : (
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
               {Object.entries(ledger).map(([method, value]) => (
-                <div key={method} className="rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-center">
+                <div
+                  key={method}
+                  className="rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-center"
+                >
                   <div className="text-xs font-bold text-slate-600">{method}</div>
                   <div className="mt-1 text-lg font-black text-emerald-700">{fmt(value)}</div>
                   <div className="text-[10px] text-slate-500">ر.ي</div>
@@ -1050,41 +988,56 @@ function PaymentsPage() {
           {loading && !hasLoadedOnceRef.current ? (
             <p className="p-5 text-sm text-slate-500">جارٍ تحميل طلبات الدفع…</p>
           ) : totalCount === 0 ? (
-            <p className="p-5 text-sm text-slate-500">لا توجد طلبات تطابق البحث والفلاتر المحددة.</p>
+            <p className="p-5 text-sm text-slate-500">
+              لا توجد طلبات تطابق البحث والفلاتر المحددة.
+            </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[1050px] border-collapse text-right text-xs">
                 <thead className="bg-slate-50 text-slate-600">
                   <tr>
-                    <th className="whitespace-nowrap border-b px-4 py-3 font-black">رقم الطلب / العميل</th>
+                    <th className="whitespace-nowrap border-b px-4 py-3 font-black">
+                      رقم الطلب / العميل
+                    </th>
                     <th className="whitespace-nowrap border-b px-4 py-3 font-black">وسيلة الدفع</th>
                     <th className="whitespace-nowrap border-b px-4 py-3 font-black">المبلغ</th>
                     <th className="whitespace-nowrap border-b px-4 py-3 font-black">التاريخ</th>
                     <th className="whitespace-nowrap border-b px-4 py-3 font-black">الحالة</th>
-                    <th className="whitespace-nowrap border-b px-4 py-3 font-black">السند والإجراءات</th>
+                    <th className="whitespace-nowrap border-b px-4 py-3 font-black">
+                      السند والإجراءات
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {paginatedRows.map((payment) => {
                     const requested = Number(payment.requestedAmount ?? payment.amount);
                     const entered = Number(receivedInputs[payment.id] ?? requested);
-                    const remainingPreview = Number.isFinite(entered) ? Math.max(0, requested - entered) : requested;
+                    const remainingPreview = Number.isFinite(entered)
+                      ? Math.max(0, requested - entered)
+                      : requested;
                     const isPending = payment.status === "pending";
                     const actualReceived = payment.receivedAmount ?? payment.amount;
-                    const validDate = payment.createdAt && !Number.isNaN(Date.parse(payment.createdAt));
+                    const validDate =
+                      payment.createdAt && !Number.isNaN(Date.parse(payment.createdAt));
 
                     return (
                       <tr key={payment.id} className="border-b last:border-0 hover:bg-slate-50/70">
                         <td className="px-4 py-3">
-                          <div className="font-black text-[#0A2540]" dir="ltr">{payment.tracking || payment.id.slice(0, 8)}</div>
+                          <div className="font-black text-[#0A2540]" dir="ltr">
+                            {payment.tracking || payment.id.slice(0, 8)}
+                          </div>
                           <div className="mt-1 text-slate-500">{payment.customer || "عميل"}</div>
                         </td>
                         <td className="px-4 py-3 font-semibold text-slate-700">{payment.method}</td>
                         <td className="px-4 py-3">
-                          <div className="font-black text-slate-800">المطلوب: {fmt(requested)} ر.ي</div>
+                          <div className="font-black text-slate-800">
+                            المطلوب: {fmt(requested)} ر.ي
+                          </div>
                           {isPending ? (
                             <div className="mt-2 w-40">
-                              <label className="block text-[11px] font-bold text-slate-500">المقبوض فعليًا</label>
+                              <label className="block text-[11px] font-bold text-slate-500">
+                                المقبوض فعليًا
+                              </label>
                               <input
                                 type="number"
                                 min="1"
@@ -1092,19 +1045,41 @@ function PaymentsPage() {
                                 step="1"
                                 inputMode="numeric"
                                 value={receivedInputs[payment.id] ?? String(requested)}
-                                onChange={(event) => setReceivedInputs((previous) => ({ ...previous, [payment.id]: event.target.value }))}
+                                onChange={(event) =>
+                                  setReceivedInputs((previous) => ({
+                                    ...previous,
+                                    [payment.id]: event.target.value,
+                                  }))
+                                }
                                 className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm font-bold"
                               />
-                              <div className="mt-1 text-[11px] font-bold text-amber-700">المتبقي: {fmt(remainingPreview)} ر.ي</div>
+                              <div className="mt-1 text-[11px] font-bold text-amber-700">
+                                المتبقي: {fmt(remainingPreview)} ر.ي
+                              </div>
                             </div>
                           ) : payment.status === "approved" ? (
-                            <div className="mt-1 text-[11px] text-emerald-700">المقبوض: {fmt(actualReceived)} ر.ي{payment.remainingAmount != null ? ` • المتبقي: ${fmt(payment.remainingAmount)} ر.ي` : ""}</div>
+                            <div className="mt-1 text-[11px] text-emerald-700">
+                              المقبوض: {fmt(actualReceived)} ر.ي
+                              {payment.remainingAmount != null
+                                ? ` • المتبقي: ${fmt(payment.remainingAmount)} ر.ي`
+                                : ""}
+                            </div>
                           ) : null}
                         </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-slate-600">{validDate ? new Date(payment.createdAt).toLocaleString("ar") : "—"}</td>
+                        <td className="whitespace-nowrap px-4 py-3 text-slate-600">
+                          {validDate ? new Date(payment.createdAt).toLocaleString("ar") : "—"}
+                        </td>
                         <td className="px-4 py-3">
-                          <span className={`whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-bold ${STATUS_STYLES[payment.status]}`}>
-                            {payment.status === "pending" ? "بانتظار المراجعة" : payment.status === "approved" ? "معتمد ✓" : payment.status === "cancelled" ? "ملغاة" : "مرفوض"}
+                          <span
+                            className={`whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-bold ${STATUS_STYLES[payment.status]}`}
+                          >
+                            {payment.status === "pending"
+                              ? "بانتظار المراجعة"
+                              : payment.status === "approved"
+                                ? "معتمد ✓"
+                                : payment.status === "cancelled"
+                                  ? "ملغاة"
+                                  : "مرفوض"}
                           </span>
                           {payment.settledAt && (
                             <div className="mt-1 text-[10px] font-bold text-sky-700">
@@ -1124,10 +1099,20 @@ function PaymentsPage() {
                             </button>
                             {isPending && (
                               <>
-                                <button type="button" disabled={busy === payment.id} onClick={() => void approve(payment)} className="whitespace-nowrap rounded-lg bg-emerald-600 px-3 py-2 font-bold text-white hover:bg-emerald-700 disabled:opacity-50">
+                                <button
+                                  type="button"
+                                  disabled={busy === payment.id}
+                                  onClick={() => void approve(payment)}
+                                  className="whitespace-nowrap rounded-lg bg-emerald-600 px-3 py-2 font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
+                                >
                                   {busy === payment.id ? "جارٍ التنفيذ…" : "اعتماد"}
                                 </button>
-                                <button type="button" disabled={busy === payment.id} onClick={() => void reject(payment)} className="whitespace-nowrap rounded-lg border border-red-200 bg-red-50 px-3 py-2 font-bold text-red-700 hover:bg-red-100 disabled:opacity-50">
+                                <button
+                                  type="button"
+                                  disabled={busy === payment.id}
+                                  onClick={() => void reject(payment)}
+                                  className="whitespace-nowrap rounded-lg border border-red-200 bg-red-50 px-3 py-2 font-bold text-red-700 hover:bg-red-100 disabled:opacity-50"
+                                >
                                   رفض
                                 </button>
                                 <button
@@ -1171,7 +1156,9 @@ function PaymentsPage() {
               dir="rtl"
             >
               <span className="text-xs text-slate-600">
-                صفحة {page} من {totalPages} • يعرض {totalCount === 0 ? 0 : (page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, totalCount)} من {totalCount}
+                صفحة {page} من {totalPages} • يعرض{" "}
+                {totalCount === 0 ? 0 : (page - 1) * PAGE_SIZE + 1}–
+                {Math.min(page * PAGE_SIZE, totalCount)} من {totalCount}
               </span>
               <div className="flex items-center gap-2">
                 <button
@@ -1197,8 +1184,18 @@ function PaymentsPage() {
       </div>
 
       {preview && (
-        <div role="presentation" onClick={() => setPreview(null)} className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4">
-          <button type="button" onClick={() => setPreview(null)} className="absolute right-4 top-4 rounded-lg bg-white px-3 py-2 font-bold">إغلاق</button>
+        <div
+          role="presentation"
+          onClick={() => setPreview(null)}
+          className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4"
+        >
+          <button
+            type="button"
+            onClick={() => setPreview(null)}
+            className="absolute right-4 top-4 rounded-lg bg-white px-3 py-2 font-bold"
+          >
+            إغلاق
+          </button>
           <img src={preview} alt="سند الدفع" className="max-h-[90vh] max-w-full rounded-xl" />
         </div>
       )}

@@ -1,5 +1,5 @@
-import { createFileRoute, Link } from '@tanstack/react-router';
-import React, { useState, useEffect, useCallback } from 'react';
+import { createFileRoute, Link } from "@tanstack/react-router";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Search,
   Plane,
@@ -16,23 +16,23 @@ import {
   ArrowRight,
   Loader2,
   Check,
-  LayoutDashboard
-} from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+  LayoutDashboard,
+} from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 export type OrderStatus =
-  | 'new'
-  | 'accepted'
-  | 'pricing'
-  | 'priced_waiting_pay'
-  | 'purchased'
-  | 'processing'
-  | 'international_ship'
-  | 'shipped'
-  | 'local_warehouse'
-  | 'out_for_delivery'
-  | 'delivered'
-  | 'cancelled';
+  | "new"
+  | "accepted"
+  | "pricing"
+  | "priced_waiting_pay"
+  | "purchased"
+  | "processing"
+  | "international_ship"
+  | "shipped"
+  | "local_warehouse"
+  | "out_for_delivery"
+  | "delivered"
+  | "cancelled";
 
 export interface OrderItem {
   id: string;
@@ -53,30 +53,32 @@ export interface OrderItem {
 
 // دالة قراءة رقم الهاتف فورياً من ذاكرة المتصفح
 function getInitialClientPhone(): string {
-  if (typeof window === 'undefined') return '';
+  if (typeof window === "undefined") return "";
   const params = new URLSearchParams(window.location.search);
-  const urlPhone = params.get('phone');
+  const urlPhone = params.get("phone");
   if (urlPhone && urlPhone.trim()) return urlPhone.trim();
 
-  const direct = localStorage.getItem('sc_phone') || sessionStorage.getItem('sc_phone');
-  if (direct && direct.trim() && !direct.includes('@')) return direct.trim();
+  const direct = localStorage.getItem("sc_phone") || sessionStorage.getItem("sc_phone");
+  if (direct && direct.trim() && !direct.includes("@")) return direct.trim();
 
   try {
-    const raw = localStorage.getItem('alsouk_current_user');
+    const raw = localStorage.getItem("alsouk_current_user");
     if (raw) {
       const p = JSON.parse(raw);
-      if (p.phone && p.phone.trim() && !p.phone.includes('@')) return p.phone.trim();
+      if (p.phone && p.phone.trim() && !p.phone.includes("@")) return p.phone.trim();
     }
-  } catch {}
+  } catch {
+    // This optional browser operation can fail; keep the current page usable.
+  }
 
-  return '';
+  return "";
 }
 
 // دالة قراءة كود التتبع من معلمات الرابط
 function getInitialTrackingCode(): string {
-  if (typeof window === 'undefined') return '';
+  if (typeof window === "undefined") return "";
   const params = new URLSearchParams(window.location.search);
-  return (params.get('tracking') || params.get('order') || '').trim();
+  return (params.get("tracking") || params.get("order") || "").trim();
 }
 
 function normalizeArabicDigits(value: string): string {
@@ -91,11 +93,11 @@ function normalizeArabicDigits(value: string): string {
  * Phone search is never allowed by itself; it must be paired with a tracking code.
  */
 function getYemenPhoneCandidates(value: string): string[] {
-  let digits = normalizeArabicDigits(value).replace(/\D/g, '');
-  if (digits.startsWith('00')) digits = digits.slice(2);
+  let digits = normalizeArabicDigits(value).replace(/\D/g, "");
+  if (digits.startsWith("00")) digits = digits.slice(2);
 
-  if (digits.startsWith('967')) digits = digits.slice(3);
-  if (digits.startsWith('0')) digits = digits.slice(1);
+  if (digits.startsWith("967")) digits = digits.slice(3);
+  if (digits.startsWith("0")) digits = digits.slice(1);
 
   if (!/^7\d{8}$/.test(digits)) return [];
 
@@ -106,25 +108,25 @@ function getYemenPhoneCandidates(value: string): string[] {
 
 function getFriendlySearchError(error: unknown): string {
   const value = error as { code?: string; message?: string } | null;
-  const code = value?.code ?? '';
-  const message = (value?.message ?? '').toLowerCase();
+  const code = value?.code ?? "";
+  const message = (value?.message ?? "").toLowerCase();
 
-  if (code === '42501') {
-    return 'تعذّر البحث بسبب صلاحيات قاعدة البيانات. حاول مرة أخرى، وإذا استمرت المشكلة تواصل مع خدمة العملاء.';
+  if (code === "42501") {
+    return "تعذّر البحث بسبب صلاحيات قاعدة البيانات. حاول مرة أخرى، وإذا استمرت المشكلة تواصل مع خدمة العملاء.";
   }
 
-  if (code === '42P01' || code === '42703' || code.startsWith('PGRST')) {
-    return 'تعذّر إكمال البحث بسبب مشكلة في إعداد بيانات التتبع. حاول لاحقًا أو تواصل مع خدمة العملاء.';
+  if (code === "42P01" || code === "42703" || code.startsWith("PGRST")) {
+    return "تعذّر إكمال البحث بسبب مشكلة في إعداد بيانات التتبع. حاول لاحقًا أو تواصل مع خدمة العملاء.";
   }
 
   if (
     error instanceof TypeError ||
     /fetch|network|connection|internet|timeout|timed out|failed to load/.test(message)
   ) {
-    return 'تعذّر الاتصال بخدمة التتبع. تحقق من اتصال الإنترنت ثم اضغط «إعادة المحاولة».';
+    return "تعذّر الاتصال بخدمة التتبع. تحقق من اتصال الإنترنت ثم اضغط «إعادة المحاولة».";
   }
 
-  return 'حدث خطأ أثناء البحث عن الطلب. حاول مرة أخرى، وإذا استمرت المشكلة تواصل مع خدمة العملاء.';
+  return "حدث خطأ أثناء البحث عن الطلب. حاول مرة أخرى، وإذا استمرت المشكلة تواصل مع خدمة العملاء.";
 }
 
 export function TrackPage() {
@@ -134,154 +136,185 @@ export function TrackPage() {
   const [orderResults, setOrderResults] = useState<OrderItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string>('');
+  const [errorMessage, setErrorMessage] = useState<string>("");
 
   // المراحل السبع المعتمدة لمسار تتبع العميل
   const trackingSteps = [
     {
-      id: 'step-1',
-      title: 'استلام الطلب والاعتماد',
-      desc: 'تم تسجيل الطلب وتدقيق الروابط والكميات بنجاح',
+      id: "step-1",
+      title: "استلام الطلب والاعتماد",
+      desc: "تم تسجيل الطلب وتدقيق الروابط والكميات بنجاح",
       icon: CheckCircle2,
-      targetStatus: 'new' as OrderStatus,
-      activeStatuses: ['new', 'accepted', 'pricing', 'priced_waiting_pay', 'purchased', 'processing', 'international_ship', 'shipped', 'local_warehouse', 'out_for_delivery', 'delivered'],
-      currentIf: ['new', 'accepted', 'pricing'],
+      targetStatus: "new" as OrderStatus,
+      activeStatuses: [
+        "new",
+        "accepted",
+        "pricing",
+        "priced_waiting_pay",
+        "purchased",
+        "processing",
+        "international_ship",
+        "shipped",
+        "local_warehouse",
+        "out_for_delivery",
+        "delivered",
+      ],
+      currentIf: ["new", "accepted", "pricing"],
     },
     {
-      id: 'step-2',
-      title: 'الشراء من المتجر الدولي',
-      desc: 'تم إتمام عملية الدفع والشراء من المتجر الأصلي',
+      id: "step-2",
+      title: "الشراء من المتجر الدولي",
+      desc: "تم إتمام عملية الدفع والشراء من المتجر الأصلي",
       icon: DollarSign,
-      targetStatus: 'purchased' as OrderStatus,
-      activeStatuses: ['purchased', 'processing', 'international_ship', 'shipped', 'local_warehouse', 'out_for_delivery', 'delivered'],
-      currentIf: ['purchased', 'processing'],
+      targetStatus: "purchased" as OrderStatus,
+      activeStatuses: [
+        "purchased",
+        "processing",
+        "international_ship",
+        "shipped",
+        "local_warehouse",
+        "out_for_delivery",
+        "delivered",
+      ],
+      currentIf: ["purchased", "processing"],
     },
     {
-      id: 'step-3',
-      title: 'وصول المستودع الدولي',
-      desc: 'وصلت الشحنة إلى مستودعنا في أمريكا / الصين / تركيا وتجهيز التغليف',
+      id: "step-3",
+      title: "وصول المستودع الدولي",
+      desc: "وصلت الشحنة إلى مستودعنا في أمريكا / الصين / تركيا وتجهيز التغليف",
       icon: Building,
-      targetStatus: 'international_ship' as OrderStatus,
-      activeStatuses: ['international_ship', 'shipped', 'local_warehouse', 'out_for_delivery', 'delivered'],
-      currentIf: ['international_ship'],
+      targetStatus: "international_ship" as OrderStatus,
+      activeStatuses: [
+        "international_ship",
+        "shipped",
+        "local_warehouse",
+        "out_for_delivery",
+        "delivered",
+      ],
+      currentIf: ["international_ship"],
     },
     {
-      id: 'step-4',
-      title: 'الشحن الدولي (جوي / بحري)',
-      desc: 'الشحنة على متن رحلة الشحن الدولي متجهة إلى الجمهورية اليمنية',
+      id: "step-4",
+      title: "الشحن الدولي (جوي / بحري)",
+      desc: "الشحنة على متن رحلة الشحن الدولي متجهة إلى الجمهورية اليمنية",
       icon: Plane,
-      targetStatus: 'shipped' as OrderStatus,
-      activeStatuses: ['shipped', 'local_warehouse', 'out_for_delivery', 'delivered'],
-      currentIf: ['shipped'],
+      targetStatus: "shipped" as OrderStatus,
+      activeStatuses: ["shipped", "local_warehouse", "out_for_delivery", "delivered"],
+      currentIf: ["shipped"],
     },
     {
-      id: 'step-5',
-      title: 'الوصول لليمن والفرز المحلي',
-      desc: 'وصلت الشحنة واجتازت التخليص الجمركي وجاري الفرز في المستودع المحلي',
+      id: "step-5",
+      title: "الوصول لليمن والفرز المحلي",
+      desc: "وصلت الشحنة واجتازت التخليص الجمركي وجاري الفرز في المستودع المحلي",
       icon: MapPin,
-      targetStatus: 'local_warehouse' as OrderStatus,
-      activeStatuses: ['local_warehouse', 'out_for_delivery', 'delivered'],
-      currentIf: ['local_warehouse'],
+      targetStatus: "local_warehouse" as OrderStatus,
+      activeStatuses: ["local_warehouse", "out_for_delivery", "delivered"],
+      currentIf: ["local_warehouse"],
     },
     {
-      id: 'step-6',
-      title: 'خروج الشحنة مع المندوب للتوصيل',
-      desc: 'الشحنة حالياً مع مندوب التوصيل في طريقها لعنوان العميل',
+      id: "step-6",
+      title: "خروج الشحنة مع المندوب للتوصيل",
+      desc: "الشحنة حالياً مع مندوب التوصيل في طريقها لعنوان العميل",
       icon: Truck,
-      targetStatus: 'out_for_delivery' as OrderStatus,
-      activeStatuses: ['out_for_delivery', 'delivered'],
-      currentIf: ['out_for_delivery'],
+      targetStatus: "out_for_delivery" as OrderStatus,
+      activeStatuses: ["out_for_delivery", "delivered"],
+      currentIf: ["out_for_delivery"],
     },
     {
-      id: 'step-7',
-      title: 'تم التسليم بنجاح',
-      desc: 'تم استلام الشحنة من قبل العميل بنجاح وسداد الرصيد',
+      id: "step-7",
+      title: "تم التسليم بنجاح",
+      desc: "تم استلام الشحنة من قبل العميل بنجاح وسداد الرصيد",
       icon: Sparkles,
-      targetStatus: 'delivered' as OrderStatus,
-      activeStatuses: ['delivered'],
-      currentIf: ['delivered'],
+      targetStatus: "delivered" as OrderStatus,
+      activeStatuses: ["delivered"],
+      currentIf: ["delivered"],
     },
   ];
 
   // لا نبحث إلا عند إدخال كود تتبع ورقم هاتف يمني معًا، ونُظهر سجلًا مطابقًا واحدًا فقط.
-  const handleSearch = useCallback(async (overrideOrder?: string, overridePhone?: string) => {
-    const rawOrder = (overrideOrder !== undefined ? overrideOrder : orderQuery).trim();
-    const oQuery = rawOrder.toUpperCase();
-    const rawPhone = (overridePhone !== undefined ? overridePhone : phoneQuery).trim();
-    const phoneCandidates = getYemenPhoneCandidates(rawPhone);
+  const handleSearch = useCallback(
+    async (overrideOrder?: string, overridePhone?: string) => {
+      const rawOrder = (overrideOrder !== undefined ? overrideOrder : orderQuery).trim();
+      const oQuery = rawOrder.toUpperCase();
+      const rawPhone = (overridePhone !== undefined ? overridePhone : phoneQuery).trim();
+      const phoneCandidates = getYemenPhoneCandidates(rawPhone);
 
-    setHasSearched(true);
-    setErrorMessage('');
-    setOrder(null);
-    setOrderResults([]);
-
-    if (!oQuery || !rawPhone) {
-      setErrorMessage('لخصوصية حسابك، أدخل رقم التتبع ورقم الهاتف المسجل معًا.');
-      return;
-    }
-
-    if (!/^[A-Z0-9-]{3,80}$/.test(oQuery)) {
-      setErrorMessage('تحقق من كتابة رقم التتبع بشكل صحيح، ثم حاول مرة أخرى.');
-      return;
-    }
-
-    if (phoneCandidates.length === 0) {
-      setErrorMessage('أدخل رقم هاتف يمني صحيحًا يبدأ بـ 7 أو بمفتاح اليمن +967.');
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      // مطابقة كود التتبع والهاتف معًا؛ لا نُرجع قائمة الطلبات المرتبطة بالهاتف.
-      const { data, error } = await supabase
-        .from('orders')
-        .select('id,tracking_code,customer_name,phone,product_link,product_name,status,created_at,updated_at')
-        .ilike('tracking_code', oQuery)
-        .in('phone', phoneCandidates)
-        .order('created_at', { ascending: false })
-        .limit(2);
-
-      if (error) throw error;
-
-      const rows = data ?? [];
-      if (rows.length > 1) {
-        setErrorMessage('تعذّر تحديد طلب واحد بهذا الرقم. تواصل مع خدمة العملاء للمساعدة.');
-        return;
-      }
-
-      if (rows.length === 0) {
-        return;
-      }
-
-      const row = rows[0] as any;
-      const result: OrderItem = {
-        id: row.id,
-        orderNumber: row.tracking_code || 'بدون رقم تتبع',
-        intlTrackingNumber: row.tracking_code || undefined,
-        customerName: row.customer_name || 'عميل السوق الشامل',
-        customerPhone: row.phone || rawPhone,
-        customerCity: 'اليمن',
-        customerAddress: '',
-        storeName: 'المتجر الدولي',
-        productUrl: row.product_link || undefined,
-        productTitle: row.product_name || 'طلب وسيط شراء دولي',
-        quantity: 1,
-        status: (row.status as OrderStatus) || 'new',
-        createdAt: row.created_at || new Date().toISOString(),
-        updatedAt: row.updated_at || undefined,
-      };
-
-      setOrderResults([result]);
-      setOrder(result);
-    } catch (err: unknown) {
-      setErrorMessage(getFriendlySearchError(err));
+      setHasSearched(true);
+      setErrorMessage("");
       setOrder(null);
       setOrderResults([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [orderQuery, phoneQuery]);
+
+      if (!oQuery || !rawPhone) {
+        setErrorMessage("لخصوصية حسابك، أدخل رقم التتبع ورقم الهاتف المسجل معًا.");
+        return;
+      }
+
+      if (!/^[A-Z0-9-]{3,80}$/.test(oQuery)) {
+        setErrorMessage("تحقق من كتابة رقم التتبع بشكل صحيح، ثم حاول مرة أخرى.");
+        return;
+      }
+
+      if (phoneCandidates.length === 0) {
+        setErrorMessage("أدخل رقم هاتف يمني صحيحًا يبدأ بـ 7 أو بمفتاح اليمن +967.");
+        return;
+      }
+
+      setLoading(true);
+
+      try {
+        // مطابقة كود التتبع والهاتف معًا؛ لا نُرجع قائمة الطلبات المرتبطة بالهاتف.
+        const { data, error } = await supabase
+          .from("orders")
+          .select(
+            "id,tracking_code,customer_name,phone,product_link,product_name,status,created_at,updated_at",
+          )
+          .ilike("tracking_code", oQuery)
+          .in("phone", phoneCandidates)
+          .order("created_at", { ascending: false })
+          .limit(2);
+
+        if (error) throw error;
+
+        const rows = data ?? [];
+        if (rows.length > 1) {
+          setErrorMessage("تعذّر تحديد طلب واحد بهذا الرقم. تواصل مع خدمة العملاء للمساعدة.");
+          return;
+        }
+
+        if (rows.length === 0) {
+          return;
+        }
+
+        const row = rows[0] as any;
+        const result: OrderItem = {
+          id: row.id,
+          orderNumber: row.tracking_code || "بدون رقم تتبع",
+          intlTrackingNumber: row.tracking_code || undefined,
+          customerName: row.customer_name || "عميل السوق الشامل",
+          customerPhone: row.phone || rawPhone,
+          customerCity: "اليمن",
+          customerAddress: "",
+          storeName: "المتجر الدولي",
+          productUrl: row.product_link || undefined,
+          productTitle: row.product_name || "طلب وسيط شراء دولي",
+          quantity: 1,
+          status: (row.status as OrderStatus) || "new",
+          createdAt: row.created_at || new Date().toISOString(),
+          updatedAt: row.updated_at || undefined,
+        };
+
+        setOrderResults([result]);
+        setOrder(result);
+      } catch (err: unknown) {
+        setErrorMessage(getFriendlySearchError(err));
+        setOrder(null);
+        setOrderResults([]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [orderQuery, phoneQuery],
+  );
 
   // تعبئة رقم الهاتف من جلسة العميل عند توفره، دون تشغيل بحث تلقائي أو عرض طلباته.
   useEffect(() => {
@@ -291,19 +324,21 @@ export function TrackPage() {
       if (getInitialClientPhone()) return;
 
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (!user) return;
 
         const { data: profile } = await supabase
-          .from('profiles')
-          .select('phone')
-          .eq('id', user.id)
+          .from("profiles")
+          .select("phone")
+          .eq("id", user.id)
           .maybeSingle();
 
-        if (active && profile?.phone && !profile.phone.includes('@')) {
+        if (active && profile?.phone && !profile.phone.includes("@")) {
           const phone = profile.phone.trim();
           setPhoneQuery(phone);
-          localStorage.setItem('sc_phone', phone);
+          localStorage.setItem("sc_phone", phone);
         }
       } catch {
         // إذا تعذّر جلب الملف الشخصي، يستطيع العميل كتابة رقم الهاتف يدويًا.
@@ -323,11 +358,11 @@ export function TrackPage() {
     const channel = supabase
       .channel(`customer-order-live-${order.id}`)
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'orders',
+          event: "UPDATE",
+          schema: "public",
+          table: "orders",
           filter: `id=eq.${order.id}`,
         },
         (payload) => {
@@ -339,10 +374,10 @@ export function TrackPage() {
                     status: (payload.new as any).status as OrderStatus,
                     updatedAt: (payload.new as any).updated_at,
                   }
-                : null
+                : null,
             );
           }
-        }
+        },
       )
       .subscribe();
 
@@ -459,15 +494,21 @@ export function TrackPage() {
             </div>
 
             {hasSearched && orderResults.length === 0 && !loading && !errorMessage && (
-              <div role="status" className="p-4 bg-amber-50 border-2 border-amber-200 rounded-2xl space-y-1.5">
+              <div
+                role="status"
+                className="p-4 bg-amber-50 border-2 border-amber-200 rounded-2xl space-y-1.5"
+              >
                 <p className="text-xs sm:text-sm font-black text-amber-900 text-center flex items-center justify-center gap-1.5">
                   <AlertCircle className="w-4 h-4 text-amber-700 shrink-0" />
                   <span>لم نعثر على طلب مطابق لبيانات البحث</span>
                 </p>
                 <div className="text-[11px] leading-relaxed text-slate-700 text-center">
-                  'تأكد من كود التتبع ورقم الهاتف المسجل، وأنهما يخصان الطلب نفسه. أدخل الرقمين معًا.' 
+                  'تأكد من كود التتبع ورقم الهاتف المسجل، وأنهما يخصان الطلب نفسه. أدخل الرقمين
+                  معًا.'
                 </div>
-                <p className="text-[11px] text-slate-600 text-center">إذا استمرت المشكلة، تواصل مع خدمة العملاء للمساعدة.</p>
+                <p className="text-[11px] text-slate-600 text-center">
+                  إذا استمرت المشكلة، تواصل مع خدمة العملاء للمساعدة.
+                </p>
               </div>
             )}
 
@@ -512,7 +553,7 @@ export function TrackPage() {
                     type="button"
                     onClick={() => setOrder(result)}
                     aria-pressed={selected}
-                    className={`w-full rounded-2xl border p-3 text-right transition ${selected ? 'border-[#0F4C81] bg-sky-50 ring-2 ring-sky-100' : 'border-slate-200 bg-white hover:border-sky-300 hover:bg-slate-50'}`}
+                    className={`w-full rounded-2xl border p-3 text-right transition ${selected ? "border-[#0F4C81] bg-sky-50 ring-2 ring-sky-100" : "border-slate-200 bg-white hover:border-sky-300 hover:bg-slate-50"}`}
                   >
                     <span className="flex items-center justify-between gap-3">
                       <span className="font-mono font-black text-sm text-[#0F4C81]" dir="ltr">
@@ -520,23 +561,35 @@ export function TrackPage() {
                       </span>
                       {selected && <Check className="size-4 shrink-0 text-emerald-600" />}
                     </span>
-                    <span className="mt-1 block text-xs font-bold text-slate-700">{result.productTitle}</span>
+                    <span className="mt-1 block text-xs font-bold text-slate-700">
+                      {result.productTitle}
+                    </span>
                     <span className="mt-1 block text-[11px] text-slate-500">
-                      {new Date(result.createdAt).toLocaleDateString('ar-YE', { year: 'numeric', month: 'long', day: 'numeric' })}
+                      {new Date(result.createdAt).toLocaleDateString("ar-YE", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })}
                     </span>
                   </button>
                 );
               })}
             </div>
             {orderResults.length === 100 && (
-              <p className="text-[11px] text-slate-500">تظهر أحدث 100 نتيجة فقط. أدخل رقم تتبع محددًا للوصول إلى طلب أقدم.</p>
+              <p className="text-[11px] text-slate-500">
+                تظهر أحدث 100 نتيجة فقط. أدخل رقم تتبع محددًا للوصول إلى طلب أقدم.
+              </p>
             )}
           </section>
         )}
 
         {/* رسائل التنبيه */}
         {errorMessage && (
-          <div role="alert" aria-live="assertive" className="p-4 bg-rose-50 border-2 border-rose-300 rounded-2xl flex flex-col sm:flex-row items-center justify-center gap-3 text-xs sm:text-sm font-black text-rose-900 shadow-md">
+          <div
+            role="alert"
+            aria-live="assertive"
+            className="p-4 bg-rose-50 border-2 border-rose-300 rounded-2xl flex flex-col sm:flex-row items-center justify-center gap-3 text-xs sm:text-sm font-black text-rose-900 shadow-md"
+          >
             <div className="flex items-center justify-center gap-2 text-center">
               <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
               <span>{errorMessage}</span>
@@ -548,7 +601,7 @@ export function TrackPage() {
                 disabled={loading}
                 className="shrink-0 rounded-xl bg-rose-700 px-3 py-2 text-xs font-black text-white transition hover:bg-rose-800 disabled:opacity-60"
               >
-                {loading ? 'جارٍ البحث...' : 'إعادة المحاولة'}
+                {loading ? "جارٍ البحث..." : "إعادة المحاولة"}
               </button>
             ) : null}
           </div>
@@ -582,7 +635,10 @@ export function TrackPage() {
 
                 <div className="p-3.5 bg-[#F8FAFC] rounded-2xl border border-slate-200">
                   <span className="text-[#0F4C81] block mb-1 font-bold">رقم الهاتف:</span>
-                  <span className="font-mono font-bold text-slate-900 text-sm flex items-center gap-1.5" dir="ltr">
+                  <span
+                    className="font-mono font-bold text-slate-900 text-sm flex items-center gap-1.5"
+                    dir="ltr"
+                  >
                     <Phone className="w-4 h-4 text-emerald-600" />
                     {order.customerPhone || phoneQuery}
                   </span>
@@ -591,17 +647,18 @@ export function TrackPage() {
                 <div className="p-3.5 bg-[#F8FAFC] rounded-2xl border border-slate-200">
                   <span className="text-[#0F4C81] block mb-1 font-bold">الحالة الحالية:</span>
                   <span className="font-black text-white bg-gradient-to-r from-[#FF7A00] to-[#EA580C] px-3 py-1 rounded-lg inline-block shadow-2xs">
-                    {trackingSteps.find((s) => s.targetStatus === order.status)?.title || 'قيد المعالجة'}
+                    {trackingSteps.find((s) => s.targetStatus === order.status)?.title ||
+                      "قيد المعالجة"}
                   </span>
                 </div>
 
                 <div className="p-3.5 bg-[#F8FAFC] rounded-2xl border border-slate-200">
                   <span className="text-[#0F4C81] block mb-1 font-bold">تاريخ التسجيل:</span>
                   <span className="font-bold text-slate-800">
-                    {new Date(order.createdAt).toLocaleDateString('ar-YE', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
+                    {new Date(order.createdAt).toLocaleDateString("ar-YE", {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
                     })}
                   </span>
                 </div>
@@ -610,9 +667,11 @@ export function TrackPage() {
               {/* تفاصيل السلعة */}
               <div className="p-4 bg-sky-50/60 rounded-2xl border border-sky-200 space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-[#0F4C81]">تفاصيل السلعة والمنشأ المعتمدة:</span>
+                  <span className="text-xs font-black text-[#0F4C81]">
+                    تفاصيل السلعة والمنشأ المعتمدة:
+                  </span>
                   <span className="text-[10px] font-black bg-white text-[#EA580C] px-2 py-0.5 rounded border border-orange-200">
-                    {order.storeName || 'المتجر الدولي'}
+                    {order.storeName || "المتجر الدولي"}
                   </span>
                 </div>
                 <p className="text-xs font-bold text-slate-800">{order.productTitle}</p>
@@ -637,9 +696,7 @@ export function TrackPage() {
                   <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#0F4C81] to-[#0284C7] text-white flex items-center justify-center shadow-xs">
                     <Truck className="w-4 h-4" />
                   </div>
-                  <h3 className="text-base font-black text-[#0F4C81]">
-                    مسار الشحنة خطوة بخطوة 📍
-                  </h3>
+                  <h3 className="text-base font-black text-[#0F4C81]">مسار الشحنة خطوة بخطوة 📍</h3>
                 </div>
                 <span className="text-[11px] font-black px-2.5 py-1 rounded-full bg-orange-50 text-[#EA580C] border border-orange-200 shadow-2xs">
                   تحديث تفاعلي ومباشر ⚡
@@ -659,16 +716,16 @@ export function TrackPage() {
                       <div
                         key={step.id}
                         className={`flex items-start gap-4 transition-all duration-300 ${
-                          active ? 'opacity-100' : 'opacity-60'
+                          active ? "opacity-100" : "opacity-60"
                         }`}
                       >
                         <div
                           className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border-2 transition-all shadow-xs ${
                             current
-                              ? 'bg-gradient-to-br from-[#FF7A00] to-[#EA580C] border-white text-white shadow-lg shadow-orange-500/40 ring-4 ring-orange-200 scale-105'
+                              ? "bg-gradient-to-br from-[#FF7A00] to-[#EA580C] border-white text-white shadow-lg shadow-orange-500/40 ring-4 ring-orange-200 scale-105"
                               : active
-                              ? 'bg-gradient-to-br from-[#0F4C81] to-[#0284C7] border-white text-white'
-                              : 'bg-white border-slate-300 text-slate-400'
+                                ? "bg-gradient-to-br from-[#0F4C81] to-[#0284C7] border-white text-white"
+                                : "bg-white border-slate-300 text-slate-400"
                           }`}
                         >
                           <StepIcon className="w-5 h-5" />
@@ -679,10 +736,10 @@ export function TrackPage() {
                             <h4
                               className={`text-sm font-black ${
                                 current
-                                  ? 'text-[#EA580C]'
+                                  ? "text-[#EA580C]"
                                   : active
-                                  ? 'text-[#0F4C81]'
-                                  : 'text-slate-700'
+                                    ? "text-[#0F4C81]"
+                                    : "text-slate-700"
                               }`}
                             >
                               {step.title}
@@ -699,9 +756,7 @@ export function TrackPage() {
                             )}
                           </div>
 
-                          <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                            {step.desc}
-                          </p>
+                          <p className="text-xs text-slate-600 mt-1 leading-relaxed">{step.desc}</p>
 
                           {current && (
                             <div className="mt-2.5 flex items-center gap-1.5 px-3 py-1 rounded-xl bg-orange-50 border border-orange-200 text-xs font-black text-[#EA580C] w-fit shadow-2xs">
@@ -723,6 +778,6 @@ export function TrackPage() {
   );
 }
 
-export const Route = createFileRoute('/track/')({
+export const Route = createFileRoute("/track/")({
   component: TrackPage,
 });

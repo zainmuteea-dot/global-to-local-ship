@@ -1,16 +1,19 @@
-import React, { useEffect, useState } from 'react';
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { supabase } from '@/integrations/supabase/client';
+import React, { useEffect, useState } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { supabase } from "@/integrations/supabase/client";
 
-export const Route = createFileRoute('/my-account')({
+export const Route = createFileRoute("/my-account")({
   head: () => ({
     meta: [
-      { title: 'حسابي — السوق الشامل' },
-      { name: 'description', content: 'إدارة حسابك وطلباتك وشحناتك في منصة السوق الشامل للتسوق والشحن الدولي.' },
-      { property: 'og:title', content: 'حسابي — السوق الشامل' },
-      { property: 'og:description', content: 'إدارة حسابك وطلباتك وشحناتك في منصة السوق الشامل.' },
-      { property: 'og:type', content: 'website' },
-      { name: 'twitter:card', content: 'summary' },
+      { title: "حسابي — السوق الشامل" },
+      {
+        name: "description",
+        content: "إدارة حسابك وطلباتك وشحناتك في منصة السوق الشامل للتسوق والشحن الدولي.",
+      },
+      { property: "og:title", content: "حسابي — السوق الشامل" },
+      { property: "og:description", content: "إدارة حسابك وطلباتك وشحناتك في منصة السوق الشامل." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: MyAccountRoute,
@@ -20,55 +23,55 @@ function MyAccountRoute() {
   const navigate = useNavigate();
   return (
     <MyAccountPage
-      onNavigateToCreateAccount={() => navigate({ to: '/signup' })}
-      onNavigateToProducts={() => navigate({ to: '/products' })}
-      onNavigateToNewOrder={() => navigate({ to: '/new-order' })}
+      onNavigateToCreateAccount={() => navigate({ to: "/signup" })}
+      onNavigateToProducts={() => navigate({ to: "/products" })}
+      onNavigateToNewOrder={() => navigate({ to: "/new-order" })}
       onNavigateToTracker={(orderNumber) =>
         orderNumber
-          ? navigate({ to: '/track/$trackingCode', params: { trackingCode: orderNumber } })
-          : navigate({ to: '/track' })
+          ? navigate({ to: "/track/$trackingCode", params: { trackingCode: orderNumber } })
+          : navigate({ to: "/track" })
       }
-      onNavigateToDashboard={() => navigate({ to: '/dashboard' })}
-      onNavigateToOrders={() => navigate({ to: '/account/orders' })}
-      onNavigateToInvoices={() => navigate({ to: '/account/invoices' })}
-      onNavigateToAddresses={() => navigate({ to: '/account/addresses' })}
-      onNavigateToNotifications={() => navigate({ to: '/notifications' })}
+      onNavigateToDashboard={() => navigate({ to: "/dashboard" })}
+      onNavigateToOrders={() => navigate({ to: "/account/orders" })}
+      onNavigateToInvoices={() => navigate({ to: "/account/invoices" })}
+      onNavigateToAddresses={() => navigate({ to: "/account/addresses" })}
+      onNavigateToNotifications={() => navigate({ to: "/notifications" })}
     />
   );
 }
-import { 
-  User, 
-  ShoppingBag, 
-  FileText, 
-  Zap, 
-  MapPin, 
-  Wallet, 
-  Headphones, 
-  Bell, 
-  Share2, 
-  ShieldCheck, 
-  Info, 
-  LogOut, 
-  ArrowRight, 
-  ChevronLeft, 
-  Check, 
-  Copy, 
-  ExternalLink, 
-  X, 
-  Clock, 
-  Truck, 
-  DollarSign, 
-  Edit3, 
-  Phone, 
-  Mail, 
-  CheckCircle2, 
+import {
+  User,
+  ShoppingBag,
+  FileText,
+  Zap,
+  MapPin,
+  Wallet,
+  Headphones,
+  Bell,
+  Share2,
+  ShieldCheck,
+  Info,
+  LogOut,
+  ArrowRight,
+  ChevronLeft,
+  Check,
+  Copy,
+  ExternalLink,
+  X,
+  Clock,
+  Truck,
+  DollarSign,
+  Edit3,
+  Phone,
+  Mail,
+  CheckCircle2,
   Loader2,
   Sparkles,
-  Camera
-} from 'lucide-react';
-import { useSession } from '@/hooks/use-session';
-import { OrdersService } from '@/services/supabaseOrders';
-import { OrderItem } from '@/types/orders';
+  Camera,
+} from "lucide-react";
+import { useSession } from "@/hooks/use-session";
+import { OrdersService } from "@/services/supabaseOrders";
+import { OrderItem } from "@/types/orders";
 
 interface MyAccountProps {
   onNavigateToCreateAccount?: () => void;
@@ -91,49 +94,50 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
   onNavigateToOrders,
   onNavigateToInvoices,
   onNavigateToAddresses,
-  onNavigateToNotifications
+  onNavigateToNotifications,
 }) => {
   const { session, user, loading: isLoading } = useSession(false);
   const [orders, setOrders] = useState<OrderItem[]>([]);
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [walletLoading, setWalletLoading] = useState(true);
-  
+
   // بيانات الملف الشخصي
-  const [customerName, setCustomerName] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
-  const [avatarUrl, setAvatarUrl] = useState('');
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
   const [avatarUploading, setAvatarUploading] = useState(false);
-  const [avatarMessage, setAvatarMessage] = useState('');
-  const [customerCity, setCustomerCity] = useState('صنعاء');
-  const [customerAddress, setCustomerAddress] = useState('');
+  const [avatarMessage, setAvatarMessage] = useState("");
+  const [customerCity, setCustomerCity] = useState("صنعاء");
+  const [customerAddress, setCustomerAddress] = useState("");
 
   // حالات النوافذ المنبثقة للأزرار
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [editSuccess, setEditSuccess] = useState(false);
   const [logoutLoading, setLogoutLoading] = useState(false);
-  const [logoutError, setLogoutError] = useState('');
+  const [logoutError, setLogoutError] = useState("");
 
   // تحميل بيانات الحساب المسجل أولًا، وعدم استخدام بيانات محلية تخص حسابًا آخر.
   useEffect(() => {
     try {
-      const stored = localStorage.getItem('alsouk_current_user');
+      const stored = localStorage.getItem("alsouk_current_user");
       const parsed = stored ? JSON.parse(stored) : {};
       const metadata = user?.user_metadata ?? {};
       const localBelongsToUser = !user || parsed.id === user.id;
 
       setCustomerName(
-        metadata.full_name || (localBelongsToUser ? parsed.full_name : '') ||
-        (user?.email ? user.email.split('@')[0] : 'عميل')
+        metadata["full_name"] ||
+          (localBelongsToUser ? parsed.full_name : "") ||
+          (user?.email ? user.email.split("@")[0] || "عميل" : "عميل"),
       );
-      setCustomerPhone(metadata.phone || (localBelongsToUser ? parsed.phone : '') || '');
-      setCustomerCity((localBelongsToUser ? parsed.city : '') || 'صنعاء');
-      setCustomerAddress((localBelongsToUser ? parsed.address : '') || '');
-      setAvatarUrl(metadata.avatar_url || (localBelongsToUser ? parsed.avatar_url : '') || '');
+      setCustomerPhone(metadata["phone"] || (localBelongsToUser ? parsed.phone : "") || "");
+      setCustomerCity((localBelongsToUser ? parsed.city : "") || "صنعاء");
+      setCustomerAddress((localBelongsToUser ? parsed.address : "") || "");
+      setAvatarUrl(metadata["avatar_url"] || (localBelongsToUser ? parsed.avatar_url : "") || "");
       setOrders(OrdersService.getLocalOrders());
     } catch (e) {
       console.warn(e);
-      setCustomerName(user?.email ? user.email.split('@')[0] : 'عميل');
+      setCustomerName(user?.email ? user.email.split("@")[0] || "عميل" : "عميل");
     }
   }, [user]);
 
@@ -150,14 +154,14 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
 
       setWalletLoading(true);
       const { data, error } = await supabase
-        .from('wallet_transactions')
-        .select('amount')
-        .eq('user_id', user.id);
+        .from("wallet_transactions")
+        .select("amount")
+        .eq("user_id", user.id);
 
       if (!alive) return;
 
       if (error) {
-        console.error('تعذر تحميل رصيد المحفظة:', error);
+        console.error("تعذر تحميل رصيد المحفظة:", error);
         setWalletBalance(null);
       } else {
         const balance = (data ?? []).reduce(
@@ -178,10 +182,10 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
   }, [user]);
 
   const walletBalanceText = walletLoading
-    ? 'جارٍ التحميل…'
+    ? "جارٍ التحميل…"
     : walletBalance === null
-      ? 'تعذر التحميل'
-      : `${walletBalance.toLocaleString('ar-YE', {
+      ? "تعذر التحميل"
+      : `${walletBalance.toLocaleString("ar-YE", {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
         })} ر.ي`;
@@ -192,55 +196,62 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
     if (!file) return;
 
     if (!user) {
-      setAvatarMessage('سجّل الدخول أولًا لتغيير صورة الحساب.');
-      input.value = '';
+      setAvatarMessage("سجّل الدخول أولًا لتغيير صورة الحساب.");
+      input.value = "";
       return;
     }
-    if (!file.type.startsWith('image/')) {
-      setAvatarMessage('اختر ملف صورة صالحًا.');
-      input.value = '';
+    if (!file.type.startsWith("image/")) {
+      setAvatarMessage("اختر ملف صورة صالحًا.");
+      input.value = "";
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      setAvatarMessage('حجم الصورة يجب ألا يتجاوز 5 ميغابايت.');
-      input.value = '';
+      setAvatarMessage("حجم الصورة يجب ألا يتجاوز 5 ميغابايت.");
+      input.value = "";
       return;
     }
 
     setAvatarUploading(true);
-    setAvatarMessage('');
+    setAvatarMessage("");
     try {
-      const { supabase } = await import('@/integrations/supabase/client');
-      const extension = file.name.split('.').pop()?.replace(/[^a-zA-Z0-9]/g, '') || 'jpg';
+      const { supabase } = await import("@/integrations/supabase/client");
+      const extension =
+        file.name
+          .split(".")
+          .pop()
+          ?.replace(/[^a-zA-Z0-9]/g, "") || "jpg";
       const filePath = `${user.id}/${Date.now()}.${extension}`;
       const { error: uploadError } = await supabase.storage
-        .from('avatars')
+        .from("avatars")
         .upload(filePath, file, { contentType: file.type, upsert: false });
       if (uploadError) throw uploadError;
 
-      const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const { data } = supabase.storage.from("avatars").getPublicUrl(filePath);
       const publicUrl = data.publicUrl;
       const { error: metadataError } = await supabase.auth.updateUser({
         data: { avatar_url: publicUrl },
       });
       if (metadataError) throw metadataError;
 
-      const stored = localStorage.getItem('alsouk_current_user');
+      const stored = localStorage.getItem("alsouk_current_user");
       const parsed = stored ? JSON.parse(stored) : {};
-      localStorage.setItem('alsouk_current_user', JSON.stringify({
-        ...(parsed.id === user.id ? parsed : {}),
-        id: user.id,
-        full_name: customerName,
-        avatar_url: publicUrl,
-      }));
+      localStorage.setItem(
+        "alsouk_current_user",
+        JSON.stringify({
+          ...(parsed.id === user.id ? parsed : {}),
+          id: user.id,
+          full_name: customerName,
+          avatar_url: publicUrl,
+        }),
+      );
       setAvatarUrl(publicUrl);
-      setAvatarMessage('تم تحديث صورة الحساب.');
+      setAvatarMessage("تم تحديث صورة الحساب.");
     } catch (error) {
-      console.error('Avatar upload failed:', error);
-      setAvatarMessage('تعذر رفع الصورة. تحقق من إعداد bucket avatars وسياسات التخزين.');
+      console.error("Avatar upload failed:", error);
+      setAvatarMessage("تعذر رفع الصورة. تحقق من إعداد bucket avatars وسياسات التخزين.");
     } finally {
       setAvatarUploading(false);
-      input.value = '';
+      input.value = "";
     }
   };
 
@@ -248,50 +259,52 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
     e.preventDefault();
     try {
       const updated = {
-        id: user?.id || 'guest',
+        id: user?.id || "guest",
         full_name: customerName,
         phone: customerPhone,
         city: customerCity,
         address: customerAddress,
         avatar_url: avatarUrl,
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       };
-      localStorage.setItem('alsouk_current_user', JSON.stringify(updated));
+      localStorage.setItem("alsouk_current_user", JSON.stringify(updated));
       setEditSuccess(true);
       setTimeout(() => {
         setEditSuccess(false);
         setActiveModal(null);
       }, 1500);
-    } catch {}
+    } catch {
+      // This optional browser operation can fail; keep the current page usable.
+    }
   };
 
   const handleSharePlatform = async () => {
-    const url = 'https://alsouq-alshamel.vercel.app';
+    const url = "https://alsouq-alshamel.vercel.app";
 
     try {
       if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(url);
       } else {
         // Fallback for browsers that do not expose the Clipboard API.
-        const input = document.createElement('textarea');
+        const input = document.createElement("textarea");
         input.value = url;
-        input.setAttribute('readonly', '');
-        input.style.position = 'fixed';
-        input.style.opacity = '0';
+        input.setAttribute("readonly", "");
+        input.style.position = "fixed";
+        input.style.opacity = "0";
         document.body.appendChild(input);
         input.select();
-        const copied = document.execCommand('copy');
+        const copied = document.execCommand("copy");
         document.body.removeChild(input);
 
         if (!copied) {
-          throw new Error('Clipboard copy was not successful');
+          throw new Error("Clipboard copy was not successful");
         }
       }
 
       setCopiedLink(true);
       window.setTimeout(() => setCopiedLink(false), 2500);
     } catch (error) {
-      console.error('Could not copy platform link:', error);
+      console.error("Could not copy platform link:", error);
       window.alert(`تعذر نسخ الرابط. يمكنك نسخه يدويًا: ${url}`);
     }
   };
@@ -300,7 +313,7 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
     if (logoutLoading) return;
 
     setLogoutLoading(true);
-    setLogoutError('');
+    setLogoutError("");
 
     try {
       const { error } = await supabase.auth.signOut();
@@ -309,41 +322,43 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
       // Remove only the app's cached customer identity, not unrelated site data.
       try {
         const localKeys = [
-          'alsouk_customer_logged_in',
-          'alsouk_current_user',
-          'sc_phone',
-          'sc_name',
+          "alsouk_customer_logged_in",
+          "alsouk_current_user",
+          "sc_phone",
+          "sc_name",
         ];
         localKeys.forEach((key) => window.localStorage.removeItem(key));
-        ['sc_phone', 'sc_name'].forEach((key) => window.sessionStorage.removeItem(key));
+        ["sc_phone", "sc_name"].forEach((key) => window.sessionStorage.removeItem(key));
       } catch (storageError) {
         // A browser may block storage access; the Supabase session is still signed out.
-        console.warn('Could not clear cached customer details:', storageError);
+        console.warn("Could not clear cached customer details:", storageError);
       }
 
       // The application has a /login route; replace prevents returning to this
       // authenticated account page via the browser's Back button.
-      window.location.replace('/login');
+      window.location.replace("/login");
     } catch (error) {
-      console.error('Sign out failed:', error);
-      setLogoutError('تعذر تسجيل الخروج الآن. تحقق من اتصال الإنترنت وحاول مرة أخرى.');
+      console.error("Sign out failed:", error);
+      setLogoutError("تعذر تسجيل الخروج الآن. تحقق من اتصال الإنترنت وحاول مرة أخرى.");
       setLogoutLoading(false);
     }
   };
 
   const activeOrdersCount = orders.filter(
-    (o) => o.status !== 'delivered' && o.status !== 'cancelled'
+    (o) => o.status !== "delivered" && o.status !== "cancelled",
   ).length;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#F0F7FF] via-[#FAF9F6] to-[#FFF7ED] text-[#0A2540] font-sans selection:bg-[#0F4C81] selection:text-white pb-20" dir="rtl">
-      
+    <div
+      className="min-h-screen bg-gradient-to-b from-[#F0F7FF] via-[#FAF9F6] to-[#FFF7ED] text-[#0A2540] font-sans selection:bg-[#0F4C81] selection:text-white pb-20"
+      dir="rtl"
+    >
       {/* 🌟 1. الهيدر والترويسة العلوية بألوان الشعار */}
       <header className="max-w-md mx-auto pt-6 pb-3 px-4 flex items-center justify-between">
         <button
           onClick={() => {
             if (onNavigateToDashboard) onNavigateToDashboard();
-            else if (typeof window !== 'undefined') window.location.href = '/';
+            else if (typeof window !== "undefined") window.location.href = "/";
           }}
           className="px-4 py-2 rounded-2xl bg-white/90 hover:bg-sky-50 border-2 border-sky-100 hover:border-[#0F4C81] text-xs font-black text-[#0F4C81] transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 group"
           title="الرجوع للرئيسية"
@@ -365,7 +380,6 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
 
       {/* 🌟 2. المحتوى الرئيسي وقائمة الأزرار المطورة */}
       <main className="max-w-md mx-auto px-4 mt-2 space-y-3.5">
-        
         {/* 🌟 بطاقة ملف المستخدم الرئيسية (Hero Profile Card) */}
         <div className="bg-white/95 backdrop-blur-md border-2 border-sky-100 rounded-[28px] p-5 sm:p-6 shadow-[0_16px_50px_rgba(15,76,129,0.08)] ring-1 ring-sky-50 flex items-center justify-between gap-4">
           <div className="space-y-1 text-right">
@@ -375,23 +389,25 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
             </h2>
             <div className="flex items-center gap-2 text-xs font-mono font-bold text-slate-600">
               <span dir="ltr">{customerPhone}</span>
-              <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" title="متصل"></span>
+              <span
+                className="w-2 h-2 rounded-full bg-emerald-500 inline-block"
+                title="متصل"
+              ></span>
             </div>
-            
+
             <button
-              onClick={() => setActiveModal('address')}
+              onClick={() => setActiveModal("address")}
               className="inline-flex items-center gap-1 text-[11px] font-black text-[#EA580C] bg-orange-50 hover:bg-orange-100 px-3 py-1 rounded-xl border border-orange-200 transition-all cursor-pointer shadow-2xs mt-1"
             >
               <MapPin className="w-3.5 h-3.5 text-[#FF7A00]" />
-              <span>{customerAddress ? `${customerCity} - ${customerAddress}` : 'أضف عنوان للتوصيل'}</span>
+              <span>
+                {customerAddress ? `${customerCity} - ${customerAddress}` : "أضف عنوان للتوصيل"}
+              </span>
             </button>
           </div>
 
           <div className="flex shrink-0 flex-col items-center gap-2">
-            <label
-              className="relative block cursor-pointer"
-              title="اضغط لتغيير صورة الحساب"
-            >
+            <label className="relative block cursor-pointer" title="اضغط لتغيير صورة الحساب">
               <input
                 type="file"
                 accept="image/*"
@@ -402,15 +418,33 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
               />
               <div className="w-16 h-16 overflow-hidden rounded-2xl bg-gradient-to-br from-[#0F4C81] via-[#0284C7] to-[#0F4C81] text-white flex items-center justify-center font-black text-2xl shadow-md shadow-[#0F4C81]/30 ring-4 ring-sky-100">
                 {avatarUrl ? (
-                  <img src={avatarUrl} alt={`صورة ${customerName || 'العميل'}`} className="h-full w-full object-cover" />
+                  <img
+                    src={avatarUrl}
+                    alt={`صورة ${customerName || "العميل"}`}
+                    className="h-full w-full object-cover"
+                  />
                 ) : (
-                  (customerName.trim().charAt(0) || user?.email?.trim().charAt(0) || 'ع').toUpperCase()
+                  (
+                    customerName.trim().charAt(0) ||
+                    user?.email?.trim().charAt(0) ||
+                    "ع"
+                  ).toUpperCase()
                 )}
               </div>
-              <span className="absolute -bottom-1 -left-1 w-6 h-6 rounded-full bg-[#FF7A00] border-2 border-white flex items-center justify-center text-white" title="تغيير الصورة">
-                {avatarUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
+              <span
+                className="absolute -bottom-1 -left-1 w-6 h-6 rounded-full bg-[#FF7A00] border-2 border-white flex items-center justify-center text-white"
+                title="تغيير الصورة"
+              >
+                {avatarUploading ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Camera className="w-3.5 h-3.5" />
+                )}
               </span>
-              <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[#FF7A00] border-2 border-white flex items-center justify-center text-white" title="حساب العميل">
+              <span
+                className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[#FF7A00] border-2 border-white flex items-center justify-center text-white"
+                title="حساب العميل"
+              >
                 <Sparkles className="w-3 h-3" />
               </span>
             </label>
@@ -425,10 +459,9 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
 
         {/* 🌟 3. قائمة الأزرار المطورة بألوان الشعار وتأثيرات تفاعلية راقية */}
         <div className="space-y-2.5">
-          
           {/* 1. زر حسابي */}
           <button
-            onClick={() => setActiveModal('profile')}
+            onClick={() => setActiveModal("profile")}
             className="w-full bg-white hover:bg-gradient-to-r hover:from-white hover:to-sky-50/60 border-2 border-slate-200/80 hover:border-[#0F4C81] rounded-2xl p-3.5 sm:p-4 shadow-xs hover:shadow-md transition-all duration-200 flex items-center justify-between cursor-pointer group active:scale-[0.99]"
           >
             <div className="flex items-center gap-3.5">
@@ -447,8 +480,8 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
             onClick={() => {
               if (onNavigateToOrders) {
                 onNavigateToOrders();
-              } else if (typeof window !== 'undefined') {
-                window.location.assign('/account/orders');
+              } else if (typeof window !== "undefined") {
+                window.location.assign("/account/orders");
               }
             }}
             className="w-full bg-white hover:bg-gradient-to-r hover:from-white hover:to-orange-50/60 border-2 border-slate-200/80 hover:border-[#FF7A00] rounded-2xl p-3.5 sm:p-4 shadow-xs hover:shadow-md transition-all duration-200 flex items-center justify-between cursor-pointer group active:scale-[0.99]"
@@ -476,8 +509,8 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
             onClick={() => {
               if (onNavigateToInvoices) {
                 onNavigateToInvoices();
-              } else if (typeof window !== 'undefined') {
-                window.location.assign('/account/invoices');
+              } else if (typeof window !== "undefined") {
+                window.location.assign("/account/invoices");
               }
             }}
             className="w-full bg-white hover:bg-gradient-to-r hover:from-white hover:to-sky-50/60 border-2 border-slate-200/80 hover:border-[#0F4C81] rounded-2xl p-3.5 sm:p-4 shadow-xs hover:shadow-md transition-all duration-200 flex items-center justify-between cursor-pointer group active:scale-[0.99]"
@@ -497,7 +530,7 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
           <button
             onClick={() => {
               if (onNavigateToProducts) onNavigateToProducts();
-              else if (typeof window !== 'undefined') window.location.href = '/products';
+              else if (typeof window !== "undefined") window.location.href = "/products";
             }}
             className="w-full bg-white hover:bg-gradient-to-r hover:from-white hover:to-amber-50/60 border-2 border-slate-200/80 hover:border-amber-500 rounded-2xl p-3.5 sm:p-4 shadow-xs hover:shadow-md transition-all duration-200 flex items-center justify-between cursor-pointer group active:scale-[0.99]"
           >
@@ -521,7 +554,7 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
           <button
             onClick={() => {
               if (onNavigateToAddresses) onNavigateToAddresses();
-              else if (typeof window !== 'undefined') window.location.href = '/account/addresses';
+              else if (typeof window !== "undefined") window.location.href = "/account/addresses";
             }}
             className="w-full bg-white hover:bg-gradient-to-r hover:from-white hover:to-emerald-50/60 border-2 border-slate-200/80 hover:border-emerald-600 rounded-2xl p-3.5 sm:p-4 shadow-xs hover:shadow-md transition-all duration-200 flex items-center justify-between cursor-pointer group active:scale-[0.99]"
           >
@@ -538,7 +571,7 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
 
           {/* 6. زر رصيدي */}
           <button
-            onClick={() => setActiveModal('wallet')}
+            onClick={() => setActiveModal("wallet")}
             className="w-full bg-white hover:bg-gradient-to-r hover:from-white hover:to-orange-50/60 border-2 border-slate-200/80 hover:border-[#EA580C] rounded-2xl p-3.5 sm:p-4 shadow-xs hover:shadow-md transition-all duration-200 flex items-center justify-between cursor-pointer group active:scale-[0.99]"
           >
             <div className="flex items-center gap-3.5">
@@ -559,7 +592,7 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
 
           {/* 7. زر خدمة العملاء */}
           <button
-            onClick={() => setActiveModal('support')}
+            onClick={() => setActiveModal("support")}
             className="w-full bg-white hover:bg-gradient-to-r hover:from-white hover:to-sky-50/60 border-2 border-slate-200/80 hover:border-[#0F4C81] rounded-2xl p-3.5 sm:p-4 shadow-xs hover:shadow-md transition-all duration-200 flex items-center justify-between cursor-pointer group active:scale-[0.99]"
           >
             <div className="flex items-center gap-3.5">
@@ -579,7 +612,7 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
               if (onNavigateToNotifications) {
                 onNavigateToNotifications();
               } else {
-                window.location.assign('/notifications');
+                window.location.assign("/notifications");
               }
             }}
             className="w-full bg-white hover:bg-gradient-to-r hover:from-white hover:to-orange-50/60 border-2 border-slate-200/80 hover:border-[#FF7A00] rounded-2xl p-3.5 sm:p-4 shadow-xs hover:shadow-md transition-all duration-200 flex items-center justify-between cursor-pointer group active:scale-[0.99]"
@@ -620,7 +653,7 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
 
           {/* 10. زر شروط الاستخدام */}
           <button
-            onClick={() => setActiveModal('terms')}
+            onClick={() => setActiveModal("terms")}
             className="w-full bg-white hover:bg-gradient-to-r hover:from-white hover:to-slate-50 border-2 border-slate-200/80 hover:border-slate-500 rounded-2xl p-3.5 sm:p-4 shadow-xs hover:shadow-md transition-all duration-200 flex items-center justify-between cursor-pointer group active:scale-[0.99]"
           >
             <div className="flex items-center gap-3.5">
@@ -636,7 +669,7 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
 
           {/* 11. زر سياسة الخصوصية */}
           <button
-            onClick={() => setActiveModal('privacy')}
+            onClick={() => setActiveModal("privacy")}
             className="w-full bg-white hover:bg-gradient-to-r hover:from-white hover:to-teal-50/60 border-2 border-slate-200/80 hover:border-teal-600 rounded-2xl p-3.5 sm:p-4 shadow-xs hover:shadow-md transition-all duration-200 flex items-center justify-between cursor-pointer group active:scale-[0.99]"
           >
             <div className="flex items-center gap-3.5">
@@ -652,7 +685,7 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
 
           {/* 12. زر معلومات المنصة */}
           <button
-            onClick={() => setActiveModal('about')}
+            onClick={() => setActiveModal("about")}
             className="w-full bg-white hover:bg-gradient-to-r hover:from-white hover:to-sky-50/60 border-2 border-slate-200/80 hover:border-[#0F4C81] rounded-2xl p-3.5 sm:p-4 shadow-xs hover:shadow-md transition-all duration-200 flex items-center justify-between cursor-pointer group active:scale-[0.99]"
           >
             <div className="flex items-center gap-3.5">
@@ -680,34 +713,38 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
               <LogOut className="w-4.5 h-4.5 text-rose-600 group-hover:-translate-x-1 transition-transform" />
             )}
             <span className="text-sm font-black text-rose-600 group-hover:text-rose-700">
-              {logoutLoading ? 'جارٍ تسجيل الخروج…' : 'تسجيل الخروج'}
+              {logoutLoading ? "جارٍ تسجيل الخروج…" : "تسجيل الخروج"}
             </span>
           </button>
           {logoutError && (
-            <p role="alert" className="mt-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-center text-xs font-bold text-rose-700">
+            <p
+              role="alert"
+              className="mt-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-center text-xs font-bold text-rose-700"
+            >
               {logoutError}
             </p>
           )}
-
         </div>
       </main>
 
       {/* 🌟 4. النوافذ التفاعلية المنبثقة لكل زر عند النقر (Interactive Modals) */}
       {activeModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn" dir="rtl">
+        <div
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn"
+          dir="rtl"
+        >
           <div className="bg-white border-2 border-sky-100 rounded-[32px] p-6 max-w-md w-full shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto">
-            
             <div className="flex items-center justify-between pb-3 border-b-2 border-sky-100">
               <h3 className="text-base font-black text-[#0F4C81] flex items-center gap-2">
-                {activeModal === 'profile' && <span>تعديل بيانات الحساب</span>}
-                {activeModal === 'orders' && <span>طلباتي المسجلة</span>}
-                {activeModal === 'invoices' && <span>فواتير المبيعات وسندات الشحن</span>}
-                {activeModal === 'address' && <span>عناوين التوصيل والاستلام</span>}
-                {activeModal === 'wallet' && <span>رصيد الحساب والمحفظة</span>}
-                {activeModal === 'support' && <span>خدمة العملاء والدعم الفني</span>}
-                {activeModal === 'terms' && <span>شروط الاستخدام</span>}
-                {activeModal === 'privacy' && <span>سياسة الخصوصية والأمان</span>}
-                {activeModal === 'about' && <span>عن السوق الشامل (AL SHAMEL)</span>}
+                {activeModal === "profile" && <span>تعديل بيانات الحساب</span>}
+                {activeModal === "orders" && <span>طلباتي المسجلة</span>}
+                {activeModal === "invoices" && <span>فواتير المبيعات وسندات الشحن</span>}
+                {activeModal === "address" && <span>عناوين التوصيل والاستلام</span>}
+                {activeModal === "wallet" && <span>رصيد الحساب والمحفظة</span>}
+                {activeModal === "support" && <span>خدمة العملاء والدعم الفني</span>}
+                {activeModal === "terms" && <span>شروط الاستخدام</span>}
+                {activeModal === "privacy" && <span>سياسة الخصوصية والأمان</span>}
+                {activeModal === "about" && <span>عن السوق الشامل (AL SHAMEL)</span>}
               </h3>
               <button
                 onClick={() => setActiveModal(null)}
@@ -718,7 +755,7 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
             </div>
 
             {/* محتوى: تعديل بيانات الحساب */}
-            {activeModal === 'profile' && (
+            {activeModal === "profile" && (
               <form onSubmit={handleSaveProfile} className="space-y-3.5 text-xs">
                 <div>
                   <label className="block text-[#0F4C81] font-black mb-1">الاسم الكامل:</label>
@@ -773,7 +810,7 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
             )}
 
             {/* محتوى: طلباتي */}
-            {activeModal === 'orders' && (
+            {activeModal === "orders" && (
               <div className="space-y-3">
                 {orders.length === 0 ? (
                   <div className="py-8 text-center text-slate-500 text-xs">
@@ -781,7 +818,10 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
                   </div>
                 ) : (
                   orders.map((ord) => (
-                    <div key={ord.id} className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
+                    <div
+                      key={ord.id}
+                      className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 text-xs"
+                    >
                       <div className="flex items-center justify-between">
                         <span className="font-mono font-black text-[#0F4C81] bg-sky-50 px-2 py-0.5 rounded-md border border-sky-200">
                           {ord.orderNumber}
@@ -796,7 +836,8 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
                         <button
                           onClick={() => {
                             if (onNavigateToTracker) onNavigateToTracker(ord.orderNumber);
-                            else if (typeof window !== 'undefined') window.location.href = `/track?order=${ord.orderNumber}`;
+                            else if (typeof window !== "undefined")
+                              window.location.href = `/track?order=${ord.orderNumber}`;
                           }}
                           className="text-[#0F4C81] font-bold hover:underline cursor-pointer"
                         >
@@ -810,7 +851,7 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
             )}
 
             {/* محتوى: العناوين */}
-            {activeModal === 'address' && (
+            {activeModal === "address" && (
               <form onSubmit={handleSaveProfile} className="space-y-3 text-xs">
                 <div>
                   <label className="block text-[#0F4C81] font-black mb-1">المدينة الرئيسية:</label>
@@ -822,7 +863,9 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="block text-[#0F4C81] font-black mb-1">تفاصيل الحي والشارع والمعلم القريب:</label>
+                  <label className="block text-[#0F4C81] font-black mb-1">
+                    تفاصيل الحي والشارع والمعلم القريب:
+                  </label>
                   <textarea
                     rows={3}
                     placeholder="مثال: شارع الستين الجنوبي - جوار فندق سبأ - عمارة 4 شقة 2"
@@ -841,18 +884,22 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
             )}
 
             {/* محتوى: رصيدي والمحفظة */}
-            {activeModal === 'wallet' && (
+            {activeModal === "wallet" && (
               <div className="text-center space-y-4 py-4">
                 <div className="w-16 h-16 rounded-full bg-gradient-to-br from-orange-50 to-amber-100 border-2 border-orange-200 text-[#EA580C] mx-auto flex items-center justify-center">
                   <Wallet className="w-8 h-8" />
                 </div>
                 <div>
                   <span className="text-xs font-bold text-slate-500">الرصيد المتاح حالياً</span>
-                  <div className="text-2xl font-black text-[#0F4C81] mt-1 font-mono">{walletBalanceText}</div>
-                  <p className="text-xs text-slate-500 mt-1">يمكنك استخدام الرصيد لدفع تكاليف الشحن والسلع مباشرة</p>
+                  <div className="text-2xl font-black text-[#0F4C81] mt-1 font-mono">
+                    {walletBalanceText}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">
+                    يمكنك استخدام الرصيد لدفع تكاليف الشحن والسلع مباشرة
+                  </p>
                 </div>
                 <button
-                  onClick={() => setActiveModal('support')}
+                  onClick={() => setActiveModal("support")}
                   className="w-full py-2.5 rounded-xl bg-sky-50 text-[#0F4C81] border border-sky-200 font-black text-xs cursor-pointer hover:bg-sky-100 transition"
                 >
                   شحن الرصيد عبر الكريمي أو ون كاش
@@ -861,7 +908,7 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
             )}
 
             {/* محتوى: خدمة العملاء والدعم */}
-            {activeModal === 'support' && (
+            {activeModal === "support" && (
               <div className="space-y-3 text-xs">
                 <p className="text-slate-600 leading-relaxed font-bold">
                   تواصل مع فريق خدمة عملاء السوق الشامل عبر واتساب أو البريد الإلكتروني:
@@ -877,7 +924,10 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
                     <Phone className="w-4 h-4 text-emerald-600" />
                     <span className="font-bold text-emerald-950">واتساب خدمة العملاء</span>
                   </span>
-                  <span dir="ltr" className="font-mono font-bold text-emerald-700 bg-white px-2.5 py-1 rounded-lg border border-emerald-200">
+                  <span
+                    dir="ltr"
+                    className="font-mono font-bold text-emerald-700 bg-white px-2.5 py-1 rounded-lg border border-emerald-200"
+                  >
                     +967 773 370 041
                   </span>
                 </a>
@@ -898,116 +948,232 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
             )}
 
             {/* محتوى: شروط الاستخدام */}
-            {activeModal === 'terms' && (
+            {activeModal === "terms" && (
               <div className="text-xs text-slate-700 leading-relaxed space-y-3">
                 <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-900">
                   <p className="font-black">مسودة شروط تشغيلية</p>
-                  <p className="mt-1">يرجى مراجعة الرسوم وسياسات الشراء والشحن واعتماد هذه الشروط قانونيًا قبل اعتبارها نهائية.</p>
+                  <p className="mt-1">
+                    يرجى مراجعة الرسوم وسياسات الشراء والشحن واعتماد هذه الشروط قانونيًا قبل
+                    اعتبارها نهائية.
+                  </p>
                 </div>
                 <p>باستخدام منصة السوق الشامل أو إرسال طلب، فإنك توافق على الشروط التالية:</p>
                 <section>
                   <h4 className="font-black text-[#0F4C81]">1. الطلب والأسعار</h4>
-                  <p>قد تتغير أسعار المنتجات أو توافرها لدى المتجر الخارجي قبل الشراء. لا يصبح الطلب مؤكدًا إلا بعد مراجعة تفاصيله واعتماد المبلغ المطلوب وإبلاغك بالتأكيد. تُوضح لك أي رسوم إضافية قبل طلب موافقتك عليها.</p>
+                  <p>
+                    قد تتغير أسعار المنتجات أو توافرها لدى المتجر الخارجي قبل الشراء. لا يصبح الطلب
+                    مؤكدًا إلا بعد مراجعة تفاصيله واعتماد المبلغ المطلوب وإبلاغك بالتأكيد. تُوضح لك
+                    أي رسوم إضافية قبل طلب موافقتك عليها.
+                  </p>
                 </section>
                 <section>
                   <h4 className="font-black text-[#0F4C81]">2. الدفع والرصيد المتبقي</h4>
-                  <p>أرسل إثبات الدفع الصحيح للطلب المعني. يُسجل المبلغ بعد مراجعته واعتماده، وقد يُقبل الدفع الجزئي إذا أُبلغت بذلك. يبقى أي مبلغ غير مدفوع مستحقًا، ويجب تسويته قبل تسليم الطلب ما لم يتم الاتفاق مع الإدارة على غير ذلك.</p>
+                  <p>
+                    أرسل إثبات الدفع الصحيح للطلب المعني. يُسجل المبلغ بعد مراجعته واعتماده، وقد
+                    يُقبل الدفع الجزئي إذا أُبلغت بذلك. يبقى أي مبلغ غير مدفوع مستحقًا، ويجب تسويته
+                    قبل تسليم الطلب ما لم يتم الاتفاق مع الإدارة على غير ذلك.
+                  </p>
                 </section>
                 <section>
                   <h4 className="font-black text-[#0F4C81]">3. الشراء والتوفر والإلغاء</h4>
-                  <p>المنتجات وروابطها قد تعود لمتاجر خارجية، ولا تضمن المنصة استمرار توفرها أو ثبات سعرها. تواصل مع خدمة العملاء فورًا لطلب تعديل أو إلغاء الطلب؛ إذا بدأ الشراء أو الشحن فقد يتعذر الإلغاء أو قد تُطبق تكاليف فعلية، على أن تُوضح لك قبل اعتمادها.</p>
+                  <p>
+                    المنتجات وروابطها قد تعود لمتاجر خارجية، ولا تضمن المنصة استمرار توفرها أو ثبات
+                    سعرها. تواصل مع خدمة العملاء فورًا لطلب تعديل أو إلغاء الطلب؛ إذا بدأ الشراء أو
+                    الشحن فقد يتعذر الإلغاء أو قد تُطبق تكاليف فعلية، على أن تُوضح لك قبل اعتمادها.
+                  </p>
                 </section>
                 <section>
                   <h4 className="font-black text-[#0F4C81]">4. الشحن والتسليم</h4>
-                  <p>قد تتأثر مواعيد الشحن والتسليم بالمتاجر وشركات النقل وإجراءات الجمارك والظروف الخارجة عن سيطرة المنصة. قدّم اسمًا ورقم هاتف وعنوانًا صحيحًا، وتابع حالة الطلب من خلال رقم التتبع عند توفره. تُعرض أي رسوم شحن أو توصيل إضافية قبل استحقاقها.</p>
+                  <p>
+                    قد تتأثر مواعيد الشحن والتسليم بالمتاجر وشركات النقل وإجراءات الجمارك والظروف
+                    الخارجة عن سيطرة المنصة. قدّم اسمًا ورقم هاتف وعنوانًا صحيحًا، وتابع حالة الطلب
+                    من خلال رقم التتبع عند توفره. تُعرض أي رسوم شحن أو توصيل إضافية قبل استحقاقها.
+                  </p>
                 </section>
                 <section>
                   <h4 className="font-black text-[#0F4C81]">5. مسؤولية العميل والتواصل</h4>
-                  <p>تحقق من مواصفات المنتج والرابط والكمية والعنوان قبل تأكيد الطلب، ولا ترسل معلومات دفع أو مستندات تخص شخصًا آخر دون إذنه. للإبلاغ عن مشكلة أو طلب توضيح، تواصل مع خدمة العملاء عبر القنوات المعروضة في المنصة واحتفظ برقم الطلب وإثباتات الدفع.</p>
+                  <p>
+                    تحقق من مواصفات المنتج والرابط والكمية والعنوان قبل تأكيد الطلب، ولا ترسل
+                    معلومات دفع أو مستندات تخص شخصًا آخر دون إذنه. للإبلاغ عن مشكلة أو طلب توضيح،
+                    تواصل مع خدمة العملاء عبر القنوات المعروضة في المنصة واحتفظ برقم الطلب وإثباتات
+                    الدفع.
+                  </p>
                 </section>
-                <p className="text-slate-500">هذه صياغة أولية عامة وليست استشارة قانونية، ولا تحدد رسومًا أو ضمانات غير موضحة في تفاصيل الطلب.</p>
+                <p className="text-slate-500">
+                  هذه صياغة أولية عامة وليست استشارة قانونية، ولا تحدد رسومًا أو ضمانات غير موضحة في
+                  تفاصيل الطلب.
+                </p>
               </div>
             )}
 
             {/* محتوى: سياسة الخصوصية */}
-            {activeModal === 'privacy' && (
+            {activeModal === "privacy" && (
               <div className="text-xs text-slate-700 leading-relaxed space-y-3">
                 <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-900">
                   <p className="font-black">إشعار خصوصية أولي</p>
-                  <p className="mt-1">هذا شرح داخل التطبيق وليس مراجعة قانونية. يجب على إدارة المنصة تأكيد ممارساتها الفعلية والجهات التي تعالج البيانات قبل اعتماده كسياسة نهائية.</p>
+                  <p className="mt-1">
+                    هذا شرح داخل التطبيق وليس مراجعة قانونية. يجب على إدارة المنصة تأكيد ممارساتها
+                    الفعلية والجهات التي تعالج البيانات قبل اعتماده كسياسة نهائية.
+                  </p>
                 </div>
                 <section>
                   <h4 className="font-black text-[#0F4C81]">ما المعلومات التي قد نعالجها؟</h4>
-                  <p>بحسب استخدامك للمنصة، قد تشمل المعلومات بيانات الحساب وتسجيل الدخول، مثل الاسم والبريد الإلكتروني ورقم الهاتف؛ وبيانات الملف الشخصي وصورة الحساب؛ وعناوين التوصيل والمدينة؛ ومعلومات الطلبات والمنتجات والتتبع؛ وإيصالات الدفع والمبالغ وحالة السداد؛ والرسائل التي ترسلها لخدمة العملاء. وقد تُسجل معلومات تقنية أساسية لازمة لتشغيل الخدمة وحمايتها.</p>
+                  <p>
+                    بحسب استخدامك للمنصة، قد تشمل المعلومات بيانات الحساب وتسجيل الدخول، مثل الاسم
+                    والبريد الإلكتروني ورقم الهاتف؛ وبيانات الملف الشخصي وصورة الحساب؛ وعناوين
+                    التوصيل والمدينة؛ ومعلومات الطلبات والمنتجات والتتبع؛ وإيصالات الدفع والمبالغ
+                    وحالة السداد؛ والرسائل التي ترسلها لخدمة العملاء. وقد تُسجل معلومات تقنية أساسية
+                    لازمة لتشغيل الخدمة وحمايتها.
+                  </p>
                 </section>
                 <section>
                   <h4 className="font-black text-[#0F4C81]">لماذا نستخدمها؟</h4>
-                  <p>لإنشاء الحساب وإدارته، والتواصل بشأن الطلب، ومراجعة المدفوعات وإثباتاتها، وترتيب الشراء والشحن والتسليم، وإظهار حالة الطلب والإشعارات، والرد على الدعم، ومعالجة الأعطال أو إساءة الاستخدام.</p>
+                  <p>
+                    لإنشاء الحساب وإدارته، والتواصل بشأن الطلب، ومراجعة المدفوعات وإثباتاتها، وترتيب
+                    الشراء والشحن والتسليم، وإظهار حالة الطلب والإشعارات، والرد على الدعم، ومعالجة
+                    الأعطال أو إساءة الاستخدام.
+                  </p>
                 </section>
                 <section>
                   <h4 className="font-black text-[#0F4C81]">متى قد تُشارك؟</h4>
-                  <p>قد تُرسل المعلومات الضرورية لتنفيذ طلبك إلى المتجر أو جهة الشحن والتوصيل، وقد تُعالج بواسطة مزودي التقنية الذين تعتمد عليهم المنصة لتشغيل الحسابات والتخزين والاستضافة. يجب قصر المشاركة على ما يلزم للعمل؛ وعلى إدارة المنصة تحديد الجهات الفعلية ومواقع المعالجة قبل اعتماد هذه السياسة.</p>
+                  <p>
+                    قد تُرسل المعلومات الضرورية لتنفيذ طلبك إلى المتجر أو جهة الشحن والتوصيل، وقد
+                    تُعالج بواسطة مزودي التقنية الذين تعتمد عليهم المنصة لتشغيل الحسابات والتخزين
+                    والاستضافة. يجب قصر المشاركة على ما يلزم للعمل؛ وعلى إدارة المنصة تحديد الجهات
+                    الفعلية ومواقع المعالجة قبل اعتماد هذه السياسة.
+                  </p>
                 </section>
                 <section>
                   <h4 className="font-black text-[#0F4C81]">الحفظ والحماية</h4>
-                  <p>لا تحدد هذه النافذة مدة الاحتفاظ بالبيانات أو تفاصيل تدابير الحماية. احتفظ بسرية كلمة المرور ورموز الدخول، ولا ترسل بيانات دفع سرية أو معلومات أشخاص آخرين. ينبغي للمنصة تحديد مدة الحفظ، وضوابط الوصول، وطريقة التعامل مع الحوادث في سياسة معتمدة.</p>
+                  <p>
+                    لا تحدد هذه النافذة مدة الاحتفاظ بالبيانات أو تفاصيل تدابير الحماية. احتفظ بسرية
+                    كلمة المرور ورموز الدخول، ولا ترسل بيانات دفع سرية أو معلومات أشخاص آخرين. ينبغي
+                    للمنصة تحديد مدة الحفظ، وضوابط الوصول، وطريقة التعامل مع الحوادث في سياسة
+                    معتمدة.
+                  </p>
                 </section>
                 <section>
                   <h4 className="font-black text-[#0F4C81]">طلباتك واستفساراتك</h4>
-                  <p>يمكنك التواصل مع الدعم لطلب الاطلاع على بيانات حسابك أو تصحيحها أو طلب حذفها. قد يتطلب تنفيذ الطلب التحقق من هويتك، وقد تُحتفظ بعض السجلات عند الحاجة لإدارة طلب قائم أو الوفاء بمتطلبات واجبة التطبيق؛ يوضح لك الدعم ما يمكن تنفيذه بعد مراجعة الطلب.</p>
-                  <p className="mt-1">البريد: <a className="font-bold text-sky-700 underline" href="mailto:support@alshamel.ye">support@alshamel.ye</a> · واتساب: <a className="font-bold text-sky-700 underline" href="https://wa.me/967773370041" target="_blank" rel="noopener noreferrer" dir="ltr">+967 773 370 041</a></p>
+                  <p>
+                    يمكنك التواصل مع الدعم لطلب الاطلاع على بيانات حسابك أو تصحيحها أو طلب حذفها. قد
+                    يتطلب تنفيذ الطلب التحقق من هويتك، وقد تُحتفظ بعض السجلات عند الحاجة لإدارة طلب
+                    قائم أو الوفاء بمتطلبات واجبة التطبيق؛ يوضح لك الدعم ما يمكن تنفيذه بعد مراجعة
+                    الطلب.
+                  </p>
+                  <p className="mt-1">
+                    البريد:{" "}
+                    <a
+                      className="font-bold text-sky-700 underline"
+                      href="mailto:support@alshamel.ye"
+                    >
+                      support@alshamel.ye
+                    </a>{" "}
+                    · واتساب:{" "}
+                    <a
+                      className="font-bold text-sky-700 underline"
+                      href="https://wa.me/967773370041"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      dir="ltr"
+                    >
+                      +967 773 370 041
+                    </a>
+                  </p>
                 </section>
                 <section>
                   <h4 className="font-black text-[#0F4C81]">التعديلات على السياسة</h4>
-                  <p>إذا تغيرت طريقة جمع المعلومات أو استخدامها أو مشاركتها، ينبغي تحديث هذا الإشعار وبيان تاريخ سريانه. راجع النص عند استخدام المنصة.</p>
+                  <p>
+                    إذا تغيرت طريقة جمع المعلومات أو استخدامها أو مشاركتها، ينبغي تحديث هذا الإشعار
+                    وبيان تاريخ سريانه. راجع النص عند استخدام المنصة.
+                  </p>
                 </section>
-                <p className="text-slate-500">قبل النشر النهائي، راجع هذا النص مع آلية تسجيل الدخول الفعلية، والتخزين، ورفع الصور وإيصالات الدفع، ومقدمي الخدمات، ومتطلبات الخصوصية المطبقة على نشاط المنصة.</p>
+                <p className="text-slate-500">
+                  قبل النشر النهائي، راجع هذا النص مع آلية تسجيل الدخول الفعلية، والتخزين، ورفع
+                  الصور وإيصالات الدفع، ومقدمي الخدمات، ومتطلبات الخصوصية المطبقة على نشاط المنصة.
+                </p>
               </div>
             )}
 
             {/* محتوى: معلومات المنصة */}
-            {activeModal === 'about' && (
+            {activeModal === "about" && (
               <div className="text-xs text-slate-700 leading-relaxed space-y-3">
                 <div className="rounded-xl border border-sky-200 bg-sky-50 p-3">
                   <h4 className="font-black text-[#0F4C81]">السوق الشامل</h4>
-                  <p className="mt-1">منصة تساعد العملاء في اليمن على تقديم طلبات لمنتجات من متاجر خارجية ومتابعة الطلب والدفع والتسليم من خلال حسابهم.</p>
+                  <p className="mt-1">
+                    منصة تساعد العملاء في اليمن على تقديم طلبات لمنتجات من متاجر خارجية ومتابعة
+                    الطلب والدفع والتسليم من خلال حسابهم.
+                  </p>
                 </div>
                 <section>
                   <h4 className="font-black text-[#0F4C81]">كيف تستخدم المنصة؟</h4>
-                  <p>تصفح المنتجات المتاحة أو أرسل تفاصيل ورابط المنتج عند تقديم الطلب. راجع وصف المنتج والكمية والسعر والمبلغ المطلوب قبل التأكيد، ثم تابع حالة الطلب ورقم التتبع عند توفره من صفحات الحساب.</p>
+                  <p>
+                    تصفح المنتجات المتاحة أو أرسل تفاصيل ورابط المنتج عند تقديم الطلب. راجع وصف
+                    المنتج والكمية والسعر والمبلغ المطلوب قبل التأكيد، ثم تابع حالة الطلب ورقم
+                    التتبع عند توفره من صفحات الحساب.
+                  </p>
                 </section>
                 <section>
                   <h4 className="font-black text-[#0F4C81]">الأسعار والطلبات</h4>
-                  <p>قد يختلف توفر المنتج وسعره لدى المتجر الخارجي. يعتمد المبلغ النهائي وأي رسوم على تفاصيل الطلب التي تراجعها الإدارة وتعرضها لك قبل اعتمادها. راجع صفحة الطلب والفاتورة أو إشعار الدفع لمعرفة المدفوع والمتبقي.</p>
+                  <p>
+                    قد يختلف توفر المنتج وسعره لدى المتجر الخارجي. يعتمد المبلغ النهائي وأي رسوم على
+                    تفاصيل الطلب التي تراجعها الإدارة وتعرضها لك قبل اعتمادها. راجع صفحة الطلب
+                    والفاتورة أو إشعار الدفع لمعرفة المدفوع والمتبقي.
+                  </p>
                 </section>
                 <section>
                   <h4 className="font-black text-[#0F4C81]">خدمات الحساب</h4>
-                  <p>يتيح الحساب الوصول إلى الطلبات والفواتير والعناوين والرصيد والإشعارات وخدمة العملاء. ظهور البيانات والخيارات يعتمد على تسجيل الدخول وحالة الطلب وتوفر الخدمة.</p>
+                  <p>
+                    يتيح الحساب الوصول إلى الطلبات والفواتير والعناوين والرصيد والإشعارات وخدمة
+                    العملاء. ظهور البيانات والخيارات يعتمد على تسجيل الدخول وحالة الطلب وتوفر
+                    الخدمة.
+                  </p>
                 </section>
                 <section>
                   <h4 className="font-black text-[#0F4C81]">التواصل</h4>
-                  <p>للاستفسارات أو الإبلاغ عن مشكلة، أرسل رقم الطلب والتفاصيل ذات الصلة إلى خدمة العملاء:</p>
+                  <p>
+                    للاستفسارات أو الإبلاغ عن مشكلة، أرسل رقم الطلب والتفاصيل ذات الصلة إلى خدمة
+                    العملاء:
+                  </p>
                   <div className="mt-1 flex flex-col gap-1">
-                    <a className="font-bold text-sky-700 underline" href="https://wa.me/967773370041" target="_blank" rel="noopener noreferrer" dir="ltr">واتساب: +967 773 370 041</a>
-                    <a className="font-bold text-sky-700 underline" href="mailto:support@alshamel.ye">البريد: support@alshamel.ye</a>
+                    <a
+                      className="font-bold text-sky-700 underline"
+                      href="https://wa.me/967773370041"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      dir="ltr"
+                    >
+                      واتساب: +967 773 370 041
+                    </a>
+                    <a
+                      className="font-bold text-sky-700 underline"
+                      href="mailto:support@alshamel.ye"
+                    >
+                      البريد: support@alshamel.ye
+                    </a>
                   </div>
                 </section>
-                <p className="text-slate-500">معلومات التواصل والخدمات أعلاه بحسب ما هو مذكور في التطبيق. لم تُضف هنا ساعات عمل أو عنوانًا تجاريًا أو ادعاء اعتماد رسمي لعدم توفر معلومات مؤكدة عنها.</p>
+                <p className="text-slate-500">
+                  معلومات التواصل والخدمات أعلاه بحسب ما هو مذكور في التطبيق. لم تُضف هنا ساعات عمل
+                  أو عنوانًا تجاريًا أو ادعاء اعتماد رسمي لعدم توفر معلومات مؤكدة عنها.
+                </p>
               </div>
             )}
 
             {/* محتوى: الفواتير */}
-            {activeModal === 'invoices' && (
+            {activeModal === "invoices" && (
               <div className="text-xs text-slate-700 leading-relaxed space-y-2">
-                <p className="font-bold text-[#0F4C81]">تُعرض الفاتورة أو تفاصيل المبالغ عند توفرها للطلب.</p>
-                <p>تحقق من إجمالي الطلب والمبالغ المدفوعة والمتبقية، واحتفظ بإثباتات الدفع. عند وجود اختلاف، تواصل مع خدمة العملاء وأرفق رقم الطلب والإثبات.</p>
+                <p className="font-bold text-[#0F4C81]">
+                  تُعرض الفاتورة أو تفاصيل المبالغ عند توفرها للطلب.
+                </p>
+                <p>
+                  تحقق من إجمالي الطلب والمبالغ المدفوعة والمتبقية، واحتفظ بإثباتات الدفع. عند وجود
+                  اختلاف، تواصل مع خدمة العملاء وأرفق رقم الطلب والإثبات.
+                </p>
               </div>
             )}
-
           </div>
         </div>
       )}
-
     </div>
   );
 };

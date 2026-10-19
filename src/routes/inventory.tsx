@@ -3,12 +3,22 @@ import { useState, useMemo, useEffect, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminRouteGuard } from "@/components/admin/AdminRouteGuard";
 import {
-  ArrowRight, Search, Plus, Boxes, Warehouse,
-  MapPin, QrCode, Printer, CheckCircle2, Clock,
-  AlertTriangle, Package, Pencil
+  ArrowRight,
+  Search,
+  Plus,
+  Boxes,
+  Warehouse,
+  MapPin,
+  QrCode,
+  Printer,
+  CheckCircle2,
+  Clock,
+  AlertTriangle,
+  Package,
+  Pencil,
 } from "lucide-react";
 
-export const Route = createFileRoute('/inventory')({
+export const Route = createFileRoute("/inventory")({
   component: InventoryPage,
 });
 
@@ -52,8 +62,14 @@ function mapInventoryRow(row: InventoryDbRow): InventoryItem {
   const arrival = new Date(`${row.arrival_date}T00:00:00Z`);
   const today = new Date();
   const todayUtc = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
-  const arrivalUtc = Date.UTC(arrival.getUTCFullYear(), arrival.getUTCMonth(), arrival.getUTCDate());
-  const daysInWarehouse = Number.isNaN(arrivalUtc) ? 0 : Math.max(0, Math.floor((todayUtc - arrivalUtc) / 86_400_000));
+  const arrivalUtc = Date.UTC(
+    arrival.getUTCFullYear(),
+    arrival.getUTCMonth(),
+    arrival.getUTCDate(),
+  );
+  const daysInWarehouse = Number.isNaN(arrivalUtc)
+    ? 0
+    : Math.max(0, Math.floor((todayUtc - arrivalUtc) / 86_400_000));
 
   return {
     id: String(row.id),
@@ -100,8 +116,8 @@ function InventoryPageContent() {
   });
 
   const filteredItems = useMemo(() => {
-    const s = search?? "";
-    return items.filter(item => {
+    const s = search ?? "";
+    return items.filter((item) => {
       const matchSearch =
         item.trackingCode.toLowerCase().includes(s.toLowerCase()) ||
         item.barcode.includes(s) ||
@@ -116,9 +132,13 @@ function InventoryPageContent() {
 
   const stats = useMemo(() => {
     const totalParcels = items.length;
-    const readyForPickup = items.filter(i => i.status === "جاهز للتسليم").length;
-    const inProcessing = items.filter(i => i.status === "قيد الفرز والوزن" || i.status === "معاد تغليفه").length;
-    const delayed = items.filter(i => i.daysInWarehouse >= 14 && i.status!== "تم التسليم للعميل").length;
+    const readyForPickup = items.filter((i) => i.status === "جاهز للتسليم").length;
+    const inProcessing = items.filter(
+      (i) => i.status === "قيد الفرز والوزن" || i.status === "معاد تغليفه",
+    ).length;
+    const delayed = items.filter(
+      (i) => i.daysInWarehouse >= 14 && i.status !== "تم التسليم للعميل",
+    ).length;
     const totalWeight = items.reduce((sum, i) => sum + i.weightKg, 0);
     return { totalParcels, readyForPickup, inProcessing, delayed, totalWeight };
   }, [items]);
@@ -133,7 +153,9 @@ function InventoryPageContent() {
         .order("created_at", { ascending: false });
       if (!active) return;
       if (error) {
-        setPageError("تعذر تحميل المخزون من قاعدة البيانات. تحقق من وجود جدول inventory_items وسياسات RLS.");
+        setPageError(
+          "تعذر تحميل المخزون من قاعدة البيانات. تحقق من وجود جدول inventory_items وسياسات RLS.",
+        );
         setLoading(false);
         return;
       }
@@ -141,7 +163,9 @@ function InventoryPageContent() {
       setLoading(false);
     };
     void loadItems();
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, []);
 
   const openAddModal = () => {
@@ -188,7 +212,7 @@ function InventoryPageContent() {
       return;
     }
     const updated = mapInventoryRow(data as InventoryDbRow);
-    setItems(current => current.map(item => item.id === id ? updated : item));
+    setItems((current) => current.map((item) => (item.id === id ? updated : item)));
   };
 
   const handleSaveItem = async (e: FormEvent<HTMLFormElement>) => {
@@ -212,7 +236,7 @@ function InventoryPageContent() {
         setPageError("انتهت جلسة الدخول. سجّل الدخول مجددًا ثم أعد المحاولة.");
         return;
       }
-      const original = editingItemId ? items.find(item => item.id === editingItemId) : undefined;
+      const original = editingItemId ? items.find((item) => item.id === editingItemId) : undefined;
       const payload = {
         tracking_code: newItem.trackingCode.trim().toUpperCase(),
         barcode: newItem.barcode.trim() || `6291${Math.floor(10000000 + Math.random() * 90000000)}`,
@@ -235,25 +259,29 @@ function InventoryPageContent() {
           .select("*")
           .single();
         if (error) {
-          setPageError(error.code === "23505"
-            ? "رقم التتبع مستخدم في طرد آخر. أدخل رقمًا مختلفًا."
-            : "تعذر حفظ التعديلات. تحقق من اتصال قاعدة البيانات وصلاحية المدير.");
+          setPageError(
+            error.code === "23505"
+              ? "رقم التتبع مستخدم في طرد آخر. أدخل رقمًا مختلفًا."
+              : "تعذر حفظ التعديلات. تحقق من اتصال قاعدة البيانات وصلاحية المدير.",
+          );
           return;
         }
         const updated = mapInventoryRow(data as InventoryDbRow);
-        setItems(current => current.map(item => item.id === editingItemId ? updated : item));
+        setItems((current) => current.map((item) => (item.id === editingItemId ? updated : item)));
       } else {
         const { data, error } = await inventoryTable()
           .insert({ ...payload, created_by: userResult.user.id })
           .select("*")
           .single();
         if (error) {
-          setPageError(error.code === "23505"
-            ? "رقم التتبع موجود مسبقًا. استخدم رقمًا مختلفًا."
-            : "تعذر حفظ الطرد. تحقق من الجدول وسياسات RLS ثم أعد المحاولة.");
+          setPageError(
+            error.code === "23505"
+              ? "رقم التتبع موجود مسبقًا. استخدم رقمًا مختلفًا."
+              : "تعذر حفظ الطرد. تحقق من الجدول وسياسات RLS ثم أعد المحاولة.",
+          );
           return;
         }
-        setItems(current => [mapInventoryRow(data as InventoryDbRow), ...current]);
+        setItems((current) => [mapInventoryRow(data as InventoryDbRow), ...current]);
       }
 
       setShowAddModal(false);
@@ -276,11 +304,17 @@ function InventoryPageContent() {
   };
 
   return (
-    <div dir="rtl" className="min-h-screen bg-gradient-to-br from-[#F0F7FF] via-[#F8FAFC] to-[#FFF9F5] p-4 md:p-8 font-['Cairo',sans-serif]">
+    <div
+      dir="rtl"
+      className="min-h-screen bg-gradient-to-br from-[#F0F7FF] via-[#F8FAFC] to-[#FFF9F5] p-4 md:p-8 font-['Cairo',sans-serif]"
+    >
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl shadow-sm border border-sky-100">
           <div className="flex items-center gap-3">
-            <button onClick={() => navigate({ to: "/admin" })} className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition">
+            <button
+              onClick={() => navigate({ to: "/admin" })}
+              className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition"
+            >
               <ArrowRight className="w-5 h-5" />
             </button>
             <div>
@@ -288,11 +322,16 @@ function InventoryPageContent() {
                 <Boxes className="w-6 h-6 text-[#F97316]" />
                 إدارة المخزون والمستودعات
               </h1>
-              <p className="text-xs md:text-sm text-slate-500 font-medium">متابعة الطرود في مستودعات الصين، تركيا، ونقاط التوزيع في اليمن</p>
+              <p className="text-xs md:text-sm text-slate-500 font-medium">
+                متابعة الطرود في مستودعات الصين، تركيا، ونقاط التوزيع في اليمن
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={openAddModal} className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#0F4C81] hover:bg-[#0c3c66] text-white font-bold text-sm shadow-md transition">
+            <button
+              onClick={openAddModal}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#0F4C81] hover:bg-[#0c3c66] text-white font-bold text-sm shadow-md transition"
+            >
               <Plus className="w-4 h-4" />
               إيداع طرد جديد
             </button>
@@ -300,7 +339,10 @@ function InventoryPageContent() {
         </div>
 
         {pageError && (
-          <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-800">
+          <div
+            role="alert"
+            className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-800"
+          >
             {pageError}
           </div>
         )}
@@ -312,7 +354,9 @@ function InventoryPageContent() {
               <Boxes className="w-5 h-5 bg-sky-50 p-1 rounded-lg" />
             </div>
             <div className="text-2xl font-black text-slate-900">{stats.totalParcels} طرد</div>
-            <p className="text-[11px] text-slate-400 mt-1">الوزن الإجمالي: {stats.totalWeight.toFixed(1)} كجم</p>
+            <p className="text-[11px] text-slate-400 mt-1">
+              الوزن الإجمالي: {stats.totalWeight.toFixed(1)} كجم
+            </p>
           </div>
           <div className="bg-white p-4 md:p-5 rounded-2xl border border-emerald-100 shadow-sm">
             <div className="flex items-center justify-between text-emerald-600 mb-2">
@@ -343,11 +387,17 @@ function InventoryPageContent() {
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4">
           <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 pb-3">
             <span className="text-xs font-bold text-slate-500 ml-2">المستودع:</span>
-            {["الكل", "الصين (غوانزو)", "تركيا (إسطنبول)", "صنعاء (حدة)", "عدن (المنصورة)"].map((wh) => (
-              <button key={wh} onClick={() => setSelectedWarehouse(wh)} className={`text-xs font-bold px-3 py-1.5 rounded-xl transition ${selectedWarehouse === wh? "bg-[#0F4C81] text-white shadow-sm" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
-                {wh}
-              </button>
-            ))}
+            {["الكل", "الصين (غوانزو)", "تركيا (إسطنبول)", "صنعاء (حدة)", "عدن (المنصورة)"].map(
+              (wh) => (
+                <button
+                  key={wh}
+                  onClick={() => setSelectedWarehouse(wh)}
+                  className={`text-xs font-bold px-3 py-1.5 rounded-xl transition ${selectedWarehouse === wh ? "bg-[#0F4C81] text-white shadow-sm" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+                >
+                  {wh}
+                </button>
+              ),
+            )}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div className="md:col-span-2 relative">
@@ -355,13 +405,17 @@ function InventoryPageContent() {
               <input
                 type="text"
                 placeholder="ابحث برقم التتبع، الباركود، اسم العميل، الهاتف، أو الرف..."
-                value={search?? ""}
+                value={search ?? ""}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full h-11 pr-12 pl-4 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-[#0F4C81] outline-none text-xs md:text-sm font-medium transition"
               />
             </div>
             <div>
-              <select value={selectedStatus?? "الكل"} onChange={(e) => setSelectedStatus(e.target.value)} className="w-full h-11 px-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-[#0F4C81] outline-none text-xs font-bold text-slate-700">
+              <select
+                value={selectedStatus ?? "الكل"}
+                onChange={(e) => setSelectedStatus(e.target.value)}
+                className="w-full h-11 px-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-[#0F4C81] outline-none text-xs font-bold text-slate-700"
+              >
                 <option value="الكل">جميع الحالات</option>
                 <option value="جاهز للتسليم">جاهز للتسليم</option>
                 <option value="قيد الفرز والوزن">قيد الفرز والوزن</option>
@@ -388,61 +442,94 @@ function InventoryPageContent() {
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">
                 {loading ? (
-                  <tr><td colSpan={7} className="py-10 text-center text-slate-500">جارٍ تحميل المخزون من قاعدة البيانات…</td></tr>
-                ) : filteredItems.length === 0 ? (
-                  <tr><td colSpan={7} className="py-10 text-center text-slate-500">لا توجد طرود مطابقة. أضف طردًا أو غيّر عوامل البحث.</td></tr>
-                ) : filteredItems.map((item) => (
-                  <tr key={item.id} className="hover:bg-slate-50/80 transition">
-                    <td className="py-3.5 px-4">
-                      <div className="font-mono font-bold text-[#0F4C81] flex items-center gap-1.5">
-                        <QrCode className="w-4 h-4 text-[#F97316]" />
-                        {item.trackingCode}
-                      </div>
-                      <div className="text-[11px] font-mono text-slate-400 mt-0.5">باركود: {item.barcode}</div>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <div className="font-bold text-slate-900">{item.clientName}</div>
-                      <div className="text-[11px] text-slate-400 font-mono">{item.clientPhone}</div>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <div className="font-bold text-slate-800 flex items-center gap-1">
-                        <Warehouse className="w-3.5 h-3.5 text-sky-600" />
-                        {item.warehouse}
-                      </div>
-                      <div className="text-[11px] text-amber-700 font-medium mt-0.5 flex items-center gap-1">
-                        <MapPin className="w-3 h-3" />
-                        {item.shelfLocation}
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-4 text-center">
-                      <span className="font-bold text-slate-900">{item.weightKg} كجم</span>
-                      <span className="block text-[11px] text-slate-400">({item.piecesCount} قطع)</span>
-                    </td>
-                    <td className="py-3.5 px-4 text-center">
-                      <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold ${item.daysInWarehouse >= 14? "bg-rose-100 text-rose-700" : "bg-slate-100 text-slate-700"}`}>
-                        {item.daysInWarehouse} يوم
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-center">
-                      <span className={`text-[11px] px-2.5 py-1 rounded-full font-bold ${item.status === 'جاهز للتسليم'? 'bg-emerald-100 text-emerald-800' : item.status === 'تم التسليم للعميل'? 'bg-slate-100 text-slate-500 line-through' : 'bg-amber-100 text-amber-800'}`}>
-                        {item.status}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-center">
-                      <div className="flex items-center justify-center gap-1.5">
-                        <button type="button" onClick={() => openEditModal(item)} aria-label={`تعديل الطرد ${item.trackingCode}`} className="p-1.5 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-800 transition">
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
-                        {item.status === "جاهز للتسليم" && (
-                          <button onClick={() => void handleDeliver(item.id)} className="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition">تسليم</button>
-                        )}
-                        <button onClick={() => window.print()} className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition">
-                          <Printer className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
+                  <tr>
+                    <td colSpan={7} className="py-10 text-center text-slate-500">
+                      جارٍ تحميل المخزون من قاعدة البيانات…
                     </td>
                   </tr>
-                ))}
+                ) : filteredItems.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-10 text-center text-slate-500">
+                      لا توجد طرود مطابقة. أضف طردًا أو غيّر عوامل البحث.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredItems.map((item) => (
+                    <tr key={item.id} className="hover:bg-slate-50/80 transition">
+                      <td className="py-3.5 px-4">
+                        <div className="font-mono font-bold text-[#0F4C81] flex items-center gap-1.5">
+                          <QrCode className="w-4 h-4 text-[#F97316]" />
+                          {item.trackingCode}
+                        </div>
+                        <div className="text-[11px] font-mono text-slate-400 mt-0.5">
+                          باركود: {item.barcode}
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <div className="font-bold text-slate-900">{item.clientName}</div>
+                        <div className="text-[11px] text-slate-400 font-mono">
+                          {item.clientPhone}
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <div className="font-bold text-slate-800 flex items-center gap-1">
+                          <Warehouse className="w-3.5 h-3.5 text-sky-600" />
+                          {item.warehouse}
+                        </div>
+                        <div className="text-[11px] text-amber-700 font-medium mt-0.5 flex items-center gap-1">
+                          <MapPin className="w-3 h-3" />
+                          {item.shelfLocation}
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4 text-center">
+                        <span className="font-bold text-slate-900">{item.weightKg} كجم</span>
+                        <span className="block text-[11px] text-slate-400">
+                          ({item.piecesCount} قطع)
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-center">
+                        <span
+                          className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold ${item.daysInWarehouse >= 14 ? "bg-rose-100 text-rose-700" : "bg-slate-100 text-slate-700"}`}
+                        >
+                          {item.daysInWarehouse} يوم
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-center">
+                        <span
+                          className={`text-[11px] px-2.5 py-1 rounded-full font-bold ${item.status === "جاهز للتسليم" ? "bg-emerald-100 text-emerald-800" : item.status === "تم التسليم للعميل" ? "bg-slate-100 text-slate-500 line-through" : "bg-amber-100 text-amber-800"}`}
+                        >
+                          {item.status}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-center">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => openEditModal(item)}
+                            aria-label={`تعديل الطرد ${item.trackingCode}`}
+                            className="p-1.5 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-800 transition"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          {item.status === "جاهز للتسليم" && (
+                            <button
+                              onClick={() => void handleDeliver(item.id)}
+                              className="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition"
+                            >
+                              تسليم
+                            </button>
+                          )}
+                          <button
+                            onClick={() => window.print()}
+                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -456,34 +543,84 @@ function InventoryPageContent() {
                   <Package className="w-5 h-5 text-[#F97316]" />
                   {editingItemId ? "تعديل بيانات الطرد" : "إيداع طرد جديد في المستودع"}
                 </h3>
-                <button onClick={() => { setShowAddModal(false); setEditingItemId(null); setPageError(""); }} className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 font-bold">✕</button>
+                <button
+                  onClick={() => {
+                    setShowAddModal(false);
+                    setEditingItemId(null);
+                    setPageError("");
+                  }}
+                  className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 font-bold"
+                >
+                  ✕
+                </button>
               </div>
-              {pageError && <div role="alert" className="rounded-lg bg-rose-50 border border-rose-200 px-3 py-2 text-xs font-bold text-rose-800">{pageError}</div>}
+              {pageError && (
+                <div
+                  role="alert"
+                  className="rounded-lg bg-rose-50 border border-rose-200 px-3 py-2 text-xs font-bold text-rose-800"
+                >
+                  {pageError}
+                </div>
+              )}
               <form onSubmit={handleSaveItem} className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-bold text-slate-600 block mb-1">رقم التتبع / الشحنة</label>
-                    <input required placeholder="SQ-801..." value={newItem.trackingCode?? ""} onChange={e => setNewItem({...newItem, trackingCode: e.target.value})} className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-mono outline-none focus:border-[#0F4C81]" />
+                    <label className="text-xs font-bold text-slate-600 block mb-1">
+                      رقم التتبع / الشحنة
+                    </label>
+                    <input
+                      required
+                      placeholder="SQ-801..."
+                      value={newItem.trackingCode ?? ""}
+                      onChange={(e) => setNewItem({ ...newItem, trackingCode: e.target.value })}
+                      className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-mono outline-none focus:border-[#0F4C81]"
+                    />
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-slate-600 block mb-1">الباركود (اختياري)</label>
-                    <input placeholder="تلقائي إذا ترك فارغاً" value={newItem.barcode?? ""} onChange={e => setNewItem({...newItem, barcode: e.target.value})} className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-mono outline-none focus:border-[#0F4C81]" />
+                    <label className="text-xs font-bold text-slate-600 block mb-1">
+                      الباركود (اختياري)
+                    </label>
+                    <input
+                      placeholder="تلقائي إذا ترك فارغاً"
+                      value={newItem.barcode ?? ""}
+                      onChange={(e) => setNewItem({ ...newItem, barcode: e.target.value })}
+                      className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-mono outline-none focus:border-[#0F4C81]"
+                    />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-bold text-slate-600 block mb-1">اسم العميل</label>
-                    <input required placeholder="محمد عبد الله..." value={newItem.clientName?? ""} onChange={e => setNewItem({...newItem, clientName: e.target.value})} className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs outline-none focus:border-[#0F4C81]" />
+                    <label className="text-xs font-bold text-slate-600 block mb-1">
+                      اسم العميل
+                    </label>
+                    <input
+                      required
+                      placeholder="محمد عبد الله..."
+                      value={newItem.clientName ?? ""}
+                      onChange={(e) => setNewItem({ ...newItem, clientName: e.target.value })}
+                      className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs outline-none focus:border-[#0F4C81]"
+                    />
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-slate-600 block mb-1">رقم الهاتف</label>
-                    <input placeholder="77..." value={newItem.clientPhone?? ""} onChange={e => setNewItem({...newItem, clientPhone: e.target.value})} className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-mono outline-none focus:border-[#0F4C81]" />
+                    <label className="text-xs font-bold text-slate-600 block mb-1">
+                      رقم الهاتف
+                    </label>
+                    <input
+                      placeholder="77..."
+                      value={newItem.clientPhone ?? ""}
+                      onChange={(e) => setNewItem({ ...newItem, clientPhone: e.target.value })}
+                      className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-mono outline-none focus:border-[#0F4C81]"
+                    />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs font-bold text-slate-600 block mb-1">المستودع</label>
-                    <select value={newItem.warehouse?? "صنعاء (حدة)"} onChange={e => setNewItem({...newItem, warehouse: e.target.value as any})} className="w-full h-10 px-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 outline-none">
+                    <select
+                      value={newItem.warehouse ?? "صنعاء (حدة)"}
+                      onChange={(e) => setNewItem({ ...newItem, warehouse: e.target.value as any })}
+                      className="w-full h-10 px-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 outline-none"
+                    >
                       <option value="صنعاء (حدة)">صنعاء (حدة)</option>
                       <option value="عدن (المنصورة)">عدن (المنصورة)</option>
                       <option value="الصين (غوانزو)">الصين (غوانزو)</option>
@@ -491,23 +628,63 @@ function InventoryPageContent() {
                     </select>
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-slate-600 block mb-1">موقع الرف / الزون</label>
-                    <input placeholder="مثال: رف B-04" value={newItem.shelfLocation?? ""} onChange={e => setNewItem({...newItem, shelfLocation: e.target.value})} className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs outline-none focus:border-[#0F4C81]" />
+                    <label className="text-xs font-bold text-slate-600 block mb-1">
+                      موقع الرف / الزون
+                    </label>
+                    <input
+                      placeholder="مثال: رف B-04"
+                      value={newItem.shelfLocation ?? ""}
+                      onChange={(e) => setNewItem({ ...newItem, shelfLocation: e.target.value })}
+                      className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs outline-none focus:border-[#0F4C81]"
+                    />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-bold text-slate-600 block mb-1">الوزن (كجم)</label>
-                    <input type="number" step="0.1" placeholder="1.5" value={newItem.weightKg?? ""} onChange={e => setNewItem({...newItem, weightKg: e.target.value})} className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-mono outline-none focus:border-[#0F4C81]" />
+                    <label className="text-xs font-bold text-slate-600 block mb-1">
+                      الوزن (كجم)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      placeholder="1.5"
+                      value={newItem.weightKg ?? ""}
+                      onChange={(e) => setNewItem({ ...newItem, weightKg: e.target.value })}
+                      className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-mono outline-none focus:border-[#0F4C81]"
+                    />
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-slate-600 block mb-1">عدد القطع / الكراتين</label>
-                    <input type="number" placeholder="1" value={newItem.piecesCount?? ""} onChange={e => setNewItem({...newItem, piecesCount: e.target.value})} className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-mono outline-none focus:border-[#0F4C81]" />
+                    <label className="text-xs font-bold text-slate-600 block mb-1">
+                      عدد القطع / الكراتين
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="1"
+                      value={newItem.piecesCount ?? ""}
+                      onChange={(e) => setNewItem({ ...newItem, piecesCount: e.target.value })}
+                      className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-mono outline-none focus:border-[#0F4C81]"
+                    />
                   </div>
                 </div>
                 <div className="pt-3 flex gap-2">
-                  <button type="submit" disabled={saving} className="flex-1 h-11 rounded-xl bg-[#0F4C81] hover:bg-[#0c3c66] disabled:opacity-60 text-white font-bold text-sm shadow-md transition">{saving ? "جارٍ الحفظ…" : editingItemId ? "حفظ التعديلات" : "حفظ وإيداع الطرد"}</button>
-                  <button type="button" onClick={() => { setShowAddModal(false); setEditingItemId(null); setPageError(""); }} className="px-4 h-11 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-sm transition">إلغاء</button>
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="flex-1 h-11 rounded-xl bg-[#0F4C81] hover:bg-[#0c3c66] disabled:opacity-60 text-white font-bold text-sm shadow-md transition"
+                  >
+                    {saving ? "جارٍ الحفظ…" : editingItemId ? "حفظ التعديلات" : "حفظ وإيداع الطرد"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAddModal(false);
+                      setEditingItemId(null);
+                      setPageError("");
+                    }}
+                    className="px-4 h-11 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-sm transition"
+                  >
+                    إلغاء
+                  </button>
                 </div>
               </form>
             </div>

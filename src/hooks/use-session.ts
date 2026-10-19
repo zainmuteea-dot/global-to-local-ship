@@ -13,15 +13,24 @@ export function useSession(required = true) {
     let alive = true;
     supabase.auth.getSession().then(({ data: { session: s } }) => {
       if (!alive) return;
-      setSession(s); setUser(s?.user?? null); setLoading(false);
-      if (required &&!s) navigate({ to: "/login" });
+      setSession(s);
+      setUser(s?.user ?? null);
+      setLoading(false);
+      if (required && !s) navigate({ to: "/login" });
     });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_e, s) => {
       if (!alive) return;
-      setSession(s); setUser(s?.user?? null); setLoading(false);
-      if (required &&!s) navigate({ to: "/login" });
+      setSession(s);
+      setUser(s?.user ?? null);
+      setLoading(false);
+      if (required && !s) navigate({ to: "/login" });
     });
-    return () => { alive = false; subscription.unsubscribe(); };
+    return () => {
+      alive = false;
+      subscription.unsubscribe();
+    };
   }, [navigate, required]);
 
   return { session, user, loading };

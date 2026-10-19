@@ -117,7 +117,11 @@ function AccountsPageContent() {
     amount: "",
     note: "",
   });
-  const [calc, setCalc] = useState({ amount: "100", from: "USD" as Currency, to: "YER" as Currency });
+  const [calc, setCalc] = useState({
+    amount: "100",
+    from: "USD" as Currency,
+    to: "YER" as Currency,
+  });
 
   // Generated Supabase types may not yet include these manually-created tables/RPCs.
   const db = supabase as any;
@@ -126,30 +130,51 @@ function AccountsPageContent() {
     setLoading(true);
     setLoadError(null);
     try {
-      let { data: fundRows, error: fundsError } = await db
-        .from("company_funds").select("id,name,kind,balances").order("name");
+      const { data: fundRows, error: fundsError } = await db
+        .from("company_funds")
+        .select("id,name,kind,balances")
+        .order("name");
       if (fundsError) throw fundsError;
 
       if (!fundRows?.length) {
-        throw new Error("لم يتم العثور على صناديق. شغّل جزء التهيئة من SQL مرة واحدة بحساب مسؤول قاعدة البيانات.");
+        throw new Error(
+          "لم يتم العثور على صناديق. شغّل جزء التهيئة من SQL مرة واحدة بحساب مسؤول قاعدة البيانات.",
+        );
       }
 
       const [voucherResult, ratesResult] = await Promise.all([
-        db.from("fund_vouchers").select("id,kind,fund_id,fund_name,currency,amount,note,created_at").order("created_at", { ascending: false }),
-        db.from("exchange_rates").select("from_currency,to_currency,rate").eq("from_currency", "USD"),
+        db
+          .from("fund_vouchers")
+          .select("id,kind,fund_id,fund_name,currency,amount,note,created_at")
+          .order("created_at", { ascending: false }),
+        db
+          .from("exchange_rates")
+          .select("from_currency,to_currency,rate")
+          .eq("from_currency", "USD"),
       ]);
       if (voucherResult.error) throw voucherResult.error;
       if (ratesResult.error) throw ratesResult.error;
 
-      setFunds((fundRows ?? []).map((row: any) => ({
-        id: row.id, name: row.name, kind: row.kind,
-        balances: { ...emptyBalances(), ...(row.balances ?? {}) },
-      })));
-      setVouchers((voucherResult.data ?? []).map((row: any) => ({
-        id: row.id, kind: row.kind, fundId: row.fund_id, fundName: row.fund_name,
-        currency: row.currency, amount: Number(row.amount), note: row.note,
-        date: row.created_at,
-      })));
+      setFunds(
+        (fundRows ?? []).map((row: any) => ({
+          id: row.id,
+          name: row.name,
+          kind: row.kind,
+          balances: { ...emptyBalances(), ...(row.balances ?? {}) },
+        })),
+      );
+      setVouchers(
+        (voucherResult.data ?? []).map((row: any) => ({
+          id: row.id,
+          kind: row.kind,
+          fundId: row.fund_id,
+          fundName: row.fund_name,
+          currency: row.currency,
+          amount: Number(row.amount),
+          note: row.note,
+          date: row.created_at,
+        })),
+      );
       const nextRates = { ...DEFAULT_RATES };
       for (const row of ratesResult.data ?? []) {
         if (row.from_currency === "USD" && row.to_currency in nextRates) {
@@ -165,7 +190,9 @@ function AccountsPageContent() {
     }
   };
 
-  useEffect(() => { void refreshData(); }, []);
+  useEffect(() => {
+    void refreshData();
+  }, []);
 
   // إجمالي السيولة لكل عملة عبر جميع الصناديق
   const totals = useMemo(() => {
@@ -212,8 +239,11 @@ function AccountsPageContent() {
     if (!Number.isFinite(amount) || amount <= 0) return alert("أدخل مبلغاً صحيحاً");
     try {
       const { error } = await db.rpc("post_fund_voucher", {
-        p_kind: "قبض", p_fund_id: fundId, p_currency: currency,
-        p_amount: amount, p_note: "إيداع مباشر بالصندوق",
+        p_kind: "قبض",
+        p_fund_id: fundId,
+        p_currency: currency,
+        p_amount: amount,
+        p_note: "إيداع مباشر بالصندوق",
       });
       if (error) throw error;
       await refreshData();
@@ -225,7 +255,12 @@ function AccountsPageContent() {
   };
 
   const deleteVoucher = async (v: Voucher) => {
-    if (!confirm(`حذف سند ${v.kind} (${fmt(v.amount)} ${v.currency})؟ سيتم عكس أثره على رصيد الصندوق.`)) return;
+    if (
+      !confirm(
+        `حذف سند ${v.kind} (${fmt(v.amount)} ${v.currency})؟ سيتم عكس أثره على رصيد الصندوق.`,
+      )
+    )
+      return;
     try {
       const { error } = await db.rpc("delete_fund_voucher", { p_voucher_id: v.id });
       if (error) throw error;
@@ -291,8 +326,30 @@ function AccountsPageContent() {
       </div>
 
       <main className="max-w-6xl mx-auto px-4 pt-6 space-y-6">
-        {loading && <div role="status" className="flex items-center gap-2 rounded-xl border border-sky-100 bg-white p-3 text-xs font-bold text-[#0F4C81]"><RefreshCw className="size-4 animate-spin" /> جارٍ تحميل بيانات الحسابات…</div>}
-        {loadError && <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-bold text-red-700"><span className="flex items-center gap-2"><AlertCircle className="size-4" /> تعذر تحميل البيانات من Supabase: {loadError}</span><button onClick={() => void refreshData()} className="rounded-lg bg-white px-3 py-1.5 text-red-700 shadow-sm">إعادة المحاولة</button></div>}
+        {loading && (
+          <div
+            role="status"
+            className="flex items-center gap-2 rounded-xl border border-sky-100 bg-white p-3 text-xs font-bold text-[#0F4C81]"
+          >
+            <RefreshCw className="size-4 animate-spin" /> جارٍ تحميل بيانات الحسابات…
+          </div>
+        )}
+        {loadError && (
+          <div
+            role="alert"
+            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-bold text-red-700"
+          >
+            <span className="flex items-center gap-2">
+              <AlertCircle className="size-4" /> تعذر تحميل البيانات من Supabase: {loadError}
+            </span>
+            <button
+              onClick={() => void refreshData()}
+              className="rounded-lg bg-white px-3 py-1.5 text-red-700 shadow-sm"
+            >
+              إعادة المحاولة
+            </button>
+          </div>
+        )}
         {/* هيدر النظام المالي */}
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
@@ -337,7 +394,11 @@ function AccountsPageContent() {
               <div className="flex items-center justify-between mb-3">
                 <div
                   className={`size-10 rounded-xl grid place-items-center text-white ${
-                    code === "USD" ? "bg-[#004B87]" : code === "SAR" ? "bg-emerald-600" : "bg-[#F97316]"
+                    code === "USD"
+                      ? "bg-[#004B87]"
+                      : code === "SAR"
+                        ? "bg-emerald-600"
+                        : "bg-[#F97316]"
                   }`}
                 >
                   <Coins className="size-5" />
@@ -362,7 +423,11 @@ function AccountsPageContent() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => {
-                setVoucherForm((f) => ({ ...f, kind: "قبض", fundId: f.fundId || funds[0]?.id || "" }));
+                setVoucherForm((f) => ({
+                  ...f,
+                  kind: "قبض",
+                  fundId: f.fundId || funds[0]?.id || "",
+                }));
                 setIsVoucherModalOpen(true);
               }}
               className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-xs font-black shadow-md hover:brightness-105 transition cursor-pointer"
@@ -372,7 +437,11 @@ function AccountsPageContent() {
             </button>
             <button
               onClick={() => {
-                setVoucherForm((f) => ({ ...f, kind: "صرف", fundId: f.fundId || funds[0]?.id || "" }));
+                setVoucherForm((f) => ({
+                  ...f,
+                  kind: "صرف",
+                  fundId: f.fundId || funds[0]?.id || "",
+                }));
                 setIsVoucherModalOpen(true);
               }}
               className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-red-500 text-white text-xs font-black shadow-md hover:brightness-105 transition cursor-pointer"
@@ -382,7 +451,8 @@ function AccountsPageContent() {
             </button>
           </div>
           <div className="text-[11px] font-bold text-slate-500">
-            آخر الحركات: <span className="font-mono text-[#0F4C81]">{vouchers.length}</span> سند مسجل
+            آخر الحركات: <span className="font-mono text-[#0F4C81]">{vouchers.length}</span> سند
+            مسجل
           </div>
         </div>
 
@@ -402,13 +472,19 @@ function AccountsPageContent() {
                 >
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      <div className={`size-9 rounded-xl border grid place-items-center ${kindStyles[fund.kind]}`}>
+                      <div
+                        className={`size-9 rounded-xl border grid place-items-center ${kindStyles[fund.kind]}`}
+                      >
                         <Icon className="size-4" />
                       </div>
                       <div className="leading-tight">
                         <div className="text-xs font-black text-[#0A2540]">{fund.name}</div>
                         <div className="text-[10px] text-slate-400 font-bold">
-                          {fund.kind === "bank" ? "حساب بنكي" : fund.kind === "wallet" ? "محفظة إلكترونية" : "صندوق نقدي"}
+                          {fund.kind === "bank"
+                            ? "حساب بنكي"
+                            : fund.kind === "wallet"
+                              ? "محفظة إلكترونية"
+                              : "صندوق نقدي"}
                         </div>
                       </div>
                     </div>
@@ -427,7 +503,9 @@ function AccountsPageContent() {
                         key={code}
                         className="flex items-center justify-between px-2.5 py-1.5 rounded-xl bg-slate-50/80 text-xs"
                       >
-                        <span className="font-bold text-slate-500">{symbol} {code}</span>
+                        <span className="font-bold text-slate-500">
+                          {symbol} {code}
+                        </span>
                         <span className="font-mono font-black text-[#0A2540]" dir="ltr">
                           {fmt(Number(fund.balances?.[code] || 0))}
                         </span>
@@ -438,7 +516,13 @@ function AccountsPageContent() {
                   <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] font-bold">
                     <button
                       onClick={() => {
-                        setVoucherForm({ kind: "قبض", fundId: fund.id, currency: "YER", amount: "", note: "" });
+                        setVoucherForm({
+                          kind: "قبض",
+                          fundId: fund.id,
+                          currency: "YER",
+                          amount: "",
+                          note: "",
+                        });
                         setIsVoucherModalOpen(true);
                       }}
                       className="text-emerald-600 hover:underline cursor-pointer"
@@ -448,7 +532,13 @@ function AccountsPageContent() {
                     <span className="text-slate-300">|</span>
                     <button
                       onClick={() => {
-                        setVoucherForm({ kind: "صرف", fundId: fund.id, currency: "YER", amount: "", note: "" });
+                        setVoucherForm({
+                          kind: "صرف",
+                          fundId: fund.id,
+                          currency: "YER",
+                          amount: "",
+                          note: "",
+                        });
                         setIsVoucherModalOpen(true);
                       }}
                       className="text-rose-600 hover:underline cursor-pointer"
@@ -539,7 +629,11 @@ function AccountsPageContent() {
                         v.kind === "قبض" ? "bg-emerald-600" : "bg-rose-600"
                       }`}
                     >
-                      {v.kind === "قبض" ? <Plus className="size-4" /> : <Minus className="size-4" />}
+                      {v.kind === "قبض" ? (
+                        <Plus className="size-4" />
+                      ) : (
+                        <Minus className="size-4" />
+                      )}
                     </span>
                     <div className="min-w-0">
                       <div className="text-xs font-black text-[#0A2540] truncate">
@@ -611,7 +705,9 @@ function AccountsPageContent() {
                   <label className="block font-bold mb-1 text-slate-600">العملة:</label>
                   <select
                     value={voucherForm.currency}
-                    onChange={(e) => setVoucherForm({ ...voucherForm, currency: e.target.value as Currency })}
+                    onChange={(e) =>
+                      setVoucherForm({ ...voucherForm, currency: e.target.value as Currency })
+                    }
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none focus:border-[#0284C7]"
                   >
                     {CURRENCIES.map((c) => (
@@ -715,7 +811,11 @@ function AccountsPageContent() {
 }
 
 export function AccountsPage() {
-  return <AdminRouteGuard><AccountsPageContent /></AdminRouteGuard>;
+  return (
+    <AdminRouteGuard>
+      <AccountsPageContent />
+    </AdminRouteGuard>
+  );
 }
 
 export default AccountsPage;

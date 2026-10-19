@@ -9,17 +9,12 @@ const controlledCurrencyFormat = (amount: number, currency: string) =>
   `${amount.toLocaleString("en-US")} ${currency}`;
 
 function present(rows: ApprovedPaymentRow[]) {
-  return buildReceivedPresentation(
-    calculateApprovedReceived(rows),
-    controlledCurrencyFormat,
-  );
+  return buildReceivedPresentation(calculateApprovedReceived(rows), controlledCurrencyFormat);
 }
 
 describe("ملخص المقبوض المعتمد في كشف حساب العملاء", () => {
   it("يوضح عدم وجود أي دفعات بدل عرض صفر", () => {
-    const result = present([
-      { kind: "طلب", status: "مسجل", amount: null, currency: null },
-    ]);
+    const result = present([{ kind: "طلب", status: "مسجل", amount: null, currency: null }]);
 
     expect(result.state).toBe("none");
     expect(result.reportText).toBe("لا توجد دفعات ضمن الفترة المحددة");
@@ -62,9 +57,7 @@ describe("ملخص المقبوض المعتمد في كشف حساب العمل
 
     expect(result.state).toBe("complete");
     expect(result.reportText).toBe("150 YER\n7 USD");
-    expect(result.whatsappText).toBe(
-      "- المقبوض المعتمد: 150 YER\n- المقبوض المعتمد: 7 USD",
-    );
+    expect(result.whatsappText).toBe("- المقبوض المعتمد: 150 YER\n- المقبوض المعتمد: 7 USD");
   });
 
   it("ينسق العملة برمز العملة المحلي عند استخدام المنسق الافتراضي", () => {

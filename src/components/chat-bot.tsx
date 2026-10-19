@@ -8,15 +8,42 @@ import { supabase } from "@/integrations/supabase/client";
 type Msg = { from: "bot" | "user" | "staff"; text: string };
 
 const replies: { match: RegExp; text: string }[] = [
-  { match: /سلام|مرحبا|اهلا|أهلا|هلا|هاي/, text: "هلا والله! أنا شامِل بوت 🤖 أسعى لخدمتك أكثر من عامل التوصيل نفسه!" },
-  { match: /سعر|اسعار|أسعار|تكلفة|غالي|رخيص/, text: "أسعارنا؟ أرخص من قهوة الصباح.. تقريبًا 😄 أرسل رابط المنتج ونحسبها لك بالريال أو الدولار!" },
-  { match: /شحن|توصيل|يوصل|وصل/, text: "الشحن عندنا أسرع من انتشار الأخبار في القرية 🚚 نوصل لكل المحافظات حتى باب بيتك!" },
-  { match: /متجر|متاجر|امازون|أمازون|شي ان|شيإن|علي اكسبرس|ترينديول|تيمو/, text: "AliExpress وAmazon وSHEIN وTrendyol وTEMU... كلهم أصحابي، أطلب منهم وهم ما يردون عليّ إلا بالخصومات 😎" },
-  { match: /طلب|اطلب|اشتري|شراء/, text: "بسيطة! انسخ رابط المنتج، اضغط «اطلب الآن» فوق، وخلك مرتاح.. إحنا نشتري ونشحن وأنت تشرب شاهي ☕" },
-  { match: /تتبع|شحنة|طلبي|وين/, text: "شحنتك؟ اضغط زر «تتبع شحنتك» وحط رقمها.. وإذا تأخرت لا تزعل، هي تتمشى في الطريق 🐢" },
-  { match: /ضحك|نكتة|اضحكني/, text: "نكتة؟ قالوا للعميل: شحنتك وصلت! قال: مستحيل، أنا لسه ما طلبت! 😂 مع السوق الشامل السرعة تسبق الخيال" },
-  { match: /شكرا|مشكور|يعطيك/, text: "العفو! خدمتك شرف لي.. وأنا بوت ما آخذ إكرامية، بس دعوة حلوة تكفي 🙏" },
-  { match: /مين|من انت|من أنت|بوت|روبوت/, text: "أنا شامِل بوت، موظف الشهر كل شهر (لأني الموظف الوحيد 🤖). أعرف كل شي عن السوق الشامل!" },
+  {
+    match: /سلام|مرحبا|اهلا|أهلا|هلا|هاي/,
+    text: "هلا والله! أنا شامِل بوت 🤖 أسعى لخدمتك أكثر من عامل التوصيل نفسه!",
+  },
+  {
+    match: /سعر|اسعار|أسعار|تكلفة|غالي|رخيص/,
+    text: "أسعارنا؟ أرخص من قهوة الصباح.. تقريبًا 😄 أرسل رابط المنتج ونحسبها لك بالريال أو الدولار!",
+  },
+  {
+    match: /شحن|توصيل|يوصل|وصل/,
+    text: "الشحن عندنا أسرع من انتشار الأخبار في القرية 🚚 نوصل لكل المحافظات حتى باب بيتك!",
+  },
+  {
+    match: /متجر|متاجر|امازون|أمازون|شي ان|شيإن|علي اكسبرس|ترينديول|تيمو/,
+    text: "AliExpress وAmazon وSHEIN وTrendyol وTEMU... كلهم أصحابي، أطلب منهم وهم ما يردون عليّ إلا بالخصومات 😎",
+  },
+  {
+    match: /طلب|اطلب|اشتري|شراء/,
+    text: "بسيطة! انسخ رابط المنتج، اضغط «اطلب الآن» فوق، وخلك مرتاح.. إحنا نشتري ونشحن وأنت تشرب شاهي ☕",
+  },
+  {
+    match: /تتبع|شحنة|طلبي|وين/,
+    text: "شحنتك؟ اضغط زر «تتبع شحنتك» وحط رقمها.. وإذا تأخرت لا تزعل، هي تتمشى في الطريق 🐢",
+  },
+  {
+    match: /ضحك|نكتة|اضحكني/,
+    text: "نكتة؟ قالوا للعميل: شحنتك وصلت! قال: مستحيل، أنا لسه ما طلبت! 😂 مع السوق الشامل السرعة تسبق الخيال",
+  },
+  {
+    match: /شكرا|مشكور|يعطيك/,
+    text: "العفو! خدمتك شرف لي.. وأنا بوت ما آخذ إكرامية، بس دعوة حلوة تكفي 🙏",
+  },
+  {
+    match: /مين|من انت|من أنت|بوت|روبوت/,
+    text: "أنا شامِل بوت، موظف الشهر كل شهر (لأني الموظف الوحيد 🤖). أعرف كل شي عن السوق الشامل!",
+  },
 ];
 
 const fallback = [
@@ -35,8 +62,7 @@ type StoredChatMessage = {
 };
 
 const CHAT_STORAGE_KEY = "alsouk_chat_session_v2";
-const CHAT_WELCOME =
-  "أهلاً! أنا شامِل بوت 🤖 اسألني عن السوق الشامل أو اترك رسالتك لفريق الدعم.";
+const CHAT_WELCOME = "أهلاً! أنا شامِل بوت 🤖 اسألني عن السوق الشامل أو اترك رسالتك لفريق الدعم.";
 const db = supabase as any;
 
 function readChatSession(): ChatSession | null {
@@ -73,22 +99,20 @@ function createChatAccessToken(): string {
 
   const bytes = new Uint8Array(16);
   window.crypto.getRandomValues(bytes);
-  bytes[6] = (bytes[6] & 0x0f) | 0x40;
-  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  bytes[6] = ((bytes[6] ?? 0) & 0x0f) | 0x40;
+  bytes[8] = ((bytes[8] ?? 0) & 0x3f) | 0x80;
 
   const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0"));
 
   return `${hex.slice(0, 4).join("")}-${hex.slice(4, 6).join("")}-${hex
     .slice(6, 8)
-    .join("")}-${hex.slice(8, 10).join("")}-${hex
-    .slice(10, 16)
-    .join("")}`;
+    .join("")}-${hex.slice(8, 10).join("")}-${hex.slice(10, 16).join("")}`;
 }
 
 function mapStoredMessages(rows: StoredChatMessage[]): Msg[] {
   return [
     { from: "bot", text: CHAT_WELCOME },
-    ...rows.map((row) => ({
+    ...rows.map((row): Msg => ({
       from: row.sender_type === "visitor" ? "user" : row.sender_type,
       text: row.body,
     })),
@@ -183,33 +207,9 @@ export function BlueRobotMascot({
           stroke="#075985"
           strokeWidth="2"
         />
-        <line
-          x1="42"
-          y1="61"
-          x2="40"
-          y2="99"
-          stroke="#7dd3fc"
-          strokeWidth="3"
-          opacity="0.85"
-        />
-        <line
-          x1="50"
-          y1="61"
-          x2="50"
-          y2="99"
-          stroke="#bae6fd"
-          strokeWidth="4"
-          opacity="0.95"
-        />
-        <line
-          x1="58"
-          y1="61"
-          x2="60"
-          y2="99"
-          stroke="#7dd3fc"
-          strokeWidth="3"
-          opacity="0.85"
-        />
+        <line x1="42" y1="61" x2="40" y2="99" stroke="#7dd3fc" strokeWidth="3" opacity="0.85" />
+        <line x1="50" y1="61" x2="50" y2="99" stroke="#bae6fd" strokeWidth="4" opacity="0.95" />
+        <line x1="58" y1="61" x2="60" y2="99" stroke="#7dd3fc" strokeWidth="3" opacity="0.85" />
       </g>
 
       <g className="robot-head-group">
@@ -241,11 +241,7 @@ export function BlueRobotMascot({
         <g className="robot-face-expressions" filter="url(#eyeGlow)">
           <circle cx="39" cy="35" r="5" fill="#ffffff" className="robot-eye" />
           <circle cx="61" cy="35" r="5" fill="#ffffff" className="robot-eye" />
-          <path
-            d="M44 42 Q50 49 56 42 Q50 47 44 42 Z"
-            fill="#ffffff"
-            className="robot-smile"
-          />
+          <path d="M44 42 Q50 49 56 42 Q50 47 44 42 Z" fill="#ffffff" className="robot-smile" />
         </g>
       </g>
     </svg>
@@ -256,9 +252,7 @@ export function ChatBot() {
   const [open, setOpen] = useState(false);
   const [gone, setGone] = useState(false);
   const [isGiggling, setIsGiggling] = useState(false);
-  const [msgs, setMsgs] = useState<Msg[]>([
-    { from: "bot", text: CHAT_WELCOME },
-  ]);
+  const [msgs, setMsgs] = useState<Msg[]>([{ from: "bot", text: CHAT_WELCOME }]);
   const [text, setText] = useState("");
   const [chatSession, setChatSession] = useState<ChatSession | null>(null);
   const [chatReady, setChatReady] = useState(false);
@@ -282,9 +276,7 @@ export function ChatBot() {
     top: number;
   } | null>(null);
 
-  const handleRobotPointerDown = (
-    event: ReactPointerEvent<HTMLButtonElement>,
-  ) => {
+  const handleRobotPointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
 
     const bounds = chatbotRef.current?.getBoundingClientRect();
@@ -301,9 +293,7 @@ export function ChatBot() {
     event.currentTarget.setPointerCapture(event.pointerId);
   };
 
-  const handleRobotPointerMove = (
-    event: ReactPointerEvent<HTMLButtonElement>,
-  ) => {
+  const handleRobotPointerMove = (event: ReactPointerEvent<HTMLButtonElement>) => {
     const start = dragStartRef.current;
     const node = chatbotRef.current;
     if (!start || !node || start.pointerId !== event.pointerId) return;
@@ -326,9 +316,7 @@ export function ChatBot() {
     });
   };
 
-  const handleRobotPointerUp = (
-    event: ReactPointerEvent<HTMLButtonElement>,
-  ) => {
+  const handleRobotPointerUp = (event: ReactPointerEvent<HTMLButtonElement>) => {
     if (dragStartRef.current?.pointerId === event.pointerId) {
       dragStartRef.current = null;
     }
@@ -367,15 +355,9 @@ export function ChatBot() {
           saved = { conversationId: data, accessToken };
 
           try {
-            window.localStorage.setItem(
-              CHAT_STORAGE_KEY,
-              JSON.stringify(saved),
-            );
+            window.localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(saved));
           } catch (storageError) {
-            console.error(
-              "Could not persist chat session in this browser",
-              storageError,
-            );
+            console.error("Could not persist chat session in this browser", storageError);
             throw new Error("تعذر حفظ جلسة المحادثة على هذا الجهاز.");
           }
         }
@@ -470,13 +452,7 @@ export function ChatBot() {
   const send = async () => {
     const question = text.trim();
 
-    if (
-      !question ||
-      question.length > 1000 ||
-      !chatSession ||
-      !chatReady ||
-      sendingRef.current
-    ) {
+    if (!question || question.length > 1000 || !chatSession || !chatReady || sendingRef.current) {
       return;
     }
 
@@ -488,9 +464,7 @@ export function ChatBot() {
 
     const matchingReply = replies.find((item) => item.match.test(question));
     const answer =
-      matchingReply?.text ??
-      fallback[Math.floor(Math.random() * fallback.length)] ??
-      fallback[0]!;
+      matchingReply?.text ?? fallback[Math.floor(Math.random() * fallback.length)] ?? fallback[0]!;
 
     try {
       const { error } = await db.rpc("chat_send_visitor_message", {
@@ -504,13 +478,10 @@ export function ChatBot() {
 
       setText("");
 
-      const { data, error: refreshError } = await db.rpc(
-        "chat_get_messages",
-        {
-          _conversation_id: chatSession.conversationId,
-          _access_token: chatSession.accessToken,
-        },
-      );
+      const { data, error: refreshError } = await db.rpc("chat_get_messages", {
+        _conversation_id: chatSession.conversationId,
+        _access_token: chatSession.accessToken,
+      });
 
       if (refreshError) throw refreshError;
 
@@ -584,9 +555,7 @@ export function ChatBot() {
             {msgs.map((message, index) => (
               <div
                 key={`${message.from}-${index}`}
-                className={`chatbot-msg ${
-                  message.from === "user" ? "user" : "bot"
-                } animate-pop-in`}
+                className={`chatbot-msg ${message.from === "user" ? "user" : "bot"} animate-pop-in`}
               >
                 {message.text}
               </div>
@@ -602,20 +571,13 @@ export function ChatBot() {
                   type="button"
                   variant="secondary"
                   size="sm"
-                  onClick={() =>
-                    setInitAttempt((attempt) => attempt + 1)
-                  }
+                  onClick={() => setInitAttempt((attempt) => attempt + 1)}
                 >
                   إعادة المحاولة
                 </Button>
 
                 {chatSession && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={startNewConversation}
-                  >
+                  <Button type="button" variant="ghost" size="sm" onClick={startNewConversation}>
                     محادثة جديدة
                   </Button>
                 )}
@@ -635,9 +597,7 @@ export function ChatBot() {
               onChange={(event) => setText(event.target.value)}
               maxLength={1000}
               placeholder={
-                chatReady
-                  ? "اسألني عن المتاجر، الشحن، أو اكتب للدعم…"
-                  : "جارٍ تجهيز المحادثة…"
+                chatReady ? "اسألني عن المتاجر، الشحن، أو اكتب للدعم…" : "جارٍ تجهيز المحادثة…"
               }
               aria-label="رسالتك للروبوت"
               disabled={!chatReady || chatBusy}
@@ -658,9 +618,7 @@ export function ChatBot() {
 
       {!open && (
         <div className="chatbot-fab-container">
-          <div className="chatbot-badge-callout">
-            مرحباً بك! كيف يمكنني مساعدتك اليوم؟
-          </div>
+          <div className="chatbot-badge-callout">مرحباً بك! كيف يمكنني مساعدتك اليوم؟</div>
 
           <Button
             type="button"

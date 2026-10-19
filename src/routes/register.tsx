@@ -57,8 +57,12 @@ function RegisterPage() {
         </div>
 
         <div className="rounded-3xl bg-card p-6 ring-1 ring-border shadow-sm">
-          <h1 className="text-center font-display text-2xl font-black text-cocoadeep">خطوة أخيرة!</h1>
-          <p className="mt-1 text-center text-sm text-muted-foreground">أخبرنا باسمك لنكمل إنشاء حسابك بنجاح.</p>
+          <h1 className="text-center font-display text-2xl font-black text-cocoadeep">
+            خطوة أخيرة!
+          </h1>
+          <p className="mt-1 text-center text-sm text-muted-foreground">
+            أخبرنا باسمك لنكمل إنشاء حسابك بنجاح.
+          </p>
 
           <label className="mt-6 flex items-center gap-1.5 text-sm font-bold text-cocoa">
             <UserRound className="size-4" /> الاسم

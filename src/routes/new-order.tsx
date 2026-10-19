@@ -1,30 +1,31 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useEffect, useMemo, useState, useRef } from 'react'
-import { supabase } from '@/integrations/supabase/client'
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useMemo, useState, useRef } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
-type NewOrderEntryStep = 'link' | 'price' | 'buy'
+type NewOrderEntryStep = "link" | "price" | "buy";
 
-const NEW_ORDER_ENTRY_STEPS: NewOrderEntryStep[] = ['link', 'price', 'buy']
+const NEW_ORDER_ENTRY_STEPS: NewOrderEntryStep[] = ["link", "price", "buy"];
 
-export const Route = createFileRoute('/new-order')({
-  validateSearch: (search: Record<string, unknown>): {
-    name?: string
-    phone?: string
-    store?: string
-    productName?: string
-    step?: NewOrderEntryStep
+export const Route = createFileRoute("/new-order")({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): {
+    name?: string | undefined;
+    phone?: string | undefined;
+    store?: string | undefined;
+    productName?: string | undefined;
+    step?: NewOrderEntryStep | undefined;
   } => ({
-    name: typeof search['name'] === 'string' ? search['name'] : undefined,
-    phone: typeof search['phone'] === 'string' ? search['phone'] : undefined,
-    store: typeof search['store'] === 'string' ? search['store'] : undefined,
-    productName: typeof search['productName'] === 'string' ? search['productName'] : undefined,
-    step: NEW_ORDER_ENTRY_STEPS.includes(search['step'] as NewOrderEntryStep)
-      ? (search['step'] as NewOrderEntryStep)
+    name: typeof search["name"] === "string" ? search["name"] : undefined,
+    phone: typeof search["phone"] === "string" ? search["phone"] : undefined,
+    store: typeof search["store"] === "string" ? search["store"] : undefined,
+    productName: typeof search["productName"] === "string" ? search["productName"] : undefined,
+    step: NEW_ORDER_ENTRY_STEPS.includes(search["step"] as NewOrderEntryStep)
+      ? (search["step"] as NewOrderEntryStep)
       : undefined,
   }),
   component: NewOrderPage,
-})
-
+});
 
 /* ===================== Styles ===================== */
 const CSS = `
@@ -142,371 +143,572 @@ const CSS = `
 .no-entry-guidance p{margin-top:6px;color:var(--muted);font-size:13px;font-weight:600}
 @media(max-width:520px){.no-brand h1{font-size:16px}.no-price{flex-direction:column}.no-price select{flex:1}}
 @media(max-width:360px){.no-badge{width:44px;height:44px}.no-badge svg{width:28px;height:28px}.no-brand h1{font-size:14px}}
-`
+`;
 /* ===================== Icons ===================== */
-const Cart = () => (<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>)
-const Truck = () => (<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>)
-const Bag = () => (<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M7 7h10l3 6-3 8H7l-3-8z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>)
-const Msg = () => (<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>)
-const Pin = () => (<svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>)
-const User = () => (<svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>)
-const Phone = () => (<svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>)
-const LinkIcon = () => (<svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>)
-const Check = ({ s = 15 }: { s?: number }) => (<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>)
-const Flash = () => (<svg className="flash" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h7l-1 8 10-12h-7z"/></svg>)
-const Mic = () => (<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>)
-const Rocket = () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/></svg>)
-const Arrow = ({ s = 18 }: { s?: number }) => (<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>)
+const Cart = () => (
+  <svg
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <circle cx="9" cy="21" r="1" />
+    <circle cx="20" cy="21" r="1" />
+    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+  </svg>
+);
+const Truck = () => (
+  <svg
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <rect x="1" y="3" width="15" height="13" />
+    <path d="M16 8h4l3 3v5h-7V8z" />
+    <circle cx="5.5" cy="18.5" r="2.5" />
+    <circle cx="18.5" cy="18.5" r="2.5" />
+  </svg>
+);
+const Bag = () => (
+  <svg
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M7 7h10l3 6-3 8H7l-3-8z" />
+    <path d="M9 7a3 3 0 0 1 6 0" />
+  </svg>
+);
+const Msg = () => (
+  <svg
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+  </svg>
+);
+const Pin = () => (
+  <svg
+    className="ic"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+    <circle cx="12" cy="10" r="3" />
+  </svg>
+);
+const User = () => (
+  <svg
+    className="ic"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+    <circle cx="12" cy="7" r="4" />
+  </svg>
+);
+const Phone = () => (
+  <svg
+    className="ic"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z" />
+  </svg>
+);
+const LinkIcon = () => (
+  <svg
+    className="ic"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+  >
+    <path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1" />
+    <path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1" />
+  </svg>
+);
+const Check = ({ s = 15 }: { s?: number }) => (
+  <svg
+    width={s}
+    height={s}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2.4}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M20 6L9 17l-5-5" />
+  </svg>
+);
+const Flash = () => (
+  <svg className="flash" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M13 2L3 14h7l-1 8 10-12h-7z" />
+  </svg>
+);
+const Mic = () => (
+  <svg
+    width="17"
+    height="17"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+    <line x1="12" y1="19" x2="12" y2="23" />
+  </svg>
+);
+const Rocket = () => (
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" />
+    <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" />
+    <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0" />
+  </svg>
+);
+const Arrow = ({ s = 18 }: { s?: number }) => (
+  <svg
+    width={s}
+    height={s}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2.2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M15 18l-6-6 6-6" />
+  </svg>
+);
 const Logo = () => (
   <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
     <defs>
-      <linearGradient id="gBlue" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#3E86C4"/><stop offset="1" stopColor="#004A8D"/></linearGradient>
-      <linearGradient id="gOr" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stopColor="#D86616"/><stop offset="1" stopColor="#F5A623"/></linearGradient>
+      <linearGradient id="gBlue" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stopColor="#3E86C4" />
+        <stop offset="1" stopColor="#004A8D" />
+      </linearGradient>
+      <linearGradient id="gOr" x1="0" y1="1" x2="1" y2="0">
+        <stop offset="0" stopColor="#D86616" />
+        <stop offset="1" stopColor="#F5A623" />
+      </linearGradient>
     </defs>
-    <path d="M22 12 L34 44 H18 L30 12 Z" fill="url(#gBlue)"/>
-    <path d="M40 14 c7 0 7 9 0 9 c-7 0 -7 9 0 9" stroke="url(#gBlue)" strokeWidth={5} strokeLinecap="round" fill="none"/>
-    <path d="M14 46 H46 L50 32 H20" stroke="url(#gOr)" strokeWidth={4.5} strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-    <circle cx="22" cy="54" r="4" fill="url(#gOr)"/>
-    <circle cx="42" cy="54" r="4" fill="url(#gOr)"/>
-    <path d="M50 10 l1.6 3.4 L55 15 l-3.4 1.6 L50 20 l-1.6-3.4 L45 15 l3.4-1.6 Z" fill="#F5A623"/>
+    <path d="M22 12 L34 44 H18 L30 12 Z" fill="url(#gBlue)" />
+    <path
+      d="M40 14 c7 0 7 9 0 9 c-7 0 -7 9 0 9"
+      stroke="url(#gBlue)"
+      strokeWidth={5}
+      strokeLinecap="round"
+      fill="none"
+    />
+    <path
+      d="M14 46 H46 L50 32 H20"
+      stroke="url(#gOr)"
+      strokeWidth={4.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      fill="none"
+    />
+    <circle cx="22" cy="54" r="4" fill="url(#gOr)" />
+    <circle cx="42" cy="54" r="4" fill="url(#gOr)" />
+    <path d="M50 10 l1.6 3.4 L55 15 l-3.4 1.6 L50 20 l-1.6-3.4 L45 15 l3.4-1.6 Z" fill="#F5A623" />
   </svg>
-)
+);
 
 /* ============ المتاجر العالمية — كشف تلقائي من الرابط ============ */
-type Store = { key: string; label: string; test: RegExp }
+type Store = { key: string; label: string; test: RegExp };
 const STORES: Store[] = [
-  { key: 'shein', label: 'SHEIN', test: /shein\./i },
-  { key: 'amazon', label: 'Amazon', test: /amazon\.|amzn\.|a\.co\//i },
-  { key: 'aliexpress', label: 'AliExpress', test: /aliexpress\./i },
-  { key: 'alibaba', label: 'Alibaba', test: /alibaba\./i },
-  { key: 'temu', label: 'Temu', test: /temu\./i },
-  { key: 'noon', label: 'Noon', test: /noon\./i },
-  { key: 'ebay', label: 'eBay', test: /ebay\./i },
-  { key: 'namshi', label: 'Namshi', test: /namshi\./i },
-  { key: 'trendyol', label: 'Trendyol', test: /trendyol\./i },
-  { key: 'walmart', label: 'Walmart', test: /walmart\./i },
-  { key: 'taobao', label: 'Taobao', test: /taobao\.|tmall\./i },
-]
+  { key: "shein", label: "SHEIN", test: /shein\./i },
+  { key: "amazon", label: "Amazon", test: /amazon\.|amzn\.|a\.co\//i },
+  { key: "aliexpress", label: "AliExpress", test: /aliexpress\./i },
+  { key: "alibaba", label: "Alibaba", test: /alibaba\./i },
+  { key: "temu", label: "Temu", test: /temu\./i },
+  { key: "noon", label: "Noon", test: /noon\./i },
+  { key: "ebay", label: "eBay", test: /ebay\./i },
+  { key: "namshi", label: "Namshi", test: /namshi\./i },
+  { key: "trendyol", label: "Trendyol", test: /trendyol\./i },
+  { key: "walmart", label: "Walmart", test: /walmart\./i },
+  { key: "taobao", label: "Taobao", test: /taobao\.|tmall\./i },
+];
 function detectStore(url: string): Store | null {
-  const u = url.trim()
-  if (!u) return null
-  return STORES.find((s) => s.test.test(u)) ?? null
+  const u = url.trim();
+  if (!u) return null;
+  return STORES.find((s) => s.test.test(u)) ?? null;
 }
 
-const DUP_OPTS = ['نعم', 'لا', 'غير متأكد'] as const
+const DUP_OPTS = ["نعم", "لا", "غير متأكد"] as const;
 /** يمنع تعبئة حقول العميل بقيمة تبدو كرابط صفحة أو رابط متجر. */
 function isUrlLike(value?: string | null): boolean {
-  const candidate = value?.trim()
-  if (!candidate) return false
+  const candidate = value?.trim();
+  if (!candidate) return false;
 
   if (
     /^(?:https?:\/\/|www\.)/i.test(candidate) ||
     /^\/{1,2}[^\s]/.test(candidate) ||
     /^(?:[a-z0-9-]+\.)+[a-z]{2,}(?:[/:?#]|$)/i.test(candidate)
   ) {
-    return true
+    return true;
   }
 
   try {
-    const parsed = new URL(candidate)
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+    const parsed = new URL(candidate);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
   } catch {
-    return false
+    return false;
   }
 }
 
 function validClientName(value: unknown): string {
-  if (typeof value !== 'string') return ''
-  const candidate = value.trim()
-  return candidate && !isUrlLike(candidate) ? candidate : ''
+  if (typeof value !== "string") return "";
+  const candidate = value.trim();
+  return candidate && !isUrlLike(candidate) ? candidate : "";
 }
 
 function validClientPhone(value: unknown): string {
-  if (typeof value !== 'string') return ''
-  const candidate = value.trim()
-  if (!candidate || candidate.includes('@') || isUrlLike(candidate)) return ''
-  return candidate
+  if (typeof value !== "string") return "";
+  const candidate = value.trim();
+  if (!candidate || candidate.includes("@") || isUrlLike(candidate)) return "";
+  return candidate;
 }
 
 /* جلب الاسم الابتدائي مع تجاهل الروابط القادمة من الرابط أو التخزين المحلي. */
 function getInitialClientName(urlName?: string): string {
-  const fromUrl = validClientName(urlName)
-  if (fromUrl) return fromUrl
-  if (typeof window === 'undefined') return ''
+  const fromUrl = validClientName(urlName);
+  if (fromUrl) return fromUrl;
+  if (typeof window === "undefined") return "";
 
   try {
-    const fromStorage = validClientName(localStorage.getItem('sc_name')) ||
-      validClientName(sessionStorage.getItem('sc_name'))
-    if (fromStorage) return fromStorage
+    const fromStorage =
+      validClientName(localStorage.getItem("sc_name")) ||
+      validClientName(sessionStorage.getItem("sc_name"));
+    if (fromStorage) return fromStorage;
 
-    const raw = localStorage.getItem('alsouk_current_user')
+    const raw = localStorage.getItem("alsouk_current_user");
     if (raw) {
-      const p: unknown = JSON.parse(raw)
-      if (p && typeof p === 'object' && 'full_name' in p) {
-        return validClientName((p as { full_name?: unknown }).full_name)
+      const p: unknown = JSON.parse(raw);
+      if (p && typeof p === "object" && "full_name" in p) {
+        return validClientName((p as { full_name?: unknown }).full_name);
       }
     }
   } catch {
     // تجاهل التخزين التالف أو غير المتاح؛ يستطيع العميل إدخال بياناته يدوياً.
   }
-  return ''
+  return "";
 }
 
 /* جلب رقم الهاتف الابتدائي مع رفض البريد والروابط. */
 function getInitialClientPhone(urlPhone?: string): string {
-  const fromUrl = validClientPhone(urlPhone)
-  if (fromUrl) return fromUrl
-  if (typeof window === 'undefined') return ''
+  const fromUrl = validClientPhone(urlPhone);
+  if (fromUrl) return fromUrl;
+  if (typeof window === "undefined") return "";
 
   try {
-    const fromStorage = validClientPhone(localStorage.getItem('sc_phone')) ||
-      validClientPhone(sessionStorage.getItem('sc_phone'))
-    if (fromStorage) return fromStorage
+    const fromStorage =
+      validClientPhone(localStorage.getItem("sc_phone")) ||
+      validClientPhone(sessionStorage.getItem("sc_phone"));
+    if (fromStorage) return fromStorage;
 
-    const raw = localStorage.getItem('alsouk_current_user')
+    const raw = localStorage.getItem("alsouk_current_user");
     if (raw) {
-      const p: unknown = JSON.parse(raw)
-      if (p && typeof p === 'object' && 'phone' in p) {
-        return validClientPhone((p as { phone?: unknown }).phone)
+      const p: unknown = JSON.parse(raw);
+      if (p && typeof p === "object" && "phone" in p) {
+        return validClientPhone((p as { phone?: unknown }).phone);
       }
     }
   } catch {
     // تجاهل التخزين التالف أو غير المتاح؛ يستطيع العميل إدخال بياناته يدوياً.
   }
-  return ''
+  return "";
 }
 function NewOrderPage() {
-  const search = Route.useSearch()
-  const navigate = useNavigate()
+  const search = Route.useSearch();
+  const navigate = useNavigate();
 
   // تبدأ كل بطاقة من موضع مختلف في نموذج الطلب نفسه.
   useEffect(() => {
     const targetIds: Record<NewOrderEntryStep, string> = {
-      link: 'new-order-product-url',
-      price: 'new-order-product-price',
-      buy: 'new-order-submit',
-    }
-    const step = search.step
-    if (!step) return
+      link: "new-order-product-url",
+      price: "new-order-product-price",
+      buy: "new-order-submit",
+    };
+    const step = search.step;
+    if (!step) return;
 
     const timer = window.setTimeout(() => {
-      const target = document.getElementById(targetIds[step])
-      if (!target) return
+      const target = document.getElementById(targetIds[step]);
+      if (!target) return;
 
-      const scrollTarget = target.closest('.no-card') ?? target
+      const scrollTarget = target.closest(".no-card") ?? target;
       scrollTarget.scrollIntoView({
-        behavior: 'smooth',
-        block: 'center',
-      })
-      target.focus({ preventScroll: true })
-    }, 250)
+        behavior: "smooth",
+        block: "center",
+      });
+      target.focus({ preventScroll: true });
+    }, 250);
 
-    return () => window.clearTimeout(timer)
-  }, [search.step])
+    return () => window.clearTimeout(timer);
+  }, [search.step]);
 
   // 🌟 تعبئة الاسم ورقم الهاتف فورياً ومباشرة لحظة فتح الصفحة
-  const [name, setName] = useState<string>(() => getInitialClientName(search.name))
-  const [phone, setPhone] = useState<string>(() => getInitialClientPhone(search.phone))
+  const [name, setName] = useState<string>(() => getInitialClientName(search.name));
+  const [phone, setPhone] = useState<string>(() => getInitialClientPhone(search.phone));
 
-  const [url, setUrl] = useState('')
+  const [url, setUrl] = useState("");
   // اسم المنتج لم يعد حقلاً مرئيًا؛ يُشتق تلقائيًا من المتجر أو من رابط الدخول.
-  const [address, setAddress] = useState('')
-  const [price, setPrice] = useState('')
-  const [currency, setCurrency] = useState('ر.س سعودي')
-  const [notes, setNotes] = useState('')
-  const [dup, setDup] = useState<(typeof DUP_OPTS)[number]>('لا')
-  const [status, setStatus] = useState<'idle' | 'sending' | 'done'>('idle')
-  const [sbError, setSbError] = useState('')
-  const [orderCode, setOrderCode] = useState('')
-  const [trackingUnavailable, setTrackingUnavailable] = useState(false)
-  const [copied, setCopied] = useState(false)
-  const [isRecording, setIsRecording] = useState(false)
-  const recognitionRef = useRef<any>(null)
+  const [address, setAddress] = useState("");
+  const [price, setPrice] = useState("");
+  const [currency, setCurrency] = useState("ر.س سعودي");
+  const [notes, setNotes] = useState("");
+  const [dup, setDup] = useState<(typeof DUP_OPTS)[number]>("لا");
+  const [status, setStatus] = useState<"idle" | "sending" | "done">("idle");
+  const [sbError, setSbError] = useState("");
+  const [orderCode, setOrderCode] = useState("");
+  const [trackingUnavailable, setTrackingUnavailable] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const recognitionRef = useRef<any>(null);
 
   const selectedStore = useMemo(() => {
-    const requestedStore = search.store?.trim().toLowerCase()
-    if (!requestedStore) return null
+    const requestedStore = search.store?.trim().toLowerCase();
+    if (!requestedStore) return null;
 
-    return STORES.find(
-      (candidate) =>
-        candidate.key.toLowerCase() === requestedStore ||
-        candidate.label.toLowerCase() === requestedStore,
-    ) ?? null
-  }, [search.store])
+    return (
+      STORES.find(
+        (candidate) =>
+          candidate.key.toLowerCase() === requestedStore ||
+          candidate.label.toLowerCase() === requestedStore,
+      ) ?? null
+    );
+  }, [search.store]);
 
   // رابط المنتج يتقدم على اختيار لوحة التحكم عند التعرف على متجره.
-  const store = useMemo(
-    () => detectStore(url) ?? selectedStore,
-    [url, selectedStore],
-  )
+  const store = useMemo(() => detectStore(url) ?? selectedStore, [url, selectedStore]);
 
   // اسم المنتج المُرسَل للطلب: من رابط الدخول إن وجد، وإلا اسم المتجر.
   const resolvedProductName = useMemo(() => {
-    const fromSearch = search.productName?.trim()
-    if (fromSearch) return fromSearch
-    return `طلب ${store?.label || 'متجر دولي'}`
-  }, [search.productName, store])
+    const fromSearch = search.productName?.trim();
+    if (fromSearch) return fromSearch;
+    return `طلب ${store?.label || "متجر دولي"}`;
+  }, [search.productName, store]);
 
   // يتطلب إنشاء الطلب جلسة عميل، ثم يحمّل بيانات الملف الشخصي للحساب نفسه.
   useEffect(() => {
-    let active = true
+    let active = true;
 
     const syncWithDatabaseProfile = async () => {
       try {
-        const { data: { user }, error: authError } = await supabase.auth.getUser()
+        const {
+          data: { user },
+          error: authError,
+        } = await supabase.auth.getUser();
         if (authError || !user) {
-          const next = window.location.pathname + window.location.search
-          window.location.replace(`/login?next=${encodeURIComponent(next)}`)
-          return
+          const next = window.location.pathname + window.location.search;
+          window.location.replace(`/login?next=${encodeURIComponent(next)}`);
+          return;
         }
 
         const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('full_name, phone')
-          .eq('id', user.id)
-          .maybeSingle()
+          .from("profiles")
+          .select("full_name, phone")
+          .eq("id", user.id)
+          .maybeSingle();
 
         if (profileError) {
-          console.warn('تعذر تحميل بيانات الملف الشخصي:', profileError.message)
+          console.warn("تعذر تحميل بيانات الملف الشخصي:", profileError.message);
         }
 
         if (profile && active) {
-          const profileName = validClientName(profile.full_name)
-          const profilePhone = validClientPhone(profile.phone)
+          const profileName = validClientName(profile.full_name);
+          const profilePhone = validClientPhone(profile.phone);
           if (profileName) {
-            setName(profileName)
-            localStorage.setItem('sc_name', profileName)
+            setName(profileName);
+            localStorage.setItem("sc_name", profileName);
           }
           if (profilePhone) {
-            setPhone(profilePhone)
-            localStorage.setItem('sc_phone', profilePhone)
+            setPhone(profilePhone);
+            localStorage.setItem("sc_phone", profilePhone);
           }
         }
 
         if (active) {
-          const meta = user.user_metadata as Record<string, unknown> | undefined
-          const metaName = validClientName(meta?.['full_name'])
-          const metaPhone = validClientPhone(user.phone || meta?.['phone'] as string | undefined)
-          if (metaName) setName((prev) => prev || metaName)
-          if (metaPhone) setPhone((prev) => prev || metaPhone)
+          const meta = user.user_metadata as Record<string, unknown> | undefined;
+          const metaName = validClientName(meta?.["full_name"]);
+          const metaPhone = validClientPhone(user.phone || (meta?.["phone"] as string | undefined));
+          if (metaName) setName((prev) => prev || metaName);
+          if (metaPhone) setPhone((prev) => prev || metaPhone);
         }
       } catch (err) {
-        console.warn('Profile sync notice:', err)
+        console.warn("Profile sync notice:", err);
       }
-    }
+    };
 
-    void syncWithDatabaseProfile()
-    return () => { active = false }
-  }, [])
+    void syncWithDatabaseProfile();
+    return () => {
+      active = false;
+    };
+  }, []);
   // تفعيل الميكروفون والتسجيل الصوتي للملاحظات
   const toggleSpeechRecognition = () => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert('ميزة التسجيل الصوتي غير مدعومة في متصفحك الحالي، يمكنك كتابة الملاحظات مباشرة.')
-      return
+      alert("ميزة التسجيل الصوتي غير مدعومة في متصفحك الحالي، يمكنك كتابة الملاحظات مباشرة.");
+      return;
     }
 
     if (isRecording && recognitionRef.current) {
-      recognitionRef.current.stop()
-      setIsRecording(false)
-      return
+      recognitionRef.current.stop();
+      setIsRecording(false);
+      return;
     }
 
     try {
-      const recognition = new SpeechRecognition()
-      recognition.lang = 'ar-SA'
-      recognition.continuous = false
-      recognition.interimResults = false
+      const recognition = new SpeechRecognition();
+      recognition.lang = "ar-SA";
+      recognition.continuous = false;
+      recognition.interimResults = false;
 
-      recognition.onstart = () => setIsRecording(true)
+      recognition.onstart = () => setIsRecording(true);
       recognition.onresult = (event: any) => {
-        const transcript = event.results?.[0]?.[0]?.transcript
+        const transcript = event.results?.[0]?.[0]?.transcript;
         if (transcript) {
-          setNotes((prev) => (prev ? `${prev} - ${transcript}` : transcript))
+          setNotes((prev) => (prev ? `${prev} - ${transcript}` : transcript));
         }
-      }
-      recognition.onerror = () => setIsRecording(false)
-      recognition.onend = () => setIsRecording(false)
+      };
+      recognition.onerror = () => setIsRecording(false);
+      recognition.onend = () => setIsRecording(false);
 
-      recognitionRef.current = recognition
-      recognition.start()
+      recognitionRef.current = recognition;
+      recognition.start();
     } catch {
-      setIsRecording(false)
+      setIsRecording(false);
     }
-  }
+  };
 
   // حفظ الطلب وربطه بالحساب المصادق؛ رمز التتبع يولّده trigger قاعدة البيانات.
   const submit = async () => {
-    if (status === 'sending') return
-    setSbError('')
+    if (status === "sending") return;
+    setSbError("");
 
     if (!url.trim()) {
-      setSbError('يرجى وضع رابط المنتج المطلوب من المتجر العالمي.')
-      return
+      setSbError("يرجى وضع رابط المنتج المطلوب من المتجر العالمي.");
+      return;
     }
     if (!address.trim()) {
-      setSbError('يرجى كتابة عنوان التوصيل بالتفصيل.')
-      return
+      setSbError("يرجى كتابة عنوان التوصيل بالتفصيل.");
+      return;
     }
     if (!name.trim() || isUrlLike(name)) {
-      setSbError('يرجى إدخال اسم المستلم، وليس رابط صفحة.')
-      return
+      setSbError("يرجى إدخال اسم المستلم، وليس رابط صفحة.");
+      return;
     }
-    if (!phone.trim() || phone.includes('@') || isUrlLike(phone)) {
-      setSbError('يرجى إدخال رقم هاتف صحيح، وليس بريدًا أو رابطًا.')
-      return
+    if (!phone.trim() || phone.includes("@") || isUrlLike(phone)) {
+      setSbError("يرجى إدخال رقم هاتف صحيح، وليس بريدًا أو رابطًا.");
+      return;
     }
 
-    setStatus('sending')
+    setStatus("sending");
 
-    const storeLabel = store?.label || 'متجر دولي'
+    const storeLabel = store?.label || "متجر دولي";
     const notesSummary = [
-      address ? `العنوان: ${address.trim()}` : '',
-      price ? `السعر المعلن: ${price} ${currency}` : '',
+      address ? `العنوان: ${address.trim()}` : "",
+      price ? `السعر المعلن: ${price} ${currency}` : "",
       `تكرار: ${dup}`,
-      notes ? `ملاحظات: ${notes.trim()}` : '',
-    ].filter(Boolean).join(' | ')
+      notes ? `ملاحظات: ${notes.trim()}` : "",
+    ]
+      .filter(Boolean)
+      .join(" | ");
 
     try {
       // أعد التحقق عند الإرسال؛ لا تعتمد على بيانات localStorage أو حالة React.
-      const { data: { user }, error: authError } = await supabase.auth.getUser()
-      if (authError) throw new Error(`تعذر التحقق من تسجيل الدخول: ${authError.message}`)
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+      if (authError) throw new Error(`تعذر التحقق من تسجيل الدخول: ${authError.message}`);
       if (!user) {
-        const next = window.location.pathname + window.location.search
-        window.location.replace(`/login?next=${encodeURIComponent(next)}`)
-        setStatus('idle')
-        return
+        const next = window.location.pathname + window.location.search;
+        window.location.replace(`/login?next=${encodeURIComponent(next)}`);
+        setStatus("idle");
+        return;
       }
 
       // لا نرسل tracking_code: قاعدة البيانات تنشئه عبر trigger.
       const { data: savedOrder, error: insertError } = await supabase
-        .from('orders')
+        .from("orders")
         .insert({
           customer_name: name.trim(),
           phone: phone.trim(),
           product_link: url.trim(),
           product_name: resolvedProductName,
           notes: notesSummary,
-          status: 'قيد الشراء والتجهيز',
+          status: "قيد الشراء والتجهيز",
           user_id: user.id,
         })
-        .select('id, tracking_code')
-        .single()
+        .select("id, tracking_code")
+        .single();
 
       if (insertError) {
-        throw new Error(`تعذر حفظ الطلب: ${insertError.message}`)
+        throw new Error(`تعذر حفظ الطلب: ${insertError.message}`);
       }
       if (!savedOrder?.id) {
-        throw new Error('لم تصل نتيجة تأكيد الحفظ من قاعدة البيانات. لا تعِد الإرسال الآن؛ تحقق من صفحة طلباتي أولاً لتجنب تكرار الطلب.')
+        throw new Error(
+          "لم تصل نتيجة تأكيد الحفظ من قاعدة البيانات. لا تعِد الإرسال الآن؛ تحقق من صفحة طلباتي أولاً لتجنب تكرار الطلب.",
+        );
       }
 
-      const code = savedOrder.tracking_code || ''
+      const code = savedOrder.tracking_code || "";
 
       // تخزين نسخة محلية للعرض فقط؛ مصدر الحقيقة هو قاعدة البيانات.
       try {
-        const localOrdersRaw = localStorage.getItem('alsouk_orders')
-        const parsedOrders: unknown = localOrdersRaw ? JSON.parse(localOrdersRaw) : []
-        const currentList = Array.isArray(parsedOrders) ? parsedOrders : []
+        const localOrdersRaw = localStorage.getItem("alsouk_orders");
+        const parsedOrders: unknown = localOrdersRaw ? JSON.parse(localOrdersRaw) : [];
+        const currentList = Array.isArray(parsedOrders) ? parsedOrders : [];
         const newRecord = {
           id: savedOrder.id,
           tracking_code: code || null,
@@ -514,93 +716,123 @@ function NewOrderPage() {
           phone: phone.trim(),
           product_link: url.trim(),
           product_name: resolvedProductName,
-          status: 'قيد الشراء والتجهيز',
+          status: "قيد الشراء والتجهيز",
           created_at: new Date().toISOString(),
           user_id: user.id,
-        }
-        localStorage.setItem('alsouk_orders', JSON.stringify([newRecord, ...currentList]))
+        };
+        localStorage.setItem("alsouk_orders", JSON.stringify([newRecord, ...currentList]));
 
         localStorage.setItem(
-          'alsouk_current_user',
-          JSON.stringify({ full_name: name.trim(), phone: phone.trim(), user_id: user.id })
-        )
-        localStorage.setItem('sc_name', name.trim())
-        localStorage.setItem('sc_phone', phone.trim())
+          "alsouk_current_user",
+          JSON.stringify({ full_name: name.trim(), phone: phone.trim(), user_id: user.id }),
+        );
+        localStorage.setItem("sc_name", name.trim());
+        localStorage.setItem("sc_phone", phone.trim());
       } catch (storageError) {
-        console.warn('تم حفظ الطلب، لكن تعذر تحديث التخزين المحلي:', storageError)
+        console.warn("تم حفظ الطلب، لكن تعذر تحديث التخزين المحلي:", storageError);
       }
 
       if (!code) {
         // تم إنشاء السجل بالفعل؛ لا تُعد حالة النموذج إلى idle كي لا يرسل العميل طلباً مكرراً.
-        setTrackingUnavailable(true)
-        setSbError('تم حفظ طلبك، لكن لم يصل رمز التتبع من قاعدة البيانات. لا تعِد تقديم الطلب؛ افتح «طلباتي» أو تواصل مع الدعم للتحقق.')
+        setTrackingUnavailable(true);
+        setSbError(
+          "تم حفظ طلبك، لكن لم يصل رمز التتبع من قاعدة البيانات. لا تعِد تقديم الطلب؛ افتح «طلباتي» أو تواصل مع الدعم للتحقق.",
+        );
       } else {
-        setTrackingUnavailable(false)
-        setOrderCode(code)
+        setTrackingUnavailable(false);
+        setOrderCode(code);
       }
-      setStatus('done')
-      window.scrollTo({ top: 0, behavior: 'smooth' })
+      setStatus("done");
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err: unknown) {
-      console.error(err)
-      setSbError(err instanceof Error ? err.message : 'حدث خطأ أثناء حفظ الطلب. يرجى المحاولة مجدداً.')
-      setStatus('idle')
+      console.error(err);
+      setSbError(
+        err instanceof Error ? err.message : "حدث خطأ أثناء حفظ الطلب. يرجى المحاولة مجدداً.",
+      );
+      setStatus("idle");
     }
-  }
+  };
 
   const resetForm = () => {
-    setUrl('')
-    setAddress('')
-    setPrice('')
-    setNotes('')
-    setDup('لا')
-    setOrderCode('')
-    setTrackingUnavailable(false)
-    setStatus('idle')
-    setSbError('')
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
+    setUrl("");
+    setAddress("");
+    setPrice("");
+    setNotes("");
+    setDup("لا");
+    setOrderCode("");
+    setTrackingUnavailable(false);
+    setStatus("idle");
+    setSbError("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const copyCode = async () => {
     try {
-      await navigator.clipboard.writeText(orderCode)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch {}
-  }
+      await navigator.clipboard.writeText(orderCode);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // This optional browser operation can fail; keep the current page usable.
+    }
+  };
   const Header = (
     <header className="no-topbar">
-      <div className="no-badge"><Logo /></div>
+      <div className="no-badge">
+        <Logo />
+      </div>
       <div className="no-brand">
-        <h1>SHOPPING <b>AL SHAMEL</b></h1>
+        <h1>
+          SHOPPING <b>AL SHAMEL</b>
+        </h1>
         <p>السوق الشامل • وسيطكم العالمي</p>
       </div>
       <button
         className="no-arrow"
         type="button"
         title="الرجوع للرئيسية"
-        onClick={() => navigate({ to: '/dashboard' })}
+        onClick={() => navigate({ to: "/dashboard" })}
       >
         <Arrow />
       </button>
     </header>
-  )
+  );
 
   // شاشة تأكيد الطلب
-  if (status === 'done') {
+  if (status === "done") {
     return (
       <div className="no-root">
         <style>{CSS}</style>
-        <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap"
+          rel="stylesheet"
+        />
         <div className="no-wrap">
           {Header}
           <section className="no-success">
             <div className="no-scheck">
-              <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
+              <svg
+                width="44"
+                height="44"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={3}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M20 6L9 17l-5-5" />
+              </svg>
             </div>
-            <h2>{trackingUnavailable ? 'تم حفظ طلبك، لكن تعذّر جلب رقم التتبع' : 'تم إرسال واستلام طلبك بنجاح! 🎉'}</h2>
-            <p className="desc">{trackingUnavailable
-              ? 'الطلب محفوظ. لا تقدّم الطلب مرة أخرى؛ افتح «طلباتي» للتحقق من حالته أو تواصل مع الدعم.'
-              : 'تم تسجيل طلبك في النظام. احتفظ برقم التتبع لمراجعة الطلب والدفع.'}</p>
+            <h2>
+              {trackingUnavailable
+                ? "تم حفظ طلبك، لكن تعذّر جلب رقم التتبع"
+                : "تم إرسال واستلام طلبك بنجاح! 🎉"}
+            </h2>
+            <p className="desc">
+              {trackingUnavailable
+                ? "الطلب محفوظ. لا تقدّم الطلب مرة أخرى؛ افتح «طلباتي» للتحقق من حالته أو تواصل مع الدعم."
+                : "تم تسجيل طلبك في النظام. احتفظ برقم التتبع لمراجعة الطلب والدفع."}
+            </p>
             {trackingUnavailable ? (
               <div className="no-warn" role="status" aria-live="polite">
                 <Flash />
@@ -611,27 +843,90 @@ function NewOrderPage() {
                 <div className="lab">رقم تتبع طلبك:</div>
                 <div className="code">
                   <span>{orderCode}</span>
-                  <button className={'no-copy' + (copied ? ' ok' : '')} type="button" onClick={copyCode} title="نسخ الكود">
-                    {copied
-                      ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
-                      : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>}
+                  <button
+                    className={"no-copy" + (copied ? " ok" : "")}
+                    type="button"
+                    onClick={copyCode}
+                    title="نسخ الكود"
+                  >
+                    {copied ? (
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2.6}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M20 6L9 17l-5-5" />
+                      </svg>
+                    ) : (
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <rect x="9" y="9" width="13" height="13" rx="2" />
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                      </svg>
+                    )}
                   </button>
                 </div>
               </div>
             )}
             <div className="no-sbtns">
               {trackingUnavailable ? (
-                <button className="no-btn no-primary" type="button" onClick={() => navigate({ to: '/account/orders' })}>
-                  <span>فتح طلباتي</span><Arrow />
+                <button
+                  className="no-btn no-primary"
+                  type="button"
+                  onClick={() => navigate({ to: "/account/orders" })}
+                >
+                  <span>فتح طلباتي</span>
+                  <Arrow />
                 </button>
               ) : (
                 <>
                   <button className="no-btn no-gold" type="button" onClick={resetForm}>
                     <span>طلب منتج آخر</span>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={2.4}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <line x1="12" y1="5" x2="12" y2="19" />
+                      <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
                   </button>
-                  <button className="no-btn no-primary" type="button" onClick={() => navigate({ to: '/pay', search: { order: orderCode } as any })}>
-                    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" /><line x1="1" y1="10" x2="23" y2="10" /></svg>
+                  <button
+                    className="no-btn no-primary"
+                    type="button"
+                    onClick={() => navigate({ to: "/pay", search: { order: orderCode } as any })}
+                  >
+                    <svg
+                      width="19"
+                      height="19"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <rect x="1" y="4" width="22" height="16" rx="2" />
+                      <line x1="1" y1="10" x2="23" y2="10" />
+                    </svg>
                     <span>طرق الدفع</span>
                   </button>
                 </>
@@ -639,33 +934,43 @@ function NewOrderPage() {
             </div>
           </section>
           <div className="no-foot">
-            <div className="f"><Check /> فحص ومطابقة أصلية</div>
-            <div className="f"><Truck /> توصيل لكافة المدن</div>
-            <div className="f"><Check /> تأكيد بالواتساب</div>
+            <div className="f">
+              <Check /> فحص ومطابقة أصلية
+            </div>
+            <div className="f">
+              <Truck /> توصيل لكافة المدن
+            </div>
+            <div className="f">
+              <Check /> تأكيد بالواتساب
+            </div>
           </div>
         </div>
       </div>
-    )
+    );
   }
   return (
     <div className="no-root">
       <style>{CSS}</style>
-      <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+      <link
+        href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet"
+      />
       <div className="no-wrap">
-
         {Header}
 
         {search.step && (
           <section className="no-card no-entry-guidance" role="status" aria-live="polite">
             <div className="no-title">
-              {search.step === 'link' && 'أرسل رابط المنتج'}
-              {search.step === 'price' && 'أدخل سعر المنتج الظاهر في المتجر'}
-              {search.step === 'buy' && 'راجع تفاصيل طلبك قبل الإرسال'}
+              {search.step === "link" && "أرسل رابط المنتج"}
+              {search.step === "price" && "أدخل سعر المنتج الظاهر في المتجر"}
+              {search.step === "buy" && "راجع تفاصيل طلبك قبل الإرسال"}
             </div>
             <p>
-              {search.step === 'link' && 'الصق رابط المنتج، ثم أضف بيانات الطلب والتوصيل.'}
-              {search.step === 'price' && 'أدخل السعر الذي يظهر في المتجر إن توفر. السعر النهائي يؤكّد بعد مراجعة الطلب، ولا يُحسب فورياً هنا.'}
-              {search.step === 'buy' && 'تحقق من رابط المنتج والسعر وبيانات المستلم، ثم اضغط تقديم الطلب لإرساله للمراجعة والتأكيد.'}
+              {search.step === "link" && "الصق رابط المنتج، ثم أضف بيانات الطلب والتوصيل."}
+              {search.step === "price" &&
+                "أدخل السعر الذي يظهر في المتجر إن توفر. السعر النهائي يؤكّد بعد مراجعة الطلب، ولا يُحسب فورياً هنا."}
+              {search.step === "buy" &&
+                "تحقق من رابط المنتج والسعر وبيانات المستلم، ثم اضغط تقديم الطلب لإرساله للمراجعة والتأكيد."}
             </p>
           </section>
         )}
@@ -681,12 +986,16 @@ function NewOrderPage() {
         <section className="no-card">
           <div className="no-head">
             <div className="no-num">1</div>
-            <div className="no-ico"><Cart /></div>
+            <div className="no-ico">
+              <Cart />
+            </div>
             <div className="no-title">تفاصيل السلة</div>
           </div>
           {store && <span className="no-pill">{store.label}</span>}
           <div className="no-field">
-            <label className="no-lbl">رابط السلة / المنتج <span className="no-req">*</span></label>
+            <label className="no-lbl">
+              رابط السلة / المنتج <span className="no-req">*</span>
+            </label>
             <div className="no-iw">
               <LinkIcon />
               <input
@@ -696,7 +1005,7 @@ function NewOrderPage() {
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 dir="ltr"
-                style={{ textAlign: 'right' }}
+                style={{ textAlign: "right" }}
                 placeholder="الصق رابط المنتج من أي متجر عالمي (SHEIN، Amazon، AliExpress...)"
               />
             </div>
@@ -708,12 +1017,14 @@ function NewOrderPage() {
               </div>
             )}
           </div>
-          <div className="no-q">هل توجد منتجات مكررة؟ <span className="no-req">*</span></div>
+          <div className="no-q">
+            هل توجد منتجات مكررة؟ <span className="no-req">*</span>
+          </div>
           <div className="no-choices">
             {DUP_OPTS.map((o) => (
               <div
                 key={o}
-                className={'no-choice' + (dup === o ? ' active' : '')}
+                className={"no-choice" + (dup === o ? " active" : "")}
                 onClick={() => setDup(o)}
               >
                 {o}
@@ -726,11 +1037,15 @@ function NewOrderPage() {
         <section className="no-card">
           <div className="no-head">
             <div className="no-num">2</div>
-            <div className="no-ico"><Truck /></div>
+            <div className="no-ico">
+              <Truck />
+            </div>
             <div className="no-title">عنوان التوصيل وبيانات المستلم</div>
           </div>
           <div className="no-field">
-            <label className="no-lbl">عنوان التوصيل بالتفصيل (المدينة، الحي، أقرب معلم) <span className="no-req">*</span></label>
+            <label className="no-lbl">
+              عنوان التوصيل بالتفصيل (المدينة، الحي، أقرب معلم) <span className="no-req">*</span>
+            </label>
             <div className="no-iw">
               <Pin />
               <input
@@ -743,7 +1058,9 @@ function NewOrderPage() {
             </div>
           </div>
           <div className="no-field">
-            <label className="no-lbl">اسم المستلم الكريم <span className="no-req">*</span></label>
+            <label className="no-lbl">
+              اسم المستلم الكريم <span className="no-req">*</span>
+            </label>
             <div className="no-iw">
               <User />
               <input
@@ -756,14 +1073,16 @@ function NewOrderPage() {
             </div>
           </div>
           <div className="no-field">
-            <label className="no-lbl">رقم الهاتف / الواتساب <span className="no-req">*</span></label>
+            <label className="no-lbl">
+              رقم الهاتف / الواتساب <span className="no-req">*</span>
+            </label>
             <div className="no-iw">
               <Phone />
               <input
                 className="has-ic"
                 type="tel"
                 dir="ltr"
-                style={{ textAlign: 'right' }}
+                style={{ textAlign: "right" }}
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="7XXXXXXXX"
@@ -776,7 +1095,9 @@ function NewOrderPage() {
         <section className="no-card">
           <div className="no-head alt">
             <div className="no-num">3</div>
-            <div className="no-ico"><Bag /></div>
+            <div className="no-ico">
+              <Bag />
+            </div>
             <div className="no-title">سعر السلعة في المتجر الأصلي</div>
           </div>
           <div className="no-price">
@@ -801,7 +1122,9 @@ function NewOrderPage() {
         <section className="no-card">
           <div className="no-head alt">
             <div className="no-num">4</div>
-            <div className="no-ico"><Msg /></div>
+            <div className="no-ico">
+              <Msg />
+            </div>
             <div className="no-title">ملاحظات إضافية (اختياري)</div>
           </div>
           <div className="no-ta">
@@ -811,9 +1134,9 @@ function NewOrderPage() {
               placeholder="اكتب أي ملاحظات خاصة بطلبك هنا (مقاسات، ألوان، تعليمات خاصة)..."
             />
             <button
-              className={`mic ${isRecording ? 'listening' : ''}`}
+              className={`mic ${isRecording ? "listening" : ""}`}
               type="button"
-              title={isRecording ? 'جارٍ الاستماع... انقر للإيقاف' : 'تسجيل صوتي للملاحظات'}
+              title={isRecording ? "جارٍ الاستماع... انقر للإيقاف" : "تسجيل صوتي للملاحظات"}
               onClick={toggleSpeechRecognition}
             >
               <Mic />
@@ -822,29 +1145,39 @@ function NewOrderPage() {
         </section>
 
         {/* زر تقديم الطلب */}
-        <button id="new-order-submit" className="no-btn no-primary" type="button" onClick={submit} disabled={status === 'sending'}>
+        <button
+          id="new-order-submit"
+          className="no-btn no-primary"
+          type="button"
+          onClick={submit}
+          disabled={status === "sending"}
+        >
           <Rocket />
-          <span>{status === 'sending' ? 'جارٍ إرسال وحفظ الطلب...' : 'تقديم الطلب'}</span>
+          <span>{status === "sending" ? "جارٍ إرسال وحفظ الطلب..." : "تقديم الطلب"}</span>
         </button>
 
         {/* زر الرجوع للصفحة الرئيسية */}
         <button
           className="no-btn no-ghost"
           type="button"
-          onClick={() => navigate({ to: '/dashboard' })}
+          onClick={() => navigate({ to: "/dashboard" })}
         >
           <Arrow />
           <span>الرجوع للصفحة الرئيسية</span>
         </button>
 
         <div className="no-foot">
-          <div className="f"><Check /> فحص ومطابقة أصلية</div>
-          <div className="f"><Truck /> توصيل لكافة المدن</div>
-          <div className="f"><Check /> تأكيد بالواتساب</div>
+          <div className="f">
+            <Check /> فحص ومطابقة أصلية
+          </div>
+          <div className="f">
+            <Truck /> توصيل لكافة المدن
+          </div>
+          <div className="f">
+            <Check /> تأكيد بالواتساب
+          </div>
         </div>
-
       </div>
     </div>
-  )
+  );
 }
-

@@ -24,9 +24,9 @@ const CURRENCY_CODES: Record<string, string> = {
   YER: "YER",
   YR: "YER",
   "ر.ي": "YER",
-  "رياليمني": "YER",
+  رياليمني: "YER",
   USD: "USD",
-  "$": "USD",
+  $: "USD",
   SAR: "SAR",
   "ر.س": "SAR",
   AED: "AED",
@@ -59,9 +59,7 @@ function formatCurrencyAmount(amount: number, currency: string): string {
   }
 }
 
-export function calculateApprovedReceived(
-  rows: readonly ApprovedPaymentRow[],
-): ReceivedSummary {
+export function calculateApprovedReceived(rows: readonly ApprovedPaymentRow[]): ReceivedSummary {
   const totals = new Map<string, number>();
   let paymentCount = 0;
   let approvedCount = 0;
@@ -134,9 +132,7 @@ export function buildReceivedPresentation(
   );
   return {
     state: "complete",
-    reportText: totals
-      .map(([currency, amount]) => formatAmount(amount, currency))
-      .join("\n"),
+    reportText: totals.map(([currency, amount]) => formatAmount(amount, currency)).join("\n"),
     partialText: null,
     whatsappText: lines.join("\n"),
     totals,

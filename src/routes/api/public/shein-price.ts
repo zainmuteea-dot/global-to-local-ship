@@ -1,14 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { z } from "zod";
 
-// واجهة بيانات الطلب
-interface SheinPriceRequest {
-  url?: string;
-  originalPrice?: number;
-  currency?: string; // e.g. SAR, USD, YER
-  exchangeRate?: number; // سعر الصرف
-  commissionPercent?: number; // نسبة العمولة %
-  shippingCost?: number; // تكلفة الشحن
-}
+const priceRequest = z.object({
+  originalPrice: z.number().finite().nonnegative(),
+  exchangeRate: z.number().finite().positive().default(1),
+  commissionPercent: z.number().finite().min(0).max(100).default(10),
+  shippingCost: z.number().finite().nonnegative().default(0),
+  currency: z
+    .string()
+    .regex(/^[A-Z]{3}$/)
+    .default("SAR"),
+});
 
 export const Route = createFileRoute("/api/public/shein-price")({
   server: {
@@ -25,11 +27,8 @@ export const Route = createFileRoute("/api/public/shein-price")({
       // استقبال بيانات السعر أو الرابط وحساب التكلفة الإجمالية
       POST: async ({ request }) => {
         try {
-          const body: SheinPriceRequest = await request.json();
-          const originalPrice = Number(body.originalPrice) || 0;
-          const exchangeRate = Number(body.exchangeRate) || 1.0;
-          const commissionPercent = Number(body.commissionPercent) ?? 10; // افتراضي 10%
-          const shippingCost = Number(body.shippingCost) || 0;
+          const body = priceRequest.parse(await request.json());
+          const { originalPrice, exchangeRate, commissionPercent, shippingCost } = body;
 
           // السعر بعد تحويل العملة
           const convertedPrice = originalPrice * exchangeRate;
@@ -38,6 +37,9 @@ export const Route = createFileRoute("/api/public/shein-price")({
           // الإجمالي النهائي
           const finalPrice = Math.round(convertedPrice + commissionAmount + shippingCost);
 
+          if (![convertedPrice, commissionAmount, finalPrice].every(Number.isFinite)) {
+            throw new Error("invalid-price");
+          }
           return Response.json({
             success: true,
             data: {
@@ -55,7 +57,7 @@ export const Route = createFileRoute("/api/public/shein-price")({
         } catch (error) {
           return Response.json(
             { success: false, error: "تعذر معالجة الطلب، تأكد من صحة البيانات" },
-            { status: 400 }
+            { status: 400 },
           );
         }
       },

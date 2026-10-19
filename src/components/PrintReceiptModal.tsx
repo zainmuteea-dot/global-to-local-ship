@@ -28,7 +28,6 @@ export function PrintReceiptModal({ order, onClose }: PrintReceiptModalProps) {
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
       {/* الحاوية الرئيسية للنافذة */}
       <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden my-4">
-
         {/* شريط الإجراءات العلوي (يختفي عند الطباعة الورقية) */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/70 print:hidden">
           <button
@@ -42,7 +41,8 @@ export function PrintReceiptModal({ order, onClose }: PrintReceiptModalProps) {
           <div className="text-right">
             <h2 className="text-sm font-bold text-slate-800">سند قبض رسمي مع باركود الكود</h2>
             <p className="text-[11px] text-slate-500 font-mono">
-              رقم الكود: <span className="text-purple-700 font-bold">{orderCode}</span> | السند: {receiptNo}
+              رقم الكود: <span className="text-purple-700 font-bold">{orderCode}</span> | السند:{" "}
+              {receiptNo}
             </p>
           </div>
 
@@ -57,7 +57,6 @@ export function PrintReceiptModal({ order, onClose }: PrintReceiptModalProps) {
 
         {/* جسم السند الرسمي القابل للطباعة */}
         <div dir="rtl" className="p-6 sm:p-8 space-y-6 text-slate-900 font-sans print:p-0">
-
           {/* 1. الترويسة العليا: الشعار والباركود */}
           <div className="flex items-start justify-between border-b border-slate-300 pb-5">
             {/* جهة اليمين: الهوية والبيانات الرسمية */}
@@ -129,7 +128,9 @@ export function PrintReceiptModal({ order, onClose }: PrintReceiptModalProps) {
               </div>
               <div>
                 <span className="text-slate-500">رقم الجوال:</span>{" "}
-                <strong className="text-slate-900 font-mono" dir="ltr">{order.customerPhone || "772399744"}</strong>
+                <strong className="text-slate-900 font-mono" dir="ltr">
+                  {order.customerPhone || "772399744"}
+                </strong>
               </div>
               <div>
                 <span className="text-slate-500">المدينة والعنوان:</span>{" "}
@@ -182,9 +183,7 @@ export function PrintReceiptModal({ order, onClose }: PrintReceiptModalProps) {
                       </div>
                     )}
                   </td>
-                  <td className="p-3 text-center font-bold text-slate-700">
-                    Amazon / SHEIN
-                  </td>
+                  <td className="p-3 text-center font-bold text-slate-700">Amazon / SHEIN</td>
                   <td className="p-3 text-center font-bold font-mono">1</td>
                   <td className="p-3 text-center font-bold font-mono text-slate-900">
                     USD ${order.originalPrice || "0"}
@@ -244,15 +243,21 @@ export function PrintReceiptModal({ order, onClose }: PrintReceiptModalProps) {
             <div className="grid grid-cols-3 items-center text-center">
               <div className="space-y-6">
                 <div className="text-xs font-bold text-slate-700">توقيع المستلم / العميل</div>
-                <div className="text-slate-300 font-mono tracking-widest text-xs">..............................</div>
+                <div className="text-slate-300 font-mono tracking-widest text-xs">
+                  ..............................
+                </div>
               </div>
               <div className="flex justify-center">
                 <div className="w-28 h-28 rounded-full border-2 border-purple-600 p-1 flex items-center justify-center text-purple-700 text-center select-none rotate-[-6deg] shadow-xs">
                   <div className="w-full h-full rounded-full border border-dashed border-purple-400 flex flex-col items-center justify-center p-1 leading-tight">
                     <span className="text-[9px] font-bold">★ رسمي ★</span>
                     <span className="text-[11px] font-black my-0.5">السوق الشامل</span>
-                    <span className="text-[8px] font-semibold text-purple-800">قسم الحسابات والمالية</span>
-                    <span className="text-[9px] font-black mt-1 text-emerald-600">معتمد رسمياً ✓</span>
+                    <span className="text-[8px] font-semibold text-purple-800">
+                      قسم الحسابات والمالية
+                    </span>
+                    <span className="text-[9px] font-black mt-1 text-emerald-600">
+                      معتمد رسمياً ✓
+                    </span>
                   </div>
                 </div>
               </div>
@@ -271,10 +276,10 @@ export function PrintReceiptModal({ order, onClose }: PrintReceiptModalProps) {
               VERIFICATION CODE: {orderCode}
             </div>
             <div>
-              سند قبض رسمي صادر عن نظام السوق الشامل لوساطة الشراء والتوصيل الدولي. خدمة العملاء: 770000000
+              سند قبض رسمي صادر عن نظام السوق الشامل لوساطة الشراء والتوصيل الدولي. خدمة العملاء:
+              770000000
             </div>
           </div>
-
         </div>
       </div>
     </div>

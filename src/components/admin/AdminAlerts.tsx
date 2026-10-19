@@ -30,23 +30,20 @@ export function AdminAlerts() {
   const [paymentLoadError, setPaymentLoadError] = useState("");
 
   const load = useCallback(async () => {
-    const [{ data: orderRows }, { data: paymentRows, error: paymentError }] =
-      await Promise.all([
-        supabase
-          .from("orders")
-          .select("tracking_code,customer_name,phone,status,updated_at,created_at")
-          .order("updated_at", { ascending: true })
-          .limit(200),
+    const [{ data: orderRows }, { data: paymentRows, error: paymentError }] = await Promise.all([
+      supabase
+        .from("orders")
+        .select("tracking_code,customer_name,phone,status,updated_at,created_at")
+        .order("updated_at", { ascending: true })
+        .limit(200),
 
-        supabase
-          .from("payments")
-          .select(
-            "id,tracking_code,customer_name,phone,wallet,receipt_image,created_at",
-          )
-          .in("status", ["pending", "بانتظار التأكيد"])
-          .order("created_at", { ascending: false })
-          .limit(50),
-      ]);
+      supabase
+        .from("payments")
+        .select("id,tracking_code,customer_name,phone,wallet,receipt_image,created_at")
+        .in("status", ["pending", "بانتظار التأكيد"])
+        .order("created_at", { ascending: false })
+        .limit(50),
+    ]);
 
     if (paymentError) {
       console.error("تعذّر تحميل تنبيهات الدفع:", paymentError);
@@ -104,11 +101,7 @@ export function AdminAlerts() {
         { event: "*", schema: "public", table: "payments" },
         () => void load(),
       )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "orders" },
-        () => void load(),
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => void load())
       .subscribe();
 
     return () => {
@@ -116,11 +109,7 @@ export function AdminAlerts() {
     };
   }, [load]);
 
-  if (
-    payments.length === 0 &&
-    orders.length === 0 &&
-    !paymentLoadError
-  ) {
+  if (payments.length === 0 && orders.length === 0 && !paymentLoadError) {
     return null;
   }
 
@@ -132,10 +121,7 @@ export function AdminAlerts() {
         aria-labelledby="admin-alerts-title"
       >
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <h3
-            id="admin-alerts-title"
-            className="font-black text-sm text-[#0A2540]"
-          >
+          <h3 id="admin-alerts-title" className="font-black text-sm text-[#0A2540]">
             تنبيهات لوحة الإدارة ({payments.length + orders.length})
           </h3>
 
@@ -169,16 +155,12 @@ export function AdminAlerts() {
                 className="flex flex-col justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3 sm:flex-row sm:items-center"
               >
                 <div className="min-w-0 text-xs text-slate-700">
-                  <div className="font-black text-[#0A2540]">
-                    {payment.customer_name || "عميل"}
-                  </div>
+                  <div className="font-black text-[#0A2540]">{payment.customer_name || "عميل"}</div>
 
                   <div className="mt-1">
-                    وسيلة الدفع:{" "}
-                    <b>{payment.wallet || "غير محددة"}</b>
+                    وسيلة الدفع: <b>{payment.wallet || "غير محددة"}</b>
                     {" • "}
-                    الطلب:{" "}
-                    <b dir="ltr">{payment.tracking_code || "غير متوفر"}</b>
+                    الطلب: <b dir="ltr">{payment.tracking_code || "غير متوفر"}</b>
                   </div>
 
                   {payment.phone && (
@@ -188,9 +170,7 @@ export function AdminAlerts() {
                   )}
 
                   <div className="mt-1 text-[11px] text-slate-500">
-                    {payment.created_at
-                      ? new Date(payment.created_at).toLocaleString("ar")
-                      : ""}
+                    {payment.created_at ? new Date(payment.created_at).toLocaleString("ar") : ""}
                   </div>
                 </div>
 

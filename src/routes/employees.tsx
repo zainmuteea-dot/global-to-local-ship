@@ -145,7 +145,12 @@ function EmployeesPage() {
         if (error) throw new Error(error.message);
         const rows = Array.isArray(data) ? (data as EmployeeRpcRow[]) : [];
         const result: EmployeeItem[] = rows
-          .filter((row) => row && typeof row.user_id === "string" && (row.role === "admin" || row.role === "staff"))
+          .filter(
+            (row) =>
+              row &&
+              typeof row.user_id === "string" &&
+              (row.role === "admin" || row.role === "staff"),
+          )
           .map((row) => ({
             id: row.user_id,
             name: row.full_name?.trim() || "موظف بدون اسم",
@@ -425,7 +430,9 @@ function EmployeesPage() {
                 </button>
               </div>
             </form>
-            <p className="mt-3 text-[11px] text-slate-500">سيتم إنشاء الحساب مباشرة عبر Edge Function بدون كشف مفتاح service_role.</p>
+            <p className="mt-3 text-[11px] text-slate-500">
+              سيتم إنشاء الحساب مباشرة عبر Edge Function بدون كشف مفتاح service_role.
+            </p>
           </section>
         )}
 
@@ -477,11 +484,13 @@ function EmployeesPage() {
             />
           </div>
           <div className="flex w-full items-center gap-2 overflow-x-auto pb-1 text-xs font-bold sm:w-auto sm:pb-0">
-            {([
-              ["all", `الكل (${employees.length})`],
-              ["admin", `المشرفون (${adminCount})`],
-              ["staff", `الموظفون (${staffCount})`],
-            ] as const).map(([value, label]) => (
+            {(
+              [
+                ["all", `الكل (${employees.length})`],
+                ["admin", `المشرفون (${adminCount})`],
+                ["staff", `الموظفون (${staffCount})`],
+              ] as const
+            ).map(([value, label]) => (
               <button
                 key={value}
                 type="button"
@@ -515,7 +524,9 @@ function EmployeesPage() {
           <div
             role={actionError ? "alert" : "status"}
             className={`rounded-2xl border p-3 text-sm font-bold ${
-              actionError ? "border-red-200 bg-red-50 text-red-800" : "border-emerald-200 bg-emerald-50 text-emerald-800"
+              actionError
+                ? "border-red-200 bg-red-50 text-red-800"
+                : "border-emerald-200 bg-emerald-50 text-emerald-800"
             }`}
           >
             {actionError || actionMessage}
@@ -523,7 +534,10 @@ function EmployeesPage() {
         )}
 
         {editing && (
-          <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/50 p-4" role="presentation">
+          <div
+            className="fixed inset-0 z-50 grid place-items-center bg-slate-950/50 p-4"
+            role="presentation"
+          >
             <form
               onSubmit={saveEmployee}
               dir="rtl"
@@ -531,7 +545,9 @@ function EmployeesPage() {
               aria-labelledby="edit-employee-title"
             >
               <div className="flex items-center justify-between gap-3">
-                <h2 id="edit-employee-title" className="text-lg font-black">تعديل بيانات الموظف</h2>
+                <h2 id="edit-employee-title" className="text-lg font-black">
+                  تعديل بيانات الموظف
+                </h2>
                 <button
                   type="button"
                   onClick={() => setEditing(null)}
@@ -572,9 +588,17 @@ function EmployeesPage() {
                   <option value="admin">مشرف عام</option>
                 </select>
               </label>
-              {actionError && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">{actionError}</p>}
+              {actionError && (
+                <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">
+                  {actionError}
+                </p>
+              )}
               <div className="flex justify-end gap-2">
-                <button type="button" onClick={() => setEditing(null)} className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-bold">
+                <button
+                  type="button"
+                  onClick={() => setEditing(null)}
+                  className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-bold"
+                >
                   إلغاء
                 </button>
                 <button
@@ -633,7 +657,9 @@ function EmployeesPage() {
                             {roleStyle.title}
                           </span>
                         </td>
-                        <td className="px-4 py-3.5 font-mono font-bold text-slate-700">{employee.phone || "—"}</td>
+                        <td className="px-4 py-3.5 font-mono font-bold text-slate-700">
+                          {employee.phone || "—"}
+                        </td>
                         <td className="px-4 py-3.5 text-slate-600">
                           <span className="inline-flex items-center gap-1.5">
                             <CalendarDays className="size-3.5 text-slate-400" />
@@ -661,7 +687,13 @@ function EmployeesPage() {
                               className="inline-flex items-center gap-1 rounded-lg bg-red-50 px-2.5 py-2 font-bold text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
                             >
                               <Trash2 className="size-3.5" />
-                              <span>{busyId === employee.id ? "جارٍ…" : employee.role === "admin" ? "اخفض الدور أولاً" : "حذف نهائي"}</span>
+                              <span>
+                                {busyId === employee.id
+                                  ? "جارٍ…"
+                                  : employee.role === "admin"
+                                    ? "اخفض الدور أولاً"
+                                    : "حذف نهائي"}
+                              </span>
                             </button>
                           </div>
                         </td>
@@ -672,9 +704,15 @@ function EmployeesPage() {
                   <tr>
                     <td colSpan={6} className="px-4 py-12 text-center">
                       <p className="font-black text-slate-700">
-                        {employees.length === 0 ? "لا توجد حسابات موظفين في جدول user_roles." : "لا توجد نتائج تطابق البحث."}
+                        {employees.length === 0
+                          ? "لا توجد حسابات موظفين في جدول user_roles."
+                          : "لا توجد نتائج تطابق البحث."}
                       </p>
-                      {employees.length === 0 && <p className="mt-1 text-xs text-slate-500">اضغط "إضافة موظف" لإنشاء أول حساب من هذه الصفحة.</p>}
+                      {employees.length === 0 && (
+                        <p className="mt-1 text-xs text-slate-500">
+                          اضغط "إضافة موظف" لإنشاء أول حساب من هذه الصفحة.
+                        </p>
+                      )}
                     </td>
                   </tr>
                 )}
@@ -691,7 +729,10 @@ export const Route = createFileRoute("/employees")({
   head: () => ({
     meta: [
       { title: "إدارة الموظفين والصلاحيات | السوق الشامل" },
-      { name: "description", content: "عرض حسابات الموظفين والمشرفين المرتبطة بقاعدة بيانات Supabase." },
+      {
+        name: "description",
+        content: "عرض حسابات الموظفين والمشرفين المرتبطة بقاعدة بيانات Supabase.",
+      },
     ],
   }),
   component: GuardedEmployeesPage,

@@ -23,7 +23,10 @@ function describeError(error: DbError) {
   if (error.code === "42P01" || error.code === "PGRST205") {
     return "جدول الموردين غير موجود في قاعدة البيانات المتصلة. أنشئه في قاعدة الموقع الصحيحة أولًا.";
   }
-  if (error.code === "42501" || /permission denied|row-level security|policy/i.test(error.message ?? "")) {
+  if (
+    error.code === "42501" ||
+    /permission denied|row-level security|policy/i.test(error.message ?? "")
+  ) {
     return "رفضت قاعدة البيانات العملية. تحقق من RLS ومن سياسة المدير للعملية المطلوبة.";
   }
   return error.message || "تعذر الاتصال بقاعدة البيانات.";
@@ -122,7 +125,10 @@ function SuppliersPage() {
           </button>
         </header>
 
-        <form onSubmit={addSupplier} className="mb-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <form
+          onSubmit={addSupplier}
+          className="mb-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+        >
           <h2 className="mb-3 font-bold">إضافة مورد</h2>
           <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
             <input
@@ -150,25 +156,52 @@ function SuppliersPage() {
             </button>
           </div>
           <p className="mt-3 text-xs leading-5 text-slate-500">
-            حراسة الصفحة تمنع فتحها لغير المدير، وسياسة RLS هي التي تفرض صلاحية الإضافة في قاعدة البيانات.
+            حراسة الصفحة تمنع فتحها لغير المدير، وسياسة RLS هي التي تفرض صلاحية الإضافة في قاعدة
+            البيانات.
           </p>
         </form>
 
-        {error && <p role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
-        {notice && <p role="status" className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{notice}</p>}
+        {error && (
+          <p
+            role="alert"
+            className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800"
+          >
+            {error}
+          </p>
+        )}
+        {notice && (
+          <p
+            role="status"
+            className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800"
+          >
+            {notice}
+          </p>
+        )}
 
-        <section aria-labelledby="suppliers-list-heading" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h2 id="suppliers-list-heading" className="mb-3 font-bold">قائمة الموردين ({suppliers.length})</h2>
+        <section
+          aria-labelledby="suppliers-list-heading"
+          className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+        >
+          <h2 id="suppliers-list-heading" className="mb-3 font-bold">
+            قائمة الموردين ({suppliers.length})
+          </h2>
           {loading ? (
-            <p role="status" className="py-8 text-center text-sm text-slate-500">جارٍ تحميل الموردين…</p>
+            <p role="status" className="py-8 text-center text-sm text-slate-500">
+              جارٍ تحميل الموردين…
+            </p>
           ) : error && suppliers.length === 0 ? (
-            <p className="py-5 text-center text-sm text-slate-500">أصلح اتصال الجدول أو صلاحيات القراءة، ثم اضغط «تحديث».</p>
+            <p className="py-5 text-center text-sm text-slate-500">
+              أصلح اتصال الجدول أو صلاحيات القراءة، ثم اضغط «تحديث».
+            </p>
           ) : suppliers.length === 0 ? (
             <p className="py-8 text-center text-sm text-slate-500">لا يوجد موردون حتى الآن.</p>
           ) : (
             <ul className="divide-y divide-slate-100">
               {suppliers.map((supplier) => (
-                <li key={supplier.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
+                <li
+                  key={supplier.id}
+                  className="flex flex-wrap items-center justify-between gap-2 py-3"
+                >
                   <span className="font-semibold">{supplier.name}</span>
                   <span className="text-sm text-slate-500">{supplier.phone || "لا يوجد هاتف"}</span>
                 </li>

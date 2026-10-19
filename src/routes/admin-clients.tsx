@@ -22,7 +22,7 @@ import {
   Download,
   Database,
   X,
-  FileText
+  FileText,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -63,16 +63,16 @@ export interface OrderItem {
 
 // هيكل العميل المجمّع بحسب آخر 9 أرقام
 export interface GroupedClient {
-  phoneLast9: string;      // آخر 9 أرقام من الهاتف (مفتاح التجميع)
-  originalPhone: string;   // رقم الهاتف الكامل (phone)
-  clientName: string;      // اسم العميل (name)
-  city: string;            // المدينة (city)
-  ordersCount: number;     // count = orders.length
-  total_cost: number;      // مجموع التكلفة = sum(total_cost)
-  paid: number;            // مجموع المبالغ المدفوعة = sum(paid)
-  remaining: number;       // total_cost - paid
-  profit: number;          // مجموع الأرباح = sum(profit)
-  orders: OrderItem[];     // قائمة طلبات هذا العميل
+  phoneLast9: string; // آخر 9 أرقام من الهاتف (مفتاح التجميع)
+  originalPhone: string; // رقم الهاتف الكامل (phone)
+  clientName: string; // اسم العميل (name)
+  city: string; // المدينة (city)
+  ordersCount: number; // count = orders.length
+  total_cost: number; // مجموع التكلفة = sum(total_cost)
+  paid: number; // مجموع المبالغ المدفوعة = sum(paid)
+  remaining: number; // total_cost - paid
+  profit: number; // مجموع الأرباح = sum(profit)
+  orders: OrderItem[]; // قائمة طلبات هذا العميل
   latestOrderDate: string; // تاريخ أحدث طلب
 }
 
@@ -101,7 +101,7 @@ export const groupOrdersByLast9 = (orders: OrderItem[]): GroupedClient[] => {
   map.forEach((clientOrders, phoneLast9) => {
     // ترتيب الطلبات من الأحدث للأقدم
     clientOrders.sort(
-      (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+      (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime(),
     );
 
     const clientName =
@@ -118,12 +118,8 @@ export const groupOrdersByLast9 = (orders: OrderItem[]): GroupedClient[] => {
 
     clientOrders.forEach((o) => {
       const cost = Number(o.total_cost || o.originalPrice || 0);
-      const orderPaid = Number(
-        o.paid !== undefined ? o.paid : o.status === "delivered" ? cost : 0
-      );
-      const orderProfit = Number(
-        o.profit !== undefined ? o.profit : Math.round(cost * 0.15)
-      );
+      const orderPaid = Number(o.paid !== undefined ? o.paid : o.status === "delivered" ? cost : 0);
+      const orderProfit = Number(o.profit !== undefined ? o.profit : Math.round(cost * 0.15));
 
       total_cost += cost;
       paid += orderPaid;
@@ -145,7 +141,7 @@ export const groupOrdersByLast9 = (orders: OrderItem[]): GroupedClient[] => {
       remaining,
       profit,
       orders: clientOrders,
-      latestOrderDate
+      latestOrderDate,
     });
   });
 
@@ -206,18 +202,22 @@ export interface AdminOperationsDashboardProps {
 
 export function AdminOperationsDashboard({
   onBack,
-  onNavigateToNewOrder
+  onNavigateToNewOrder,
 }: AdminOperationsDashboardProps = {}) {
   const [orders, setOrders] = useState<OrderItem[]>(() => {
     try {
       const saved = localStorage.getItem("alsouk_admin_shipments_v1");
       if (saved) return JSON.parse(saved);
-    } catch {}
+    } catch {
+      // This optional browser operation can fail; keep the current page usable.
+    }
     return [];
   });
 
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<"grouped_clients" | "all_shipments">("grouped_clients");
+  const [activeTab, setActiveTab] = useState<"grouped_clients" | "all_shipments">(
+    "grouped_clients",
+  );
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [cityFilter, setCityFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -244,14 +244,16 @@ export function AdminOperationsDashboard({
     productTitle: "",
     originalPrice: "",
     status: "new" as OrderStatus,
-    trackingNumber: ""
+    trackingNumber: "",
   });
 
   // حفظ في localStorage
   useEffect(() => {
     try {
       localStorage.setItem("alsouk_admin_shipments_v1", JSON.stringify(orders));
-    } catch {}
+    } catch {
+      // This optional browser operation can fail; keep the current page usable.
+    }
   }, [orders]);
 
   // جلب الطلبات من Supabase مع دعم كافة تسميات الأعمدة: (id, name, phone, city)
@@ -285,21 +287,21 @@ export function AdminOperationsDashboard({
                 item.original_price ||
                 item.originalPrice ||
                 item.price ||
-                0
+                0,
             ),
             paid:
               item.paid !== undefined
                 ? Number(item.paid)
                 : item.status === "delivered"
-                ? Number(item.total_cost || item.original_price || 0)
-                : 0,
+                  ? Number(item.total_cost || item.original_price || 0)
+                  : 0,
             profit:
               item.profit !== undefined
                 ? Number(item.profit)
                 : Math.round(Number(item.original_price || 0) * 0.15),
             intlTrackingNumber:
               item.intl_tracking_number || item.intlTrackingNumber || `SQ-${item.id}`,
-            createdAt: item.created_at || new Date().toISOString()
+            createdAt: item.created_at || new Date().toISOString(),
           }));
           setOrders(mapped);
         }
@@ -339,7 +341,7 @@ export function AdminOperationsDashboard({
       sumCost,
       sumProfit,
       totalClients: groupedClients.length,
-      totalOrders: orders.length
+      totalOrders: orders.length,
     };
   }, [groupedClients, orders]);
 
@@ -347,14 +349,16 @@ export function AdminOperationsDashboard({
   const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
     setOrders((prev) =>
       prev.map((o) =>
-        o.id === orderId ? { ...o, status: newStatus, updatedAt: new Date().toISOString() } : o
-      )
+        o.id === orderId ? { ...o, status: newStatus, updatedAt: new Date().toISOString() } : o,
+      ),
     );
 
     if (supabaseClientInstance) {
       try {
         await supabaseClientInstance.from("orders").update({ status: newStatus }).eq("id", orderId);
-      } catch {}
+      } catch {
+        // This optional browser operation can fail; keep the current page usable.
+      }
     }
   };
 
@@ -367,7 +371,9 @@ export function AdminOperationsDashboard({
     if (supabaseClientInstance) {
       try {
         await supabaseClientInstance.from("orders").delete().eq("id", orderId);
-      } catch {}
+      } catch {
+        // This optional browser operation can fail; keep the current page usable.
+      }
     }
   };
 
@@ -395,7 +401,7 @@ export function AdminOperationsDashboard({
       profit: Math.round(cost * 0.15),
       status: newOrderForm.status,
       intlTrackingNumber: newOrderForm.trackingNumber.trim() || orderNum,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
     };
 
     setOrders((prev) => [newOrd, ...prev]);
@@ -409,7 +415,7 @@ export function AdminOperationsDashboard({
       productTitle: "",
       originalPrice: "",
       status: "new",
-      trackingNumber: ""
+      trackingNumber: "",
     });
 
     if (supabaseClientInstance) {
@@ -428,10 +434,12 @@ export function AdminOperationsDashboard({
             profit: newOrd.profit,
             status: newOrd.status,
             intl_tracking_number: newOrd.intlTrackingNumber,
-            created_at: newOrd.createdAt
-          }
+            created_at: newOrd.createdAt,
+          },
         ]);
-      } catch {}
+      } catch {
+        // This optional browser operation can fail; keep the current page usable.
+      }
     }
   };
 
@@ -444,7 +452,7 @@ export function AdminOperationsDashboard({
     const found = orders.find(
       (o) =>
         o.orderNumber.toLowerCase() === query ||
-        (o.intlTrackingNumber && o.intlTrackingNumber.toLowerCase() === query)
+        (o.intlTrackingNumber && o.intlTrackingNumber.toLowerCase() === query),
     );
 
     if (found) {
@@ -475,7 +483,7 @@ export function AdminOperationsDashboard({
         "المبلغ المدفوع",
         "المبلغ المتبقي",
         "الربح",
-        "آخر طلب"
+        "آخر طلب",
       ];
       const rows = filteredClients.map((c) => [
         `"${c.clientName.replace(/"/g, '""')}"`,
@@ -487,19 +495,32 @@ export function AdminOperationsDashboard({
         c.paid,
         c.remaining,
         c.profit,
-        c.latestOrderDate.split("T")[0]
+        c.latestOrderDate.split("T")[0],
       ]);
       const csvContent = "\uFEFF" + [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
       const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute("download", `alsouk_grouped_clients_${new Date().toISOString().split("T")[0]}.csv`);
+      link.setAttribute(
+        "download",
+        `alsouk_grouped_clients_${new Date().toISOString().split("T")[0]}.csv`,
+      );
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     } else {
-      const headers = ["رقم الطلب", "العميل", "الهاتف", "المدينة", "المتجر", "الحالة", "السعر", "رقم التتبع", "التاريخ"];
+      const headers = [
+        "رقم الطلب",
+        "العميل",
+        "الهاتف",
+        "المدينة",
+        "المتجر",
+        "الحالة",
+        "السعر",
+        "رقم التتبع",
+        "التاريخ",
+      ];
       const rows = filteredOrders.map((o) => [
         o.orderNumber,
         `"${o.customerName}"`,
@@ -509,7 +530,7 @@ export function AdminOperationsDashboard({
         o.status,
         o.originalPrice,
         o.intlTrackingNumber || o.orderNumber,
-        o.createdAt.split("T")[0]
+        o.createdAt.split("T")[0],
       ]);
 
       const csvContent = "\uFEFF" + [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
@@ -517,7 +538,10 @@ export function AdminOperationsDashboard({
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute("download", `alsouk_shipments_${new Date().toISOString().split("T")[0]}.csv`);
+      link.setAttribute(
+        "download",
+        `alsouk_shipments_${new Date().toISOString().split("T")[0]}.csv`,
+      );
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -646,7 +670,9 @@ export function AdminOperationsDashboard({
               className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-700 transition cursor-pointer"
               title="تحديث البيانات"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-orange-500" : ""}`} />
+              <RefreshCw
+                className={`w-3.5 h-3.5 ${loading ? "animate-spin text-orange-500" : ""}`}
+              />
             </button>
           </div>
         </header>
@@ -689,7 +715,6 @@ export function AdminOperationsDashboard({
         {/* 🌟 4. بطاقات الملخص الأربعة (Remaining, Paid, Cost, Profit)  */}
         {/* ========================================================= */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          
           {/* Card 1: Remaining (red) sum(remaining) */}
           <div className="rounded-2xl p-4 sm:p-5 bg-gradient-to-br from-rose-50 to-red-100/70 border-2 border-red-300 shadow-sm relative overflow-hidden transition hover:shadow-md">
             <div className="flex items-center justify-between mb-2">
@@ -701,10 +726,13 @@ export function AdminOperationsDashboard({
               </div>
             </div>
             <div className="text-2xl sm:text-3xl font-black text-red-600 font-mono tracking-tight mb-1">
-              {summaryTotals.sumRemaining.toLocaleString()} <span className="text-xs font-sans text-red-500 font-bold">ر.س</span>
+              {summaryTotals.sumRemaining.toLocaleString()}{" "}
+              <span className="text-xs font-sans text-red-500 font-bold">ر.س</span>
             </div>
             <div className="text-xs font-black text-red-950">إجمالي المبالغ المتبقية</div>
-            <div className="text-[10px] text-red-700 mt-0.5">مجموع الديون غير المسددة على العملاء</div>
+            <div className="text-[10px] text-red-700 mt-0.5">
+              مجموع الديون غير المسددة على العملاء
+            </div>
             <div className="mt-2 pt-2 border-t border-red-200/80 text-[10px] font-bold text-red-700 flex items-center justify-between">
               <span>sum(remaining)</span>
               <span>{groupedClients.filter((c) => c.remaining > 0).length} عميل مدين</span>
@@ -722,10 +750,13 @@ export function AdminOperationsDashboard({
               </div>
             </div>
             <div className="text-2xl sm:text-3xl font-black text-emerald-600 font-mono tracking-tight mb-1">
-              {summaryTotals.sumPaid.toLocaleString()} <span className="text-xs font-sans text-emerald-600 font-bold">ر.س</span>
+              {summaryTotals.sumPaid.toLocaleString()}{" "}
+              <span className="text-xs font-sans text-emerald-600 font-bold">ر.س</span>
             </div>
             <div className="text-xs font-black text-emerald-950">إجمالي المبالغ المدفوعة</div>
-            <div className="text-[10px] text-emerald-700 mt-0.5">مجموع المبالغ المحصلة والمسددة فعلياً</div>
+            <div className="text-[10px] text-emerald-700 mt-0.5">
+              مجموع المبالغ المحصلة والمسددة فعلياً
+            </div>
             <div className="mt-2 pt-2 border-t border-emerald-200/80 text-[10px] font-bold text-emerald-700 flex items-center justify-between">
               <span>sum(paid)</span>
               <span>مُحصل بنجاح ✓</span>
@@ -743,10 +774,13 @@ export function AdminOperationsDashboard({
               </div>
             </div>
             <div className="text-2xl sm:text-3xl font-black text-white font-mono tracking-tight mb-1">
-              {summaryTotals.sumCost.toLocaleString()} <span className="text-xs font-sans text-slate-300 font-bold">ر.س</span>
+              {summaryTotals.sumCost.toLocaleString()}{" "}
+              <span className="text-xs font-sans text-slate-300 font-bold">ر.س</span>
             </div>
             <div className="text-xs font-black text-slate-100">إجمالي التكلفة الشاملة</div>
-            <div className="text-[10px] text-slate-400 mt-0.5">مجموع مبالغ وتكاليف كافة الشحنات</div>
+            <div className="text-[10px] text-slate-400 mt-0.5">
+              مجموع مبالغ وتكاليف كافة الشحنات
+            </div>
             <div className="mt-2 pt-2 border-t border-slate-800 text-[10px] font-bold text-slate-300 flex items-center justify-between">
               <span>sum(total_cost)</span>
               <span>{summaryTotals.totalOrders} طلب كلي</span>
@@ -764,16 +798,18 @@ export function AdminOperationsDashboard({
               </div>
             </div>
             <div className="text-2xl sm:text-3xl font-black text-[#0284C7] font-mono tracking-tight mb-1">
-              {summaryTotals.sumProfit.toLocaleString()} <span className="text-xs font-sans text-sky-600 font-bold">ر.س</span>
+              {summaryTotals.sumProfit.toLocaleString()}{" "}
+              <span className="text-xs font-sans text-sky-600 font-bold">ر.س</span>
             </div>
             <div className="text-xs font-black text-sky-950">صافي أرباح الوساطة</div>
-            <div className="text-[10px] text-sky-700 mt-0.5">مجموع أرباح الخدمة وعمولات الوساطة</div>
+            <div className="text-[10px] text-sky-700 mt-0.5">
+              مجموع أرباح الخدمة وعمولات الوساطة
+            </div>
             <div className="mt-2 pt-2 border-t border-sky-200/80 text-[10px] font-bold text-sky-700 flex items-center justify-between">
               <span>sum(profit)</span>
               <span>أرباح معتمدة ✦</span>
             </div>
           </div>
-
         </div>
 
         {/* 5. عرض المحتوى بحسب التبويب النشط */}
@@ -825,7 +861,8 @@ export function AdminOperationsDashboard({
               </div>
 
               <div className="text-slate-500 text-xs font-mono">
-                عرض: <span className="font-bold text-[#0A2540]">{filteredClients.length}</span> عميل مجمّع
+                عرض: <span className="font-bold text-[#0A2540]">{filteredClients.length}</span> عميل
+                مجمّع
               </div>
             </div>
 
@@ -856,7 +893,9 @@ export function AdminOperationsDashboard({
                       filteredClients.map((client) => (
                         <tr key={client.phoneLast9} className="hover:bg-sky-50/50 transition">
                           <td className="py-3.5 px-4">
-                            <div className="font-black text-sm text-[#0A2540]">{client.clientName}</div>
+                            <div className="font-black text-sm text-[#0A2540]">
+                              {client.clientName}
+                            </div>
                             <div className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
                               <MapPin className="w-3 h-3 text-orange-500" />
                               <span>{client.city}</span>
@@ -865,9 +904,13 @@ export function AdminOperationsDashboard({
 
                           <td className="py-3.5 px-4 font-mono">
                             <div className="flex items-center gap-1">
-                              <span className="font-bold text-slate-800">{client.originalPhone}</span>
+                              <span className="font-bold text-slate-800">
+                                {client.originalPhone}
+                              </span>
                               <button
-                                onClick={() => copyTracking(client.originalPhone, client.phoneLast9)}
+                                onClick={() =>
+                                  copyTracking(client.originalPhone, client.phoneLast9)
+                                }
                                 className="text-slate-400 hover:text-sky-600 p-0.5 cursor-pointer"
                                 title="نسخ الرقم"
                               >
@@ -898,7 +941,9 @@ export function AdminOperationsDashboard({
                           </td>
 
                           <td className="py-3.5 px-4 text-left font-mono font-black">
-                            <span className={client.remaining > 0 ? "text-red-600" : "text-emerald-600"}>
+                            <span
+                              className={client.remaining > 0 ? "text-red-600" : "text-emerald-600"}
+                            >
                               {client.remaining.toLocaleString()} ر.س
                             </span>
                           </td>
@@ -945,7 +990,9 @@ export function AdminOperationsDashboard({
                 <button
                   onClick={() => setStatusFilter("all")}
                   className={`px-3 py-1.5 rounded-full font-bold cursor-pointer ${
-                    statusFilter === "all" ? "bg-[#0F4C81] text-white" : "bg-slate-100 text-slate-700"
+                    statusFilter === "all"
+                      ? "bg-[#0F4C81] text-white"
+                      : "bg-slate-100 text-slate-700"
                   }`}
                 >
                   الكل ({orders.length})
@@ -953,23 +1000,36 @@ export function AdminOperationsDashboard({
                 <button
                   onClick={() => setStatusFilter("new")}
                   className={`px-3 py-1.5 rounded-full font-bold cursor-pointer ${
-                    statusFilter === "new" ? "bg-amber-500 text-white" : "bg-slate-100 text-slate-700"
+                    statusFilter === "new"
+                      ? "bg-amber-500 text-white"
+                      : "bg-slate-100 text-slate-700"
                   }`}
                 >
-                  انتظار ({orders.filter((o) => o.status === "new" || o.status === "reviewing").length})
+                  انتظار (
+                  {orders.filter((o) => o.status === "new" || o.status === "reviewing").length})
                 </button>
                 <button
                   onClick={() => setStatusFilter("shipped")}
                   className={`px-3 py-1.5 rounded-full font-bold cursor-pointer ${
-                    statusFilter === "shipped" ? "bg-[#0284C7] text-white" : "bg-slate-100 text-slate-700"
+                    statusFilter === "shipped"
+                      ? "bg-[#0284C7] text-white"
+                      : "bg-slate-100 text-slate-700"
                   }`}
                 >
-                  شحن ({orders.filter((o) => o.status === "shipped" || o.status === "international_ship").length})
+                  شحن (
+                  {
+                    orders.filter(
+                      (o) => o.status === "shipped" || o.status === "international_ship",
+                    ).length
+                  }
+                  )
                 </button>
                 <button
                   onClick={() => setStatusFilter("delivered")}
                   className={`px-3 py-1.5 rounded-full font-bold cursor-pointer ${
-                    statusFilter === "delivered" ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-700"
+                    statusFilter === "delivered"
+                      ? "bg-emerald-600 text-white"
+                      : "bg-slate-100 text-slate-700"
                   }`}
                 >
                   تم التوصيل ({orders.filter((o) => o.status === "delivered").length})
@@ -1019,14 +1079,18 @@ export function AdminOperationsDashboard({
                         return (
                           <tr key={ord.id} className="hover:bg-sky-50/60 transition group">
                             <td className="py-4 px-4">
-                              <div className="font-mono font-black text-sm text-[#0F4C81]">{ord.orderNumber}</div>
+                              <div className="font-mono font-black text-sm text-[#0F4C81]">
+                                {ord.orderNumber}
+                              </div>
                               <div className="text-[11px] text-slate-500 max-w-[200px] truncate mt-0.5">
                                 {ord.productTitle}
                               </div>
                             </td>
 
                             <td className="py-4 px-4">
-                              <div className="font-bold text-[#0A2540] text-sm">{ord.customerName}</div>
+                              <div className="font-bold text-[#0A2540] text-sm">
+                                {ord.customerName}
+                              </div>
                               <div className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
                                 <MapPin className="w-3 h-3 text-orange-500" />
                                 <span>{ord.customerCity || "صنعاء"}</span>
@@ -1034,9 +1098,14 @@ export function AdminOperationsDashboard({
                             </td>
 
                             <td className="py-4 px-4 font-mono">
-                              <div className="text-slate-700 text-xs font-bold">{ord.customerPhone}</div>
+                              <div className="text-slate-700 text-xs font-bold">
+                                {ord.customerPhone}
+                              </div>
                               <div className="text-[10px] text-sky-700 flex items-center gap-2 mt-0.5 font-bold">
-                                <a href={`tel:${ord.customerPhone.replace(/\D/g, "")}`} className="hover:underline">
+                                <a
+                                  href={`tel:${ord.customerPhone.replace(/\D/g, "")}`}
+                                  className="hover:underline"
+                                >
                                   اتصال
                                 </a>
                                 <span className="opacity-40">|</span>
@@ -1071,15 +1140,18 @@ export function AdminOperationsDashboard({
                             <td className="py-4 px-4 text-center">
                               <select
                                 value={ord.status}
-                                onChange={(e) => handleStatusChange(ord.id, e.target.value as OrderStatus)}
+                                onChange={(e) =>
+                                  handleStatusChange(ord.id, e.target.value as OrderStatus)
+                                }
                                 className={`text-xs font-black rounded-full px-3 py-1 border transition cursor-pointer text-center outline-none ${
                                   ord.status === "delivered"
                                     ? "bg-emerald-50 text-emerald-700 border-emerald-300"
-                                    : ord.status === "shipped" || ord.status === "international_ship"
-                                    ? "bg-sky-50 text-[#0284C7] border-sky-300"
-                                    : ord.status === "cancelled"
-                                    ? "bg-rose-50 text-rose-700 border-rose-300"
-                                    : "bg-amber-50 text-amber-700 border-amber-300"
+                                    : ord.status === "shipped" ||
+                                        ord.status === "international_ship"
+                                      ? "bg-sky-50 text-[#0284C7] border-sky-300"
+                                      : ord.status === "cancelled"
+                                        ? "bg-rose-50 text-rose-700 border-rose-300"
+                                        : "bg-amber-50 text-amber-700 border-amber-300"
                                 }`}
                               >
                                 <option value="delivered">● تم التوصيل</option>
@@ -1136,7 +1208,8 @@ export function AdminOperationsDashboard({
                   طلبات العميل: {selectedClientOrders.clientName}
                 </h3>
                 <p className="text-xs text-slate-500 font-mono mt-0.5">
-                  هاتف: {selectedClientOrders.originalPhone} (آخر 9 أرقام: {selectedClientOrders.phoneLast9})
+                  هاتف: {selectedClientOrders.originalPhone} (آخر 9 أرقام:{" "}
+                  {selectedClientOrders.phoneLast9})
                 </p>
               </div>
               <button
@@ -1150,7 +1223,9 @@ export function AdminOperationsDashboard({
             <div className="p-4 overflow-y-auto space-y-3">
               {selectedClientOrders.orders.map((o, idx) => {
                 const cost = Number(o.total_cost || o.originalPrice || 0);
-                const paid = Number(o.paid !== undefined ? o.paid : o.status === "delivered" ? cost : 0);
+                const paid = Number(
+                  o.paid !== undefined ? o.paid : o.status === "delivered" ? cost : 0,
+                );
                 const rem = cost - paid;
                 return (
                   <div
@@ -1158,13 +1233,17 @@ export function AdminOperationsDashboard({
                     className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 flex items-center justify-between gap-2"
                   >
                     <div>
-                      <div className="font-bold text-xs text-slate-900">{o.productTitle || "طرد بضائع"}</div>
+                      <div className="font-bold text-xs text-slate-900">
+                        {o.productTitle || "طرد بضائع"}
+                      </div>
                       <div className="text-[11px] text-slate-400 mt-0.5 font-mono">
                         #{o.orderNumber} • {o.storeName || "متجر"} • {o.createdAt.split("T")[0]}
                       </div>
                     </div>
                     <div className="text-left font-mono text-xs">
-                      <div>التكلفة: <span className="font-bold">{cost} ر.س</span></div>
+                      <div>
+                        التكلفة: <span className="font-bold">{cost} ر.س</span>
+                      </div>
                       <div className="text-emerald-600">المدفوع: {paid} ر.س</div>
                       <div className={rem > 0 ? "text-red-600 font-bold" : "text-slate-400"}>
                         المتبقي: {rem} ر.س
@@ -1193,7 +1272,10 @@ export function AdminOperationsDashboard({
           <div className="bg-white rounded-2xl max-w-lg w-full p-5 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between border-b pb-3">
               <h3 className="font-black text-sm text-[#0A2540]">كشف حساب مالي للعميل</h3>
-              <button onClick={() => setStatementClient(null)} className="p-1 rounded hover:bg-slate-100 cursor-pointer">
+              <button
+                onClick={() => setStatementClient(null)}
+                className="p-1 rounded hover:bg-slate-100 cursor-pointer"
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -1212,7 +1294,9 @@ export function AdminOperationsDashboard({
               </div>
               <div className="flex justify-between py-1 border-b border-dashed">
                 <span className="text-slate-500">مفتاح الحساب (آخر 9 أرقام):</span>
-                <span className="font-mono font-bold text-sky-700">{statementClient.phoneLast9}</span>
+                <span className="font-mono font-bold text-sky-700">
+                  {statementClient.phoneLast9}
+                </span>
               </div>
               <div className="flex justify-between py-1 border-b border-dashed">
                 <span className="text-slate-500">عدد الطلبات:</span>
@@ -1224,11 +1308,15 @@ export function AdminOperationsDashboard({
               </div>
               <div className="flex justify-between py-1 border-b border-dashed">
                 <span className="text-slate-500">المبلغ المدفوع:</span>
-                <span className="font-bold text-emerald-600">{statementClient.paid.toLocaleString()} ر.س</span>
+                <span className="font-bold text-emerald-600">
+                  {statementClient.paid.toLocaleString()} ر.س
+                </span>
               </div>
               <div className="flex justify-between py-2 bg-red-50 p-2.5 rounded-xl text-red-700 font-bold border border-red-200">
                 <span>المبلغ المتبقي:</span>
-                <span className="font-mono text-sm">{statementClient.remaining.toLocaleString()} ر.س</span>
+                <span className="font-mono text-sm">
+                  {statementClient.remaining.toLocaleString()} ر.س
+                </span>
               </div>
             </div>
             <div className="flex items-center gap-2 pt-2">
@@ -1268,27 +1356,35 @@ export function AdminOperationsDashboard({
 
             <form onSubmit={handleCreateNewOrder} className="space-y-3.5 text-xs">
               <div>
-                <label className="block text-slate-700 font-bold mb-1">اسم العميل المستلم (name) *</label>
+                <label className="block text-slate-700 font-bold mb-1">
+                  اسم العميل المستلم (name) *
+                </label>
                 <input
                   type="text"
                   required
                   placeholder="مثال: محمد عبد الله"
                   value={newOrderForm.customerName}
-                  onChange={(e) => setNewOrderForm({ ...newOrderForm, customerName: e.target.value })}
+                  onChange={(e) =>
+                    setNewOrderForm({ ...newOrderForm, customerName: e.target.value })
+                  }
                   className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] border border-slate-200 text-[#0A2540] outline-none focus:bg-white focus:border-[#0284C7]"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-700 font-bold mb-1">رقم الهاتف (phone) *</label>
+                  <label className="block text-slate-700 font-bold mb-1">
+                    رقم الهاتف (phone) *
+                  </label>
                   <input
                     type="text"
                     required
                     dir="ltr"
                     placeholder="770000000"
                     value={newOrderForm.customerPhone}
-                    onChange={(e) => setNewOrderForm({ ...newOrderForm, customerPhone: e.target.value })}
+                    onChange={(e) =>
+                      setNewOrderForm({ ...newOrderForm, customerPhone: e.target.value })
+                    }
                     className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] border border-slate-200 text-[#0A2540] font-mono text-left outline-none focus:bg-white focus:border-[#0284C7]"
                   />
                 </div>
@@ -1298,7 +1394,9 @@ export function AdminOperationsDashboard({
                     type="text"
                     placeholder="صنعاء / عدن / تعز"
                     value={newOrderForm.customerCity}
-                    onChange={(e) => setNewOrderForm({ ...newOrderForm, customerCity: e.target.value })}
+                    onChange={(e) =>
+                      setNewOrderForm({ ...newOrderForm, customerCity: e.target.value })
+                    }
                     className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] border border-slate-200 text-[#0A2540] outline-none focus:bg-white focus:border-[#0284C7]"
                   />
                 </div>
@@ -1309,7 +1407,9 @@ export function AdminOperationsDashboard({
                   <label className="block text-slate-700 font-bold mb-1">المتجر / المصدر</label>
                   <select
                     value={newOrderForm.storeName}
-                    onChange={(e) => setNewOrderForm({ ...newOrderForm, storeName: e.target.value })}
+                    onChange={(e) =>
+                      setNewOrderForm({ ...newOrderForm, storeName: e.target.value })
+                    }
                     className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] border border-slate-200 text-[#0A2540] font-bold outline-none focus:bg-white focus:border-[#0284C7]"
                   >
                     <option value="SHEIN">شي إن (SHEIN)</option>
@@ -1320,12 +1420,16 @@ export function AdminOperationsDashboard({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-slate-700 font-bold mb-1">المبلغ المطلوب تحصيله (SAR)</label>
+                  <label className="block text-slate-700 font-bold mb-1">
+                    المبلغ المطلوب تحصيله (SAR)
+                  </label>
                   <input
                     type="number"
                     placeholder="150"
                     value={newOrderForm.originalPrice}
-                    onChange={(e) => setNewOrderForm({ ...newOrderForm, originalPrice: e.target.value })}
+                    onChange={(e) =>
+                      setNewOrderForm({ ...newOrderForm, originalPrice: e.target.value })
+                    }
                     className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] border border-slate-200 text-[#0A2540] font-mono outline-none focus:bg-white focus:border-[#0284C7]"
                   />
                 </div>
@@ -1337,7 +1441,9 @@ export function AdminOperationsDashboard({
                   type="text"
                   placeholder="مثال: فستان بناتي + حذاء رياضي"
                   value={newOrderForm.productTitle}
-                  onChange={(e) => setNewOrderForm({ ...newOrderForm, productTitle: e.target.value })}
+                  onChange={(e) =>
+                    setNewOrderForm({ ...newOrderForm, productTitle: e.target.value })
+                  }
                   className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] border border-slate-200 text-[#0A2540] outline-none focus:bg-white focus:border-[#0284C7]"
                 />
               </div>
@@ -1405,7 +1511,9 @@ export function AdminOperationsDashboard({
             {quickScanResult && (
               <div className="mt-4 p-4 rounded-2xl bg-sky-50 border border-sky-200 space-y-2 text-xs">
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-[#0F4C81] font-black">{quickScanResult.orderNumber}</span>
+                  <span className="font-mono text-[#0F4C81] font-black">
+                    {quickScanResult.orderNumber}
+                  </span>
                   <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold">
                     {quickScanResult.status}
                   </span>
@@ -1430,11 +1538,21 @@ export function AdminOperationsDashboard({
               <p className="text-xs text-slate-500 font-mono mt-0.5">{printingOrder.orderNumber}</p>
             </div>
             <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-right space-y-1.5">
-              <div><strong>العميل (name):</strong> {printingOrder.customerName}</div>
-              <div><strong>الهاتف (phone):</strong> {printingOrder.customerPhone}</div>
-              <div><strong>المدينة (city):</strong> {printingOrder.customerCity || "صنعاء"}</div>
-              <div><strong>المحتوى:</strong> {printingOrder.productTitle}</div>
-              <div><strong>المبلغ المطلوب:</strong> {printingOrder.originalPrice} ر.س</div>
+              <div>
+                <strong>العميل (name):</strong> {printingOrder.customerName}
+              </div>
+              <div>
+                <strong>الهاتف (phone):</strong> {printingOrder.customerPhone}
+              </div>
+              <div>
+                <strong>المدينة (city):</strong> {printingOrder.customerCity || "صنعاء"}
+              </div>
+              <div>
+                <strong>المحتوى:</strong> {printingOrder.productTitle}
+              </div>
+              <div>
+                <strong>المبلغ المطلوب:</strong> {printingOrder.originalPrice} ر.س
+              </div>
             </div>
             <div className="flex items-center justify-center gap-2">
               <button
@@ -1470,11 +1588,11 @@ export const Route = (createFileRoute as any)("/admin-clients")({
       { title: "لوحة العمليات والإدارة | السوق الشامل AL SHAMEL" },
       {
         name: "description",
-        content: "لوحة عمليات الشحن والفرز وإدارة الطلبات والعملاء لمنظومة السوق الشامل."
-      }
-    ]
+        content: "لوحة عمليات الشحن والفرز وإدارة الطلبات والعملاء لمنظومة السوق الشامل.",
+      },
+    ],
   }),
-  component: AdminOperationsDashboard
+  component: AdminOperationsDashboard,
 });
 
 export default AdminOperationsDashboard;

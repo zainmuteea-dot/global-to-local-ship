@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 interface SheinResult {
   price: number;
   currency: string;
-  title?: string;
+  title?: string | undefined;
 }
 
 const UA_HEADERS = {
@@ -45,8 +45,7 @@ async function fetchHtml(url: string): Promise<string> {
 
 function extract(html: string): SheinResult | null {
   // 1) JSON-LD
-  const jsonLdRegex =
-    /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  const jsonLdRegex = /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
 
   let match: RegExpExecArray | null;
 
@@ -62,10 +61,7 @@ function extract(html: string): SheinResult | null {
         for (const graphItem of graphItems) {
           const type = graphItem["@type"];
 
-          if (
-            type === "Product" ||
-            (Array.isArray(type) && type.includes("Product"))
-          ) {
+          if (type === "Product" || (Array.isArray(type) && type.includes("Product"))) {
             const offers = graphItem.offers || {};
             const offer = Array.isArray(offers) ? offers[0] : offers;
             const price = Number(offer?.price ?? offer?.lowPrice);
@@ -74,9 +70,7 @@ function extract(html: string): SheinResult | null {
               return {
                 price,
                 currency: String(offer?.priceCurrency || "USD"),
-                title: graphItem.name
-                  ? String(graphItem.name)
-                  : undefined,
+                title: graphItem.name ? String(graphItem.name) : undefined,
               };
             }
           }
@@ -93,11 +87,8 @@ function extract(html: string): SheinResult | null {
   const stateMatch = stateRegex.exec(html);
 
   if (stateMatch) {
-    const priceRegex =
-      /"(?:salePrice|retailPrice|detailPrice|price)"\s*:\s*"?([\d.]+)"?/;
-    const priceMatch = priceRegex.exec(
-      (stateMatch[0] || "") + html.slice(0, 20_000),
-    );
+    const priceRegex = /"(?:salePrice|retailPrice|detailPrice|price)"\s*:\s*"?([\d.]+)"?/;
+    const priceMatch = priceRegex.exec((stateMatch[0] || "") + html.slice(0, 20_000));
 
     const currencyRegex = /"currency"\s*:\s*"([A-Z]{3})"/;
     const currencyMatch = currencyRegex.exec(html.slice(0, 50_000));
@@ -115,9 +106,10 @@ function extract(html: string): SheinResult | null {
   }
 
   // 3) وسوم السعر الوصفية
-  const metaPrice = /<meta[^>]*property=["'](?:product:price:amount|og:price:amount)["'][^>]*content=["']([\d.]+)["']/i.exec(
-    html,
-  );
+  const metaPrice =
+    /<meta[^>]*property=["'](?:product:price:amount|og:price:amount)["'][^>]*content=["']([\d.]+)["']/i.exec(
+      html,
+    );
   const metaCurrency =
     /<meta[^>]*property=["'](?:product:price:currency|og:price:currency)["'][^>]*content=["']([A-Z]{3})["']/i.exec(
       html,
@@ -143,9 +135,7 @@ export const Route = createFileRoute("/api/shein-price")({
       GET: async ({ request }) => {
         const requestUrl = new URL(request.url);
         const target = requestUrl.searchParams.get("url") || "";
-        const currency = (
-          requestUrl.searchParams.get("currency") || "USD"
-        ).toUpperCase();
+        const currency = (requestUrl.searchParams.get("currency") || "USD").toUpperCase();
 
         if (!/^https?:\/\/([a-z0-9-]+\.)?shein\.com\//i.test(target)) {
           return Response.json({ error: "invalid-url" }, { status: 400 });
@@ -160,23 +150,26 @@ export const Route = createFileRoute("/api/shein-price")({
           }
 
           let price = found.price;
+          let resultCurrency = found.currency;
 
           if (currency !== found.currency) {
             try {
               const timeout = withTimeout(8_000);
 
-              const response = await fetch(
-                `https://open.er-api.com/v6/latest/${found.currency}`,
-                { signal: timeout.signal },
-              );
-
-              const data = await response.json();
-              timeout.done();
-
-              const rate = data?.rates?.[currency];
-
-              if (rate) {
-                price = Math.round(price * Number(rate) * 100) / 100;
+              try {
+                const response = await fetch(
+                  `https://open.er-api.com/v6/latest/${encodeURIComponent(found.currency)}`,
+                  { signal: timeout.signal },
+                );
+                if (!response.ok) throw new Error("exchange-rate-unavailable");
+                const data = await response.json();
+                const rate = Number(data?.rates?.[currency]);
+                if (Number.isFinite(rate) && rate > 0) {
+                  price = Math.round(price * rate * 100) / 100;
+                  resultCurrency = currency;
+                }
+              } finally {
+                timeout.done();
               }
             } catch {
               // عند تعذر تحويل العملة، أعد السعر الأصلي كما كان.
@@ -185,13 +178,11 @@ export const Route = createFileRoute("/api/shein-price")({
 
           return Response.json({
             price,
-            currency: found.currency === currency ? currency : found.currency,
+            currency: resultCurrency,
             title: found.title,
           });
         } catch (error) {
-          const message = String(
-            (error as { message?: string })?.message || "",
-          );
+          const message = String((error as { message?: string })?.message || "");
 
           if (message.includes("abort")) {
             return Response.json({ error: "timeout" }, { status: 504 });

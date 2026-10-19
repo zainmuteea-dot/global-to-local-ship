@@ -62,12 +62,15 @@ function ForgotPasswordPage() {
             disabled={loading}
             className="w-full mt-5 bg-[#3b2416] text-white rounded-full py-4 font-bold disabled:opacity-50"
           >
-            {loading? "جاري الإرسال..." : "إرسال رابط الاستعادة"}
+            {loading ? "جاري الإرسال..." : "إرسال رابط الاستعادة"}
           </button>
         </form>
 
         <div className="text-center mt-5">
-          <Link to="/login" className="text-sm text-[#3b2416] font-semibold underline inline-flex items-center gap-1">
+          <Link
+            to="/login"
+            className="text-sm text-[#3b2416] font-semibold underline inline-flex items-center gap-1"
+          >
             <ArrowRight className="w-4 h-4" /> العودة لتسجيل الدخول
           </Link>
         </div>

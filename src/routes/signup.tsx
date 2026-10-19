@@ -22,13 +22,29 @@ export const Route = createFileRoute("/signup")({
  */
 function normalizeYemenPhone(value: string): string {
   const digitMap: Record<string, string> = {
-    "٠": "0", "١": "1", "٢": "2", "٣": "3", "٤": "4",
-    "٥": "5", "٦": "6", "٧": "7", "٨": "8", "٩": "9",
-    "۰": "0", "۱": "1", "۲": "2", "۳": "3", "۴": "4",
-    "۵": "5", "۶": "6", "۷": "7", "۸": "8", "۹": "9",
+    "٠": "0",
+    "١": "1",
+    "٢": "2",
+    "٣": "3",
+    "٤": "4",
+    "٥": "5",
+    "٦": "6",
+    "٧": "7",
+    "٨": "8",
+    "٩": "9",
+    "۰": "0",
+    "۱": "1",
+    "۲": "2",
+    "۳": "3",
+    "۴": "4",
+    "۵": "5",
+    "۶": "6",
+    "۷": "7",
+    "۸": "8",
+    "۹": "9",
   };
 
-  const asciiValue = value.replace(/[٠-٩۰-۹]/g, (digit) => digitMap[digit]);
+  const asciiValue = value.replace(/[٠-٩۰-۹]/g, (digit) => digitMap[digit] ?? digit);
   if (!/^[+0-9\s().-]+$/.test(asciiValue.trim())) {
     throw new Error("أدخل رقم الهاتف بالأرقام فقط، مثل 7XXXXXXXX.");
   }
@@ -108,7 +124,7 @@ export function SignupPage() {
           (message.includes("phone") && message.includes("disabled"))
         ) {
           throw new Error(
-            "تسجيل الهاتف معطّل في مشروع Supabase المتصل بالتطبيق. من لوحة Supabase افتح Authentication → Sign In / Providers، فعّل Phone، واحفظ الإعدادات."
+            "تسجيل الهاتف معطّل في مشروع Supabase المتصل بالتطبيق. من لوحة Supabase افتح Authentication → Sign In / Providers، فعّل Phone، واحفظ الإعدادات.",
           );
         }
 
@@ -118,7 +134,7 @@ export function SignupPage() {
           message.includes("sign ups are disabled")
         ) {
           throw new Error(
-            "تسجيل المستخدمين الجدد معطّل في مشروع Supabase. فعّل Allow new users to sign up من إعدادات المصادقة ثم أعد المحاولة."
+            "تسجيل المستخدمين الجدد معطّل في مشروع Supabase. فعّل Allow new users to sign up من إعدادات المصادقة ثم أعد المحاولة.",
           );
         }
 
@@ -128,7 +144,7 @@ export function SignupPage() {
           message.includes("user already")
         ) {
           throw new Error(
-            "هذا الرقم مسجل مسبقًا. سجّل الدخول أو تواصل مع الإدارة لاستعادة الحساب."
+            "هذا الرقم مسجل مسبقًا. سجّل الدخول أو تواصل مع الإدارة لاستعادة الحساب.",
           );
         }
 
@@ -142,7 +158,7 @@ export function SignupPage() {
       // يلزم تعطيل تأكيد الهاتف في Supabase حتى ينشأ تسجيل دخول فوري بلا رمز.
       if (!data.session) {
         setError(
-          "تم إنشاء الحساب، لكن لم يتم تسجيل الدخول تلقائيًا. عطّل تأكيد الهاتف (Confirm phone) في إعدادات Supabase ثم أعد المحاولة أو سجّل الدخول."
+          "تم إنشاء الحساب، لكن لم يتم تسجيل الدخول تلقائيًا. عطّل تأكيد الهاتف (Confirm phone) في إعدادات Supabase ثم أعد المحاولة أو سجّل الدخول.",
         );
         return;
       }
@@ -170,7 +186,7 @@ export function SignupPage() {
       setError(
         submitError instanceof Error
           ? submitError.message
-          : "حدث خطأ أثناء إنشاء الحساب. تحقق من البيانات وحاول مرة أخرى."
+          : "حدث خطأ أثناء إنشاء الحساب. تحقق من البيانات وحاول مرة أخرى.",
       );
     } finally {
       setLoading(false);

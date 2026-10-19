@@ -132,7 +132,6 @@ export function AdminSidebar({
 
         {/* 3. عناصر وأزرار القائمة */}
         <div className="flex-1 overflow-y-auto px-3 py-3 space-y-4 text-xs scrollbar-thin scrollbar-thumb-sky-900/40">
-          
           {/* ================= القسم 1: التسوق وخدمات العملاء ================= */}
           <div className="space-y-1">
             <div className="px-2 pb-1 text-[11px] font-black text-sky-400">
@@ -237,7 +236,11 @@ export function AdminSidebar({
                   <Tag className="size-4 text-amber-500" />
                   <span>الأسعار والشحن</span>
                 </div>
-                {isPricesOpen ? <ChevronUp className="size-3.5 opacity-60" /> : <ChevronDown className="size-3.5 opacity-60" />}
+                {isPricesOpen ? (
+                  <ChevronUp className="size-3.5 opacity-60" />
+                ) : (
+                  <ChevronDown className="size-3.5 opacity-60" />
+                )}
               </button>
               {isPricesOpen && (
                 <div className="pr-7 pl-2 py-1 space-y-1 text-[11px] font-semibold text-slate-300">
@@ -257,14 +260,24 @@ export function AdminSidebar({
                   <ShoppingBag className="size-4 text-emerald-400" />
                   <span>المتجر الإلكتروني</span>
                 </div>
-                {isStoreOpen ? <ChevronUp className="size-3.5 opacity-60" /> : <ChevronDown className="size-3.5 opacity-60" />}
+                {isStoreOpen ? (
+                  <ChevronUp className="size-3.5 opacity-60" />
+                ) : (
+                  <ChevronDown className="size-3.5 opacity-60" />
+                )}
               </button>
               {isStoreOpen && (
                 <div className="pr-7 pl-2 py-1 space-y-1 text-[11px] font-semibold text-slate-300">
-                  <div onClick={() => handleLinkClick("/")} className="px-2.5 py-1 rounded-lg hover:bg-[#0B1E36] hover:text-white transition cursor-pointer">
+                  <div
+                    onClick={() => handleLinkClick("/")}
+                    className="px-2.5 py-1 rounded-lg hover:bg-[#0B1E36] hover:text-white transition cursor-pointer"
+                  >
                     • المنتجات المميزة والشائعة
                   </div>
-                  <div onClick={() => handleLinkClick("/new-order")} className="px-2.5 py-1 rounded-lg hover:bg-[#0B1E36] hover:text-white transition cursor-pointer">
+                  <div
+                    onClick={() => handleLinkClick("/new-order")}
+                    className="px-2.5 py-1 rounded-lg hover:bg-[#0B1E36] hover:text-white transition cursor-pointer"
+                  >
                     • استيراد منتج من رابط خارجي
                   </div>
                 </div>
@@ -275,7 +288,9 @@ export function AdminSidebar({
           {/* ================= القسم 2: الإدارة المالية والمحاسبية ================= */}
           <div className="space-y-1 pt-1 border-t border-slate-800/60">
             <div className="px-2 py-1 flex items-center justify-between">
-              <span className="text-[11px] font-black text-sky-400">الإدارة المالية والمحاسبية</span>
+              <span className="text-[11px] font-black text-sky-400">
+                الإدارة المالية والمحاسبية
+              </span>
               <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-cyan-950 text-cyan-300 border border-cyan-800/40">
                 3 عملات YEM/SAR/USD
               </span>
@@ -338,7 +353,11 @@ export function AdminSidebar({
                   <span className="px-1.5 py-0.2 rounded text-[10px] font-mono font-bold bg-amber-950/80 text-amber-300 border border-amber-800/30">
                     [70]
                   </span>
-                  {isAccountsTreeOpen ? <ChevronUp className="size-3.5 opacity-60" /> : <ChevronDown className="size-3.5 opacity-60" />}
+                  {isAccountsTreeOpen ? (
+                    <ChevronUp className="size-3.5 opacity-60" />
+                  ) : (
+                    <ChevronDown className="size-3.5 opacity-60" />
+                  )}
                 </div>
               </button>
 
@@ -388,7 +407,9 @@ export function AdminSidebar({
 
           {/* ================= قسم الفواتير والمخزون والمرتجعات ================= */}
           <div className="space-y-1 pt-1 border-t border-slate-800/60">
-            <div className="px-2 py-1 text-[11px] font-black text-sky-400">الفواتير والمخزون والمرتجعات</div>
+            <div className="px-2 py-1 text-[11px] font-black text-sky-400">
+              الفواتير والمخزون والمرتجعات
+            </div>
             <div className="pr-3 pl-2 space-y-1 text-[11px] font-semibold text-slate-300">
               <SubLink path="/purchase-invoices" label="فواتير المشتريات والموردين" />
               <SubLink path="/sales-invoices" label="فواتير المبيعات للعملاء" />
@@ -450,14 +471,24 @@ export function AdminSidebar({
                   <Users className="size-4 text-sky-400" />
                   <span>العملاء والمستخدمون</span>
                 </div>
-                {isUsersOpen ? <ChevronUp className="size-3.5 opacity-60" /> : <ChevronDown className="size-3.5 opacity-60" />}
+                {isUsersOpen ? (
+                  <ChevronUp className="size-3.5 opacity-60" />
+                ) : (
+                  <ChevronDown className="size-3.5 opacity-60" />
+                )}
               </button>
               {isUsersOpen && (
                 <div className="pr-7 pl-2 py-1 space-y-1 text-[11px] font-semibold text-slate-300">
-                  <div onClick={() => handleLinkClick("/customers")} className="px-2.5 py-1 rounded-lg hover:bg-[#0B1E36] hover:text-white transition cursor-pointer">
+                  <div
+                    onClick={() => handleLinkClick("/customers")}
+                    className="px-2.5 py-1 rounded-lg hover:bg-[#0B1E36] hover:text-white transition cursor-pointer"
+                  >
                     • إدارة بيانات العملاء
                   </div>
-                  <div onClick={() => handleLinkClick("/accounts")} className="px-2.5 py-1 rounded-lg hover:bg-[#0B1E36] hover:text-white transition cursor-pointer">
+                  <div
+                    onClick={() => handleLinkClick("/accounts")}
+                    className="px-2.5 py-1 rounded-lg hover:bg-[#0B1E36] hover:text-white transition cursor-pointer"
+                  >
                     • دليل الحسابات وأرصدة العملاء
                   </div>
                 </div>
@@ -474,7 +505,11 @@ export function AdminSidebar({
                   <UserCog className="size-4 text-amber-400" />
                   <span>الموارد البشرية (الموظفين)</span>
                 </div>
-                {isHrOpen ? <ChevronUp className="size-3.5 opacity-60" /> : <ChevronDown className="size-3.5 opacity-60" />}
+                {isHrOpen ? (
+                  <ChevronUp className="size-3.5 opacity-60" />
+                ) : (
+                  <ChevronDown className="size-3.5 opacity-60" />
+                )}
               </button>
               {isHrOpen && (
                 <div className="pr-7 pl-2 py-1 space-y-1 text-[11px] font-semibold text-slate-300">
@@ -519,7 +554,11 @@ export function AdminSidebar({
                   <FileText className="size-4 text-rose-400" />
                   <span>التقارير المالية والتشغيلية</span>
                 </div>
-                {isReportsOpen ? <ChevronUp className="size-3.5 opacity-60" /> : <ChevronDown className="size-3.5 opacity-60" />}
+                {isReportsOpen ? (
+                  <ChevronUp className="size-3.5 opacity-60" />
+                ) : (
+                  <ChevronDown className="size-3.5 opacity-60" />
+                )}
               </button>
               {isReportsOpen && (
                 <div className="pr-7 pl-2 py-1 space-y-1 text-[11px] font-semibold text-slate-300">
@@ -560,7 +599,6 @@ export function AdminSidebar({
               <ChevronLeft className="size-3.5 opacity-50" />
             </div>
           </div>
-
         </div>
 
         {/* زر كشف حساب العملاء في موضع العلامة أسفل القائمة */}
