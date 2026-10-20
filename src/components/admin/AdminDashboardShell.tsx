@@ -20,22 +20,22 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
-type DashboardStats = {
-  activeShipments: number;
-  followUpOrders: number;
-  completedShipments: number;
-  totalCollected: string;
+export type DashboardStats = {
+  activeShipments: number | null;
+  followUpOrders: number | null;
+  completedShipments: number | null;
+  totalCollected: string | null;
 };
 
-type ShipmentPreview = {
+export type ShipmentPreview = {
   id: string;
   status: string;
   detail: string;
-  progress: number;
+  progress: number | null;
   tone: "blue" | "green" | "orange";
 };
 
-type ActivityPreview = {
+export type ActivityPreview = {
   icon: "plus" | "truck" | "alert";
   text: string;
   time: string;
@@ -43,6 +43,8 @@ type ActivityPreview = {
 
 type AdminDashboardShellProps = {
   children?: ReactNode;
+  toolbar?: ReactNode;
+  dataNotice?: string;
   /** Pass current database-backed values when integrating; defaults are clearly marked as samples. */
   stats?: DashboardStats;
   shipments?: ShipmentPreview[];
@@ -162,6 +164,8 @@ function shipmentTone(tone: ShipmentPreview["tone"]) {
 
 export function AdminDashboardShell({
   children,
+  toolbar,
+  dataNotice = "بيانات نموذج التصميم، وليست قراءة مباشرة من قاعدة البيانات",
   stats = SAMPLE_STATS,
   shipments = SAMPLE_SHIPMENTS,
   activities = SAMPLE_ACTIVITIES,
@@ -342,6 +346,13 @@ export function AdminDashboardShell({
               />
             </label>
           </div>
+          {toolbar ? (
+            <div className="border-t border-slate-100 bg-white px-4 py-3 sm:px-7 lg:px-9">
+              <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-3">
+                {toolbar}
+              </div>
+            </div>
+          ) : null}
         </header>
 
         <main className="mx-auto w-full max-w-[1600px] space-y-6 px-4 py-6 sm:px-7 lg:px-9 lg:py-8">
@@ -350,36 +361,36 @@ export function AdminDashboardShell({
               <p className="text-sm font-semibold text-slate-500">نظرة سريعة على حركة الأعمال</p>
             </div>
             <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] font-bold text-amber-800">
-              بيانات نموذج التصميم، وليست قراءة مباشرة من قاعدة البيانات
+              {dataNotice}
             </span>
           </div>
 
           <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4" aria-label="إحصائيات اليوم">
             <MetricCard
               title="مجموع الشحنات النشطة"
-              value={String(stats.activeShipments)}
-              note="↑ 12% عن الشهر الماضي"
+              value={stats.activeShipments === null ? "—" : String(stats.activeShipments)}
+              note={stats.activeShipments === null ? "بانتظار تحميل بيانات الطلبات" : "عدد فعلي من جدول الطلبات"}
               tone="blue"
               icon={<Truck className="size-5" />}
             />
             <MetricCard
               title="طلبات تحتاج متابعة"
-              value={String(stats.followUpOrders)}
-              note="تحتاج إلى متابعة فورية"
+              value={stats.followUpOrders === null ? "—" : String(stats.followUpOrders)}
+              note={stats.followUpOrders === null ? "بانتظار تحميل بيانات الطلبات" : "طلبات جديدة أو قيد المراجعة"}
               tone="orange"
               icon={<Clock3 className="size-5" />}
             />
             <MetricCard
               title="شحنات مكتملة"
-              value={String(stats.completedShipments)}
-              note="↑ 20% عن الأسبوع الماضي"
+              value={stats.completedShipments === null ? "—" : String(stats.completedShipments)}
+              note={stats.completedShipments === null ? "بانتظار تحميل بيانات الطلبات" : "حالات التسليم في جدول الطلبات"}
               tone="green"
               icon={<Check className="size-5" />}
             />
             <MetricCard
               title="إجمالي التحصيل"
-              value={`SAR ${stats.totalCollected}`}
-              note="↑ 8% عن الشهر الماضي"
+              value={stats.totalCollected === null ? "—" : `SAR ${stats.totalCollected}`}
+              note={stats.totalCollected === null ? "يلزم ربط مصدر مالي موثوق" : "قيمة التحصيل من المصدر المالي"}
               tone="purple"
               icon={<CircleDollarSign className="size-5" />}
             />
@@ -391,7 +402,9 @@ export function AdminDashboardShell({
               action="عرض الكل"
               onAction={onViewAllShipments ?? (() => window.location.assign("/admin-tracking"))}
             >
-              <div className="divide-y divide-slate-100">
+              {shipments.length === 0 ? (
+                <p className="py-6 text-center text-sm font-medium text-slate-400">لا توجد شحنات متاحة للعرض حالياً.</p>
+              ) : <div className="divide-y divide-slate-100">
                 {shipments.map((shipment) => {
                   const tone = shipmentTone(shipment.tone);
                   return (
@@ -406,23 +419,25 @@ export function AdminDashboardShell({
                         </span>
                       </div>
                       <p className="mt-3 text-sm leading-6 text-slate-500">{shipment.detail}</p>
-                      <div
-                        className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100"
-                        role="progressbar"
-                        aria-label={`تقدم الشحنة ${shipment.id}`}
-                        aria-valuemin={0}
-                        aria-valuemax={100}
-                        aria-valuenow={shipment.progress}
-                      >
+                      {shipment.progress !== null ? (
                         <div
-                          className={`h-full rounded-full transition-all ${tone.bar}`}
-                          style={{ width: `${shipment.progress}%` }}
-                        />
-                      </div>
+                          className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100"
+                          role="progressbar"
+                          aria-label={`تقدم الشحنة ${shipment.id}`}
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                          aria-valuenow={shipment.progress}
+                        >
+                          <div
+                            className={`h-full rounded-full transition-all ${tone.bar}`}
+                            style={{ width: `${shipment.progress}%` }}
+                          />
+                        </div>
+                      ) : null}
                     </article>
                   );
                 })}
-              </div>
+              </div>}
             </Panel>
 
             <Panel
@@ -430,7 +445,9 @@ export function AdminDashboardShell({
               action="عرض الكل"
               onAction={onViewAllActivity ?? (() => window.location.assign("/notifications"))}
             >
-              <div className="divide-y divide-slate-100">
+              {activities.length === 0 ? (
+                <p className="py-6 text-center text-sm font-medium text-slate-400">لا توجد أنشطة مسجلة لعرضها.</p>
+              ) : <div className="divide-y divide-slate-100">
                 {activities.map((activity, index) => (
                   <article key={`${activity.time}-${index}`} className="flex gap-3.5 py-4 first:pt-1 last:pb-1">
                     <ActivityIcon type={activity.icon} />
@@ -440,7 +457,7 @@ export function AdminDashboardShell({
                     </div>
                   </article>
                 ))}
-              </div>
+              </div>}
             </Panel>
           </section>
 
