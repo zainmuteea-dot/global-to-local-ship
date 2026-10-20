@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 type Session = Awaited<ReturnType<typeof supabase.auth.getSession>>["data"]["session"];
 
-type AdminRouteGuardProps = {
+export type AdminRouteGuardProps = {
   children: ReactNode;
   /** Test seam; production leaves this unset and redirects to login. */
   onUnauthorized?: (reason?: string) => void;
@@ -156,3 +156,5 @@ export function AdminRouteGuard({
 
   return <>{children}</>;
 }
+
+export default AdminRouteGuard;
