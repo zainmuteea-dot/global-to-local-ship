@@ -719,7 +719,7 @@ export function HomePage() {
           <span>نستورد لك من أشهر المتاجر العالمية</span>
           <span className="w-8 h-0.5 bg-orange-400 rounded-full" />
         </p>
-        <div className="mx-auto grid max-w-[750px] grid-cols-5 gap-3 sm:gap-4 py-5" dir="ltr">
+        <div className="mx-auto grid max-w-[750px] grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 sm:gap-4 py-5" dir="ltr">
           {platforms.map((p) => (
             <div
               key={p.name}
