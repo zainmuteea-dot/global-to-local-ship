@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 export type TextBeeCheckResult = {
@@ -41,3 +42,4 @@ export async function checkTextBeeConfiguration(): Promise<TextBeeCheckResult> {
 
   return data as TextBeeCheckResult;
 }
+
