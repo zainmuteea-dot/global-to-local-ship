@@ -578,6 +578,41 @@ export function HomePage() {
   border-radius: 16px !important;
   box-shadow: 0 0 15px rgba(0,255,255,0.5), 0 0 25px rgba(255,122,0,0.4);
 }
+/* بطاقات المتاجر: زجاج واضح مع لمعة خفيفة */
+.als-store-tile {
+  isolation: isolate;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.17), rgba(255, 255, 255, 0.055));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 10px 26px rgba(0, 0, 0, 0.2);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  transition: transform 300ms ease, border-color 300ms ease, box-shadow 300ms ease;
+}
+.als-store-tile:hover {
+  border-color: rgba(125, 211, 252, 0.62);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 14px 34px rgba(2, 132, 199, 0.25);
+}
+.als-store-tile--temu {
+  border-color: rgba(255, 122, 0, 0.62);
+  background: linear-gradient(145deg, rgba(255, 122, 0, 0.3), rgba(255, 255, 255, 0.07));
+}
+.als-store-tile--temu:hover {
+  border-color: rgba(255, 170, 80, 0.9);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 14px 34px rgba(249, 115, 22, 0.3);
+}
+.als-store-shine {
+  z-index: 1;
+  background: linear-gradient(110deg, transparent 20%, rgba(255, 255, 255, 0.2) 50%, transparent 80%);
+  transform: translateX(-120%);
+  transition: transform 700ms ease;
+}
+.als-store-tile:hover .als-store-shine {
+  transform: translateX(120%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .als-store-tile, .als-store-shine { transition: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .card-fixed, .testimonial-fixed { animation: none !important; }
 }
