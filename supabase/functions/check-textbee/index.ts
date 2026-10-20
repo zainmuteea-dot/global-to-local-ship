@@ -46,10 +46,12 @@ Deno.serve(async (req) => {
     _user_id: authData.user.id,
     _role: "admin",
   });
+
   if (roleError) {
     console.error("check-textbee: admin role check failed", roleError.message);
     return json(500, { error: "تعذر التحقق من صلاحية المدير." });
   }
+
   if (isAdmin !== true) return json(403, { error: "الفحص متاح للمدير فقط." });
 
   if (!textbeeApiKey) {
