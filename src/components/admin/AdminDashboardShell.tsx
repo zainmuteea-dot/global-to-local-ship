@@ -308,7 +308,7 @@ export function AdminDashboardShell({
                   لوحة القيادة
                 </h1>
                 <p className="mt-0.5 text-xs font-medium text-slate-500 sm:text-sm">
-                  ملخص أداء اليوم - 15 أكتوبر 2024
+                  ملخص أداء اليوم - {new Intl.DateTimeFormat("ar", { day: "numeric", month: "long", year: "numeric" }).format(new Date())}
                 </p>
               </div>
             </div>
