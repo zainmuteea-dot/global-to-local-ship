@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 export type TextBeeCheckResult = {
@@ -7,7 +6,9 @@ export type TextBeeCheckResult = {
   message: string;
 };
 
-/** Checks server-side TextBee credentials without sending an SMS. Admin only. */
+/**
+ * فحص إعدادات TextBee على الخادم دون إرسال رسائل فعلية (خاص بالمدير فقط).
+ */
 export async function checkTextBeeConfiguration(): Promise<TextBeeCheckResult> {
   const { data, error } = await supabase.functions.invoke("check-textbee", {
     body: {},
@@ -17,14 +18,15 @@ export async function checkTextBeeConfiguration(): Promise<TextBeeCheckResult> {
     let serverMessage: string | undefined;
     const context = error.context;
 
-    if (context instanceof Response) {
+    // قراءة رسالة الخطأ بأمان من الـ Response في كافة البيئات
+    if (context && typeof (context as { clone?: () => Response }).clone === "function") {
       try {
-        const responseBody = await context.clone().json();
+        const responseBody = await (context as Response).clone().json();
         if (typeof responseBody?.error === "string") {
           serverMessage = responseBody.error;
         }
       } catch {
-        // Fall through to the SDK error.
+        // العودة لرسالة الخطأ الافتراضية إذا تعذر فك التشفير
       }
     }
 
@@ -43,3 +45,4 @@ export async function checkTextBeeConfiguration(): Promise<TextBeeCheckResult> {
   return data as TextBeeCheckResult;
 }
 
+export default checkTextBeeConfiguration;
