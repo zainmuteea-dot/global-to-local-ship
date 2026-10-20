@@ -25,8 +25,8 @@ import {
   FileText,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { AdminRouteGuard } from "@/components/admin/AdminRouteGuard";
 
-const supabaseClientInstance: any = supabase;
 
 // ==========================================
 // 1. الأنواع والبيانات (DATA TYPES)
@@ -40,6 +40,71 @@ export type OrderStatus =
   | "shipped"
   | "delivered"
   | "cancelled";
+
+const DATABASE_STATUS_TO_UI: Record<string, OrderStatus> = {
+  جديد: "new",
+  "قيد المراجعة": "reviewing",
+  "تم التواصل": "reviewing",
+  "تم الشراء": "purchased",
+  "المستودع الدولي": "warehouse_china",
+  "شحن دولي": "international_ship",
+  "تم الشحن": "shipped",
+  "الفرز والتوصيل": "shipped",
+  "تم التسليم": "delivered",
+  وصل: "delivered",
+  ملغي: "cancelled",
+  new: "new",
+  reviewing: "reviewing",
+  purchased: "purchased",
+  warehouse_china: "warehouse_china",
+  international_ship: "international_ship",
+  shipped: "shipped",
+  delivered: "delivered",
+  cancelled: "cancelled",
+};
+
+const UI_STATUS_TO_DATABASE: Record<OrderStatus, string> = {
+  new: "جديد",
+  reviewing: "قيد المراجعة",
+  purchased: "تم الشراء",
+  warehouse_china: "المستودع الدولي",
+  international_ship: "شحن دولي",
+  shipped: "الفرز والتوصيل",
+  delivered: "تم التسليم",
+  cancelled: "ملغي",
+};
+
+function mapDatabaseOrder(row: any): OrderItem {
+  const id = String(row.id);
+  const trackingCode = String(row.tracking_code || `SC-${id.slice(0, 8)}`);
+  return {
+    id,
+    orderNumber: trackingCode,
+    customerName: row.customer_name || "عميل بدون اسم",
+    customerPhone: row.phone || "",
+    // The current orders schema has no city, store, or financial columns.
+    customerCity: "غير مسجل",
+    productTitle: row.product_name || row.product_link || "طلب مشتريات",
+    productUrl: row.product_link || "",
+    storeName: "غير مسجل",
+    status: DATABASE_STATUS_TO_UI[String(row.status || "جديد")] || "new",
+    originalPrice: 0,
+    total_cost: 0,
+    paid: 0,
+    profit: 0,
+    intlTrackingNumber: trackingCode,
+    notes: row.notes || undefined,
+    createdAt: row.created_at || new Date().toISOString(),
+    updatedAt: row.updated_at || undefined,
+  };
+}
+
+function getErrorMessage(error: unknown): string {
+  if (error && typeof error === "object" && "message" in error) {
+    return String((error as { message?: unknown }).message || "حدث خطأ غير معروف");
+  }
+  return "حدث خطأ غير معروف";
+}
 
 export interface OrderItem {
   id: string;
@@ -204,15 +269,7 @@ export function AdminOperationsDashboard({
   onBack,
   onNavigateToNewOrder,
 }: AdminOperationsDashboardProps = {}) {
-  const [orders, setOrders] = useState<OrderItem[]>(() => {
-    try {
-      const saved = localStorage.getItem("alsouk_admin_shipments_v1");
-      if (saved) return JSON.parse(saved);
-    } catch {
-      // This optional browser operation can fail; keep the current page usable.
-    }
-    return [];
-  });
+  const [orders, setOrders] = useState<OrderItem[]>([]);
 
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"grouped_clients" | "all_shipments">(
@@ -239,77 +296,34 @@ export function AdminOperationsDashboard({
   const [newOrderForm, setNewOrderForm] = useState({
     customerName: "",
     customerPhone: "",
-    customerCity: "صنعاء",
-    storeName: "SHEIN",
     productTitle: "",
-    originalPrice: "",
-    status: "new" as OrderStatus,
-    trackingNumber: "",
+    productLink: "",
   });
+  const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [savingOrderId, setSavingOrderId] = useState<string | null>(null);
 
-  // حفظ في localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem("alsouk_admin_shipments_v1", JSON.stringify(orders));
-    } catch {
-      // This optional browser operation can fail; keep the current page usable.
-    }
-  }, [orders]);
-
-  // جلب الطلبات من Supabase مع دعم كافة تسميات الأعمدة: (id, name, phone, city)
+  // قاعدة البيانات هي المصدر الوحيد؛ لا نعرض نسخة قديمة من localStorage كأنها سجل مركزي.
+  // جلب الطلبات من أعمدة جدول orders الفعلية.
   const fetchOrders = async () => {
     setLoading(true);
-    if (supabaseClientInstance) {
-      try {
-        const { data, error } = await supabaseClientInstance
-          .from("orders")
-          .select("*")
-          .order("created_at", { ascending: false });
+    setFeedback(null);
+    try {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("id, tracking_code, customer_name, phone, product_link, product_name, status, notes, created_at, updated_at")
+        .order("created_at", { ascending: false });
 
-        if (!error && data && data.length > 0) {
-          const mapped: OrderItem[] = data.map((item: any) => ({
-            id: String(item.id),
-            orderNumber: item.order_number || item.orderNumber || `SQ-${item.id}`,
-            // توافق مباشر مع عمود name أو customer_name
-            customerName: item.customer_name || item.customerName || item.name || "عميل بدون اسم",
-            // توافق مباشر مع عمود phone أو customer_phone
-            customerPhone: item.customer_phone || item.customerPhone || item.phone || "770000000",
-            // توافق مباشر مع عمود city أو customer_city
-            customerCity: item.customer_city || item.customerCity || item.city || "صنعاء",
-            productTitle: item.product_title || item.productTitle || item.title || "شحنة دولية",
-            productUrl: item.product_url || item.productUrl || "",
-            storeName: item.store_name || item.storeName || "SHEIN",
-            status: (item.status as OrderStatus) || "new",
-            originalPrice: Number(item.original_price || item.originalPrice || item.price || 0),
-            total_cost: Number(
-              item.total_cost ||
-                item.totalCost ||
-                item.original_price ||
-                item.originalPrice ||
-                item.price ||
-                0,
-            ),
-            paid:
-              item.paid !== undefined
-                ? Number(item.paid)
-                : item.status === "delivered"
-                  ? Number(item.total_cost || item.original_price || 0)
-                  : 0,
-            profit:
-              item.profit !== undefined
-                ? Number(item.profit)
-                : Math.round(Number(item.original_price || 0) * 0.15),
-            intlTrackingNumber:
-              item.intl_tracking_number || item.intlTrackingNumber || `SQ-${item.id}`,
-            createdAt: item.created_at || new Date().toISOString(),
-          }));
-          setOrders(mapped);
-        }
-      } catch (err) {
-        console.warn("Supabase fetch note, using local:", err);
-      }
+      if (error) throw error;
+      setOrders((data || []).map(mapDatabaseOrder));
+    } catch (error) {
+      setOrders([]);
+      setFeedback({
+        type: "error",
+        message: `تعذر تحميل الطلبات من قاعدة البيانات: ${getErrorMessage(error)}`,
+      });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -345,101 +359,94 @@ export function AdminOperationsDashboard({
     };
   }, [groupedClients, orders]);
 
-  // تغيير الحالة السريع
+  // لا نحدّث الواجهة إلا بعد نجاح العملية في قاعدة البيانات.
   const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
-    setOrders((prev) =>
-      prev.map((o) =>
-        o.id === orderId ? { ...o, status: newStatus, updatedAt: new Date().toISOString() } : o,
-      ),
-    );
+    setFeedback(null);
+    setSavingOrderId(orderId);
+    try {
+      const { data, error } = await supabase
+        .from("orders")
+        .update({ status: UI_STATUS_TO_DATABASE[newStatus] })
+        .eq("id", orderId)
+        .select("id, tracking_code, customer_name, phone, product_link, product_name, status, notes, created_at, updated_at")
+        .maybeSingle();
 
-    if (supabaseClientInstance) {
-      try {
-        await supabaseClientInstance.from("orders").update({ status: newStatus }).eq("id", orderId);
-      } catch {
-        // This optional browser operation can fail; keep the current page usable.
-      }
+      if (error) throw error;
+      if (!data) throw new Error("لم يُحدّث أي طلب. تحقق من صلاحيتك أو من وجود الطلب.");
+      const updatedOrder = mapDatabaseOrder(data);
+      setOrders((previous) => previous.map((order) => order.id === orderId ? updatedOrder : order));
+      setFeedback({ type: "success", message: "تم تحديث حالة الطلب وحفظها." });
+    } catch (error) {
+      setFeedback({ type: "error", message: `تعذر تحديث الطلب: ${getErrorMessage(error)}` });
+    } finally {
+      setSavingOrderId(null);
     }
   };
 
-  // حذف شحنة
+  // حذف طلب مع التحقق من نتيجة قاعدة البيانات أولًا.
   const handleDeleteOrder = async (orderId: string, orderNumber: string) => {
     if (!window.confirm(`هل أنت متأكد من حذف الشحنة (${orderNumber}) نهائياً؟`)) return;
 
-    setOrders((prev) => prev.filter((o) => o.id !== orderId));
+    setFeedback(null);
+    setSavingOrderId(orderId);
+    try {
+      const { data, error } = await supabase
+        .from("orders")
+        .delete()
+        .eq("id", orderId)
+        .select("id")
+        .maybeSingle();
 
-    if (supabaseClientInstance) {
-      try {
-        await supabaseClientInstance.from("orders").delete().eq("id", orderId);
-      } catch {
-        // This optional browser operation can fail; keep the current page usable.
-      }
+      if (error) throw error;
+      if (!data) throw new Error("لم يُحذف أي طلب. تحقق من صلاحيتك أو من وجود الطلب.");
+      setOrders((previous) => previous.filter((order) => order.id !== orderId));
+      setFeedback({ type: "success", message: "تم حذف الطلب من قاعدة البيانات." });
+    } catch (error) {
+      setFeedback({ type: "error", message: `تعذر حذف الطلب: ${getErrorMessage(error)}` });
+    } finally {
+      setSavingOrderId(null);
     }
   };
 
-  // إنشاء شحنة جديدة
+  // إنشاء طلب باستخدام الأعمدة الفعلية في جدول orders.
   const handleCreateNewOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newOrderForm.customerName.trim() || !newOrderForm.customerPhone.trim()) {
-      alert("يرجى إدخال اسم العميل ورقم هاتفه.");
+    const customerName = newOrderForm.customerName.trim();
+    const phone = newOrderForm.customerPhone.trim();
+    const productLink = newOrderForm.productLink.trim();
+    const productName = newOrderForm.productTitle.trim();
+
+    if (!customerName || !phone || !productLink) {
+      setFeedback({ type: "error", message: "أدخل اسم العميل ورقم الهاتف ورابط المنتج." });
       return;
     }
 
-    const orderNum = `SQ-${Math.floor(100000 + Math.random() * 900000)}`;
-    const cost = Number(newOrderForm.originalPrice) || 0;
-    const newOrd: OrderItem = {
-      id: `ord-${Date.now()}`,
-      orderNumber: orderNum,
-      customerName: newOrderForm.customerName.trim(),
-      customerPhone: newOrderForm.customerPhone.trim(),
-      customerCity: newOrderForm.customerCity || "صنعاء",
-      storeName: newOrderForm.storeName,
-      productTitle: newOrderForm.productTitle.trim() || "طرد بضائع مستوردة",
-      originalPrice: cost,
-      total_cost: cost,
-      paid: newOrderForm.status === "delivered" ? cost : 0,
-      profit: Math.round(cost * 0.15),
-      status: newOrderForm.status,
-      intlTrackingNumber: newOrderForm.trackingNumber.trim() || orderNum,
-      createdAt: new Date().toISOString(),
-    };
+    setFeedback(null);
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("orders")
+        .insert({
+          customer_name: customerName,
+          phone,
+          product_link: productLink,
+          product_name: productName || null,
+          status: "جديد",
+          notes: null,
+        })
+        .select("id, tracking_code, customer_name, phone, product_link, product_name, status, notes, created_at, updated_at")
+        .single();
 
-    setOrders((prev) => [newOrd, ...prev]);
-    setIsAddModalOpen(false);
-
-    setNewOrderForm({
-      customerName: "",
-      customerPhone: "",
-      customerCity: "صنعاء",
-      storeName: "SHEIN",
-      productTitle: "",
-      originalPrice: "",
-      status: "new",
-      trackingNumber: "",
-    });
-
-    if (supabaseClientInstance) {
-      try {
-        await supabaseClientInstance.from("orders").insert([
-          {
-            order_number: newOrd.orderNumber,
-            customer_name: newOrd.customerName,
-            customer_phone: newOrd.customerPhone,
-            customer_city: newOrd.customerCity,
-            store_name: newOrd.storeName,
-            product_title: newOrd.productTitle,
-            original_price: newOrd.originalPrice,
-            total_cost: newOrd.total_cost,
-            paid: newOrd.paid,
-            profit: newOrd.profit,
-            status: newOrd.status,
-            intl_tracking_number: newOrd.intlTrackingNumber,
-            created_at: newOrd.createdAt,
-          },
-        ]);
-      } catch {
-        // This optional browser operation can fail; keep the current page usable.
-      }
+      if (error) throw error;
+      if (!data) throw new Error("لم تُرجع قاعدة البيانات الطلب بعد الحفظ.");
+      setOrders((previous) => [mapDatabaseOrder(data), ...previous]);
+      setIsAddModalOpen(false);
+      setNewOrderForm({ customerName: "", customerPhone: "", productTitle: "", productLink: "" });
+      setFeedback({ type: "success", message: `تم حفظ الطلب بنجاح. رقم التتبع: ${data.tracking_code}` });
+    } catch (error) {
+      setFeedback({ type: "error", message: `تعذر حفظ الطلب: ${getErrorMessage(error)}` });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -620,6 +627,18 @@ export function AdminOperationsDashboard({
       </div>
 
       <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-4 space-y-4">
+        <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-xs leading-6 text-amber-900" role="note">
+          قاعدة البيانات الحالية لا تحفظ المدينة أو المتجر أو مبالغ التكلفة/الدفع/الربح؛ الأرقام المالية في هذه الشاشة ليست سجلات محاسبية موثوقة حتى تُضاف أعمدتها وتُعتمد.
+        </div>
+        {feedback && (
+          <div
+            role={feedback.type === "error" ? "alert" : "status"}
+            aria-live="polite"
+            className={`rounded-xl border px-4 py-3 text-sm font-bold ${feedback.type === "error" ? "border-rose-300 bg-rose-50 text-rose-800" : "border-emerald-300 bg-emerald-50 text-emerald-800"}`}
+          >
+            {feedback.message}
+          </div>
+        )}
         {/* 2. ترويسة الصفحة */}
         <header className="bg-white border border-sky-200/90 rounded-2xl p-3 sm:p-4 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-3.5">
           <div className="flex items-center justify-between sm:justify-start gap-3 w-full lg:w-auto">
@@ -1140,6 +1159,7 @@ export function AdminOperationsDashboard({
                             <td className="py-4 px-4 text-center">
                               <select
                                 value={ord.status}
+                                disabled={savingOrderId === ord.id}
                                 onChange={(e) =>
                                   handleStatusChange(ord.id, e.target.value as OrderStatus)
                                 }
@@ -1172,6 +1192,7 @@ export function AdminOperationsDashboard({
                               <div className="flex items-center justify-center gap-2">
                                 <button
                                   onClick={() => handleDeleteOrder(ord.id, ord.orderNumber)}
+                                  disabled={savingOrderId === ord.id}
                                   className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 transition cursor-pointer"
                                   title="حذف الشحنة"
                                 >
@@ -1371,68 +1392,18 @@ export function AdminOperationsDashboard({
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-700 font-bold mb-1">
-                    رقم الهاتف (phone) *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    dir="ltr"
-                    placeholder="770000000"
-                    value={newOrderForm.customerPhone}
-                    onChange={(e) =>
-                      setNewOrderForm({ ...newOrderForm, customerPhone: e.target.value })
-                    }
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] border border-slate-200 text-[#0A2540] font-mono text-left outline-none focus:bg-white focus:border-[#0284C7]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-700 font-bold mb-1">المدينة (city)</label>
-                  <input
-                    type="text"
-                    placeholder="صنعاء / عدن / تعز"
-                    value={newOrderForm.customerCity}
-                    onChange={(e) =>
-                      setNewOrderForm({ ...newOrderForm, customerCity: e.target.value })
-                    }
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] border border-slate-200 text-[#0A2540] outline-none focus:bg-white focus:border-[#0284C7]"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-700 font-bold mb-1">المتجر / المصدر</label>
-                  <select
-                    value={newOrderForm.storeName}
-                    onChange={(e) =>
-                      setNewOrderForm({ ...newOrderForm, storeName: e.target.value })
-                    }
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] border border-slate-200 text-[#0A2540] font-bold outline-none focus:bg-white focus:border-[#0284C7]"
-                  >
-                    <option value="SHEIN">شي إن (SHEIN)</option>
-                    <option value="TEMU">تيمو (TEMU)</option>
-                    <option value="Amazon">أمازون (Amazon)</option>
-                    <option value="AliExpress">علي إكسبريس (AliExpress)</option>
-                    <option value="Trendyol">ترينديول (Trendyol)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-slate-700 font-bold mb-1">
-                    المبلغ المطلوب تحصيله (SAR)
-                  </label>
-                  <input
-                    type="number"
-                    placeholder="150"
-                    value={newOrderForm.originalPrice}
-                    onChange={(e) =>
-                      setNewOrderForm({ ...newOrderForm, originalPrice: e.target.value })
-                    }
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] border border-slate-200 text-[#0A2540] font-mono outline-none focus:bg-white focus:border-[#0284C7]"
-                  />
-                </div>
+              <div>
+                <label className="block text-slate-700 font-bold mb-1">رقم الهاتف (phone) *</label>
+                <input
+                  type="tel"
+                  required
+                  dir="ltr"
+                  autoComplete="tel"
+                  placeholder="770000000"
+                  value={newOrderForm.customerPhone}
+                  onChange={(e) => setNewOrderForm({ ...newOrderForm, customerPhone: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] border border-slate-200 text-[#0A2540] font-mono text-left outline-none focus:bg-white focus:border-[#0284C7]"
+                />
               </div>
 
               <div>
@@ -1446,6 +1417,20 @@ export function AdminOperationsDashboard({
                   }
                   className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] border border-slate-200 text-[#0A2540] outline-none focus:bg-white focus:border-[#0284C7]"
                 />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-bold mb-1">رابط المنتج (product_link) *</label>
+                <input
+                  type="url"
+                  required
+                  dir="ltr"
+                  placeholder="https://..."
+                  value={newOrderForm.productLink}
+                  onChange={(e) => setNewOrderForm({ ...newOrderForm, productLink: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] border border-slate-200 text-[#0A2540] font-mono text-left outline-none focus:bg-white focus:border-[#0284C7]"
+                />
+                <p className="mt-1 text-[10px] leading-5 text-amber-700">المخطط الحالي لا يحتوي على حقول للمدينة أو المتجر أو المبالغ؛ لذلك لا أطلبها ولا أحفظها هنا.</p>
               </div>
 
               <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-2 mt-4">
@@ -1582,6 +1567,14 @@ export function AdminOperationsDashboard({
 export const AdminClientsPage = AdminOperationsDashboard;
 
 // تسجيل مسار TanStack Router
+export function AdminClientsRouteComponent() {
+  return (
+    <AdminRouteGuard allowStaff redirectTo="/admin-clients">
+      <AdminOperationsDashboard />
+    </AdminRouteGuard>
+  );
+}
+
 export const Route = (createFileRoute as any)("/admin-clients")({
   head: () => ({
     meta: [
@@ -1592,7 +1585,7 @@ export const Route = (createFileRoute as any)("/admin-clients")({
       },
     ],
   }),
-  component: AdminOperationsDashboard,
+  component: AdminClientsRouteComponent,
 });
 
 export default AdminOperationsDashboard;
