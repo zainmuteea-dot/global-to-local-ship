@@ -1,27 +1,27 @@
-import { ClipboardCheck, Globe2, PackageCheck } from "lucide-react";
+import type { CSSProperties } from "react";
 
-const highlights = [
+const reviews = [
   {
-    title: "متاجر عالمية",
-    description: "ابدأ من رابط المنتج في المتجر الذي ترغب بالتسوق منه.",
-    Icon: Globe2,
-    color: "text-sky-200 border-sky-300/30 bg-sky-400/10",
+    quote: "اشتريت لعبتين للأولاد من شي إن، التعامل كان راقي وسريع والتوصيل وصل لباب البيت بدون أي عناء.",
+    name: "يوسف الحنفي",
+    city: "صنعاء",
+    delay: "0s",
   },
   {
-    title: "تفاصيل واضحة",
-    description: "أرسل خيارات المنتج وملاحظاتك مع تفاصيل الطلب.",
-    Icon: ClipboardCheck,
-    color: "text-orange-200 border-orange-300/30 bg-orange-400/10",
+    quote: "وأخيراً لقينا وسيط شحن رسمي وموثوق يوصل لعدن! خدمة ممتازة وتجاوب فوري عبر الواتساب.",
+    name: "أمة الحكيمي",
+    city: "عدن",
+    delay: ".4s",
   },
   {
-    title: "متابعة الطلب",
-    description: "ارجع إلى صفحة التتبع لمراجعة آخر حالة متاحة.",
-    Icon: PackageCheck,
-    color: "text-cyan-200 border-cyan-300/30 bg-cyan-400/10",
+    quote: "التجربة فاقت التوقعات، تتبعت شحنتي خطوة بخطوة والتغليف كان فائق الجودة والحماية.",
+    name: "ياسر باشديد",
+    city: "حضرموت",
+    delay: ".8s",
   },
 ];
 
-const dottedBackground = {
+const dottedBackground: CSSProperties = {
   backgroundColor: "#0f2a5a",
   backgroundImage: "radial-gradient(circle, #3b82f6 1.8px, transparent 1.8px)",
   backgroundSize: "30px 30px",
@@ -29,44 +29,63 @@ const dottedBackground = {
 
 export default function ReviewsBest() {
   return (
-    <section
-      style={dottedBackground}
-      className="mx-auto max-w-4xl px-4 pb-12 pt-2 sm:pb-16"
-      aria-labelledby="reviews-best-title"
-    >
-      <div className="mb-6 text-center sm:mb-8">
-        <span className="inline-flex items-center gap-2 rounded-full border border-orange-200/20 bg-orange-300/10 px-3 py-1.5 text-[10px] font-black text-orange-100 sm:text-xs">
-          <span className="size-1.5 rounded-full bg-orange-400" />
-          خدمة متكاملة
-        </span>
-        <h2
-          id="reviews-best-title"
-          className="mt-3 text-xl font-black text-white sm:text-2xl"
-        >
-          تسوّق بثقة من البداية
-        </h2>
-        <p className="mx-auto mt-2 max-w-xl text-xs leading-6 text-sky-100/70 sm:text-sm">
-          تعرّف على ما يمكنك فعله عبر السوق الشامل.
-        </p>
-      </div>
-
-      <div className="grid gap-3 md:grid-cols-3 md:gap-4">
-        {highlights.map(({ title, description, Icon, color }) => (
-          <article
-            key={title}
-            className="testimonial-fixed text-center"
-            style={{ padding: "16px 18px" }}
-          >
-            <span className={`mx-auto mb-3 grid size-[44px] place-items-center rounded-xl border ${color}`}>
-              <Icon className="size-5" aria-hidden="true" />
-            </span>
-            <h3 className="text-xs font-black text-white sm:text-sm">{title}</h3>
-            <p className="mt-2 text-[10px] leading-5 text-sky-100/75 sm:text-[11px]">
-              {description}
-            </p>
-          </article>
-        ))}
-      </div>
-    </section>
+    <>
+      <style>{`
+        @keyframes rbg-card-glow {
+          0%, 100% {
+            border-color: rgba(0,255,255,.85);
+            box-shadow: 0 0 10px rgba(0,255,255,.75), 0 0 20px rgba(255,122,0,.48), 0 0 34px rgba(0,255,255,.22);
+          }
+          50% {
+            border-color: rgba(255,160,0,1);
+            box-shadow: 0 0 24px rgba(0,255,255,1), 0 0 44px rgba(255,122,0,.92), 0 0 62px rgba(255,122,0,.42);
+          }
+        }
+        .rbg-section { width: 100%; margin-top: 0; }
+        .rbg-title { padding-top: 26px; color: #fff; text-align: center; font-size: 20px; font-weight: 800; }
+        .rbg-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; max-width: 1100px; margin: 0 auto; padding: 28px 20px 40px; }
+        .rbg-card {
+          isolation: isolate; position: relative; overflow: visible; padding: 24px 20px; color: #fff; text-align: center;
+          border: 2.5px solid rgba(0,255,255,.8); border-radius: 16px; background: rgba(25,55,110,.95);
+          box-shadow: 0 0 15px rgba(0,255,255,.5), 0 0 25px rgba(255,122,0,.4);
+          animation: rbg-card-glow 2.2s ease-in-out infinite;
+        }
+        .rbg-card::before {
+          content: ""; position: absolute; inset: -3px; z-index: -1; pointer-events: none;
+          border: 1px solid rgba(0,255,255,.8); border-radius: inherit;
+          box-shadow: 0 0 12px rgba(0,255,255,.6), 0 0 22px rgba(255,122,0,.5), 0 0 35px rgba(0,255,255,.2);
+          animation: rbg-card-glow 2.2s ease-in-out infinite;
+          animation-delay: var(--rbg-delay, 0s);
+        }
+        .rbg-card:focus-within { outline: 2px solid #fff; outline-offset: 4px; }
+        .rbg-stars { margin-bottom: 12px; color: #ffb700; font-size: 16px; letter-spacing: 3px; text-shadow: 0 0 12px rgba(255,183,0,.8); }
+        .rbg-quote { color: #fff; font-size: 13px; font-weight: 500; line-height: 1.8; }
+        .rbg-divider { height: 1px; max-width: 160px; margin: 14px auto 0; background: linear-gradient(90deg, transparent, rgba(255,140,0,.8), rgba(103,232,249,.8), transparent); }
+        .rbg-name { margin: 12px 0 2px; color: #fff; font-size: 14px; font-weight: 700; }
+        .rbg-city { color: #ff8c00; font-size: 12px; font-weight: 700; }
+        @media (max-width: 760px) { .rbg-grid { grid-template-columns: 1fr; gap: 14px; } }
+        @media (prefers-reduced-motion: reduce) { .rbg-card, .rbg-card::before { animation: none !important; } }
+      `}</style>
+      <section className="fx-steps-section reviews rbg-section" dir="rtl" style={dottedBackground} aria-labelledby="rbg-title">
+        <h2 id="rbg-title" className="rbg-title">آراء عملائنا</h2>
+        <div className="rbg-grid">
+          {reviews.map((review) => (
+            <figure
+              key={review.name}
+              className="testimonial-fixed rbg-card"
+              style={{ "--rbg-delay": review.delay } as CSSProperties}
+            >
+              <div className="rbg-stars" aria-label="5 من 5 نجوم">★★★★★</div>
+              <blockquote className="rbg-quote">“{review.quote}”</blockquote>
+              <figcaption>
+                <div className="rbg-divider" />
+                <p className="rbg-name">{review.name}</p>
+                <p className="rbg-city">{review.city}</p>
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+      </section>
+    </>
   );
 }
