@@ -509,6 +509,7 @@ function NewOrderPage() {
   const [sbError, setSbError] = useState("");
   const [orderCode, setOrderCode] = useState("");
   const [trackingUnavailable, setTrackingUnavailable] = useState(false);
+  const [smsOutcome, setSmsOutcome] = useState<"pending" | "accepted" | "failed" | "unknown" | "not_sent">("not_sent");
   const [copied, setCopied] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const recognitionRef = useRef<any>(null);
@@ -742,21 +743,25 @@ function NewOrderPage() {
         setTrackingUnavailable(false);
         setOrderCode(code);
 
-        // اطلب إرسال تأكيد SMS بعد حفظ الطلب. لا نوقف تأكيد الطلب إذا تعذّر SMS.
-        // تتوقع هذه الواجهة أن تتحقق دالة send-sms من ملكية الطلب عبر orderId.
+        // إرسال تأكيد واحد بعد الحفظ. حالة SMS مستقلة عن نجاح حفظ الطلب.
+        setSmsOutcome("pending");
         try {
           const { data: smsResult, error: smsError } = await supabase.functions.invoke("send-sms", {
             body: { orderId: savedOrder.id },
           });
-
-          if (smsError || smsResult?.accepted !== true) {
-            console.warn(
-              "تعذر تأكيد قبول SMS لهذا الطلب.",
-              smsError?.message ?? smsResult?.error ?? "استجابة غير متوقعة من send-sms",
-            );
+          if (smsError) {
+            console.warn("تعذر تأكيد نتيجة SMS؛ راجع صفحة طلباتي قبل أي محاولة أخرى.", smsError.message);
+            setSmsOutcome("unknown");
+          } else if (smsResult?.accepted === true) {
+            setSmsOutcome("accepted");
+          } else if (smsResult?.status === "failed") {
+            setSmsOutcome("failed");
+          } else {
+            setSmsOutcome("unknown");
           }
         } catch (smsError: unknown) {
-          console.warn("تعذر استدعاء دالة SMS؛ الطلب محفوظ بالفعل.", smsError);
+          console.warn("نتيجة SMS غير مؤكدة؛ لا تعِد الإرسال قبل مراجعة الحالة.", smsError);
+          setSmsOutcome("unknown");
         }
       }
       setStatus("done");
@@ -850,6 +855,16 @@ function NewOrderPage() {
                 ? "الطلب محفوظ. لا تقدّم الطلب مرة أخرى؛ افتح «طلباتي» للتحقق من حالته أو تواصل مع الدعم."
                 : "تم تسجيل طلبك في النظام. احتفظ برقم التتبع لمراجعة الطلب والدفع."}
             </p>
+            {!trackingUnavailable && smsOutcome !== "not_sent" && (
+              <div className="no-warn" role="status" aria-live="polite">
+                <span>
+                  {smsOutcome === "accepted" && "قبل مزود الخدمة طلب SMS. هذا لا يؤكد وصول الرسالة إلى الهاتف."}
+                  {smsOutcome === "failed" && "تعذر إرسال SMS. يمكنك مراجعة الحالة وإعادة المحاولة من «طلباتي»."}
+                  {smsOutcome === "unknown" && "نتيجة SMS غير مؤكدة. راجع «طلباتي» ولا تعِد الإرسال قبل التأكد لتجنب التكرار."}
+                  {smsOutcome === "pending" && "جارٍ تسجيل نتيجة رسالة التأكيد…"}
+                </span>
+              </div>
+            )}
             {trackingUnavailable ? (
               <div className="no-warn" role="status" aria-live="polite">
                 <Flash />
