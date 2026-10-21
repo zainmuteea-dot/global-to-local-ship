@@ -52,6 +52,43 @@ function normalizePhone(value: string): string | null {
   return /^\+[1-9]\d{7,14}$/.test(phone) ? phone : null;
 }
 
+/** Extract only a short, allow-listed error summary; never persist the raw provider body. */
+function safeProviderError(
+  parsed: any,
+  secrets: Array<string | null | undefined>,
+): { code: string | null; message: string } {
+  const errorValue = parsed?.error;
+  const rawCode = parsed?.code ?? parsed?.errorCode ?? errorValue?.code ??
+    parsed?.data?.code;
+  const rawMessage = parsed?.message ??
+    (typeof errorValue === "string" ? errorValue : errorValue?.message) ??
+    parsed?.detail ?? parsed?.data?.message ?? parsed?.data?.error;
+
+  let message = typeof rawMessage === "string"
+    ? rawMessage.replace(/\s+/g, " ").trim()
+    : "لم يرسل TextBee تفاصيل إضافية للرفض.";
+
+  for (const secret of secrets) {
+    if (secret && secret.length >= 4) {
+      message = message.split(secret).join("[محذوف]");
+    }
+  }
+
+  // Redact phone numbers, bearer credentials and token-like values in case a
+  // provider error unexpectedly echoes request data.
+  message = message
+    .replace(/Bearer\s+\S+/gi, "Bearer [محذوف]")
+    .replace(/(?<!\w)\+?\d[\d\s().-]{7,}\d(?!\w)/g, "[رقم محذوف]")
+    .replace(/\b(?:sk|key|tok|lov|api)[-_][A-Za-z0-9_-]{12,}\b/gi, "[قيمة محذوفة]")
+    .slice(0, 240);
+
+  const code = typeof rawCode === "string" || typeof rawCode === "number"
+    ? String(rawCode).replace(/[^A-Za-z0-9_.:-]/g, "").slice(0, 64) || null
+    : null;
+
+  return { code, message };
+}
+
 Deno.serve(async (req: Request) => {
   try {
     const origin = req.headers.get("Origin");
@@ -278,11 +315,27 @@ Deno.serve(async (req: Request) => {
         const definitelyRejected =
           response.status >= 400 && response.status < 500;
         const state = definitelyRejected ? "failed" : "unknown";
+        const providerError = safeProviderError(parsed, [
+          textbeeApiKey,
+          deviceId,
+          recipient,
+        ]);
+
+        // Keep actionable but redacted diagnostics in the order record. Never
+        // log or persist the raw provider body, phone, device ID, or API key.
+        console.error("send-sms: TextBee returned a non-success status", {
+          status: response.status,
+          outcome: state,
+          providerCode: providerError.code,
+        });
 
         const saved = await persistOutcome({
           sms_status: state,
           sms_error: `TextBee HTTP ${response.status}`,
-          sms_provider_response: { httpStatus: response.status },
+          sms_provider_response: {
+            httpStatus: response.status,
+            providerError,
+          },
         });
 
         if (!saved) {
