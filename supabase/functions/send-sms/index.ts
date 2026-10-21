@@ -72,11 +72,10 @@ Deno.serve(async (req) => {
     return json(400, { error: "اكتب رسالة من 1 إلى 1000 حرف." });
   }
 
-  // ✅ تم التعديل هنا لحل مشكلة الشريحتين
   const payload: Record<string, unknown> = {
     recipients: [phone],
     message: message.trim(),
-    simSlot: 1,
+    simSlot: 0,
   };
   if (textbeeDeviceId) payload.deviceId = textbeeDeviceId;
 
