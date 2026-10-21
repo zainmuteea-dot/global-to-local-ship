@@ -75,6 +75,15 @@ type EventRow = {
   message: string;
   created_at: string;
 };
+type StageSmsRow = {
+  id: string;
+  stage_code: StageCode;
+  sms_status: "sending" | "accepted" | "failed" | "unknown";
+  sms_attempt_count: number;
+  sms_error: string | null;
+  sms_accepted_at: string | null;
+  updated_at: string;
+};
 const STAGES = [
   {
     code: "new",
@@ -197,6 +206,7 @@ function LiveTrackingAdminRoute() {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Shipment | null>(null);
   const [history, setHistory] = useState<EventRow[]>([]);
+  const [smsHistory, setSmsHistory] = useState<StageSmsRow[]>([]);
   const [courierName, setCourierName] = useState("");
   const [courierPhone, setCourierPhone] = useState("");
   const [busy, setBusy] = useState(false);
@@ -295,20 +305,32 @@ function LiveTrackingAdminRoute() {
   }, [access, refresh]);
 
   const loadHistory = useCallback(async (shipment: Shipment) => {
-    const { data, error } = await db.rpc("admin_shipment_notification_history", {
-      _order_id: shipment.id,
-    });
+    const [{ data, error }, { data: smsRows, error: smsError }] = await Promise.all([
+      db.rpc("admin_shipment_notification_history", { _order_id: shipment.id }),
+      db
+        .from("shipment_stage_sms")
+        .select("id,stage_code,sms_status,sms_attempt_count,sms_error,sms_accepted_at,updated_at")
+        .eq("order_id", shipment.id)
+        .order("updated_at", { ascending: false }),
+    ]);
     if (error) {
       setHistory([]);
-      setNotice(`تعذّر تحميل سجل الإشعارات: ${error.message}. تأكد من تطبيق SQL المرفق.`);
+      setNotice(`تعذّر تحميل سجل الإشعارات: ${error.message}.`);
     } else setHistory(data || []);
+    if (smsError) {
+      setSmsHistory([]);
+      setNotice(`تعذّر تحميل سجل SMS للمراحل: ${smsError.message}. تأكد من تطبيق ترحيل قاعدة البيانات.`);
+    } else setSmsHistory(smsRows || []);
   }, []);
   useEffect(() => {
     if (selected) {
       setCourierName(selected.courierName);
       setCourierPhone(selected.courierPhone);
       void loadHistory(selected);
-    } else setHistory([]);
+    } else {
+      setHistory([]);
+      setSmsHistory([]);
+    }
   }, [selected, loadHistory]);
   useEffect(() => {
     if (!notice) return;
@@ -475,6 +497,21 @@ function LiveTrackingAdminRoute() {
           ),
         );
       await loadHistory(shipment);
+      let smsNotice = "";
+      if (action === "advance") {
+        const { data: smsResult, error: smsError } = await supabase.functions.invoke(
+          "send-shipment-stage-sms",
+          { body: { orderId: shipment.id, stageCode: stage.code } },
+        );
+        if (smsError) {
+          smsNotice = " تعذّر إرسال SMS للمرحلة؛ افحص سجل SMS قبل أي إعادة محاولة.";
+        } else if (smsResult?.status === "accepted") {
+          smsNotice = " أُرسل طلب SMS وقبله TextBee؛ هذا لا يؤكد وصوله للهاتف.";
+        } else {
+          smsNotice = ` حالة SMS: ${smsResult?.message || "تحقق من سجل SMS للمرحلة."}`;
+        }
+        await loadHistory(shipment);
+      }
       if (channel === "whatsapp") {
         if (popup)
           popup.location.href = `https://wa.me/${normalizePhone(shipment.customerPhone)}?text=${encodeURIComponent(text)}`;
@@ -488,15 +525,35 @@ function LiveTrackingAdminRoute() {
         setNotice(
           data?.notification_state === "created"
             ? action === "advance"
-              ? "تم تحديث المرحلة وحفظ إشعار العميل داخل التطبيق."
+              ? `تم تحديث المرحلة وحفظ إشعار العميل داخل التطبيق.${smsNotice}`
               : "تم حفظ التذكير داخل التطبيق دون تغيير حالة الشحنة."
-            : "تم تحديث السجل، لكن العميل لا يملك حساباً مرتبطاً لتلقي إشعار داخل التطبيق.",
+            : `تم تحديث السجل، لكن العميل لا يملك حساباً مرتبطاً لتلقي إشعار داخل التطبيق.${smsNotice}`,
         );
       }
       if (action === "advance") await refresh();
     } catch (e) {
       popup?.close();
       setNotice(`لم تكتمل العملية: ${e instanceof Error ? e.message : "خطأ غير معروف"}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const retryStageSms = async (row: StageSmsRow) => {
+    if (!selected || row.sms_status !== "failed") return;
+    setBusy(true);
+    setNotice("");
+    try {
+      const { data, error } = await supabase.functions.invoke("send-shipment-stage-sms", {
+        body: { orderId: selected.id, stageCode: row.stage_code, retry: true },
+      });
+      if (error) throw error;
+      setNotice(data?.status === "accepted"
+        ? "قبل TextBee طلب SMS للمرحلة؛ تحقق من سجل المزود للتسليم."
+        : data?.message || "لم يؤكد TextBee قبول إعادة المحاولة.");
+      await loadHistory(selected);
+    } catch (e) {
+      setNotice(`تعذرت إعادة محاولة SMS: ${e instanceof Error ? e.message : "خطأ غير معروف"}`);
     } finally {
       setBusy(false);
     }
@@ -813,6 +870,38 @@ function LiveTrackingAdminRoute() {
                 <p className="mt-3 text-xs text-slate-500">
                   لا يوجد سجل بعد. طبّق SQL إذا لم يظهر السجل.
                 </p>
+              )}
+            </section>
+            <section className="mt-4 rounded-2xl border border-emerald-100 p-4">
+              <h3 className="flex items-center gap-2 font-black">
+                <MessageCircle className="size-4 text-emerald-700" />
+                رسائل SMS لمراحل الشحنة
+              </h3>
+              {smsHistory.length ? (
+                <ul className="mt-3 space-y-2">
+                  {smsHistory.map((row) => {
+                    const stageTitle = STAGES.find((item) => item.code === row.stage_code)?.title || row.stage_code;
+                    const stateLabel = row.sms_status === "accepted" ? "قبل TextBee" : row.sms_status === "failed" ? "فشل مؤكد" : row.sms_status === "unknown" ? "النتيجة غير مؤكدة" : "جارٍ الإرسال";
+                    return (
+                      <li key={row.id} className="rounded-xl bg-slate-50 p-3 text-xs">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <b>{stageTitle} · {stateLabel} · محاولات: {row.sms_attempt_count}</b>
+                          <time>{new Date(row.updated_at).toLocaleString("ar-YE")}</time>
+                        </div>
+                        {row.sms_error && <p className="mt-1 text-red-700">{row.sms_error}</p>}
+                        {row.sms_status === "accepted" && <p className="mt-1 text-emerald-800">قبول المزود لا يؤكد التسليم النهائي.</p>}
+                        {row.sms_status === "unknown" && <p className="mt-1 text-amber-800">لا تعاود الإرسال قبل التحقق من سجل TextBee.</p>}
+                        {row.sms_status === "failed" && (
+                          <button disabled={busy} onClick={() => void retryStageSms(row)} className="mt-2 rounded-lg border border-orange-200 bg-white px-3 py-2 font-bold text-orange-800 disabled:opacity-50">
+                            {busy ? "جارٍ التحقق..." : "إعادة محاولة بعد تصحيح السبب"}
+                          </button>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : (
+                <p className="mt-3 text-xs text-slate-500">لا توجد رسائل SMS مسجلة لمراحل هذه الشحنة.</p>
               )}
             </section>
           </section>
