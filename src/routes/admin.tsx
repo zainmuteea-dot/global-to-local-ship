@@ -574,6 +574,32 @@ export default function AdminOperationsPage() {
         prev.map((o) => (o.id === orderId ? { ...o, status: newStatus, updatedAt: new Date().toISOString() } : o))
       );
 
+      // Send one TextBee notice for each mapped shipment milestone. The server
+      // validates the persisted status and deduplicates by (order, stage).
+      const stageSmsCode: Record<string, string> = {
+        reviewing: "payment_review",
+        purchased: "purchased",
+        warehouse_china: "international_warehouse",
+        international_ship: "international_transit",
+        shipped: "customs_local",
+        delivered: "delivered",
+      };
+      let stageSmsNotice = "";
+      const stageCode = stageSmsCode[newStatus];
+      if (stageCode) {
+        const { data: smsResult, error: smsError } = await supabase.functions.invoke(
+          "send-shipment-stage-sms",
+          { body: { orderId, stageCode } },
+        );
+        if (smsError) {
+          stageSmsNotice = " SMS: افحص سجل المرحلة قبل أي إعادة إرسال؛ قد تكون النتيجة غير مؤكدة.";
+        } else if (smsResult?.status === "accepted") {
+          stageSmsNotice = " SMS: قبل TextBee الطلب، وهذا لا يؤكد وصوله للهاتف.";
+        } else {
+          stageSmsNotice = ` SMS: ${smsResult?.message || "راجع سجل SMS للمرحلة."}`;
+        }
+      }
+
       if (targetOrder.userId) {
         const { error: notificationError } = await (supabase.from("notifications") as any).insert({
           user_id: targetOrder.userId,
@@ -584,18 +610,18 @@ export default function AdminOperationsPage() {
         });
         if (notificationError) {
           console.error("تم تحديث حالة الطلب لكن تعذر إنشاء الإشعار:", notificationError);
-          setStatusNotice({ type: "warning", message: `تم تحديث حالة الطلب ${targetOrder.orderNumber}، لكن تعذر حفظ إشعار العميل.` });
+          setStatusNotice({ type: "warning", message: `تم تحديث حالة الطلب ${targetOrder.orderNumber}، لكن تعذر حفظ إشعار التطبيق.${stageSmsNotice}` });
           return;
         }
       } else {
         setStatusNotice({
           type: "warning",
-          message: `تم تحديث حالة الطلب ${targetOrder.orderNumber}، لكن لا يمكن إرسال إشعار خاص لأن الطلب غير مرتبط بحساب عميل.`,
+          message: `تم تحديث حالة الطلب ${targetOrder.orderNumber}، لكن الطلب غير مرتبط بحساب عميل لإشعار التطبيق.${stageSmsNotice}`,
         });
         return;
       }
 
-      setStatusNotice({ type: "success", message: `تم تحديث حالة الطلب ${targetOrder.orderNumber} إلى «${nextStatus}» بنجاح.` });
+      setStatusNotice({ type: stageSmsNotice ? "warning" : "success", message: `تم تحديث حالة الطلب ${targetOrder.orderNumber} إلى «${nextStatus}» بنجاح.${stageSmsNotice}` });
     } catch (error) {
       console.error("فشل تحديث حالة الطلب:", error);
       setStatusNotice({ type: "error", message: `تعذر تحديث حالة الطلب ${targetOrder.orderNumber}. تحقق من الاتصال ثم حاول مرة أخرى.` });
