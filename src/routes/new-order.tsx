@@ -510,6 +510,7 @@ function NewOrderPage() {
   const [orderCode, setOrderCode] = useState("");
   const [trackingUnavailable, setTrackingUnavailable] = useState(false);
   const [smsOutcome, setSmsOutcome] = useState<"pending" | "accepted" | "failed" | "unknown" | "not_sent">("not_sent");
+  const [smsMessage, setSmsMessage] = useState("");
   const [copied, setCopied] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const recognitionRef = useRef<any>(null);
@@ -747,23 +748,41 @@ function NewOrderPage() {
 
         // إرسال تأكيد واحد بعد الحفظ. حالة SMS مستقلة عن نجاح حفظ الطلب.
         setSmsOutcome("pending");
+        setSmsMessage("");
         try {
           const { data: smsResult, error: smsError } = await supabase.functions.invoke("send-sms", {
             body: { orderId: savedOrder.id },
           });
           if (smsError) {
-            console.warn("تعذر تأكيد نتيجة SMS؛ راجع صفحة طلباتي قبل أي محاولة أخرى.", smsError.message);
-            setSmsOutcome("unknown");
+            let detail = smsError.message || "تعذر الاتصال بدالة إرسال SMS.";
+            let serverStatus: string | undefined;
+            const context = (smsError as unknown as { context?: unknown }).context;
+            if (context instanceof Response) {
+              try {
+                const body = await context.clone().json();
+                if (typeof body?.error === "string") detail = body.error;
+                if (typeof body?.status === "string") serverStatus = body.status;
+              } catch {
+                // احتفظ برسالة الخطأ العامة إن لم يرجع الخادم JSON.
+              }
+            }
+            console.warn("تعذر تأكيد نتيجة SMS؛ راجع حالة الطلب قبل أي إعادة إرسال.", detail);
+            setSmsOutcome(serverStatus === "failed" ? "failed" : "unknown");
+            setSmsMessage(detail);
           } else if (smsResult?.accepted === true) {
             setSmsOutcome("accepted");
+            setSmsMessage(`قبل مزود الخدمة رسالة تأكيد تتضمن رقم التتبع ${code}. هذا لا يؤكد وصولها للهاتف.`);
           } else if (smsResult?.status === "failed") {
             setSmsOutcome("failed");
+            setSmsMessage(typeof smsResult?.error === "string" ? smsResult.error : "تعذر إرسال SMS. راجع طلباتي قبل إعادة المحاولة.");
           } else {
             setSmsOutcome("unknown");
+            setSmsMessage(typeof smsResult?.error === "string" ? smsResult.error : "لم تصل نتيجة مؤكدة من خدمة الرسائل. راجع طلباتي قبل إعادة الإرسال.");
           }
         } catch (smsError: unknown) {
           console.warn("نتيجة SMS غير مؤكدة؛ لا تعِد الإرسال قبل مراجعة الحالة.", smsError);
           setSmsOutcome("unknown");
+          setSmsMessage("تعذّر تأكيد نتيجة SMS. راجع حالة الطلب ولا تعِد الإرسال قبل التحقق لتجنب التكرار.");
         }
       }
       setStatus("done");
@@ -860,10 +879,12 @@ function NewOrderPage() {
             {!trackingUnavailable && smsOutcome !== "not_sent" && (
               <div className="no-warn" role="status" aria-live="polite">
                 <span>
-                  {smsOutcome === "accepted" && "قبل مزود الخدمة طلب SMS. هذا لا يؤكد وصول الرسالة إلى الهاتف."}
-                  {smsOutcome === "failed" && "تعذر إرسال SMS. يمكنك مراجعة الحالة وإعادة المحاولة من «طلباتي»."}
-                  {smsOutcome === "unknown" && "نتيجة SMS غير مؤكدة. راجع «طلباتي» ولا تعِد الإرسال قبل التأكد لتجنب التكرار."}
-                  {smsOutcome === "pending" && "جارٍ تسجيل نتيجة رسالة التأكيد…"}
+                  {smsMessage || (
+                    smsOutcome === "accepted" ? "قبل مزود الخدمة طلب SMS. هذا لا يؤكد وصول الرسالة إلى الهاتف." :
+                    smsOutcome === "failed" ? "تعذر إرسال SMS. يمكنك مراجعة الحالة وإعادة المحاولة من «طلباتي»." :
+                    smsOutcome === "unknown" ? "نتيجة SMS غير مؤكدة. راجع «طلباتي» ولا تعِد الإرسال قبل التأكد لتجنب التكرار." :
+                    "جارٍ تسجيل نتيجة رسالة التأكيد…"
+                  )}
                 </span>
               </div>
             )}
