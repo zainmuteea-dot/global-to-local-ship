@@ -688,8 +688,9 @@ function NewOrderPage() {
           product_link: url.trim(),
           product_name: resolvedProductName,
           notes: notesSummary,
-          status: "قيد الشراء والتجهيز",
+          status: "جديد",
           user_id: user.id,
+          sms_status: "pending",
         })
         .select("id, tracking_code")
         .single();
@@ -717,7 +718,8 @@ function NewOrderPage() {
           phone: phone.trim(),
           product_link: url.trim(),
           product_name: resolvedProductName,
-          status: "قيد الشراء والتجهيز",
+          status: "جديد",
+          sms_status: "pending",
           created_at: new Date().toISOString(),
           user_id: user.id,
         };
