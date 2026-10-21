@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const ALLOWED_ORIGINS = new Set([
   "https://alsouq-alshamel-kgr7rpu41-zain-muteea.vercel.app",
+  "https://alsouq-alshamel-6a9edhh1c-zain-muteea.vercel.app",
 ]);
 
 function corsHeaders(req: Request): Record<string, string> {
