@@ -1,56 +1,52 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+serve(async (req) => {
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  }
 
-function json(status: number, body: Record<string, unknown>) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json; charset=utf-8" },
-  });
-}
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-  if (req.method !== "POST") return json(405, { error: "استخدم POST فقط." });
+  try {
+    const { customer_phone, order_number, product_name } = await req.json()
 
-  const authorization = req.headers.get("Authorization");
-  const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
-  const textbeeApiKey = Deno.env.get("TEXTBEE_API_KEY");
-  const textbeeDeviceId = Deno.env.get("TEXTBEE_DEVICE_ID");
+    if (!customer_phone) {
+      throw new Error("customer_phone missing")
+    }
 
-  const caller = createClient(supabaseUrl!, supabaseAnonKey!, {
-    global: { headers: { Authorization: authorization! } },
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+    const GATEWAY_ID = "6ad7a36560b1138230b02027"
+    const API_KEY = Deno.env.get("TEXTBEE_API_KEY")
+    const SIM_ID = 6
 
-  const { data: authData } = await caller.auth.getUser();
-  const { data: isAdmin } = await caller.rpc("has_role", { _user_id: authData.user.id, _role: "admin" });
-  if (isAdmin !== true) return json(403, { error: "للمدير فقط." });
+    // تنظيف الرقم
+    let cleanPhone = customer_phone.trim()
+    if (!cleanPhone.startsWith('+')) {
+      if (cleanPhone.startsWith('0')) cleanPhone = '+967' + cleanPhone.substring(1)
+      else cleanPhone = '+967' + cleanPhone
+    }
 
-  const { phone, message } = await req.json();
+    const message = `مرحبا، تم استلام طلبك #${order_number || ''} - ${product_name || 'من السوق الشامل'}. سنتواصل معك قريبا للتأكيد.`
 
-  const payload: any = {
-    recipients: [phone],
-    message: message.trim(),
-    simSlot: 0,
-  };
-  if (textbeeDeviceId) payload.deviceId = textbeeDeviceId;
+    const res = await fetch(
+      `https://api.textbee.dev/api/v1/gateway/${GATEWAY_ID}/send-sms`,
+      {
+        method: "POST",
+        headers: { "x-api-key": API_KEY!, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recipients: [cleanPhone],
+          message: message,
+          simId: 6
+        })
+      }
+    )
 
-  const response = await fetch("https://api.textbee.dev/api/v1/gateway/send-sms", {
-    method: "POST",
-    headers: { "x-api-key": textbeeApiKey!, "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+    const data = await res.json()
+    return new Response(JSON.stringify(data), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 
-  const result = await response.text();
-  console.log(result);
-
-  if (!response.ok) return json(502, { error: result });
-
-  return json(200, { accepted: true });
-});
+  } catch (err) {
+    return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders })
+  }
+})
