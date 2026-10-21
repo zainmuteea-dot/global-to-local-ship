@@ -1,14 +1,10 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const ALLOWED_ORIGINS = new Set([
-  // نطاق الموقع الظاهر في لقطة Vercel.
-  "https://alsouq-alshamel-hi0vg4qd1-zain-muteea.vercel.app",
-
-  // أضف هنا النطاق الأساسي الآخر للموقع إن كان مختلفًا،
-  // مثل النطاق الظاهر في Vercel → Settings → Domains.
+  "https://alsouq-alshamel-kgr7rpu41-zain-muteea.vercel.app",
 ]);
 
-function corsHeaders(req: Request): HeadersInit {
+function corsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get("Origin");
   const headers: Record<string, string> = {
     "Access-Control-Allow-Headers":
@@ -58,12 +54,11 @@ Deno.serve(async (req: Request) => {
   try {
     const origin = req.headers.get("Origin");
 
-    // ارفض المواقع غير الموجودة في القائمة المسموح بها.
     if (origin && !ALLOWED_ORIGINS.has(origin)) {
       return json(req, 403, { error: "هذا النطاق غير مسموح." });
     }
 
-    // يجب معالجة preflight قبل قراءة الجسم أو التحقق من جلسة المستخدم.
+    // عالج طلب المتصفح المسبق قبل قراءة الجسم أو طلب جلسة المستخدم.
     if (req.method === "OPTIONS") {
       return new Response(null, {
         status: 204,
@@ -194,8 +189,9 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // حجز ذري للمحاولة: يمنع طلبين متزامنين من إرسال الرسالة نفسها.
+    // الحجز الذري يمنع محاولتين متزامنتين من إرسال الرسالة نفسها.
     const expectedStatus = isRetry ? "failed" : "pending";
+
     const { data: claimed, error: claimError } = await admin
       .from("orders")
       .update({
@@ -277,7 +273,6 @@ Deno.serve(async (req: Request) => {
         typeof result?.smsBatchId === "string" ? result.smsBatchId : null;
 
       if (!response.ok) {
-        // رفض 4xx محدد؛ أما خطأ 5xx فنتيجته غير مؤكدة.
         const definitelyRejected =
           response.status >= 400 && response.status < 500;
         const state = definitelyRejected ? "failed" : "unknown";
@@ -290,7 +285,8 @@ Deno.serve(async (req: Request) => {
 
         if (!saved) {
           return json(req, 502, {
-            error: "تعذر حفظ نتيجة TextBee؛ تحقق من الطلب قبل إعادة الإرسال.",
+            error:
+              "تعذر حفظ نتيجة TextBee؛ تحقق من الطلب قبل إعادة الإرسال.",
           });
         }
 
@@ -335,7 +331,8 @@ Deno.serve(async (req: Request) => {
 
         if (!saved) {
           return json(req, 502, {
-            error: "تعذر حفظ فشل الإرسال؛ تحقق من الحالة قبل أي محاولة جديدة.",
+            error:
+              "تعذر حفظ فشل الإرسال؛ تحقق من الحالة قبل أي محاولة جديدة.",
           });
         }
 
@@ -345,7 +342,30 @@ Deno.serve(async (req: Request) => {
         });
       }
 
-      // 2xx يعني أن TextBee قبل الطلب؛ القبول لا يثبت وصول الرسالة للهاتف.
+      const clearlyAccepted =
+        batchId !== null ||
+        result?.success === true ||
+        (successCount !== null && successCount > 0);
+
+      if (!clearlyAccepted) {
+        const saved = await persistOutcome({
+          sms_status: "unknown",
+          sms_error: "رد TextBee لا يحتوي تأكيد قبول واضحًا.",
+          sms_provider_response: { outcome: "unrecognized_response" },
+        });
+
+        if (!saved) {
+          console.error("send-sms: unable to persist unrecognized outcome");
+        }
+
+        return json(req, 502, {
+          status: "unknown",
+          error:
+            "رد TextBee غير واضح. تحقق من سجل المزود قبل أي إعادة إرسال.",
+        });
+      }
+
+      // قبول المزود لا يعني أن الرسالة وصلت إلى هاتف المستلم.
       const safeProviderResponse = {
         smsBatchId: batchId,
         success: typeof result?.success === "boolean"
@@ -380,7 +400,7 @@ Deno.serve(async (req: Request) => {
         message: "قبل TextBee طلب الرسالة؛ هذا لا يؤكد وصولها للهاتف.",
       });
     } catch (error) {
-      // انقطاع الاتصال قد يحدث بعد قبول المزود، لذا لا نسمح بإعادة إرسال تلقائية.
+      // نتيجة الشبكة غامضة؛ قد يكون المزود قبل الرسالة قبل انقطاع الاتصال.
       const saved = await persistOutcome({
         sms_status: "unknown",
         sms_error: "نتيجة اتصال غير مؤكدة؛ تحقق من TextBee قبل أي إجراء.",
@@ -408,6 +428,9 @@ Deno.serve(async (req: Request) => {
     console.error("send-sms: unexpected function error", {
       name: error instanceof Error ? error.name : "UnknownError",
     });
-    return json(req, 500, { error: "حدث خطأ غير متوقع في دالة SMS." });
+
+    return json(req, 500, {
+      error: "حدث خطأ غير متوقع في دالة SMS.",
+    });
   }
 });
