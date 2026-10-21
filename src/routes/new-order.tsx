@@ -741,6 +741,23 @@ function NewOrderPage() {
       } else {
         setTrackingUnavailable(false);
         setOrderCode(code);
+
+        // اطلب إرسال تأكيد SMS بعد حفظ الطلب. لا نوقف تأكيد الطلب إذا تعذّر SMS.
+        // تتوقع هذه الواجهة أن تتحقق دالة send-sms من ملكية الطلب عبر orderId.
+        try {
+          const { data: smsResult, error: smsError } = await supabase.functions.invoke("send-sms", {
+            body: { orderId: savedOrder.id },
+          });
+
+          if (smsError || smsResult?.accepted !== true) {
+            console.warn(
+              "تعذر تأكيد قبول SMS لهذا الطلب.",
+              smsError?.message ?? smsResult?.error ?? "استجابة غير متوقعة من send-sms",
+            );
+          }
+        } catch (smsError: unknown) {
+          console.warn("تعذر استدعاء دالة SMS؛ الطلب محفوظ بالفعل.", smsError);
+        }
       }
       setStatus("done");
       window.scrollTo({ top: 0, behavior: "smooth" });
