@@ -32,11 +32,11 @@ Deno.serve(async (req) => {
     return json(500, { error: "إعداد إرسال الرسائل غير مكتمل على الخادم." });
   }
 
-  // Validate the caller's Supabase session and require the admin role.
   const caller = createClient(supabaseUrl, supabaseAnonKey, {
     global: { headers: { Authorization: authorization } },
     auth: { persistSession: false, autoRefreshToken: false },
   });
+
   const { data: authData, error: authError } = await caller.auth.getUser();
   if (authError || !authData.user) {
     return json(401, { error: "جلسة الدخول غير صالحة." });
@@ -46,6 +46,7 @@ Deno.serve(async (req) => {
     _user_id: authData.user.id,
     _role: "admin",
   });
+
   if (roleError) {
     console.error("send-sms: admin role check failed", roleError.message);
     return json(500, { error: "تعذر التحقق من صلاحية إرسال الرسائل." });
@@ -71,9 +72,11 @@ Deno.serve(async (req) => {
     return json(400, { error: "اكتب رسالة من 1 إلى 1000 حرف." });
   }
 
+  // ✅ تم التعديل هنا لحل مشكلة الشريحتين
   const payload: Record<string, unknown> = {
     recipients: [phone],
     message: message.trim(),
+    simSlot: 1,
   };
   if (textbeeDeviceId) payload.deviceId = textbeeDeviceId;
 
@@ -98,20 +101,15 @@ Deno.serve(async (req) => {
       if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
         providerResult = parsed as Record<string, unknown>;
       }
-    } catch {
-      // Do not return raw provider responses to the browser.
-    }
+    } catch {}
 
     if (!response.ok) {
-      // Keep recipient, message, API key, and provider response out of logs.
       console.error("send-sms: TextBee rejected the request", { status: response.status });
       return json(502, { error: "رفض مزود الرسائل الطلب. تحقق من إعداد TextBee والجهاز." });
     }
 
     const nestedData = providerResult.data;
-    const data = nestedData && typeof nestedData === "object"
-      ? nestedData as Record<string, unknown>
-      : undefined;
+    const data = nestedData && typeof nestedData === "object" ? (nestedData as Record<string, unknown>) : undefined;
     const smsBatchId = providerResult.smsBatchId ?? data?.smsBatchId;
 
     return json(200, {
@@ -123,9 +121,7 @@ Deno.serve(async (req) => {
     const timedOut = error instanceof DOMException && error.name === "AbortError";
     console.error("send-sms: TextBee request failed", { timedOut });
     return json(502, {
-      error: timedOut
-        ? "انتهت مهلة الاتصال بمزود الرسائل. تحقق من سجل الرسائل قبل إعادة المحاولة."
-        : "تعذر الاتصال بمزود الرسائل.",
+      error: timedOut ? "انتهت مهلة الاتصال بمزود الرسائل. تحقق من سجل الرسائل قبل إعادة المحاولة." : "تعذر الاتصال بمزود الرسائل.",
     });
   } finally {
     clearTimeout(timeout);
