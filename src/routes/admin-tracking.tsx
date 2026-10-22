@@ -1087,10 +1087,16 @@ function LiveTrackingAdminRoute() {
                           <td className="px-3 py-3">
                             <div className="flex flex-wrap gap-1.5">
                               <button
-                                onClick={() => setSelected(s)}
-                                className="flex items-center gap-1 rounded-lg bg-[#0F4C81] px-2.5 py-1.5 text-[11px] font-bold text-white transition hover:opacity-95"
+                                type="button"
+                                onClick={() => {
+                                  setNotice("");
+                                  setSelected(s);
+                                }}
+                                aria-label={`عرض مسار الشحنة ${s.trackingCode}`}
+                                title={`عرض مسار الشحنة ${s.trackingCode}`}
+                                className="inline-flex cursor-pointer items-center gap-1 rounded-lg bg-[#0F4C81] px-3 py-2 text-[11px] font-bold text-white shadow-sm transition hover:bg-[#0b3d69] hover:shadow-md active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2196F3] focus-visible:ring-offset-2"
                               >
-                                <Bell className="size-3.5" />
+                                <Bell aria-hidden="true" className="size-3.5" />
                                 المسار
                               </button>
                               {access === "admin" && (
