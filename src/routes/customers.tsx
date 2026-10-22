@@ -33,7 +33,7 @@ function formatDate(value: string): string {
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
-    return "\u2014";
+    return "—";
   }
 
   return date.toLocaleDateString("ar-YE", {
@@ -49,7 +49,7 @@ async function getStaffIdsForAdmin(): Promise<Set<string>> {
   if (authError) throw authError;
 
   if (!authData.user) {
-    throw new Error("\u0633\u062c\u0651\u0644 \u0627\u0644\u062f\u062e\u0648\u0644 \u0628\u062d\u0633\u0627\u0628 \u0625\u062f\u0627\u0631\u064a \u0644\u0639\u0631\u0636 \u0642\u0627\u0626\u0645\u0629 \u0627\u0644\u0639\u0645\u0644\u0627\u0621.");
+    throw new Error("سجّل الدخول بحساب إداري لعرض قائمة العملاء.");
   }
 
   const { data: isAdmin, error: roleCheckError } = await supabase.rpc("has_role", {
@@ -60,7 +60,7 @@ async function getStaffIdsForAdmin(): Promise<Set<string>> {
   if (roleCheckError) throw roleCheckError;
 
   if (!isAdmin) {
-    throw new Error("\u0647\u0630\u0627 \u0627\u0644\u062d\u0633\u0627\u0628 \u0644\u0627 \u064a\u0645\u0644\u0643 \u0635\u0644\u0627\u062d\u064a\u0629 \u0639\u0631\u0636 \u0642\u0627\u0626\u0645\u0629 \u0627\u0644\u0639\u0645\u0644\u0627\u0621.");
+    throw new Error("هذا الحساب لا يملك صلاحية عرض قائمة العملاء.");
   }
 
   const { data: roleRows, error: rolesError } = await supabase
@@ -81,15 +81,15 @@ function toCustomers(profiles: ProfileRow[], staffIds: Set<string>): Customer[] 
     .filter((profile) => !staffIds.has(profile.id))
     .map((profile) => ({
       id: profile.id,
-      name: profile.full_name?.trim() || "\u0639\u0645\u064a\u0644 \u0628\u062f\u0648\u0646 \u0627\u0633\u0645",
+      name: profile.full_name?.trim() || "عميل بدون اسم",
       phone: profile.phone,
       created_at: profile.created_at,
     }));
 }
 
 /**
- * \u064a\u0642\u0631\u0623 \u0635\u0641\u062d\u0627\u062a \u0645\u062d\u062f\u0648\u062f\u0629 \u0645\u0646 profiles \u0648\u064a\u0648\u0627\u0635\u0644 \u062a\u062c\u0627\u0648\u0632 \u0627\u0644\u062d\u0633\u0627\u0628\u0627\u062a \u0627\u0644\u0645\u0633\u062a\u0628\u0639\u062f\u0629
- * \u062d\u062a\u0649 \u064a\u062c\u0645\u0639 \u062f\u0641\u0639\u0629 \u0639\u0645\u0644\u0627\u0621 \u0643\u0627\u0645\u0644\u0629\u060c \u0623\u0648 \u064a\u0635\u0644 \u0625\u0644\u0649 \u0646\u0647\u0627\u064a\u0629 \u0627\u0644\u0646\u062a\u0627\u0626\u062c.
+ * يقرأ صفحات محدودة من profiles ويواصل تجاوز الحسابات المستبعدة
+ * حتى يجمع دفعة عملاء كاملة، أو يصل إلى نهاية النتائج.
  */
 async function fetchCustomerBatch(
   startOffset: number,
@@ -112,7 +112,7 @@ async function fetchCustomerBatch(
     customers.push(...toCustomers(profiles, staffIds));
     offset += profiles.length;
 
-    // \u0627\u0644\u0635\u0641\u062d\u0629 \u0627\u0644\u0623\u0642\u0635\u0631 \u0645\u0646 \u0627\u0644\u062d\u062c\u0645 \u0627\u0644\u0645\u0637\u0644\u0648\u0628 \u062a\u0639\u0646\u064a \u0639\u062f\u0645 \u0648\u062c\u0648\u062f \u0635\u0641\u062d\u0629 \u0623\u062e\u0631\u0649.
+    // الصفحة الأقصر من الحجم المطلوب تعني عدم وجود صفحة أخرى.
     if (profiles.length < PAGE_SIZE) {
       return {
         customers,
@@ -129,7 +129,7 @@ async function fetchCustomerBatch(
   };
 }
 
-// \u0645\u0633\u0627\u0639\u062f\u0627\u062a \u0639\u0631\u0636 \u0628\u062d\u062a\u0629 (\u0623\u0641\u0627\u062a\u0627\u0631 \u0628\u0627\u0644\u0623\u062d\u0631\u0641 \u0627\u0644\u0623\u0648\u0644\u0649) \u2014 \u0644\u0627 \u062a\u0624\u062b\u0631 \u0639\u0644\u0649 \u0627\u0644\u0628\u064a\u0627\u0646\u0627\u062a.
+// مساعدات عرض بحتة (أفاتار بالأحرف الأولى) — لا تؤثر على البيانات.
 const AVATAR_COLORS = [
   "#0F4C81",
   "#2E7D32",
@@ -142,7 +142,7 @@ const AVATAR_COLORS = [
 function avatarInitials(name: string): string {
   const parts = name.trim().split(/\s+/).slice(0, 2);
   const joined = parts.map((p) => p[0] ?? "").join("");
-  return joined || "\u0639";
+  return joined || "ع";
 }
 
 function avatarColor(seed: string): string {
@@ -178,11 +178,11 @@ function CustomersPage() {
       setNextOffset(batch.nextOffset);
       setHasMore(batch.hasMore);
     } catch (error) {
-      console.error("\u062a\u0639\u0630\u0631 \u062a\u062d\u0645\u064a\u0644 \u0642\u0627\u0626\u0645\u0629 \u0627\u0644\u0639\u0645\u0644\u0627\u0621:", error);
+      console.error("تعذر تحميل قائمة العملاء:", error);
       setCustomers([]);
       setHasMore(false);
       setLoadError(
-        error instanceof Error ? error.message : "\u062d\u062f\u062b \u062e\u0637\u0623 \u063a\u064a\u0631 \u0645\u062a\u0648\u0642\u0639 \u0623\u062b\u0646\u0627\u0621 \u062a\u062d\u0645\u064a\u0644 \u0627\u0644\u0639\u0645\u0644\u0627\u0621.",
+        error instanceof Error ? error.message : "حدث خطأ غير متوقع أثناء تحميل العملاء.",
       );
     } finally {
       setLoading(false);
@@ -207,8 +207,8 @@ function CustomersPage() {
       setNextOffset(batch.nextOffset);
       setHasMore(batch.hasMore);
     } catch (error) {
-      console.error("\u062a\u0639\u0630\u0631 \u062a\u062d\u0645\u064a\u0644 \u062f\u0641\u0639\u0629 \u0623\u062e\u0631\u0649 \u0645\u0646 \u0627\u0644\u0639\u0645\u0644\u0627\u0621:", error);
-      setLoadError(error instanceof Error ? error.message : "\u062a\u0639\u0630\u0631 \u062a\u062d\u0645\u064a\u0644 \u0627\u0644\u0645\u0632\u064a\u062f \u0645\u0646 \u0627\u0644\u0639\u0645\u0644\u0627\u0621.");
+      console.error("تعذر تحميل دفعة أخرى من العملاء:", error);
+      setLoadError(error instanceof Error ? error.message : "تعذر تحميل المزيد من العملاء.");
     } finally {
       setLoadingMore(false);
     }
@@ -237,9 +237,9 @@ function CustomersPage() {
       <div className="mx-auto max-w-5xl space-y-5">
         <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-black text-slate-800">\u0643\u0634\u0641 \u0627\u0644\u0639\u0645\u0644\u0627\u0621</h1>
+            <h1 className="text-2xl font-black text-slate-800">كشف العملاء</h1>
             <p className="mt-1 text-sm text-slate-500">
-              \u0627\u0644\u062d\u0633\u0627\u0628\u0627\u062a \u0627\u0644\u0645\u0633\u062c\u0644\u0629\u060c \u0645\u0639 \u0627\u0633\u062a\u0628\u0639\u0627\u062f \u062d\u0633\u0627\u0628\u0627\u062a \u0627\u0644\u0625\u062f\u0627\u0631\u0629 \u0648\u0627\u0644\u0645\u0648\u0638\u0641\u064a\u0646.
+              الحسابات المسجلة، مع استبعاد حسابات الإدارة والموظفين.
             </p>
           </div>
 
@@ -250,7 +250,7 @@ function CustomersPage() {
             className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#0F4C81] px-5 py-3 text-sm font-black text-white shadow-md shadow-blue-500/20 transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} />
-            \u062a\u062d\u062f\u064a\u062b \u0627\u0644\u0642\u0627\u0626\u0645\u0629
+            تحديث القائمة
           </button>
         </header>
 
@@ -261,9 +261,9 @@ function CustomersPage() {
             </span>
 
             <div>
-              <p className="text-xs font-bold text-slate-500">\u0627\u0644\u0639\u0645\u0644\u0627\u0621 \u0627\u0644\u0645\u062d\u0645\u0651\u0644\u0648\u0646</p>
+              <p className="text-xs font-bold text-slate-500">العملاء المحمّلون</p>
               <p className="text-3xl font-black leading-none text-slate-800">
-                {loading ? "\u2014" : customers.length}
+                {loading ? "—" : customers.length}
               </p>
             </div>
           </div>
@@ -273,8 +273,8 @@ function CustomersPage() {
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="\u0627\u0628\u062d\u062b \u0628\u0627\u0644\u0627\u0633\u0645 \u0623\u0648 \u0631\u0642\u0645 \u0627\u0644\u0647\u0627\u062a\u0641"
-              aria-label="\u0627\u0644\u0628\u062d\u062b \u0641\u064a \u0627\u0644\u0639\u0645\u0644\u0627\u0621 \u0627\u0644\u0645\u062d\u0645\u0651\u0644\u064a\u0646 \u0628\u0627\u0644\u0627\u0633\u0645 \u0623\u0648 \u0627\u0644\u0647\u0627\u062a\u0641"
+              placeholder="ابحث بالاسم أو رقم الهاتف"
+              aria-label="البحث في العملاء المحمّلين بالاسم أو الهاتف"
               className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pr-10 pl-3 text-sm outline-none transition focus:border-[#2196F3] focus:bg-white focus:ring-2 focus:ring-sky-100"
             />
           </label>
@@ -287,8 +287,8 @@ function CustomersPage() {
           >
             {loadError}
             <p className="mt-2 font-normal leading-relaxed text-red-700">
-              \u0625\u0630\u0627 \u0643\u0627\u0646 \u0627\u0644\u062e\u0637\u0623 \u0645\u062a\u0639\u0644\u0642\u064b\u0627 \u0628\u0627\u0644\u0635\u0644\u0627\u062d\u064a\u0627\u062a\u060c \u0641\u062a\u062d\u0642\u0642 \u0645\u0646 \u0645\u0646\u062d \u0627\u0644\u0645\u0634\u0631\u0641 \u0635\u0644\u0627\u062d\u064a\u0629 \u0642\u0631\u0627\u0621\u0629 \u0627\u0644\u0635\u0641\u0648\u0641 \u0627\u0644\u0645\u0637\u0644\u0648\u0628\u0629 \u0641\u064a
-              RLS \u0639\u0644\u0649 \u062c\u062f\u0648\u0644\u064a <code dir="ltr" className="rounded bg-red-100 px-1 font-mono">profiles</code> \u0648 <code dir="ltr" className="rounded bg-red-100 px-1 font-mono">user_roles</code>.
+              إذا كان الخطأ متعلقًا بالصلاحيات، فتحقق من منح المشرف صلاحية قراءة الصفوف المطلوبة في
+              RLS على جدولي <code dir="ltr" className="rounded bg-red-100 px-1 font-mono">profiles</code> و <code dir="ltr" className="rounded bg-red-100 px-1 font-mono">user_roles</code>.
             </p>
           </div>
         )}
@@ -296,7 +296,7 @@ function CustomersPage() {
         {loading ? (
           <div className="flex flex-col items-center gap-3 rounded-2xl border border-slate-100 bg-white p-10 text-center shadow-sm">
             <RefreshCw className="size-6 animate-spin text-[#0F4C81]" />
-            <p className="text-sm font-bold text-slate-500">\u062c\u0627\u0631\u064d \u062a\u062d\u0645\u064a\u0644 \u0627\u0644\u0639\u0645\u0644\u0627\u0621...</p>
+            <p className="text-sm font-bold text-slate-500">جارٍ تحميل العملاء...</p>
           </div>
         ) : filteredCustomers.length === 0 ? (
           <div className="flex flex-col items-center gap-3 rounded-2xl border border-slate-100 bg-white p-10 text-center shadow-sm">
@@ -306,11 +306,11 @@ function CustomersPage() {
             <p className="text-sm font-bold text-slate-500">
               {search.trim()
                 ? hasMore
-                  ? "\u0644\u0627 \u062a\u0648\u062c\u062f \u0646\u062a\u0627\u0626\u062c \u0636\u0645\u0646 \u0627\u0644\u0639\u0645\u0644\u0627\u0621 \u0627\u0644\u0645\u062d\u0645\u0651\u0644\u064a\u0646. \u062d\u0645\u0651\u0644 \u0627\u0644\u0645\u0632\u064a\u062f \u0644\u0644\u0628\u062d\u062b \u0641\u064a \u062f\u0641\u0639\u0627\u062a \u0623\u062e\u0631\u0649."
-                  : "\u0644\u0627 \u062a\u0648\u062c\u062f \u0646\u062a\u0627\u0626\u062c \u0645\u0637\u0627\u0628\u0642\u0629 \u0644\u0644\u0628\u062d\u062b."
+                  ? "لا توجد نتائج ضمن العملاء المحمّلين. حمّل المزيد للبحث في دفعات أخرى."
+                  : "لا توجد نتائج مطابقة للبحث."
                 : hasMore
-                  ? "\u0644\u0627 \u064a\u0648\u062c\u062f \u0639\u0645\u0644\u0627\u0621 \u0641\u064a \u0627\u0644\u062f\u0641\u0639\u0629 \u0627\u0644\u062d\u0627\u0644\u064a\u0629. \u062d\u0645\u0651\u0644 \u0627\u0644\u0645\u0632\u064a\u062f \u0644\u0644\u062a\u062d\u0642\u0642 \u0645\u0646 \u0628\u0642\u064a\u0629 \u0627\u0644\u0642\u0627\u0626\u0645\u0629."
-                  : "\u0644\u0627 \u062a\u0648\u062c\u062f \u062d\u0633\u0627\u0628\u0627\u062a \u0639\u0645\u0644\u0627\u0621 \u0644\u0639\u0631\u0636\u0647\u0627."}
+                  ? "لا يوجد عملاء في الدفعة الحالية. حمّل المزيد للتحقق من بقية القائمة."
+                  : "لا توجد حسابات عملاء لعرضها."}
             </p>
           </div>
         ) : (
@@ -319,10 +319,10 @@ function CustomersPage() {
               <table className="w-full min-w-[600px] text-right text-sm">
                 <thead className="bg-slate-50 text-xs font-black text-slate-500">
                   <tr>
-                    <th className="px-4 py-3">\u0627\u0633\u0645 \u0627\u0644\u0639\u0645\u064a\u0644</th>
-                    <th className="px-4 py-3">\u0631\u0642\u0645 \u0627\u0644\u0647\u0627\u062a\u0641</th>
-                    <th className="px-4 py-3">\u062a\u0627\u0631\u064a\u062e \u0627\u0644\u062a\u0633\u062c\u064a\u0644</th>
-                    <th className="px-4 py-3">\u0645\u0639\u0631\u0651\u0641 \u0627\u0644\u062d\u0633\u0627\u0628</th>
+                    <th className="px-4 py-3">اسم العميل</th>
+                    <th className="px-4 py-3">رقم الهاتف</th>
+                    <th className="px-4 py-3">تاريخ التسجيل</th>
+                    <th className="px-4 py-3">معرّف الحساب</th>
                   </tr>
                 </thead>
 
@@ -341,7 +341,7 @@ function CustomersPage() {
                         </div>
                       </td>
                       <td dir="ltr" className="px-4 py-3 text-right font-mono text-xs text-slate-600">
-                        {customer.phone || "\u2014"}
+                        {customer.phone || "—"}
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-500">
                         {formatDate(customer.created_at)}
@@ -371,7 +371,7 @@ function CustomersPage() {
               className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-6 py-3 text-sm font-bold text-[#0F4C81] shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loadingMore && <RefreshCw className="size-4 animate-spin" />}
-              {loadingMore ? "\u062c\u0627\u0631\u064d \u062a\u062d\u0645\u064a\u0644 \u0627\u0644\u0645\u0632\u064a\u062f..." : "\u062a\u062d\u0645\u064a\u0644 \u0627\u0644\u0645\u0632\u064a\u062f"}
+              {loadingMore ? "جارٍ تحميل المزيد..." : "تحميل المزيد"}
             </button>
           </div>
         )}
