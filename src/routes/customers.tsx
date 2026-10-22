@@ -13,6 +13,7 @@ import {
   Plus,
   Search,
   Sparkles,
+  Trash2,
   UserCheck,
   Users,
   X,
@@ -61,7 +62,6 @@ type MoneyLine = {
 };
 type FilterKind = "all" | "active" | "inactive";
 
-const DB = supabase as any;
 const PAGE_SIZE = 10;
 const FETCH_PAGE_SIZE = 500;
 const AVATAR_COLORS = [
@@ -72,19 +72,6 @@ const AVATAR_COLORS = [
   "#0891B2",
   "#DB2777",
 ];
-
-async function fetchAllPages<T>(
-  makeQuery: (from: number, to: number) => any,
-): Promise<T[]> {
-  const rows: T[] = [];
-  for (let from = 0;; from += FETCH_PAGE_SIZE) {
-    const { data, error } = await makeQuery(from, from + FETCH_PAGE_SIZE - 1);
-    if (error) throw error;
-    const page = (data ?? []) as T[];
-    rows.push(...page);
-    if (page.length < FETCH_PAGE_SIZE) return rows;
-  }
-}
 
 function getMonthStart(now = new Date()) {
   return new Date(now.getFullYear(), now.getMonth(), 1).getTime();
@@ -219,111 +206,28 @@ function hasStoredValue(
   return numeric(order[field]) !== null;
 }
 
-async function loadCustomerRecords(): Promise<Customer[]> {
-  const [profiles, roles] = await Promise.all([
-    fetchAllPages<ProfileRow>((from, to) =>
-      DB.from("profiles")
-        .select("id,full_name,phone,created_at")
-        .order("created_at", { ascending: false })
-        .range(from, to)
-    ),
-    fetchAllPages<RoleRow>((from, to) =>
-      DB.from("user_roles").select("user_id,role").range(from, to)
-    ),
-  ]);
-
-  const staffIds = new Set(
-    roles.filter((row) => row.role === "admin" || row.role === "staff").map((
-      row,
-    ) => row.user_id),
-  );
-  const clientProfiles = profiles.filter((profile) =>
-    !staffIds.has(profile.id)
-  );
-  const orderById = new Map<string, OrderRow>();
-  const selectOrderFields =
-    "id,user_id,tracking_code,status,created_at,customer_name,phone,customer_phone,total_cost_usd,total_cost_yer,total_cost_sar,paid_amount,remaining_amount,profit_amount,quote_currency,original_currency";
-
-  // Prefer an explicit account link when it exists.
-  for (let index = 0; index < clientProfiles.length; index += 100) {
-    const userIds = clientProfiles.slice(index, index + 100).map((profile) =>
-      profile.id
-    );
-    const batchOrders = await fetchAllPages<OrderRow>((from, to) =>
-      DB.from("orders")
-        .select(selectOrderFields)
-        .in("user_id", userIds)
-        .order("created_at", { ascending: false })
-        .range(from, to)
-    );
-    for (const order of batchOrders) orderById.set(order.id, order);
+async function loadCustomerRecords(): Promise<
+  { customers: Customer[]; canDelete: boolean }
+> {
+  const { data, error } = await supabase.functions.invoke("admin-customers", {
+    body: { action: "list" },
+  });
+  if (error) {
+    console.error("تعذر تحميل سجل العملاء من الدالة المحمية:", error.message);
+    throw new Error("تعذر الاتصال بدالة إدارة العملاء المحمية.");
   }
-
-  // Include legacy orders linked only by phone, and also recover orders whose
-  // user_id is stale, but only attach them when the normalized phone is unique.
-  const phoneOwners = new Map<string, string[]>();
-  for (const profile of clientProfiles) {
-    const phone = normalizePhone(profile.phone);
-    if (!phone) continue;
-    phoneOwners.set(phone, [...(phoneOwners.get(phone) ?? []), profile.id]);
+  if (!data || data.success !== true || !Array.isArray(data.customers)) {
+    throw new Error(data?.error || "استجابة قائمة العملاء غير صالحة.");
   }
-  const rawPhones = [
-    ...new Set(clientProfiles.flatMap((profile) => {
-      const phone = profile.phone?.trim();
-      const normalized = normalizePhone(phone);
-      return [phone, normalized].filter((value): value is string =>
-        Boolean(value)
-      );
-    })),
-  ];
-  for (let index = 0; index < rawPhones.length; index += 100) {
-    const phoneBatch = rawPhones.slice(index, index + 100);
-    for (const column of ["phone", "customer_phone"] as const) {
-      const phoneOrders = await fetchAllPages<OrderRow>((from, to) =>
-        DB.from("orders")
-          .select(selectOrderFields)
-          .in(column, phoneBatch)
-          .order("created_at", { ascending: false })
-          .range(from, to)
-      );
-      for (const order of phoneOrders) orderById.set(order.id, order);
-    }
-  }
-
-  const ordersByUser = new Map<string, OrderRow[]>();
-  const clientIds = new Set(clientProfiles.map((profile) => profile.id));
-  for (const order of orderById.values()) {
-    let ownerId = order.user_id && clientIds.has(order.user_id)
-      ? order.user_id
-      : null;
-    if (!ownerId) {
-      const candidateOwners = new Set<string>();
-      for (const candidate of [order.customer_phone, order.phone]) {
-        const normalized = normalizePhone(candidate);
-        if (!normalized) continue;
-        for (const id of phoneOwners.get(normalized) ?? []) {
-          candidateOwners.add(id);
-        }
-      }
-      if (candidateOwners.size === 1) ownerId = [...candidateOwners][0];
-    }
-    if (!ownerId) continue;
-    const group = ordersByUser.get(ownerId) ?? [];
-    group.push(order);
-    ordersByUser.set(ownerId, group);
-  }
-
-  return clientProfiles.map((profile) => ({
-    ...profile,
-    orders: (ordersByUser.get(profile.id) ?? []).sort(
-      (a, b) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-    ),
-  }));
+  return {
+    customers: data.customers as Customer[],
+    canDelete: data.canDelete === true,
+  };
 }
 
 function CustomersPageContent() {
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [canDeleteCustomers, setCanDeleteCustomers] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -331,19 +235,24 @@ function CustomersPageContent() {
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Customer | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Customer | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [cleanupJobId, setCleanupJobId] = useState<string | null>(null);
+  const [retryingCleanup, setRetryingCleanup] = useState(false);
   const fontStack = { fontFamily: "Cairo, Tajawal, system-ui, sans-serif" };
 
   const loadCustomers = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const customerRows = await loadCustomerRecords();
-      setCustomers(customerRows);
+      const result = await loadCustomerRecords();
+      setCustomers(result.customers);
+      setCanDeleteCustomers(result.canDelete);
       setPage(1);
     } catch (cause) {
       console.error("تعذر تحميل بيانات كشف العملاء:", cause);
       setError(
-        "تعذر تحميل العملاء أو الطلبات. تحقق من اتصال قاعدة البيانات وسياسات القراءة للمدير والموظفين، ثم أعد المحاولة.",
+        "تعذر تحميل العملاء. تحقق من نشر دالة admin-customers والترحيل في مشروع Supabase الإنتاجي الصحيح، ثم أعد المحاولة.",
       );
     } finally {
       setLoading(false);
@@ -353,6 +262,75 @@ function CustomersPageContent() {
   useEffect(() => {
     void loadCustomers();
   }, [loadCustomers]);
+
+  const confirmDeleteCustomer = async () => {
+    if (!deleteTarget || deleting) return;
+    setDeleting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        "admin-customers",
+        {
+          body: { action: "delete", userId: deleteTarget.id },
+        },
+      );
+      if (error) throw error;
+      if (data?.success !== true) {
+        if (data?.cleanupPending === true && typeof data.jobId === "string") {
+          setCleanupJobId(data.jobId);
+          setCustomers((current) =>
+            current.filter((item) => item.id !== deleteTarget.id)
+          );
+          setSelected(null);
+          setDeleteTarget(null);
+          setInfo(
+            "حُذفت الطلبات والسجلات المالية، لكن حذف حساب الدخول لم يكتمل. استخدم زر الاستكمال أدناه.",
+          );
+          return;
+        }
+        throw new Error(data?.error || "تعذر حذف العميل.");
+      }
+      setCustomers((current) =>
+        current.filter((item) => item.id !== deleteTarget.id)
+      );
+      setSelected(null);
+      setDeleteTarget(null);
+      setInfo("تم حذف حساب العميل وطلباته وسجلاته المالية نهائيًا.");
+    } catch (cause) {
+      console.error("فشل حذف العميل:", cause);
+      setInfo(
+        "لم يكتمل الحذف. تحقق من نشر دالة الإدارة والترحيل في مشروع Supabase الإنتاجي الصحيح، ثم أعد المحاولة.",
+      );
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const retryCustomerCleanup = async () => {
+    if (!cleanupJobId || retryingCleanup) return;
+    setRetryingCleanup(true);
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        "admin-customers",
+        {
+          body: { action: "resume", jobId: cleanupJobId },
+        },
+      );
+      if (error) throw error;
+      if (data?.success !== true) {
+        throw new Error(data?.error || "لم يكتمل التنظيف.");
+      }
+      setCleanupJobId(null);
+      setInfo("اكتمل حذف طلبات العميل وسجلاته المالية.");
+    } catch (cause) {
+      console.error("تعذر استكمال تنظيف سجلات العميل:", cause);
+      setInfo(
+        "لا يزال التنظيف غير مكتمل. احتفظ برقم العملية التالي وراجعه مع مسؤول قاعدة البيانات: " +
+          cleanupJobId,
+      );
+    } finally {
+      setRetryingCleanup(false);
+    }
+  };
 
   const filtered = useMemo(() => {
     const query = search.trim().toLocaleLowerCase();
@@ -704,13 +682,27 @@ function CustomersPageContent() {
                             )}
                         </td>
                         <td className="px-4 py-3">
-                          <button
-                            type="button"
-                            onClick={() => setSelected(customer)}
-                            className="flex items-center gap-1.5 rounded-xl bg-[#0F4C81] px-3 py-2 text-[11px] font-bold text-white transition hover:opacity-95"
-                          >
-                            <Eye className="size-3.5" /> إظهار
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setSelected(customer)}
+                              className="flex items-center gap-1.5 rounded-xl bg-[#0F4C81] px-3 py-2 text-[11px] font-bold text-white transition hover:opacity-95"
+                            >
+                              <Eye className="size-3.5" /> إظهار
+                            </button>
+                            {canDeleteCustomers && (
+                              <button
+                                type="button"
+                                onClick={() => setDeleteTarget(customer)}
+                                aria-label={`حذف حساب ${
+                                  customer.full_name || "العميل"
+                                }`}
+                                className="flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[11px] font-bold text-red-700 transition hover:bg-red-100"
+                              >
+                                <Trash2 className="size-3.5" /> حذف
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -794,14 +786,98 @@ function CustomersPageContent() {
                 <X className="size-4" />
               </button>
             </div>
+            {cleanupJobId && (
+              <button
+                type="button"
+                disabled={retryingCleanup}
+                onClick={() => void retryCustomerCleanup()}
+                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+              >
+                {retryingCleanup
+                  ? (
+                    <>
+                      <Loader2 className="size-4 animate-spin" />{" "}
+                      جارٍ استكمال الحذف…
+                    </>
+                  )
+                  : "إعادة محاولة تنظيف السجلات"}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setInfo(null)}
-              className="mt-4 w-full rounded-xl bg-[#0F4C81] px-4 py-2.5 text-sm font-bold text-white"
+              className="mt-3 w-full rounded-xl bg-[#0F4C81] px-4 py-2.5 text-sm font-bold text-white"
             >
               حسنًا
             </button>
           </div>
+        </div>
+      )}
+
+      {deleteTarget && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/60 p-4"
+          role="presentation"
+        >
+          <section
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="delete-customer-title"
+            className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-2xl"
+          >
+            <div className="flex items-start gap-3">
+              <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-red-100 text-red-700">
+                <Trash2 className="size-5" />
+              </span>
+              <div>
+                <h2
+                  id="delete-customer-title"
+                  className="text-lg font-black text-slate-900"
+                >
+                  تأكيد حذف العميل نهائيًا
+                </h2>
+                <p className="mt-1 text-sm leading-6 text-slate-600">
+                  سيُحذف حساب{" "}
+                  <strong>{deleteTarget.full_name || "العميل"}</strong>{" "}
+                  مع طلباته ({deleteTarget.orders.length}) وسجلات المدفوعات
+                  والمحفظة. لا يمكن التراجع عن هذا الإجراء.
+                </p>
+              </div>
+            </div>
+            <p className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-xs leading-6 text-red-800">
+              سيُحذف كذلك ملف الحساب والعناوين والإشعارات ومعاملات المحفظة المرتبطة
+              به. أُبقي سجلات العملية التقنية فقط عند تعذر إكمال التنظيف لضمان
+              إمكانية استئنافه.
+            </p>
+            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={() => setDeleteTarget(null)}
+                className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-600 disabled:opacity-50"
+              >
+                إلغاء
+              </button>
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={() => void confirmDeleteCustomer()}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-red-800 disabled:opacity-50"
+              >
+                {deleting
+                  ? (
+                    <>
+                      <Loader2 className="size-4 animate-spin" /> جارٍ الحذف…
+                    </>
+                  )
+                  : (
+                    <>
+                      <Trash2 className="size-4" /> حذف الحساب وكل السجلات
+                    </>
+                  )}
+              </button>
+            </div>
+          </section>
         </div>
       )}
 
@@ -823,14 +899,25 @@ function CustomersPageContent() {
               >
                 تفاصيل العميل
               </h2>
-              <button
-                type="button"
-                onClick={() => setSelected(null)}
-                className="grid size-9 place-items-center rounded-xl bg-slate-100 transition hover:bg-slate-200"
-                aria-label="إغلاق"
-              >
-                <X className="size-4" />
-              </button>
+              <div className="flex items-center gap-2">
+                {canDeleteCustomers && (
+                  <button
+                    type="button"
+                    onClick={() => setDeleteTarget(selected)}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-red-50 px-3 py-2 text-xs font-bold text-red-700 hover:bg-red-100"
+                  >
+                    <Trash2 className="size-3.5" /> حذف العميل
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setSelected(null)}
+                  className="grid size-9 place-items-center rounded-xl bg-slate-100 transition hover:bg-slate-200"
+                  aria-label="إغلاق"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
             </div>
             <div className="space-y-5 p-5">
               <div className="flex items-center gap-4">
