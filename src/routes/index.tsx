@@ -86,7 +86,8 @@ export const AlShamelLogo: React.FC<{
   showText?: boolean;
   variant?: 'light' | 'dark';
   className?: string;
-}> = ({ size = 'md', showText = true, variant = 'light', className = '' }) => {
+  compact?: boolean;
+}> = ({ size = 'md', showText = true, variant = 'light', className = '', compact = false }) => {
   const iconSizeMap = {
     sm: 'w-8 h-8',
     md: 'w-12 h-12',
@@ -218,20 +219,20 @@ export const AlShamelLogo: React.FC<{
       {/* كتابة الشعار: AL SHAMEL SHOPPING */}
       {showText && (
         <div className="flex flex-col items-start leading-none">
-          <div className="flex items-center gap-1.5">
+          <div className={`flex items-center gap-1.5 ${compact ? 'gap-1' : ''}`}>
             <span
-              className={`font-black tracking-tight text-lg sm:text-xl ${
+              className={`font-black tracking-tight ${compact ? 'text-[9px] leading-none sm:text-lg md:text-xl' : 'text-lg sm:text-xl'} ${
                 isDark ? 'text-white' : 'text-[#0F4C81]'
               }`}
             >
               AL SHAMEL
             </span>
-            <span className="font-extrabold text-lg sm:text-xl text-[#F97316]">
+            <span className={`font-extrabold text-[#F97316] ${compact ? 'text-[9px] leading-none sm:text-lg md:text-xl' : 'text-lg sm:text-xl'}`}>
               SHOPPING
             </span>
           </div>
           <span
-            className={`text-xs font-bold mt-0.5 tracking-wide ${
+            className={`${compact ? 'mt-0.5 text-[6px] leading-tight sm:text-xs' : 'mt-0.5 text-xs'} font-bold tracking-wide ${
               isDark ? 'text-sky-200' : 'text-[#0284C7]'
             }`}
           >
@@ -635,13 +636,13 @@ export function HomePage() {
         className="sticky top-0 z-40 border-b border-white/10 backdrop-blur-xl"
         style={{ backgroundColor: 'rgba(8, 26, 56, 0.8)' }}
       >
-        <div className="mx-auto flex h-16 max-w-5xl items-center justify-between gap-3 px-4">
-        <div className="flex items-center gap-3">
+        <div className="mx-auto flex min-h-14 max-w-5xl items-center justify-between gap-1.5 px-2.5 py-1.5 sm:h-16 sm:gap-3 sm:px-4 sm:py-0">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           {/* زر القائمة الجانبية (3 شرطات) بالأزرق والبرتقالي */}
           <button
             onClick={() => setIsSidebarOpen(true)}
             title="القائمة الجانبية (3 شرطات)"
-            className="flex flex-col justify-center items-center gap-1.5 size-12 rounded-2xl bg-gradient-to-tr from-[#0F4C81] to-[#0284C7] hover:from-[#0A2540] hover:to-[#0F4C81] text-white shadow-md hover:scale-105 active:scale-95 transition-all ring-2 ring-sky-300/50 group shrink-0 cursor-pointer"
+            className="flex size-10 shrink-0 flex-col items-center justify-center gap-1.5 rounded-xl sm:size-12 sm:rounded-2xl bg-gradient-to-tr from-[#0F4C81] to-[#0284C7] hover:from-[#0A2540] hover:to-[#0F4C81] text-white shadow-md hover:scale-105 active:scale-95 transition-all ring-2 ring-sky-300/50 group shrink-0 cursor-pointer"
           >
             <span className="w-6 h-1 rounded-full bg-white group-hover:bg-orange-300 transition-all" />
             <span className="w-6 h-1 rounded-full bg-orange-400 group-hover:bg-white transition-all" />
@@ -649,20 +650,20 @@ export function HomePage() {
           </button>
 
           {/* شعار السوق الشامل */}
-          <AlShamelLogo size="lg" showText={true} variant="dark" className="drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]" />
+          <AlShamelLogo size="sm" showText={true} variant="dark" compact className="shrink min-w-0 drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]" />
         </div>
 
         {/* جهة اليسار: حسابي والإشعارات وزر اطلب الآن */}
-        <div className="relative flex flex-wrap items-center gap-2 sm:gap-2.5">
+        <div className="relative flex shrink-0 flex-nowrap items-center gap-1.5 sm:gap-2.5">
           <a
             href="/my-account"
-            className="grid size-11 shrink-0 place-items-center rounded-xl border border-white/15 bg-white/8 text-white shadow-sm backdrop-blur-md transition hover:scale-105 hover:bg-white/15"
+            className="hidden size-11 shrink-0 place-items-center rounded-xl border border-white/15 bg-white/8 text-white shadow-sm backdrop-blur-md transition hover:scale-105 hover:bg-white/15 sm:grid"
             title="حسابي"
           >
             <User className="size-5" />
           </a>
 
-          <button onClick={() => setIsNotificationOpen((open) => !open)} className="relative grid size-11 shrink-0 place-items-center rounded-xl border border-white/15 bg-white/8 text-white shadow-sm backdrop-blur-md transition hover:scale-105 hover:bg-white/15" title="الإشعارات" aria-expanded={isNotificationOpen}>
+          <button onClick={() => setIsNotificationOpen((open) => !open)} className="relative grid size-10 shrink-0 place-items-center rounded-xl border border-white/15 bg-white/8 text-white shadow-sm backdrop-blur-md transition hover:scale-105 hover:bg-white/15 sm:size-11" title="الإشعارات" aria-expanded={isNotificationOpen}>
             <Bell className="size-5" />
             {unreadCount > 0 && <span className="absolute -right-1 -top-1 grid size-5 place-items-center rounded-full bg-[#ff7a00] text-[10px] font-black text-white ring-2 ring-white/40">{unreadCount}</span>}
           </button>
@@ -677,10 +678,10 @@ export function HomePage() {
 
           <a
             href="/new-order"
-            className="als-button-glow inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#ff7a00] to-[#ff6a00] px-5 py-2.5 font-black text-xs sm:text-sm text-white shadow-[0_0_20px_rgba(255,122,0,0.4)] transition-all hover:-translate-y-0.5 active:scale-95"
+            className="als-button-glow inline-flex size-10 shrink-0 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#ff7a00] to-[#ff6a00] p-2.5 text-xs font-black text-white shadow-[0_0_20px_rgba(255,122,0,0.4)] transition-all hover:-translate-y-0.5 active:scale-95 sm:size-auto sm:px-5 sm:py-2.5 sm:text-sm"
           >
             <ShoppingCart className="size-4 text-white" />
-            <span>اطلب الآن</span>
+            <span className="hidden sm:inline">اطلب الآن</span>
           </a>
         </div>
         </div>
