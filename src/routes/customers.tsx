@@ -41,8 +41,24 @@ type OrderRow = {
   created_at: string;
   customer_name: string | null;
   phone: string | null;
+  customer_phone: string | null;
+  total_cost_usd: number | string | null;
+  total_cost_yer: number | string | null;
+  total_cost_sar: number | string | null;
+  paid_amount: number | string | null;
+  remaining_amount: number | string | null;
+  profit_amount: number | string | null;
+  quote_currency: string | null;
+  original_currency: string | null;
 };
 type Customer = ProfileRow & { orders: OrderRow[] };
+type CurrencyCode = "USD" | "YER" | "SAR";
+type MoneyLine = {
+  code: CurrencyCode;
+  total: number;
+  recorded: number;
+  expected: number;
+};
 type FilterKind = "all" | "active" | "inactive";
 
 const DB = supabase as any;
@@ -115,6 +131,94 @@ function accountLabel(id: string) {
   return id.length > 12 ? `ID-${id.slice(0, 8).toUpperCase()}` : id;
 }
 
+const CURRENCY_INFO: Record<CurrencyCode, { label: string; suffix: string }> = {
+  USD: { label: "دولار أمريكي", suffix: "USD" },
+  YER: { label: "ريال يمني", suffix: "ر.ي" },
+  SAR: { label: "ريال سعودي", suffix: "ر.س" },
+};
+const CURRENCY_CODES: CurrencyCode[] = ["USD", "YER", "SAR"];
+
+function numeric(value: number | string | null | undefined): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function normalizeCurrency(
+  value: string | null | undefined,
+): CurrencyCode | null {
+  const currency = (value ?? "").trim().toUpperCase();
+  if (["USD", "US$", "$", "دولار", "دولار أمريكي"].includes(currency)) {
+    return "USD";
+  }
+  if (["YER", "YRL", "ريال يمني", "ر.ي", "ريال"].includes(currency)) {
+    return "YER";
+  }
+  if (["SAR", "ر.س", "ريال سعودي"].includes(currency)) return "SAR";
+  return null;
+}
+
+function orderCurrency(order: OrderRow): CurrencyCode | null {
+  const explicit = normalizeCurrency(order.quote_currency) ??
+    normalizeCurrency(order.original_currency);
+  if (explicit) return explicit;
+  const costValues: Array<[CurrencyCode, number | null]> = [
+    ["USD", numeric(order.total_cost_usd)],
+    ["YER", numeric(order.total_cost_yer)],
+    ["SAR", numeric(order.total_cost_sar)],
+  ];
+  const nonZero = costValues.filter(([, value]) =>
+    value !== null && value !== 0
+  );
+  if (nonZero.length === 1) return nonZero[0][0];
+  const present = costValues.filter(([, value]) => value !== null);
+  return present.length === 1 ? present[0][0] : null;
+}
+
+function currencyTotals(
+  orders: OrderRow[],
+  field:
+    | "total_cost_usd"
+    | "total_cost_yer"
+    | "total_cost_sar"
+    | "paid_amount"
+    | "remaining_amount"
+    | "profit_amount",
+): MoneyLine[] {
+  const explicitCostCurrency: Partial<Record<CurrencyCode, string>> = {
+    total_cost_usd: "USD",
+    total_cost_yer: "YER",
+    total_cost_sar: "SAR",
+  };
+  const explicitCode = explicitCostCurrency[field] as CurrencyCode | undefined;
+  const lines: MoneyLine[] = [];
+  for (const code of CURRENCY_CODES) {
+    const relevant = explicitCode
+      ? orders.filter((order) =>
+        orderCurrency(order) === code || numeric(order[field]) !== null
+      )
+      : orders.filter((order) => orderCurrency(order) === code);
+    if (!relevant.length) continue;
+    const values = relevant.map((order) => numeric(order[field]));
+    const recorded = values.filter((value): value is number => value !== null);
+    if (!recorded.length) continue;
+    lines.push({
+      code,
+      total: recorded.reduce((sum, value) => sum + value, 0),
+      recorded: recorded.length,
+      expected: relevant.length,
+    });
+  }
+  return lines;
+}
+
+function hasStoredValue(
+  order: OrderRow,
+  field: "paid_amount" | "remaining_amount" | "profit_amount",
+) {
+  return numeric(order[field]) !== null;
+}
+
 async function loadCustomerRecords(): Promise<Customer[]> {
   const [profiles, roles] = await Promise.all([
     fetchAllPages<ProfileRow>((from, to) =>
@@ -136,36 +240,65 @@ async function loadCustomerRecords(): Promise<Customer[]> {
   const clientProfiles = profiles.filter((profile) =>
     !staffIds.has(profile.id)
   );
-  const orders: OrderRow[] = [];
+  const orderById = new Map<string, OrderRow>();
+  const selectOrderFields =
+    "id,user_id,tracking_code,status,created_at,customer_name,phone,customer_phone,total_cost_usd,total_cost_yer,total_cost_sar,paid_amount,remaining_amount,profit_amount,quote_currency,original_currency";
 
-  // Fetch only orders linked to customer profiles, in bounded batches.
+  // Prefer an explicit account link when it exists.
   for (let index = 0; index < clientProfiles.length; index += 100) {
     const userIds = clientProfiles.slice(index, index + 100).map((profile) =>
       profile.id
     );
     const batchOrders = await fetchAllPages<OrderRow>((from, to) =>
       DB.from("orders")
-        .select(
-          "id,user_id,tracking_code,status,created_at,customer_name,phone",
-        )
+        .select(selectOrderFields)
         .in("user_id", userIds)
         .order("created_at", { ascending: false })
         .range(from, to)
     );
-    orders.push(...batchOrders);
+    for (const order of batchOrders) orderById.set(order.id, order);
   }
 
+  // Fetch guest/legacy orders separately, then match by normalized phone only
+  // when that phone belongs to one customer profile.
+  const guestOrders = await fetchAllPages<OrderRow>((from, to) =>
+    DB.from("orders")
+      .select(selectOrderFields)
+      .is("user_id", null)
+      .order("created_at", { ascending: false })
+      .range(from, to)
+  );
+  for (const order of guestOrders) orderById.set(order.id, order);
+
   const ordersByUser = new Map<string, OrderRow[]>();
-  for (const order of orders) {
-    if (!order.user_id) continue;
-    const group = ordersByUser.get(order.user_id) ?? [];
+  const clientIds = new Set(clientProfiles.map((profile) => profile.id));
+  for (const order of orderById.values()) {
+    let ownerId = order.user_id && clientIds.has(order.user_id)
+      ? order.user_id
+      : null;
+    if (!ownerId) {
+      const candidateOwners = new Set<string>();
+      for (const candidate of [order.customer_phone, order.phone]) {
+        const normalized = normalizePhone(candidate);
+        if (!normalized) continue;
+        for (const id of phoneOwners.get(normalized) ?? []) {
+          candidateOwners.add(id);
+        }
+      }
+      if (candidateOwners.size === 1) ownerId = [...candidateOwners][0];
+    }
+    if (!ownerId) continue;
+    const group = ordersByUser.get(ownerId) ?? [];
     group.push(order);
-    ordersByUser.set(order.user_id, group);
+    ordersByUser.set(ownerId, group);
   }
 
   return clientProfiles.map((profile) => ({
     ...profile,
-    orders: ordersByUser.get(profile.id) ?? [],
+    orders: (ordersByUser.get(profile.id) ?? []).sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    ),
   }));
 }
 
@@ -392,7 +525,8 @@ function CustomersPageContent() {
           <span dir="ltr">user_roles</span>، والطلبات المرتبطة بمعرّف الحساب من
           {" "}
           <span dir="ltr">orders</span>. يُحسب «نشط» بوجود طلب غير ملغى خلال آخر
-          90 يومًا؛ الطلبات غير المرتبطة بحساب لا تدخل في عداد هذا العميل.
+          90 يومًا. وتُربط الطلبات القديمة التي بلا معرّف حساب بالهاتف فقط إذا كان
+          الرقم يعود لحساب واحد دون التباس.
         </p>
 
         <section className="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-white p-3 shadow-sm sm:flex-row sm:items-center">
@@ -741,16 +875,103 @@ function CustomersPageContent() {
                   </p>
                 </div>
               </div>
-              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                <p className="text-sm font-black text-amber-900">
-                  البيانات المالية
+              <section className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <h4 className="font-black text-slate-800">
+                      الملخص المالي للطلبات
+                    </h4>
+                    <p className="mt-1 text-[11px] leading-5 text-slate-500">
+                      المجاميع مأخوذة من أعمدة الطلبات المحفوظة، ومفصولة حسب
+                      العملة لتجنّب جمع عملات مختلفة.
+                    </p>
+                  </div>
+                  <span className="shrink-0 rounded-lg bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600">
+                    {selected.orders.length.toLocaleString("ar-YE")} طلب
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {([
+                    [
+                      "إجمالي التكلفة",
+                      "total_cost_usd",
+                      "total_cost_yer",
+                      "total_cost_sar",
+                    ],
+                    ["المدفوع", "paid_amount"],
+                    ["المتبقي", "remaining_amount"],
+                    ["الربح المسجل", "profit_amount"],
+                  ] as const).map(([label, ...fields]) => {
+                    const moneyLines = fields.length === 3
+                      ? fields.flatMap((field) =>
+                        currencyTotals(selected.orders, field)
+                      )
+                      : currencyTotals(
+                        selected.orders,
+                        fields[0] as
+                          | "paid_amount"
+                          | "remaining_amount"
+                          | "profit_amount",
+                      );
+                    const unknownCurrencyCount = fields.length === 1
+                      ? selected.orders.filter((order) =>
+                        hasStoredValue(
+                          order,
+                          fields[0] as
+                            | "paid_amount"
+                            | "remaining_amount"
+                            | "profit_amount",
+                        ) && !orderCurrency(order)
+                      ).length
+                      : 0;
+                    return (
+                      <div key={label} className="rounded-xl bg-slate-50 p-3">
+                        <p className="text-xs font-bold text-slate-500">
+                          {label}
+                        </p>
+                        {moneyLines.length
+                          ? (
+                            <ul className="mt-2 space-y-1.5">
+                              {moneyLines.map((line) => (
+                                <li
+                                  key={line.code}
+                                  className="flex flex-wrap items-baseline justify-between gap-1 text-sm font-black text-slate-800"
+                                >
+                                  <span>
+                                    {line.total.toLocaleString("ar-YE")}{" "}
+                                    {CURRENCY_INFO[line.code].suffix}
+                                  </span>
+                                  <span className="text-[10px] font-medium text-slate-400">
+                                    {CURRENCY_INFO[line.code].label}
+                                    {line.recorded < line.expected
+                                      ? ` · محفوظ في ${line.recorded} من ${line.expected} طلبات`
+                                      : ""}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          )
+                          : (
+                            <p className="mt-2 text-sm font-bold text-slate-400">
+                              غير مسجل
+                            </p>
+                          )}
+                        {unknownCurrencyCount > 0 && (
+                          <p className="mt-2 text-[11px] leading-5 text-amber-700">
+                            يوجد مبلغ محفوظ في {unknownCurrencyCount}{" "}
+                            طلب، لكن عملته غير محددة؛ لم أضفه إلى أي مجموع.
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="mt-3 text-[10px] leading-5 text-slate-400">
+                  المدفوع والمتبقي والربح تُجمع فقط عندما تتحدد العملة من العملة
+                  المسجلة في الطلب أو من حقل التكلفة ذي العملة الواضحة. لا أستخدم
+                  جدول الدفعات حتى لا أكرر احتساب دفعة مرتبطة بطلب.
                 </p>
-                <p className="mt-1 text-xs leading-6 text-amber-800">
-                  لا تعرض هذه الصفحة إجماليات مالية؛ جدول الحسابات لا يحتوي مبالغ،
-                  ولا يمكن جمع الدفعات بأمان دون مطابقة موثوقة بينها وبين
-                  الطلبات.
-                </p>
-              </div>
+              </section>
               <div className="rounded-2xl border border-slate-100 p-4">
                 <div className="flex items-center justify-between gap-3">
                   <h4 className="flex items-center gap-2 font-black text-slate-800">
