@@ -1,46 +1,53 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   CalendarDays,
-  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   Download,
   Eye,
-  FileDown,
   Filter,
-  Mail,
+  Loader2,
+  Package,
   Phone,
   Plus,
   Search,
   Sparkles,
   UserCheck,
   Users,
-  Wallet,
   X,
 } from "lucide-react";
+import { AdminRouteGuard } from "@/components/admin/AdminRouteGuard";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/customers")({
-  head: () => ({
-    meta: [{ title: "كشف العملاء | السوق الشامل" }],
-  }),
+  head: () => ({ meta: [{ title: "كشف العملاء | السوق الشامل" }] }),
   component: CustomersRoute,
 });
 
-type OrderRow = { code: string; label: string; state: "done" | "progress" };
-type Customer = {
+type ProfileRow = {
   id: string;
-  accountNo: string;
-  name: string;
-  email: string;
-  phone: string;
-  registeredHijri: string;
-  active: boolean;
-  total: number;
-  paid: number;
-  orders: OrderRow[];
+  full_name: string | null;
+  phone: string | null;
+  created_at: string;
 };
 
+type RoleRow = { user_id: string; role: string };
+type OrderRow = {
+  id: string;
+  user_id: string | null;
+  tracking_code: string | null;
+  status: string | null;
+  created_at: string;
+  customer_name: string | null;
+  phone: string | null;
+};
+type Customer = ProfileRow & { orders: OrderRow[] };
+type FilterKind = "all" | "active" | "inactive";
+
+const DB = supabase as any;
+const PAGE_SIZE = 10;
+const FETCH_PAGE_SIZE = 500;
 const AVATAR_COLORS = [
   "#0F4C81",
   "#2E7D32",
@@ -49,118 +56,254 @@ const AVATAR_COLORS = [
   "#0891B2",
   "#DB2777",
 ];
-const initials = (name: string) =>
-  name.trim().split(/\s+/).slice(0, 2).map((p) => p[0]).join("");
-const colorFor = (seed: string) => {
-  let h = 0;
-  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0;
-  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
-};
-const sar = (n: number) => `${n.toLocaleString("en-US")} ر.س`;
 
-const CUSTOMERS: Customer[] = [
-  {
-    id: "1",
-    accountNo: "AC-1024",
-    name: "عبدالله مطيع",
-    email: "abdullah.mutee@example.com",
-    phone: "+967 772 399 744",
-    registeredHijri: "1446/03/12هـ",
-    active: true,
-    total: 5000,
-    paid: 3450,
-    orders: [
-      { code: "ORD-9821", label: "مكتمل", state: "done" },
-      { code: "ORD-9770", label: "قيد التوصيل", state: "progress" },
-    ],
-  },
-  {
-    id: "2",
-    accountNo: "AC-1025",
-    name: "سارة العمري",
-    email: "sara.amri@example.com",
-    phone: "+967 733 445 566",
-    registeredHijri: "1446/02/28هـ",
-    active: true,
-    total: 2400,
-    paid: 2400,
-    orders: [{ code: "ORD-9810", label: "مكتمل", state: "done" }],
-  },
-  {
-    id: "3",
-    accountNo: "AC-1026",
-    name: "محمد علي",
-    email: "m.ali@example.com",
-    phone: "+967 700 112 233",
-    registeredHijri: "1446/01/15هـ",
-    active: false,
-    total: 1800,
-    paid: 600,
-    orders: [{ code: "ORD-9705", label: "قيد الشراء", state: "progress" }],
-  },
-  {
-    id: "4",
-    accountNo: "AC-1027",
-    name: "نورة سعيد",
-    email: "noura.saeed@example.com",
-    phone: "+967 777 889 900",
-    registeredHijri: "1446/03/02هـ",
-    active: true,
-    total: 3600,
-    paid: 1500,
-    orders: [{ code: "ORD-9688", label: "مكتمل", state: "done" }],
-  },
-];
-function CustomersRoute() {
+async function fetchAllPages<T>(
+  makeQuery: (from: number, to: number) => any,
+): Promise<T[]> {
+  const rows: T[] = [];
+  for (let from = 0;; from += FETCH_PAGE_SIZE) {
+    const { data, error } = await makeQuery(from, from + FETCH_PAGE_SIZE - 1);
+    if (error) throw error;
+    const page = (data ?? []) as T[];
+    rows.push(...page);
+    if (page.length < FETCH_PAGE_SIZE) return rows;
+  }
+}
+
+function getMonthStart(now = new Date()) {
+  return new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+}
+
+function formatDate(value: string | null | undefined) {
+  if (!value) return "غير مسجل";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? "غير مسجل"
+    : date.toLocaleDateString("ar-YE");
+}
+
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  return parts.slice(0, 2).map((part) => part[0]).join("") || "ع";
+}
+
+function colorFor(seed: string) {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = (hash * 31 + seed.charCodeAt(i)) | 0;
+  }
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
+function isCancelled(status: string | null) {
+  const value = (status ?? "").trim().toLowerCase();
+  return ["cancelled", "canceled", "ملغي", "ملغى", "ملغية", "ملغاه"].includes(
+    value,
+  );
+}
+
+function customerIsActive(customer: Customer, now = Date.now()) {
+  const cutoff = now - 90 * 24 * 60 * 60 * 1000;
+  return customer.orders.some(
+    (order) =>
+      !isCancelled(order.status) &&
+      new Date(order.created_at).getTime() >= cutoff,
+  );
+}
+
+function accountLabel(id: string) {
+  return id.length > 12 ? `ID-${id.slice(0, 8).toUpperCase()}` : id;
+}
+
+async function loadCustomerRecords(): Promise<Customer[]> {
+  const [profiles, roles] = await Promise.all([
+    fetchAllPages<ProfileRow>((from, to) =>
+      DB.from("profiles")
+        .select("id,full_name,phone,created_at")
+        .order("created_at", { ascending: false })
+        .range(from, to)
+    ),
+    fetchAllPages<RoleRow>((from, to) =>
+      DB.from("user_roles").select("user_id,role").range(from, to)
+    ),
+  ]);
+
+  const staffIds = new Set(
+    roles.filter((row) => row.role === "admin" || row.role === "staff").map((
+      row,
+    ) => row.user_id),
+  );
+  const clientProfiles = profiles.filter((profile) =>
+    !staffIds.has(profile.id)
+  );
+  const orders: OrderRow[] = [];
+
+  // Fetch only orders linked to customer profiles, in bounded batches.
+  for (let index = 0; index < clientProfiles.length; index += 100) {
+    const userIds = clientProfiles.slice(index, index + 100).map((profile) =>
+      profile.id
+    );
+    const batchOrders = await fetchAllPages<OrderRow>((from, to) =>
+      DB.from("orders")
+        .select(
+          "id,user_id,tracking_code,status,created_at,customer_name,phone",
+        )
+        .in("user_id", userIds)
+        .order("created_at", { ascending: false })
+        .range(from, to)
+    );
+    orders.push(...batchOrders);
+  }
+
+  const ordersByUser = new Map<string, OrderRow[]>();
+  for (const order of orders) {
+    if (!order.user_id) continue;
+    const group = ordersByUser.get(order.user_id) ?? [];
+    group.push(order);
+    ordersByUser.set(order.user_id, group);
+  }
+
+  return clientProfiles.map((profile) => ({
+    ...profile,
+    orders: ordersByUser.get(profile.id) ?? [],
+  }));
+}
+
+function CustomersPageContent() {
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState<Customer | null>(null);
+  const [filter, setFilter] = useState<FilterKind>("all");
   const [page, setPage] = useState(1);
+  const [selected, setSelected] = useState<Customer | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const fontStack = { fontFamily: "Cairo, Tajawal, system-ui, sans-serif" };
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return CUSTOMERS.filter(
-      (c) =>
-        !q ||
-        `${c.name} ${c.phone} ${c.accountNo} ${c.email}`
-          .toLowerCase()
-          .includes(q),
-    );
-  }, [search]);
+  const loadCustomers = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const customerRows = await loadCustomerRecords();
+      setCustomers(customerRows);
+      setPage(1);
+    } catch (cause) {
+      console.error("تعذر تحميل بيانات كشف العملاء:", cause);
+      setError(
+        "تعذر تحميل العملاء أو الطلبات. تحقق من اتصال قاعدة البيانات وسياسات القراءة للمدير والموظفين، ثم أعد المحاولة.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  const TOTAL = 52;
-  const PAGE_SIZE = 4;
-  const totalPages = Math.ceil(TOTAL / PAGE_SIZE);
+  useEffect(() => {
+    void loadCustomers();
+  }, [loadCustomers]);
+
+  const filtered = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase();
+    return customers.filter((customer) => {
+      const active = customerIsActive(customer);
+      if (filter === "active" && !active) return false;
+      if (filter === "inactive" && active) return false;
+      if (!query) return true;
+      const orderSearch = customer.orders
+        .map((order) => `${order.tracking_code ?? ""} ${order.status ?? ""}`)
+        .join(" ");
+      return `${customer.full_name ?? ""} ${
+        customer.phone ?? ""
+      } ${customer.id} ${orderSearch}`
+        .toLocaleLowerCase()
+        .includes(query);
+    });
+  }, [customers, filter, search]);
+
+  const now = Date.now();
+  const monthStart = getMonthStart();
+  const weekStart = now - 7 * 24 * 60 * 60 * 1000;
+  const activeCount =
+    customers.filter((customer) => customerIsActive(customer, now)).length;
+  const newThisMonth =
+    customers.filter((customer) =>
+      new Date(customer.created_at).getTime() >= monthStart
+    ).length;
+  const newThisWeek =
+    customers.filter((customer) =>
+      new Date(customer.created_at).getTime() >= weekStart
+    ).length;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageRows = filtered.slice(
+    (safePage - 1) * PAGE_SIZE,
+    safePage * PAGE_SIZE,
+  );
+
+  const exportCsv = () => {
+    const headers = [
+      "اسم العميل",
+      "معرّف الحساب",
+      "الهاتف",
+      "تاريخ التسجيل",
+      "عدد الطلبات",
+      "آخر طلب",
+      "الحالة",
+    ];
+    const rows = filtered.map((customer) => {
+      const latest = customer.orders[0];
+      return [
+        customer.full_name || "عميل بدون اسم",
+        customer.id,
+        customer.phone || "",
+        customer.created_at,
+        String(customer.orders.length),
+        latest?.tracking_code || "",
+        customerIsActive(customer) ? "نشط" : "غير نشط",
+      ];
+    });
+    const csv = [headers, ...rows]
+      .map((row) =>
+        row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(",")
+      )
+      .join("\r\n");
+    const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "customers.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   const stats = [
     {
       label: "إجمالي العملاء",
-      value: "52",
-      hint: "عميل",
+      value: customers.length,
+      hint: "من سجلات الحسابات",
       icon: Users,
       color: "#2196F3",
       soft: "bg-blue-50",
     },
     {
-      label: "العملاء النشطون",
-      value: "38",
-      hint: "نشط",
+      label: "نشطون",
+      value: activeCount,
+      hint: "لديهم طلب خلال 90 يومًا",
       icon: UserCheck,
       color: "#16A34A",
       soft: "bg-emerald-50",
     },
     {
-      label: "هذا الشهر",
-      value: "9",
-      hint: "عملاء جدد",
+      label: "مسجلون هذا الشهر",
+      value: newThisMonth,
+      hint: "من تاريخ إنشاء الحساب",
       icon: CalendarDays,
       color: "#F97316",
       soft: "bg-orange-50",
     },
     {
-      label: "جدد",
-      value: "5",
-      hint: "عميل جديد",
+      label: "آخر 7 أيام",
+      value: newThisWeek,
+      hint: "حسابات جديدة",
       icon: Sparkles,
       color: "#5E35B1",
       soft: "bg-violet-50",
@@ -178,20 +321,44 @@ function CustomersRoute() {
           <div>
             <h1 className="text-xl font-black text-slate-800">كشف العملاء</h1>
             <p className="mt-1 text-sm text-slate-500">
-              إدارة وعرض قائمة العملاء · 52 عميل
+              إدارة وعرض الحسابات المسجلة في قاعدة البيانات · {customers.length}
+              {" "}
+              عميل
             </p>
           </div>
-          <button className="flex items-center justify-center gap-2 rounded-2xl bg-[#0F4C81] px-5 py-3 text-sm font-black text-white shadow-md shadow-blue-500/20 transition hover:opacity-95">
-            <Plus className="size-4" />
-            إضافة عميل
+          <button
+            type="button"
+            onClick={() =>
+              setInfo(
+                "إنشاء حساب عميل جديد يتطلب مسار تسجيل آمنًا في النظام. هذا الزر لا ينشئ حسابًا من صفحة الإدارة حتى لا تظهر سجلات غير مكتملة.",
+              )}
+            className="flex items-center justify-center gap-2 rounded-2xl bg-[#0F4C81] px-5 py-3 text-sm font-black text-white shadow-md shadow-blue-500/20 transition hover:opacity-95"
+          >
+            <Plus className="size-4" /> إضافة عميل
           </button>
         </header>
+
+        {error && (
+          <div
+            role="alert"
+            className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-800"
+          >
+            <p>{error}</p>
+            <button
+              type="button"
+              onClick={() => void loadCustomers()}
+              className="mt-2 rounded-lg bg-red-700 px-3 py-1.5 text-xs font-bold text-white"
+            >
+              إعادة المحاولة
+            </button>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
           {stats.map((stat) => {
             const Icon = stat.icon;
             return (
-              <div
+              <article
                 key={stat.label}
                 className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition hover:shadow-md"
               >
@@ -205,161 +372,243 @@ function CustomersRoute() {
                   className="mt-3 text-3xl font-black leading-none"
                   style={{ color: stat.color }}
                 >
-                  {stat.value}
+                  {loading ? "—" : stat.value.toLocaleString("ar-YE")}
                 </p>
-                <p className="mt-1.5 text-xs font-bold text-slate-500">
+                <p className="mt-1.5 text-xs font-bold text-slate-600">
                   {stat.label}
-                  <span className="mr-1 font-normal text-slate-400">
-                    · {stat.hint}
-                  </span>
                 </p>
-              </div>
+                <p className="mt-1 text-[10px] text-slate-400">{stat.hint}</p>
+              </article>
             );
           })}
         </div>
 
-        <div className="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-white p-3 shadow-sm sm:flex-row sm:items-center">
+        <p
+          role="note"
+          className="rounded-xl border border-sky-100 bg-sky-50 px-4 py-3 text-xs leading-6 text-sky-900"
+        >
+          مصدر البيانات: الحسابات من <span dir="ltr">profiles</span>، والأدوار من
+          {" "}
+          <span dir="ltr">user_roles</span>، والطلبات المرتبطة بمعرّف الحساب من
+          {" "}
+          <span dir="ltr">orders</span>. يُحسب «نشط» بوجود طلب غير ملغى خلال آخر
+          90 يومًا؛ الطلبات غير المرتبطة بحساب لا تدخل في عداد هذا العميل.
+        </p>
+
+        <section className="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-white p-3 shadow-sm sm:flex-row sm:items-center">
           <label className="relative flex-1">
+            <span className="sr-only">البحث في العملاء والطلبات</span>
             <Search className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
             <input
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="بحث عن عميل بالاسم أو رقم الهاتف أو رقم الحساب..."
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
+              placeholder="بحث بالاسم أو الهاتف أو معرّف الحساب أو رقم الطلب..."
               className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pr-10 pl-3 text-sm outline-none transition focus:border-[#2196F3] focus:bg-white"
             />
           </label>
           <div className="flex items-center gap-2">
-            <button className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-600 transition hover:bg-slate-50">
-              <Download className="size-4" />
-              تصدير CSV
+            <button
+              type="button"
+              onClick={exportCsv}
+              disabled={loading || filtered.length === 0}
+              className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+            >
+              <Download className="size-4" /> تصدير CSV
             </button>
-            <button className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-600 transition hover:bg-slate-50">
+            <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-600">
               <Filter className="size-4" />
-              تصفية
-            </button>
+              <span className="sr-only">تصفية حسب النشاط</span>
+              <select
+                value={filter}
+                onChange={(event) => {
+                  setFilter(event.target.value as FilterKind);
+                  setPage(1);
+                }}
+                className="max-w-32 bg-transparent outline-none"
+              >
+                <option value="all">كل العملاء</option>
+                <option value="active">نشطون</option>
+                <option value="inactive">غير نشطين</option>
+              </select>
+            </label>
           </div>
-        </div>
-        <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+        </section>
+
+        <section className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[760px] text-right text-sm">
               <thead>
                 <tr className="bg-slate-50 text-xs font-black text-slate-500">
                   <th className="px-4 py-3">العميل</th>
-                  <th className="px-4 py-3">رقم الحساب</th>
+                  <th className="px-4 py-3">معرّف الحساب</th>
                   <th className="px-4 py-3">تاريخ التسجيل</th>
                   <th className="px-4 py-3">رقم الهاتف</th>
+                  <th className="px-4 py-3">الطلبات</th>
                   <th className="px-4 py-3">الحالة</th>
                   <th className="px-4 py-3">إجراءات</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filtered.map((c) => (
-                  <tr key={c.id} className="bg-white transition hover:bg-slate-50">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <span
-                          className="grid size-10 shrink-0 place-items-center rounded-full text-sm font-black text-white"
-                          style={{ backgroundColor: colorFor(c.name) }}
-                        >
-                          {initials(c.name)}
+                {loading
+                  ? (
+                    <tr>
+                      <td
+                        colSpan={7}
+                        className="px-4 py-12 text-center text-slate-500"
+                      >
+                        <span className="inline-flex items-center gap-2">
+                          <Loader2 className="size-4 animate-spin" />{" "}
+                          جارٍ تحميل سجلات العملاء…
                         </span>
-                        <div className="min-w-0">
-                          <p className="font-bold text-slate-800">{c.name}</p>
-                          <p
+                      </td>
+                    </tr>
+                  )
+                  : pageRows.length === 0
+                  ? (
+                    <tr>
+                      <td
+                        colSpan={7}
+                        className="px-4 py-12 text-center text-slate-500"
+                      >
+                        {error
+                          ? "تعذر عرض النتائج حتى نجاح الاتصال"
+                          : "لا توجد سجلات مطابقة"}
+                      </td>
+                    </tr>
+                  )
+                  : pageRows.map((customer) => {
+                    const active = customerIsActive(customer);
+                    const latest = customer.orders[0];
+                    return (
+                      <tr
+                        key={customer.id}
+                        className="bg-white transition hover:bg-slate-50"
+                      >
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <span
+                              className="grid size-10 shrink-0 place-items-center rounded-full text-sm font-black text-white"
+                              style={{ backgroundColor: colorFor(customer.id) }}
+                            >
+                              {initials(customer.full_name || "عميل")}
+                            </span>
+                            <div className="min-w-0">
+                              <p className="font-bold text-slate-800">
+                                {customer.full_name || "عميل بدون اسم"}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
                             dir="ltr"
-                            className="truncate text-right text-[11px] text-slate-400"
+                            title={customer.id}
+                            className="inline-block rounded-lg bg-slate-100 px-2.5 py-1 font-mono text-xs font-bold text-slate-600"
                           >
-                            {c.email}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        dir="ltr"
-                        className="inline-block rounded-lg bg-slate-100 px-2.5 py-1 font-mono text-xs font-bold text-slate-600"
-                      >
-                        {c.accountNo}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-slate-500">
-                      {c.registeredHijri}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span dir="ltr" className="block text-right text-xs text-slate-600">
-                        {c.phone}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      {c.active
-                        ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
-                            <span className="size-1.5 rounded-full bg-emerald-500" />
-                            نشط
+                            {accountLabel(customer.id)}
                           </span>
-                        )
-                        : (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-500">
-                            <span className="size-1.5 rounded-full bg-slate-400" />
-                            غير نشط
+                        </td>
+                        <td className="px-4 py-3 text-xs text-slate-500">
+                          {formatDate(customer.created_at)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            dir="ltr"
+                            className="block text-right text-xs text-slate-600"
+                          >
+                            {customer.phone || "غير مسجل"}
                           </span>
-                        )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <button
-                        onClick={() => setSelected(c)}
-                        className="flex items-center gap-1.5 rounded-xl bg-[#0F4C81] px-3 py-2 text-[11px] font-bold text-white transition hover:opacity-95"
-                      >
-                        <Eye className="size-3.5" />
-                        إظهار
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="font-bold text-slate-700">
+                            {customer.orders.length.toLocaleString("ar-YE")}
+                          </span>
+                          {latest?.tracking_code && (
+                            <span className="mt-1 block text-[10px] text-slate-400">
+                              الأحدث: {latest.tracking_code}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          {active
+                            ? (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
+                                <span className="size-1.5 rounded-full bg-emerald-500" />
+                                {" "}
+                                نشط
+                              </span>
+                            )
+                            : (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-500">
+                                <span className="size-1.5 rounded-full bg-slate-400" />
+                                {" "}
+                                غير نشط
+                              </span>
+                            )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <button
+                            type="button"
+                            onClick={() => setSelected(customer)}
+                            className="flex items-center gap-1.5 rounded-xl bg-[#0F4C81] px-3 py-2 text-[11px] font-bold text-white transition hover:opacity-95"
+                          >
+                            <Eye className="size-3.5" /> إظهار
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
               </tbody>
             </table>
           </div>
-        </div>
+        </section>
 
         <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
           <p className="text-xs text-slate-500">
-            عرض 1-{filtered.length} من {TOTAL}
+            عرض{" "}
+            {filtered.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1}–{Math
+              .min(safePage * PAGE_SIZE, filtered.length)} من {filtered.length}
+            {" "}
+            عميل
           </p>
           <div className="flex items-center gap-1">
             <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="grid size-9 place-items-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50"
+              type="button"
+              onClick={() => setPage((current) => Math.max(1, current - 1))}
+              disabled={safePage <= 1}
+              className="grid size-9 place-items-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 disabled:opacity-40"
               aria-label="السابق"
             >
               <ChevronRight className="size-4" />
             </button>
-            {[1, 2, 3].map((p) => (
-              <button
-                key={p}
-                onClick={() => setPage(p)}
-                className={`grid size-9 place-items-center rounded-lg text-xs font-bold transition ${
-                  p === page
-                    ? "bg-[#0F4C81] text-white"
-                    : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                }`}
-              >
-                {p}
-              </button>
-            ))}
-            <span className="px-1 text-slate-400">…</span>
+            {Array.from({ length: Math.min(totalPages, 5) }, (_, index) => {
+              const first = Math.max(1, Math.min(safePage - 2, totalPages - 4));
+              const pageNumber = totalPages <= 5 ? index + 1 : first + index;
+              return (
+                <button
+                  type="button"
+                  key={pageNumber}
+                  onClick={() => setPage(pageNumber)}
+                  aria-current={pageNumber === safePage ? "page" : undefined}
+                  className={`grid size-9 place-items-center rounded-lg text-xs font-bold transition ${
+                    pageNumber === safePage
+                      ? "bg-[#0F4C81] text-white"
+                      : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                  }`}
+                >
+                  {pageNumber}
+                </button>
+              );
+            })}
             <button
-              onClick={() => setPage(totalPages)}
-              className={`grid size-9 place-items-center rounded-lg text-xs font-bold transition ${
-                page === totalPages
-                  ? "bg-[#0F4C81] text-white"
-                  : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-              }`}
-            >
-              {totalPages}
-            </button>
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              className="grid size-9 place-items-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50"
+              type="button"
+              onClick={() =>
+                setPage((current) => Math.min(totalPages, current + 1))}
+              disabled={safePage >= totalPages}
+              className="grid size-9 place-items-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 disabled:opacity-40"
               aria-label="التالي"
             >
               <ChevronLeft className="size-4" />
@@ -367,19 +616,61 @@ function CustomersRoute() {
           </div>
         </div>
       </div>
+
+      {info && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/40 p-4"
+          role="presentation"
+          onClick={() => setInfo(null)}
+        >
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <p className="text-sm leading-6 text-slate-700">{info}</p>
+              <button
+                type="button"
+                onClick={() => setInfo(null)}
+                aria-label="إغلاق"
+                className="rounded-lg p-1 text-slate-500 hover:bg-slate-100"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => setInfo(null)}
+              className="mt-4 w-full rounded-xl bg-[#0F4C81] px-4 py-2.5 text-sm font-bold text-white"
+            >
+              حسنًا
+            </button>
+          </div>
+        </div>
+      )}
+
       {selected && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-3 backdrop-blur-sm"
           role="dialog"
           aria-modal="true"
           aria-labelledby="customer-modal-title"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setSelected(null);
+          }}
         >
           <section className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
             <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white/95 px-5 py-4 backdrop-blur">
-              <h2 id="customer-modal-title" className="font-black text-slate-800">
+              <h2
+                id="customer-modal-title"
+                className="font-black text-slate-800"
+              >
                 تفاصيل العميل
               </h2>
               <button
+                type="button"
                 onClick={() => setSelected(null)}
                 className="grid size-9 place-items-center rounded-xl bg-slate-100 transition hover:bg-slate-200"
                 aria-label="إغلاق"
@@ -391,139 +682,133 @@ function CustomersRoute() {
               <div className="flex items-center gap-4">
                 <span
                   className="grid size-16 shrink-0 place-items-center rounded-full text-xl font-black text-white"
-                  style={{ backgroundColor: colorFor(selected.name) }}
+                  style={{ backgroundColor: colorFor(selected.id) }}
                 >
-                  {initials(selected.name)}
+                  {initials(selected.full_name || "عميل")}
                 </span>
                 <div>
                   <h3 className="text-lg font-black text-slate-800">
-                    {selected.name}
+                    {selected.full_name || "عميل بدون اسم"}
                   </h3>
-                  <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
-                    <span className="size-1.5 rounded-full bg-emerald-500" />
-                    عميل نشط
+                  <span
+                    className={`mt-1 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold ${
+                      customerIsActive(selected)
+                        ? "bg-emerald-50 text-emerald-700"
+                        : "bg-slate-100 text-slate-500"
+                    }`}
+                  >
+                    <span
+                      className={`size-1.5 rounded-full ${
+                        customerIsActive(selected)
+                          ? "bg-emerald-500"
+                          : "bg-slate-400"
+                      }`}
+                    />
+                    {customerIsActive(selected) ? "نشط" : "غير نشط"}
                   </span>
                 </div>
               </div>
-
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="rounded-2xl bg-slate-50 p-3">
                   <p className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400">
-                    <Mail className="size-3.5" />
-                    الإيميل
+                    <Phone className="size-3.5" /> الهاتف
                   </p>
-                  <p dir="ltr" className="mt-1 truncate text-right text-xs font-bold text-slate-700">
-                    {selected.email}
+                  <p
+                    dir="ltr"
+                    className="mt-1 text-right text-xs font-bold text-slate-700"
+                  >
+                    {selected.phone || "غير مسجل"}
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-slate-50 p-3">
+                  <p className="text-[11px] font-bold text-slate-400">
+                    معرّف الحساب
+                  </p>
+                  <p
+                    dir="ltr"
+                    title={selected.id}
+                    className="mt-1 break-all text-right font-mono text-xs font-bold text-slate-700"
+                  >
+                    {selected.id}
                   </p>
                 </div>
                 <div className="rounded-2xl bg-slate-50 p-3">
                   <p className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400">
-                    <Phone className="size-3.5" />
-                    الهاتف
+                    <CalendarDays className="size-3.5" /> تاريخ التسجيل
                   </p>
-                  <p dir="ltr" className="mt-1 text-right text-xs font-bold text-slate-700">
-                    {selected.phone}
-                  </p>
-                </div>
-                <div className="rounded-2xl bg-slate-50 p-3">
-                  <p className="text-[11px] font-bold text-slate-400">رقم العميل</p>
-                  <p dir="ltr" className="mt-1 text-right font-mono text-xs font-bold text-slate-700">
-                    {selected.accountNo}
+                  <p className="mt-1 text-xs font-bold text-slate-700">
+                    {formatDate(selected.created_at)}
                   </p>
                 </div>
               </div>
-              {(() => {
-                const remaining = selected.total - selected.paid;
-                const pct = selected.total > 0
-                  ? Math.round((selected.paid / selected.total) * 100)
-                  : 0;
-                return (
-                  <div className="rounded-2xl border border-slate-100 p-4">
-                    <div className="flex items-center justify-between">
-                      <h4 className="flex items-center gap-2 font-black text-slate-800">
-                        <Wallet className="size-4 text-[#0F4C81]" />
-                        الحالة المالية
-                      </h4>
-                      <span className="text-sm font-black text-emerald-600">
-                        {pct}% مدفوع
-                      </span>
-                    </div>
-                    <div className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
-                      <div
-                        className="h-full rounded-full bg-emerald-500 transition-all"
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                    <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                      <div className="rounded-2xl bg-slate-50 p-3 text-center">
-                        <p className="text-[11px] font-bold text-slate-400">إجمالي المبلغ</p>
-                        <p className="mt-1 text-lg font-black text-slate-700">
-                          {sar(selected.total)}
-                        </p>
-                      </div>
-                      <div className="rounded-2xl bg-emerald-50 p-3 text-center">
-                        <p className="text-[11px] font-bold text-emerald-600/70">المدفوع</p>
-                        <p className="mt-1 text-lg font-black text-emerald-700">
-                          {sar(selected.paid)}
-                        </p>
-                      </div>
-                      <div className="rounded-2xl bg-red-50 p-3 text-center">
-                        <p className="text-[11px] font-bold text-red-500/70">المتبقي عليه</p>
-                        <p className="mt-1 text-lg font-black text-[#DC2626]">
-                          {sar(remaining)}
-                        </p>
-                      </div>
-                    </div>
-                    <p className="mt-2 text-center text-[11px] text-slate-400">
-                      المتبقي = الإجمالي − المدفوع
-                    </p>
-                  </div>
-                );
-              })()}
-
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                <p className="text-sm font-black text-amber-900">
+                  البيانات المالية
+                </p>
+                <p className="mt-1 text-xs leading-6 text-amber-800">
+                  لا تعرض هذه الصفحة إجماليات مالية؛ جدول الحسابات لا يحتوي مبالغ،
+                  ولا يمكن جمع الدفعات بأمان دون مطابقة موثوقة بينها وبين
+                  الطلبات.
+                </p>
+              </div>
               <div className="rounded-2xl border border-slate-100 p-4">
-                <h4 className="font-black text-slate-800">آخر الطلبات</h4>
-                <ul className="mt-3 space-y-2">
-                  {selected.orders.map((o) => (
-                    <li
-                      key={o.code}
-                      className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2.5"
-                    >
-                      <span dir="ltr" className="font-mono text-xs font-black text-slate-600">
-                        {o.code}
-                      </span>
-                      {o.state === "done"
-                        ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
-                            <CheckCircle2 className="size-3.5" />
-                            {o.label}
+                <div className="flex items-center justify-between gap-3">
+                  <h4 className="flex items-center gap-2 font-black text-slate-800">
+                    <Package className="size-4 text-orange-500" /> طلبات العميل
+                  </h4>
+                  <span className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600">
+                    {selected.orders.length.toLocaleString("ar-YE")} طلب
+                  </span>
+                </div>
+                {selected.orders.length === 0
+                  ? (
+                    <p className="mt-3 rounded-xl bg-slate-50 p-4 text-center text-sm text-slate-500">
+                      لا توجد طلبات مرتبطة بهذا الحساب في قاعدة البيانات.
+                    </p>
+                  )
+                  : (
+                    <ul className="mt-3 space-y-2">
+                      {selected.orders.slice(0, 10).map((order) => (
+                        <li
+                          key={order.id}
+                          className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-slate-50 px-3 py-2.5"
+                        >
+                          <span
+                            dir="ltr"
+                            className="font-mono text-xs font-black text-slate-600"
+                          >
+                            {order.tracking_code ||
+                              `ORD-${order.id.slice(0, 8)}`}
                           </span>
-                        )
-                        : (
-                          <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700">
-                            {o.label}
+                          <span className="text-xs text-slate-500">
+                            {order.status || "الحالة غير مسجلة"}
                           </span>
-                        )}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <button className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50">
-                  <FileDown className="size-4" />
-                  تنزيل الفاتورة
-                </button>
-                <button className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[#0F4C81] px-4 py-3 text-sm font-black text-white shadow-md shadow-blue-500/20 transition hover:opacity-95">
-                  <Plus className="size-4" />
-                  تسجيل دفعة جديدة
-                </button>
+                          <span className="text-[11px] text-slate-400">
+                            {formatDate(order.created_at)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                {selected.orders.length > 10 && (
+                  <p className="mt-2 text-center text-xs text-slate-400">
+                    يُعرض أحدث 10 طلبات من أصل {selected.orders.length}.
+                  </p>
+                )}
               </div>
             </div>
           </section>
         </div>
       )}
     </div>
+  );
+}
+
+function CustomersRoute() {
+  return (
+    <AdminRouteGuard allowStaff redirectTo="/customers">
+      <CustomersPageContent />
+    </AdminRouteGuard>
   );
 }
 
