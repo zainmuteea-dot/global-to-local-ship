@@ -74,24 +74,55 @@ const UI_STATUS_TO_DATABASE: Record<OrderStatus, string> = {
   cancelled: "ملغي",
 };
 
+function toNullableNumber(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function sumIfComplete(values: Array<number | null | undefined>): number | null {
+  if (values.length === 0 || values.some((value) => value === null || value === undefined)) {
+    return null;
+  }
+  return values.reduce<number>((sum, value) => sum + (value as number), 0);
+}
+
+function formatMoney(value: number | null | undefined): string {
+  return value === null || value === undefined ? "غير مسجل" : value.toLocaleString("ar-YE");
+}
+
+function formatCurrency(value: number | null | undefined): string {
+  return value === null || value === undefined ? "غير مسجل" : `${formatMoney(value)} ر.ي`;
+}
+
 function mapDatabaseOrder(row: any): OrderItem {
   const id = String(row.id);
   const trackingCode = String(row.tracking_code || `SC-${id.slice(0, 8)}`);
+  const totalCostYER = toNullableNumber(row.total_cost_yer);
+  const paidAmount = toNullableNumber(row.paid_amount);
+  const storedRemaining = toNullableNumber(row.remaining_amount);
+  const remainingAmount =
+    storedRemaining !== null
+      ? storedRemaining
+      : totalCostYER !== null && paidAmount !== null
+        ? Math.max(0, totalCostYER - paidAmount)
+        : null;
+
   return {
     id,
     orderNumber: trackingCode,
     customerName: row.customer_name || "عميل بدون اسم",
     customerPhone: row.phone || "",
-    // The current orders schema has no city, store, or financial columns.
-    customerCity: "غير مسجل",
+    customerCity: row.customer_city || "غير مسجل",
     productTitle: row.product_name || row.product_link || "طلب مشتريات",
     productUrl: row.product_link || "",
-    storeName: "غير مسجل",
+    storeName: row.store_name || "غير مسجل",
     status: DATABASE_STATUS_TO_UI[String(row.status || "جديد")] || "new",
-    originalPrice: 0,
-    total_cost: 0,
-    paid: 0,
-    profit: 0,
+    originalPrice: totalCostYER,
+    total_cost: totalCostYER,
+    paid: paidAmount,
+    remaining: remainingAmount,
+    profit: toNullableNumber(row.profit_amount),
     intlTrackingNumber: trackingCode,
     notes: row.notes || undefined,
     createdAt: row.created_at || new Date().toISOString(),
@@ -116,10 +147,11 @@ export interface OrderItem {
   productUrl?: string;
   storeName: string;
   status: OrderStatus;
-  originalPrice: number;
-  total_cost?: number;
-  paid?: number;
-  profit?: number;
+  originalPrice: number | null;
+  total_cost?: number | null;
+  paid?: number | null;
+  remaining?: number | null;
+  profit?: number | null;
   intlTrackingNumber?: string;
   notes?: string;
   createdAt: string;
@@ -133,10 +165,10 @@ export interface GroupedClient {
   clientName: string; // اسم العميل (name)
   city: string; // المدينة (city)
   ordersCount: number; // count = orders.length
-  total_cost: number; // مجموع التكلفة = sum(total_cost)
-  paid: number; // مجموع المبالغ المدفوعة = sum(paid)
-  remaining: number; // total_cost - paid
-  profit: number; // مجموع الأرباح = sum(profit)
+  total_cost: number | null; // غير متاح إذا كانت قيمة أي طلب غير مسجلة
+  paid: number | null; // غير متاح إذا كانت قيمة أي طلب غير مسجلة
+  remaining: number | null; // مخزن أو محسوب من التكلفة والمدفوع
+  profit: number | null; // غير متاح إذا كانت قيمة أي طلب غير مسجلة
   orders: OrderItem[]; // قائمة طلبات هذا العميل
   latestOrderDate: string; // تاريخ أحدث طلب
 }
@@ -175,23 +207,22 @@ export const groupOrdersByLast9 = (orders: OrderItem[]): GroupedClient[] => {
     const originalPhone =
       clientOrders.find((o) => o.customerPhone && o.customerPhone.replace(/\D/g, "").length >= 9)
         ?.customerPhone || `7${phoneLast9.slice(-8)}`;
-    const city = clientOrders.find((o) => o.customerCity)?.customerCity || "صنعاء";
+    const city = clientOrders.find((o) => o.customerCity && o.customerCity !== "غير مسجل")?.customerCity || "غير مسجل";
 
-    let total_cost = 0;
-    let paid = 0;
-    let profit = 0;
-
-    clientOrders.forEach((o) => {
-      const cost = Number(o.total_cost || o.originalPrice || 0);
-      const orderPaid = Number(o.paid !== undefined ? o.paid : o.status === "delivered" ? cost : 0);
-      const orderProfit = Number(o.profit !== undefined ? o.profit : Math.round(cost * 0.15));
-
-      total_cost += cost;
-      paid += orderPaid;
-      profit += orderProfit;
-    });
-
-    const remaining = total_cost - paid;
+    const total_cost = sumIfComplete(
+      clientOrders.map((order) => order.total_cost ?? order.originalPrice),
+    );
+    const paid = sumIfComplete(clientOrders.map((order) => order.paid));
+    const remaining = sumIfComplete(
+      clientOrders.map((order) => {
+        if (order.remaining !== null && order.remaining !== undefined) return order.remaining;
+        const cost = order.total_cost ?? order.originalPrice;
+        return cost !== null && cost !== undefined && order.paid !== null && order.paid !== undefined
+          ? Math.max(0, cost - order.paid)
+          : null;
+      }),
+    );
+    const profit = sumIfComplete(clientOrders.map((order) => order.profit));
     const count = clientOrders.length;
     const latestOrderDate = clientOrders[0]?.createdAt || new Date().toISOString();
 
@@ -210,7 +241,17 @@ export const groupOrdersByLast9 = (orders: OrderItem[]): GroupedClient[] => {
     });
   });
 
-  return result.sort((a, b) => b.remaining - a.remaining || b.total_cost - a.total_cost);
+  return result.sort((a, b) => {
+    const remainingOrder = (b.remaining ?? -Infinity) - (a.remaining ?? -Infinity);
+    if (Number.isFinite(remainingOrder) && remainingOrder !== 0) return remainingOrder;
+    if (a.remaining === null && b.remaining !== null) return 1;
+    if (b.remaining === null && a.remaining !== null) return -1;
+    const costOrder = (b.total_cost ?? -Infinity) - (a.total_cost ?? -Infinity);
+    if (Number.isFinite(costOrder) && costOrder !== 0) return costOrder;
+    if (a.total_cost === null && b.total_cost !== null) return 1;
+    if (b.total_cost === null && a.total_cost !== null) return -1;
+    return 0;
+  });
 };
 
 // ==========================================
@@ -310,7 +351,7 @@ export function AdminOperationsDashboard({
     try {
       const { data, error } = await supabase
         .from("orders")
-        .select("id, tracking_code, customer_name, phone, product_link, product_name, status, notes, created_at, updated_at")
+        .select("*")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -337,23 +378,11 @@ export function AdminOperationsDashboard({
 
   // حسابات بطاقات الملخص الـ 4 المطلوبة
   const summaryTotals = useMemo(() => {
-    let sumRemaining = 0;
-    let sumPaid = 0;
-    let sumCost = 0;
-    let sumProfit = 0;
-
-    groupedClients.forEach((client) => {
-      sumRemaining += client.remaining;
-      sumPaid += client.paid;
-      sumCost += client.total_cost;
-      sumProfit += client.profit;
-    });
-
     return {
-      sumRemaining,
-      sumPaid,
-      sumCost,
-      sumProfit,
+      sumRemaining: sumIfComplete(groupedClients.map((client) => client.remaining)),
+      sumPaid: sumIfComplete(groupedClients.map((client) => client.paid)),
+      sumCost: sumIfComplete(groupedClients.map((client) => client.total_cost)),
+      sumProfit: sumIfComplete(groupedClients.map((client) => client.profit)),
       totalClients: groupedClients.length,
       totalOrders: orders.length,
     };
@@ -368,7 +397,7 @@ export function AdminOperationsDashboard({
         .from("orders")
         .update({ status: UI_STATUS_TO_DATABASE[newStatus] })
         .eq("id", orderId)
-        .select("id, tracking_code, customer_name, phone, product_link, product_name, status, notes, created_at, updated_at")
+        .select("*")
         .maybeSingle();
 
       if (error) throw error;
@@ -434,7 +463,7 @@ export function AdminOperationsDashboard({
           status: "جديد",
           notes: null,
         })
-        .select("id, tracking_code, customer_name, phone, product_link, product_name, status, notes, created_at, updated_at")
+        .select("*")
         .single();
 
       if (error) throw error;
@@ -498,10 +527,10 @@ export function AdminOperationsDashboard({
         `"${c.phoneLast9}"`,
         `"${c.city}"`,
         c.ordersCount,
-        c.total_cost,
-        c.paid,
-        c.remaining,
-        c.profit,
+        c.total_cost ?? "غير مسجل",
+        c.paid ?? "غير مسجل",
+        c.remaining ?? "غير مسجل",
+        c.profit ?? "غير مسجل",
         c.latestOrderDate.split("T")[0],
       ]);
       const csvContent = "\uFEFF" + [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
@@ -585,8 +614,8 @@ export function AdminOperationsDashboard({
   // تصفية العملاء المجمعين
   const filteredClients = useMemo(() => {
     return groupedClients.filter((client) => {
-      if (clientFilterType === "remaining" && client.remaining <= 0) return false;
-      if (clientFilterType === "paid" && client.remaining > 0) return false;
+      if (clientFilterType === "remaining" && (client.remaining === null || client.remaining <= 0)) return false;
+      if (clientFilterType === "paid" && (client.remaining === null || client.remaining > 0)) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const matches =
@@ -628,7 +657,7 @@ export function AdminOperationsDashboard({
 
       <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-4 space-y-4">
         <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-xs leading-6 text-amber-900" role="note">
-          قاعدة البيانات الحالية لا تحفظ المدينة أو المتجر أو مبالغ التكلفة/الدفع/الربح؛ الأرقام المالية في هذه الشاشة ليست سجلات محاسبية موثوقة حتى تُضاف أعمدتها وتُعتمد.
+          تُعرض المبالغ من الحقول المالية المسجلة في الطلبات فقط. إذا لم تكن قيمة ما مسجلة فستظهر «غير مسجل»؛ لا تُقدّر الأرباح أو المدفوعات تلقائيًا.
         </div>
         {feedback && (
           <div
@@ -745,16 +774,15 @@ export function AdminOperationsDashboard({
               </div>
             </div>
             <div className="text-2xl sm:text-3xl font-black text-red-600 font-mono tracking-tight mb-1">
-              {summaryTotals.sumRemaining.toLocaleString()}{" "}
-              <span className="text-xs font-sans text-red-500 font-bold">ر.س</span>
+              {formatCurrency(summaryTotals.sumRemaining)} 
             </div>
             <div className="text-xs font-black text-red-950">إجمالي المبالغ المتبقية</div>
             <div className="text-[10px] text-red-700 mt-0.5">
-              مجموع الديون غير المسددة على العملاء
+              مجموع الأرصدة المتبقية المسجلة
             </div>
             <div className="mt-2 pt-2 border-t border-red-200/80 text-[10px] font-bold text-red-700 flex items-center justify-between">
               <span>sum(remaining)</span>
-              <span>{groupedClients.filter((c) => c.remaining > 0).length} عميل مدين</span>
+              <span>{groupedClients.filter((c) => c.remaining !== null && c.remaining > 0).length} عميل مدين</span>
             </div>
           </div>
 
@@ -769,16 +797,15 @@ export function AdminOperationsDashboard({
               </div>
             </div>
             <div className="text-2xl sm:text-3xl font-black text-emerald-600 font-mono tracking-tight mb-1">
-              {summaryTotals.sumPaid.toLocaleString()}{" "}
-              <span className="text-xs font-sans text-emerald-600 font-bold">ر.س</span>
+              {formatCurrency(summaryTotals.sumPaid)} 
             </div>
             <div className="text-xs font-black text-emerald-950">إجمالي المبالغ المدفوعة</div>
             <div className="text-[10px] text-emerald-700 mt-0.5">
-              مجموع المبالغ المحصلة والمسددة فعلياً
+              مجموع مبالغ الدفع المسجلة في الطلبات
             </div>
             <div className="mt-2 pt-2 border-t border-emerald-200/80 text-[10px] font-bold text-emerald-700 flex items-center justify-between">
               <span>sum(paid)</span>
-              <span>مُحصل بنجاح ✓</span>
+              <span>حسب السجلات المتاحة</span>
             </div>
           </div>
 
@@ -793,8 +820,7 @@ export function AdminOperationsDashboard({
               </div>
             </div>
             <div className="text-2xl sm:text-3xl font-black text-white font-mono tracking-tight mb-1">
-              {summaryTotals.sumCost.toLocaleString()}{" "}
-              <span className="text-xs font-sans text-slate-300 font-bold">ر.س</span>
+              {formatCurrency(summaryTotals.sumCost)} 
             </div>
             <div className="text-xs font-black text-slate-100">إجمالي التكلفة الشاملة</div>
             <div className="text-[10px] text-slate-400 mt-0.5">
@@ -817,16 +843,15 @@ export function AdminOperationsDashboard({
               </div>
             </div>
             <div className="text-2xl sm:text-3xl font-black text-[#0284C7] font-mono tracking-tight mb-1">
-              {summaryTotals.sumProfit.toLocaleString()}{" "}
-              <span className="text-xs font-sans text-sky-600 font-bold">ر.س</span>
+              {formatCurrency(summaryTotals.sumProfit)} 
             </div>
             <div className="text-xs font-black text-sky-950">صافي أرباح الوساطة</div>
             <div className="text-[10px] text-sky-700 mt-0.5">
-              مجموع أرباح الخدمة وعمولات الوساطة
+              مجموع الأرباح المسجلة في الطلبات
             </div>
             <div className="mt-2 pt-2 border-t border-sky-200/80 text-[10px] font-bold text-sky-700 flex items-center justify-between">
               <span>sum(profit)</span>
-              <span>أرباح معتمدة ✦</span>
+              <span>حسب السجلات المتاحة</span>
             </div>
           </div>
         </div>
@@ -861,7 +886,7 @@ export function AdminOperationsDashboard({
                 >
                   <span>عليه متبقي</span>
                   <span className="text-[10px] bg-white/20 px-1 rounded">
-                    {groupedClients.filter((c) => c.remaining > 0).length}
+                    {groupedClients.filter((c) => c.remaining !== null && c.remaining > 0).length}
                   </span>
                 </button>
                 <button
@@ -874,7 +899,7 @@ export function AdminOperationsDashboard({
                 >
                   <span>مسدد بالكامل</span>
                   <span className="text-[10px] bg-white/20 px-1 rounded">
-                    {groupedClients.filter((c) => c.remaining <= 0).length}
+                    {groupedClients.filter((c) => c.remaining !== null && c.remaining <= 0).length}
                   </span>
                 </button>
               </div>
@@ -952,23 +977,23 @@ export function AdminOperationsDashboard({
                           </td>
 
                           <td className="py-3.5 px-4 text-left font-mono font-bold text-slate-900">
-                            {client.total_cost.toLocaleString()} ر.س
+                            {formatCurrency(client.total_cost)}
                           </td>
 
                           <td className="py-3.5 px-4 text-left font-mono font-bold text-emerald-600">
-                            {client.paid.toLocaleString()} ر.س
+                            {formatCurrency(client.paid)}
                           </td>
 
                           <td className="py-3.5 px-4 text-left font-mono font-black">
                             <span
-                              className={client.remaining > 0 ? "text-red-600" : "text-emerald-600"}
+                              className={client.remaining === null ? "text-slate-400" : client.remaining > 0 ? "text-red-600" : "text-emerald-600"}
                             >
-                              {client.remaining.toLocaleString()} ر.س
+                              {formatCurrency(client.remaining)}
                             </span>
                           </td>
 
                           <td className="py-3.5 px-4 text-left font-mono font-bold text-[#0284C7]">
-                            {client.profit.toLocaleString()} ر.س
+                            {formatCurrency(client.profit)}
                           </td>
 
                           <td className="py-3.5 px-4 text-center">
@@ -1243,11 +1268,11 @@ export function AdminOperationsDashboard({
 
             <div className="p-4 overflow-y-auto space-y-3">
               {selectedClientOrders.orders.map((o, idx) => {
-                const cost = Number(o.total_cost || o.originalPrice || 0);
-                const paid = Number(
-                  o.paid !== undefined ? o.paid : o.status === "delivered" ? cost : 0,
-                );
-                const rem = cost - paid;
+                const cost = o.total_cost ?? o.originalPrice;
+                const paid = o.paid;
+                const rem = o.remaining ?? (cost !== null && cost !== undefined && paid !== null && paid !== undefined
+                  ? Math.max(0, cost - paid)
+                  : null);
                 return (
                   <div
                     key={idx}
@@ -1263,11 +1288,11 @@ export function AdminOperationsDashboard({
                     </div>
                     <div className="text-left font-mono text-xs">
                       <div>
-                        التكلفة: <span className="font-bold">{cost} ر.س</span>
+                        التكلفة: <span className="font-bold">{formatCurrency(cost)}</span>
                       </div>
-                      <div className="text-emerald-600">المدفوع: {paid} ر.س</div>
-                      <div className={rem > 0 ? "text-red-600 font-bold" : "text-slate-400"}>
-                        المتبقي: {rem} ر.س
+                      <div className="text-emerald-600">المدفوع: {formatCurrency(paid)}</div>
+                      <div className={rem === null ? "text-slate-400" : rem > 0 ? "text-red-600 font-bold" : "text-slate-400"}>
+                        المتبقي: {formatCurrency(rem)}
                       </div>
                     </div>
                   </div>
@@ -1278,9 +1303,9 @@ export function AdminOperationsDashboard({
             <div className="p-3 border-t bg-slate-50 flex items-center justify-between text-xs font-bold">
               <span>إجمالي الطلبات: {selectedClientOrders.ordersCount}</span>
               <div className="flex gap-4">
-                <span>التكلفة: {selectedClientOrders.total_cost} ر.س</span>
-                <span className="text-emerald-600">المدفوع: {selectedClientOrders.paid} ر.س</span>
-                <span className="text-red-600">المتبقي: {selectedClientOrders.remaining} ر.س</span>
+                <span>التكلفة: {formatCurrency(selectedClientOrders.total_cost)}</span>
+                <span className="text-emerald-600">المدفوع: {formatCurrency(selectedClientOrders.paid)}</span>
+                <span className="text-red-600">المتبقي: {formatCurrency(selectedClientOrders.remaining)}</span>
               </div>
             </div>
           </div>
@@ -1325,18 +1350,18 @@ export function AdminOperationsDashboard({
               </div>
               <div className="flex justify-between py-1 border-b border-dashed">
                 <span className="text-slate-500">إجمالي التكلفة:</span>
-                <span className="font-bold">{statementClient.total_cost.toLocaleString()} ر.س</span>
+                <span className="font-bold">{formatCurrency(statementClient.total_cost)}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-dashed">
                 <span className="text-slate-500">المبلغ المدفوع:</span>
                 <span className="font-bold text-emerald-600">
-                  {statementClient.paid.toLocaleString()} ر.س
+                  {formatCurrency(statementClient.paid)}
                 </span>
               </div>
               <div className="flex justify-between py-2 bg-red-50 p-2.5 rounded-xl text-red-700 font-bold border border-red-200">
                 <span>المبلغ المتبقي:</span>
                 <span className="font-mono text-sm">
-                  {statementClient.remaining.toLocaleString()} ر.س
+                  {formatCurrency(statementClient.remaining)}
                 </span>
               </div>
             </div>
@@ -1536,7 +1561,7 @@ export function AdminOperationsDashboard({
                 <strong>المحتوى:</strong> {printingOrder.productTitle}
               </div>
               <div>
-                <strong>المبلغ المطلوب:</strong> {printingOrder.originalPrice} ر.س
+                <strong>المبلغ المطلوب:</strong> {formatCurrency(printingOrder.originalPrice)}
               </div>
             </div>
             <div className="flex items-center justify-center gap-2">
