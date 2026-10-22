@@ -259,16 +259,36 @@ async function loadCustomerRecords(): Promise<Customer[]> {
     for (const order of batchOrders) orderById.set(order.id, order);
   }
 
-  // Fetch guest/legacy orders separately, then match by normalized phone only
-  // when that phone belongs to one customer profile.
-  const guestOrders = await fetchAllPages<OrderRow>((from, to) =>
-    DB.from("orders")
-      .select(selectOrderFields)
-      .is("user_id", null)
-      .order("created_at", { ascending: false })
-      .range(from, to)
-  );
-  for (const order of guestOrders) orderById.set(order.id, order);
+  // Include legacy orders linked only by phone, and also recover orders whose
+  // user_id is stale, but only attach them when the normalized phone is unique.
+  const phoneOwners = new Map<string, string[]>();
+  for (const profile of clientProfiles) {
+    const phone = normalizePhone(profile.phone);
+    if (!phone) continue;
+    phoneOwners.set(phone, [...(phoneOwners.get(phone) ?? []), profile.id]);
+  }
+  const rawPhones = [
+    ...new Set(clientProfiles.flatMap((profile) => {
+      const phone = profile.phone?.trim();
+      const normalized = normalizePhone(phone);
+      return [phone, normalized].filter((value): value is string =>
+        Boolean(value)
+      );
+    })),
+  ];
+  for (let index = 0; index < rawPhones.length; index += 100) {
+    const phoneBatch = rawPhones.slice(index, index + 100);
+    for (const column of ["phone", "customer_phone"] as const) {
+      const phoneOrders = await fetchAllPages<OrderRow>((from, to) =>
+        DB.from("orders")
+          .select(selectOrderFields)
+          .in(column, phoneBatch)
+          .order("created_at", { ascending: false })
+          .range(from, to)
+      );
+      for (const order of phoneOrders) orderById.set(order.id, order);
+    }
+  }
 
   const ordersByUser = new Map<string, OrderRow[]>();
   const clientIds = new Set(clientProfiles.map((profile) => profile.id));
