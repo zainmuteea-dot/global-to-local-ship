@@ -1024,16 +1024,38 @@ function LiveTrackingAdminRoute() {
                             )}
                           </td>
                           <td className="px-3 py-3">
-                            <div className="flex min-w-[140px] items-center gap-1">
-                              {STAGES.map((st, i) => (
-                                <span
-                                  key={st.code}
-                                  title={`${i + 1}. ${st.title}`}
-                                  className={`h-1.5 flex-1 rounded-full ${
-                                    i <= idx ? "bg-emerald-500" : "bg-slate-200"
-                                  }`}
-                                />
-                              ))}
+                            <div
+                              className="grid w-[260px] min-w-[260px] grid-cols-4 gap-1.5"
+                              aria-label="مراحل الشحنة، اضغط على أي مرحلة لفتح المسار"
+                            >
+                              {STAGES.map((st, i) => {
+                                const isCurrent = i === idx;
+                                const isComplete = i < idx;
+                                return (
+                                  <button
+                                    key={st.code}
+                                    type="button"
+                                    title={`${i + 1}. ${st.title}`}
+                                    aria-label={`فتح مسار الشحنة عند المرحلة ${i + 1}: ${st.title}`}
+                                    aria-current={isCurrent ? "step" : undefined}
+                                    onClick={() => setSelected(s)}
+                                    className={`min-h-12 rounded-lg border px-1.5 py-1 text-right text-[9px] font-bold leading-3 transition focus:outline-none focus:ring-2 focus:ring-[#2196F3] ${
+                                      isCurrent
+                                        ? "border-[#0F4C81] bg-[#0F4C81] text-white shadow-sm"
+                                        : isComplete
+                                        ? "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+                                        : "border-slate-200 bg-white text-slate-500 hover:border-blue-300 hover:bg-blue-50"
+                                    }`}
+                                  >
+                                    <span className="mb-0.5 block text-[10px] opacity-75">
+                                      {i + 1}
+                                    </span>
+                                    <span className="line-clamp-2 block">
+                                      {st.title}
+                                    </span>
+                                  </button>
+                                );
+                              })}
                             </div>
                             <span className="mt-1.5 inline-block rounded-lg bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
                               {current?.title}
@@ -1223,31 +1245,33 @@ function LiveTrackingAdminRoute() {
                           </p>
                         )}
                         <div className="mt-3 flex flex-wrap gap-2">
-                          {i > stageIndex(selected.status) && (
-                            <button
-                              disabled={busy}
-                              onClick={() =>
-                                void doAction(
-                                  selected,
-                                  stage,
-                                  "advance",
-                                  "app",
-                                )}
-                              className="rounded-lg bg-[#F97316] px-3 py-2 text-[11px] font-black text-white shadow-sm transition hover:brightness-95 disabled:opacity-50"
-                            >
-                              {busy
-                                ? "جارٍ الحفظ..."
-                                : "تفعيل المرحلة وإشعار التطبيق"}
-                            </button>
-                          )}
-                          <button
-                            disabled={busy}
-                            onClick={() =>
-                              void doAction(selected, stage, "notify", "app")}
-                            className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-[11px] font-bold text-[#0F4C81] transition hover:bg-blue-50 disabled:opacity-50"
-                          >
-                            تذكير داخل التطبيق فقط
-                          </button>
+                          {(() => {
+                            const canAdvance = i > stageIndex(selected.status);
+                            return (
+                              <button
+                                type="button"
+                                disabled={busy}
+                                onClick={() =>
+                                  void doAction(
+                                    selected,
+                                    stage,
+                                    canAdvance ? "advance" : "notify",
+                                    "app",
+                                  )}
+                                className={`rounded-lg px-3 py-2 text-[11px] font-black transition disabled:opacity-50 ${
+                                  canAdvance
+                                    ? "bg-[#F97316] text-white shadow-sm hover:brightness-95"
+                                    : "border border-blue-200 bg-white text-[#0F4C81] hover:bg-blue-50"
+                                }`}
+                              >
+                                {busy
+                                  ? "جارٍ الحفظ..."
+                                  : canAdvance
+                                  ? "تفعيل المرحلة وإشعار التطبيق"
+                                  : "إشعار بهذه المرحلة داخل التطبيق"}
+                              </button>
+                            );
+                          })()}
                           <button
                             disabled={busy ||
                               !normalizePhone(selected.customerPhone)}
