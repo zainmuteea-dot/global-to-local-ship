@@ -208,7 +208,6 @@ const normalizePhone = (input: string) => {
   else if (digits.length === 9) digits = `967${digits}`;
   return digits;
 };
-
 function LiveTrackingAdminRoute() {
   const [access, setAccess] = useState<
     "loading" | "admin" | "staff" | "denied"
@@ -378,7 +377,6 @@ function LiveTrackingAdminRoute() {
           .includes(q),
     );
   }, [shipments, search]);
-
   const startEdit = (shipment: Shipment) => {
     setEditing(shipment);
     setEditForm({
@@ -484,7 +482,6 @@ function LiveTrackingAdminRoute() {
       setDeletingId(null);
     }
   };
-
   const doAction = async (
     shipment: Shipment,
     stage: (typeof STAGES)[number],
@@ -636,29 +633,40 @@ function LiveTrackingAdminRoute() {
       setBusy(false);
     }
   };
+  const fontStack = { fontFamily: "Tajawal, system-ui, 'Segoe UI', sans-serif" };
 
   if (access === "loading") {
     return (
       <div
         dir="rtl"
-        className="min-h-screen grid place-items-center text-slate-600"
+        style={fontStack}
+        className="grid min-h-screen place-items-center bg-gradient-to-b from-slate-50 to-slate-100 text-slate-600"
       >
-        جارٍ التحقق من الصلاحيات...
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="size-8 animate-spin text-[#2196F3]" />
+          <span className="text-sm font-bold">جارٍ التحقق من الصلاحيات...</span>
+        </div>
       </div>
     );
   }
   if (access === "denied") {
     return (
-      <div dir="rtl" className="min-h-screen grid place-items-center p-6">
-        <div className="max-w-md rounded-3xl bg-white p-8 text-center shadow">
-          <ShieldCheck className="mx-auto mb-3 size-10 text-amber-600" />
-          <h1 className="font-black">هذه الصفحة للمدير والموظفين</h1>
-          <p className="my-4 text-sm text-slate-500">
+      <div
+        dir="rtl"
+        style={fontStack}
+        className="grid min-h-screen place-items-center bg-gradient-to-b from-slate-50 to-slate-100 p-6"
+      >
+        <div className="w-full max-w-md rounded-3xl border border-slate-100 bg-white p-8 text-center shadow-xl shadow-slate-200/60">
+          <div className="mx-auto mb-4 grid size-16 place-items-center rounded-2xl bg-amber-50">
+            <ShieldCheck className="size-8 text-amber-500" />
+          </div>
+          <h1 className="text-lg font-black text-slate-800">هذه الصفحة للمدير والموظفين</h1>
+          <p className="my-4 text-sm leading-6 text-slate-500">
             سجّل الدخول بحساب مخوّل لمتابعة الشحنات.
           </p>
           <Link
             to="/login"
-            className="inline-block rounded-xl bg-blue-900 px-5 py-3 text-white"
+            className="inline-block rounded-2xl bg-gradient-to-l from-[#0F4C81] to-[#1565C0] px-6 py-3 font-bold text-white shadow-lg shadow-blue-500/25 transition hover:opacity-95"
           >
             تسجيل الدخول
           </Link>
@@ -667,26 +675,71 @@ function LiveTrackingAdminRoute() {
     );
   }
 
+  const stats = [
+    {
+      label: "إجمالي الشحنات",
+      value: shipments.length,
+      icon: Package,
+      color: "#2196F3",
+      ring: "bg-blue-50 text-[#2196F3]",
+    },
+    {
+      label: "طلبات اليوم",
+      value: shipments.filter(
+        (s) =>
+          new Date(s.createdAt).toDateString() === new Date().toDateString(),
+      ).length,
+      icon: Clock3,
+      color: "#5E35B1",
+      ring: "bg-violet-50 text-[#5E35B1]",
+    },
+    {
+      label: "قيد التوصيل",
+      value: shipments.filter((s) => s.status === "out_for_delivery").length,
+      icon: Truck,
+      color: "#F97316",
+      ring: "bg-orange-50 text-[#F97316]",
+    },
+    {
+      label: "مكتملة",
+      value: shipments.filter((s) => s.status === "delivered").length,
+      icon: CheckCircle2,
+      color: "#2E7D32",
+      ring: "bg-emerald-50 text-[#2E7D32]",
+    },
+  ];
+
   return (
-    <div dir="rtl" className="min-h-screen bg-slate-50 pb-16 text-slate-800">
-      <header className="sticky top-0 z-20 bg-[#0F4C81] text-white shadow">
+    <div
+      dir="rtl"
+      style={fontStack}
+      className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 pb-16 text-slate-800"
+    >
+      <header className="sticky top-0 z-20 bg-gradient-to-l from-[#0F4C81] to-[#1565C0] text-white shadow-lg shadow-blue-900/20">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
           <div className="flex items-center gap-3">
-            <Link to="/admin" className="rounded-xl bg-white/10 p-2">
+            <Link
+              to="/admin"
+              className="grid size-10 place-items-center rounded-xl bg-white/15 transition hover:bg-white/25"
+            >
               <ChevronLeft className="size-5" />
             </Link>
-            <div>
-              <h1 className="font-black">مسار الشحنة وإشعارات العميل</h1>
-              <p className="text-[11px] text-sky-100">
-                ثماني مراحل · تحديث مباشر
-              </p>
+            <div className="flex items-center gap-2.5">
+              <span className="grid size-10 place-items-center rounded-xl bg-white/15">
+                <Truck className="size-5" />
+              </span>
+              <div>
+                <h1 className="text-base font-black">مسار الشحنة وإشعارات العميل</h1>
+                <p className="text-[11px] text-sky-100">
+                  ثماني مراحل · تحديث مباشر
+                </p>
+              </div>
             </div>
           </div>
           <button
-            onClick={() =>
-              void refresh()}
+            onClick={() => void refresh()}
             disabled={loading}
-            className="flex items-center gap-2 rounded-xl bg-white/15 px-3 py-2 text-xs font-bold"
+            className="flex items-center gap-2 rounded-xl bg-white/15 px-3.5 py-2 text-xs font-bold transition hover:bg-white/25 disabled:opacity-60"
           >
             <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} />
             {" "}
@@ -694,51 +747,54 @@ function LiveTrackingAdminRoute() {
           </button>
         </div>
       </header>
-      <main className="mx-auto max-w-6xl space-y-5 px-4 py-6">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {[
-            ["إجمالي الشحنات", shipments.length],
-            [
-              "طلبات اليوم",
-              shipments.filter(
-                (s) =>
-                  new Date(s.createdAt).toDateString() ===
-                    new Date().toDateString(),
-              ).length,
-            ],
-            [
-              "قيد التوصيل",
-              shipments.filter((s) =>
-                s.status === "out_for_delivery"
-              ).length,
-            ],
-            [
-              "مكتملة",
-              shipments.filter((s) => s.status === "delivered").length,
-            ],
-          ].map(([label, value]) => (
-            <div
-              key={String(label)}
-              className="rounded-2xl border bg-white p-4 shadow-sm"
-            >
-              <p className="text-xs text-slate-500">{label}</p>
-              <p className="mt-1 text-2xl font-black text-[#0F4C81]">{value}</p>
-            </div>
-          ))}
+      <main className="mx-auto max-w-6xl space-y-6 px-4 py-6">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+          {stats.map((stat) => {
+            const Icon = stat.icon;
+            return (
+              <div
+                key={stat.label}
+                className="group relative overflow-hidden rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+              >
+                <span
+                  className="absolute inset-x-0 top-0 h-1"
+                  style={{ backgroundColor: stat.color }}
+                />
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <p className="text-xs font-bold text-slate-500">
+                      {stat.label}
+                    </p>
+                    <p
+                      className="mt-1.5 text-3xl font-black leading-none"
+                      style={{ color: stat.color }}
+                    >
+                      {stat.value}
+                    </p>
+                  </div>
+                  <span
+                    className={`grid size-11 shrink-0 place-items-center rounded-xl ${stat.ring}`}
+                  >
+                    <Icon className="size-5" />
+                  </span>
+                </div>
+              </div>
+            );
+          })}
         </div>
         <label className="relative block">
-          <Search className="absolute right-3 top-3 size-4 text-slate-400" />
+          <Search className="pointer-events-none absolute right-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="ابحث برقم الشحنة أو العميل أو الهاتف"
-            className="w-full rounded-2xl border bg-white py-3 pr-10 pl-4 outline-none focus:border-blue-500"
+            className="w-full rounded-2xl border border-slate-200 bg-white py-3.5 pr-11 pl-4 text-sm shadow-sm outline-none transition focus:border-[#2196F3] focus:ring-4 focus:ring-blue-500/10"
           />
         </label>
         {notice && (
           <div
             role="status"
-            className="flex items-start gap-2 rounded-2xl border border-sky-200 bg-sky-50 p-3 text-sm font-bold text-sky-900"
+            className="flex items-start gap-2 rounded-2xl border border-sky-200 bg-sky-50 p-3.5 text-sm font-bold text-sky-900 shadow-sm"
           >
             <Bell className="mt-0.5 size-4 shrink-0" />
             {notice}
@@ -746,8 +802,9 @@ function LiveTrackingAdminRoute() {
         )}
         {loading && !shipments.length
           ? (
-            <div className="rounded-3xl bg-white p-12 text-center">
-              جارٍ تحميل الشحنات...
+            <div className="grid place-items-center gap-3 rounded-3xl border border-slate-100 bg-white p-12 text-center text-slate-500 shadow-sm">
+              <Loader2 className="size-7 animate-spin text-[#2196F3]" />
+              <span className="text-sm font-bold">جارٍ تحميل الشحنات...</span>
             </div>
           )
           : filtered.length
@@ -756,36 +813,47 @@ function LiveTrackingAdminRoute() {
               {filtered.map((s) => {
                 const idx = stageIndex(s.status);
                 const current = STAGES[idx];
+                const storeClass = s.storeName === "SHEIN"
+                  ? "bg-orange-50 text-[#F97316]"
+                  : s.storeName === "Amazon"
+                  ? "bg-slate-900 text-white"
+                  : "bg-slate-100 text-slate-600";
                 return (
                   <article
                     key={s.id}
-                    className="rounded-3xl border bg-white p-5 shadow-sm"
+                    className="group rounded-3xl border border-slate-100 bg-white p-5 shadow-sm transition hover:border-blue-100 hover:shadow-md"
                   >
                     <div className="flex items-start justify-between gap-3">
-                      <div>
+                      <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <span
                             dir="ltr"
-                            className="rounded-full bg-blue-50 px-3 py-1 font-mono text-xs font-black text-blue-900"
+                            className="rounded-full bg-blue-50 px-3 py-1 font-mono text-xs font-black text-[#0F4C81]"
                           >
                             {s.trackingCode}
                           </span>
-                          <span className="rounded-lg bg-orange-50 px-2 py-1 text-[11px] font-bold text-orange-700">
+                          <span
+                            className={`rounded-lg px-2 py-1 text-[11px] font-bold ${storeClass}`}
+                          >
                             {s.storeName}
                           </span>
                         </div>
-                        <h2 className="mt-2 font-black">{s.customerName}</h2>
-                        <p className="mt-1 text-xs text-slate-500">
+                        <h2 className="mt-2.5 flex items-center gap-1.5 font-black text-slate-800">
+                          <UserRound className="size-4 text-slate-400" />
+                          {s.customerName}
+                        </h2>
+                        <p className="mt-1 truncate text-xs text-slate-500">
                           {s.productName} · {s.city}
                         </p>
                         <p
                           dir="ltr"
-                          className="mt-1 text-right text-xs text-slate-500"
+                          className="mt-1 flex items-center justify-end gap-1 text-xs text-slate-500"
                         >
                           {s.customerPhone}
+                          <Phone className="size-3.5 text-slate-400" />
                         </p>
                       </div>
-                      <span className="rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800">
+                      <span className="shrink-0 rounded-xl bg-emerald-50 px-3 py-2 text-center text-xs font-bold text-emerald-700">
                         {current?.title}
                       </span>
                     </div>
@@ -794,15 +862,18 @@ function LiveTrackingAdminRoute() {
                         <span
                           key={st.code}
                           title={`${i + 1}. ${st.title}`}
-                          className={`h-2 flex-1 rounded-full ${
+                          className={`h-2 flex-1 rounded-full transition ${
                             i <= idx ? "bg-emerald-500" : "bg-slate-200"
                           }`}
                         />
                       ))}
                     </div>
+                    <p className="mt-2 text-[11px] font-bold text-slate-400">
+                      المرحلة {idx + 1} من {STAGES.length}
+                    </p>
                     <button
                       onClick={() => setSelected(s)}
-                      className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#0F4C81] px-4 py-3 text-sm font-black text-white"
+                      className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-l from-[#0F4C81] to-[#1565C0] px-4 py-3 text-sm font-black text-white shadow-md shadow-blue-500/20 transition hover:opacity-95"
                     >
                       <Bell className="size-4" />
                       مسار الشحنة وإشعار
@@ -811,7 +882,7 @@ function LiveTrackingAdminRoute() {
                       <div className="mt-2 grid grid-cols-2 gap-2">
                         <button
                           onClick={() => startEdit(s)}
-                          className="flex items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2.5 text-xs font-black text-blue-900"
+                          className="flex items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2.5 text-xs font-black text-[#0F4C81] transition hover:bg-blue-100"
                         >
                           <Pencil className="size-4" />
                           تعديل البيانات
@@ -819,7 +890,7 @@ function LiveTrackingAdminRoute() {
                         <button
                           disabled={deletingId === s.id}
                           onClick={() => void deleteShipment(s)}
-                          className="flex items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs font-black text-red-800 disabled:opacity-50"
+                          className="flex items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs font-black text-[#DC2626] transition hover:bg-red-100 disabled:opacity-50"
                         >
                           <Trash2 className="size-4" />
                           {deletingId === s.id ? "جارٍ الحذف..." : "حذف نهائي"}
@@ -832,22 +903,25 @@ function LiveTrackingAdminRoute() {
             </div>
           )
           : (
-            <div className="rounded-3xl bg-white p-12 text-center text-slate-500">
-              لا توجد شحنات مطابقة.
+            <div className="grid place-items-center gap-3 rounded-3xl border border-slate-100 bg-white p-12 text-center text-slate-500 shadow-sm">
+              <div className="grid size-14 place-items-center rounded-2xl bg-slate-50">
+                <Package className="size-7 text-slate-300" />
+              </div>
+              <span className="text-sm font-bold">لا توجد شحنات مطابقة.</span>
             </div>
           )}
       </main>
       {selected && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-2 sm:p-5"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-2 backdrop-blur-sm sm:p-5"
           role="dialog"
           aria-modal="true"
           aria-labelledby="shipment-modal-title"
         >
           <section className="max-h-[95vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white p-4 shadow-2xl sm:p-6">
-            <div className="sticky top-0 z-10 -mx-4 -mt-4 mb-4 flex items-center justify-between border-b bg-white/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:-mt-6 sm:px-6">
+            <div className="sticky top-0 z-10 -mx-4 -mt-4 mb-4 flex items-center justify-between border-b border-slate-100 bg-white/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:-mt-6 sm:px-6">
               <div>
-                <h2 id="shipment-modal-title" className="font-black">
+                <h2 id="shipment-modal-title" className="font-black text-slate-800">
                   مسار الشحنة {selected.trackingCode}
                 </h2>
                 <p className="text-xs text-slate-500">
@@ -856,34 +930,38 @@ function LiveTrackingAdminRoute() {
               </div>
               <button
                 onClick={() => setSelected(null)}
-                className="rounded-xl bg-slate-100 p-2"
+                className="grid size-9 place-items-center rounded-xl bg-slate-100 transition hover:bg-slate-200"
                 aria-label="إغلاق"
               >
                 <X className="size-4" />
               </button>
             </div>
-            <div className="mb-4 rounded-2xl border border-sky-100 bg-sky-50 p-3 text-xs leading-6 text-sky-950">
-              تحديث المرحلة ينشئ إشعاراً داخل التطبيق. زر واتساب يفتح رسالة جاهزة
-              ويسجلها «جاهزة»، ولا يثبت الإرسال حتى تؤكده من واتساب.
+            <div className="mb-4 flex items-start gap-2 rounded-2xl border border-sky-100 bg-sky-50 p-3 text-xs leading-6 text-sky-950">
+              <AlertCircle className="mt-0.5 size-4 shrink-0 text-sky-500" />
+              <span>
+                تحديث المرحلة ينشئ إشعاراً داخل التطبيق. زر واتساب يفتح
+                رسالة جاهزة ويسجلها «جاهزة»، ولا يثبت الإرسال حتى تؤكده
+                من واتساب.
+              </span>
             </div>
             {STAGES.some((s) => s.code === "out_for_delivery") && (
-              <div className="mb-4 grid gap-2 rounded-2xl bg-slate-50 p-3 sm:grid-cols-2">
-                <label className="text-xs font-bold">
+              <div className="mb-4 grid gap-2 rounded-2xl border border-slate-100 bg-slate-50 p-3 sm:grid-cols-2">
+                <label className="text-xs font-bold text-slate-600">
                   اسم المندوب (مطلوب عند التوصيل)
                   <input
                     value={courierName}
                     onChange={(e) => setCourierName(e.target.value)}
-                    className="mt-1 w-full rounded-xl border bg-white p-2.5"
+                    className="mt-1 w-full rounded-xl border border-slate-200 bg-white p-2.5 outline-none focus:border-[#2196F3]"
                     placeholder="اسم المندوب"
                   />
                 </label>
-                <label className="text-xs font-bold">
+                <label className="text-xs font-bold text-slate-600">
                   هاتف المندوب
                   <input
                     value={courierPhone}
                     onChange={(e) => setCourierPhone(e.target.value)}
                     dir="ltr"
-                    className="mt-1 w-full rounded-xl border bg-white p-2.5 text-right"
+                    className="mt-1 w-full rounded-xl border border-slate-200 bg-white p-2.5 text-right outline-none focus:border-[#2196F3]"
                     placeholder="7xxxxxxxx"
                   />
                 </label>
@@ -897,12 +975,12 @@ function LiveTrackingAdminRoute() {
                 return (
                   <li
                     key={stage.code}
-                    className={`rounded-2xl border p-3 ${
+                    className={`rounded-2xl border p-3 transition ${
                       active
                         ? "border-blue-300 bg-blue-50"
                         : done
                         ? "border-emerald-200 bg-emerald-50/60"
-                        : "bg-white"
+                        : "border-slate-100 bg-white"
                     }`}
                   >
                     <div className="flex items-start gap-3">
@@ -911,7 +989,7 @@ function LiveTrackingAdminRoute() {
                           done
                             ? "bg-emerald-600 text-white"
                             : active
-                            ? "bg-blue-900 text-white"
+                            ? "bg-gradient-to-l from-[#0F4C81] to-[#1565C0] text-white"
                             : "bg-slate-100 text-slate-500"
                         }`}
                       >
@@ -921,11 +999,11 @@ function LiveTrackingAdminRoute() {
                       </span>
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          <b className="text-sm">
+                          <b className="text-sm text-slate-800">
                             {i + 1}. {stage.title}
                           </b>
                           {active && (
-                            <span className="rounded bg-blue-900 px-2 py-0.5 text-[10px] text-white">
+                            <span className="rounded-full bg-[#0F4C81] px-2 py-0.5 text-[10px] font-bold text-white">
                               الحالية
                             </span>
                           )}
@@ -953,7 +1031,7 @@ function LiveTrackingAdminRoute() {
                                   "advance",
                                   "app",
                                 )}
-                              className="rounded-lg bg-orange-600 px-3 py-2 text-[11px] font-black text-white disabled:opacity-50"
+                              className="rounded-lg bg-[#F97316] px-3 py-2 text-[11px] font-black text-white shadow-sm transition hover:brightness-95 disabled:opacity-50"
                             >
                               {busy
                                 ? "جارٍ الحفظ..."
@@ -964,7 +1042,7 @@ function LiveTrackingAdminRoute() {
                             disabled={busy}
                             onClick={() =>
                               void doAction(selected, stage, "notify", "app")}
-                            className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-[11px] font-bold text-blue-900 disabled:opacity-50"
+                            className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-[11px] font-bold text-[#0F4C81] transition hover:bg-blue-50 disabled:opacity-50"
                           >
                             تذكير داخل التطبيق فقط
                           </button>
@@ -978,7 +1056,7 @@ function LiveTrackingAdminRoute() {
                                 "notify",
                                 "whatsapp",
                               )}
-                            className="flex items-center gap-1 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-[11px] font-bold text-emerald-800 disabled:opacity-50"
+                            className="flex items-center gap-1 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-[11px] font-bold text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-50"
                           >
                             <MessageCircle className="size-3.5" />
                             فتح رسالة واتساب
@@ -990,9 +1068,9 @@ function LiveTrackingAdminRoute() {
                 );
               })}
             </ol>
-            <section className="mt-5 rounded-2xl border p-4">
-              <h3 className="flex items-center gap-2 font-black">
-                <History className="size-4" />
+            <section className="mt-5 rounded-2xl border border-slate-100 p-4">
+              <h3 className="flex items-center gap-2 font-black text-slate-800">
+                <History className="size-4 text-slate-500" />
                 سجل الإشعارات
               </h3>
               {history.length
@@ -1001,9 +1079,9 @@ function LiveTrackingAdminRoute() {
                     {history.map((ev) => (
                       <li
                         key={ev.id}
-                        className="rounded-xl bg-slate-50 p-3 text-xs"
+                        className="rounded-xl border border-slate-100 bg-slate-50 p-3 text-xs"
                       >
-                        <div className="flex flex-wrap justify-between gap-2 font-bold">
+                        <div className="flex flex-wrap justify-between gap-2 font-bold text-slate-700">
                           <span>
                             {ev.event_type === "stage"
                               ? "تغيير مرحلة"
@@ -1017,7 +1095,7 @@ function LiveTrackingAdminRoute() {
                               ? "لا يوجد حساب تطبيق للعميل"
                               : ev.delivery_state}
                           </span>
-                          <time>
+                          <time className="text-slate-400">
                             {new Date(ev.created_at).toLocaleString("ar-YE")}
                           </time>
                         </div>
@@ -1035,8 +1113,8 @@ function LiveTrackingAdminRoute() {
                 )}
             </section>
             <section className="mt-4 rounded-2xl border border-emerald-100 p-4">
-              <h3 className="flex items-center gap-2 font-black">
-                <MessageCircle className="size-4 text-emerald-700" />
+              <h3 className="flex items-center gap-2 font-black text-slate-800">
+                <MessageCircle className="size-4 text-emerald-600" />
                 رسائل SMS لمراحل الشحنة
               </h3>
               {smsHistory.length
@@ -1056,27 +1134,27 @@ function LiveTrackingAdminRoute() {
                       return (
                         <li
                           key={row.id}
-                          className="rounded-xl bg-slate-50 p-3 text-xs"
+                          className="rounded-xl border border-slate-100 bg-slate-50 p-3 text-xs"
                         >
                           <div className="flex flex-wrap items-center justify-between gap-2">
-                            <b>
+                            <b className="text-slate-700">
                               {stageTitle} · {stateLabel} · محاولات:{" "}
                               {row.sms_attempt_count}
                             </b>
-                            <time>
+                            <time className="text-slate-400">
                               {new Date(row.updated_at).toLocaleString("ar-YE")}
                             </time>
                           </div>
                           {row.sms_error && (
-                            <p className="mt-1 text-red-700">{row.sms_error}</p>
+                            <p className="mt-1 text-[#DC2626]">{row.sms_error}</p>
                           )}
                           {row.sms_status === "accepted" && (
-                            <p className="mt-1 text-emerald-800">
+                            <p className="mt-1 text-emerald-700">
                               قبول المزود لا يؤكد التسليم النهائي.
                             </p>
                           )}
                           {row.sms_status === "unknown" && (
-                            <p className="mt-1 text-amber-800">
+                            <p className="mt-1 text-amber-700">
                               لا تعاود الإرسال قبل التحقق من سجل TextBee.
                             </p>
                           )}
@@ -1084,7 +1162,7 @@ function LiveTrackingAdminRoute() {
                             <button
                               disabled={busy}
                               onClick={() => void retryStageSms(row)}
-                              className="mt-2 rounded-lg border border-orange-200 bg-white px-3 py-2 font-bold text-orange-800 disabled:opacity-50"
+                              className="mt-2 rounded-lg border border-orange-200 bg-white px-3 py-2 font-bold text-[#F97316] transition hover:bg-orange-50 disabled:opacity-50"
                             >
                               {busy
                                 ? "جارٍ التحقق..."
@@ -1107,15 +1185,16 @@ function LiveTrackingAdminRoute() {
       )}
       {editing && access === "admin" && (
         <div
-          className="fixed inset-0 z-[60] grid place-items-center bg-black/60 p-4"
+          className="fixed inset-0 z-[60] grid place-items-center bg-slate-900/60 p-4 backdrop-blur-sm"
           role="dialog"
           aria-modal="true"
           aria-labelledby="edit-shipment-title"
         >
           <section className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-3xl bg-white p-5 shadow-2xl">
-            <div className="flex items-center justify-between border-b pb-3">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
-                <h2 id="edit-shipment-title" className="font-black">
+                <h2 id="edit-shipment-title" className="flex items-center gap-2 font-black text-slate-800">
+                  <Pencil className="size-4 text-[#0F4C81]" />
                   تعديل بيانات الشحنة
                 </h2>
                 <p className="mt-1 text-xs text-slate-500">
@@ -1125,14 +1204,14 @@ function LiveTrackingAdminRoute() {
               <button
                 onClick={() => setEditing(null)}
                 disabled={savingEdit}
-                className="rounded-xl bg-slate-100 p-2"
+                className="grid size-9 place-items-center rounded-xl bg-slate-100 transition hover:bg-slate-200"
                 aria-label="إغلاق"
               >
                 <X className="size-4" />
               </button>
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <label className="text-xs font-bold">
+              <label className="text-xs font-bold text-slate-600">
                 اسم العميل *
                 <input
                   value={editForm.customerName}
@@ -1141,11 +1220,11 @@ function LiveTrackingAdminRoute() {
                       ...f,
                       customerName: e.target.value,
                     }))}
-                  className="mt-1 w-full rounded-xl border p-2.5"
+                  className="mt-1 w-full rounded-xl border border-slate-200 p-2.5 outline-none focus:border-[#2196F3]"
                   maxLength={200}
                 />
               </label>
-              <label className="text-xs font-bold">
+              <label className="text-xs font-bold text-slate-600">
                 هاتف العميل *
                 <input
                   value={editForm.customerPhone}
@@ -1154,43 +1233,43 @@ function LiveTrackingAdminRoute() {
                       ...f,
                       customerPhone: e.target.value,
                     }))}
-                  className="mt-1 w-full rounded-xl border p-2.5"
+                  className="mt-1 w-full rounded-xl border border-slate-200 p-2.5 outline-none focus:border-[#2196F3]"
                   maxLength={30}
                   dir="ltr"
                 />
               </label>
-              <label className="text-xs font-bold sm:col-span-2">
+              <label className="text-xs font-bold text-slate-600 sm:col-span-2">
                 اسم المنتج
                 <input
                   value={editForm.productName}
                   onChange={(e) =>
                     setEditForm((f) => ({ ...f, productName: e.target.value }))}
-                  className="mt-1 w-full rounded-xl border p-2.5"
+                  className="mt-1 w-full rounded-xl border border-slate-200 p-2.5 outline-none focus:border-[#2196F3]"
                   maxLength={300}
                 />
               </label>
-              <label className="text-xs font-bold sm:col-span-2">
+              <label className="text-xs font-bold text-slate-600 sm:col-span-2">
                 رابط المنتج *
                 <input
                   value={editForm.productLink}
                   onChange={(e) =>
                     setEditForm((f) => ({ ...f, productLink: e.target.value }))}
-                  className="mt-1 w-full rounded-xl border p-2.5"
+                  className="mt-1 w-full rounded-xl border border-slate-200 p-2.5 outline-none focus:border-[#2196F3]"
                   maxLength={2000}
                   dir="ltr"
                 />
               </label>
-              <label className="text-xs font-bold">
+              <label className="text-xs font-bold text-slate-600">
                 اسم المندوب
                 <input
                   value={editForm.courierName}
                   onChange={(e) =>
                     setEditForm((f) => ({ ...f, courierName: e.target.value }))}
-                  className="mt-1 w-full rounded-xl border p-2.5"
+                  className="mt-1 w-full rounded-xl border border-slate-200 p-2.5 outline-none focus:border-[#2196F3]"
                   maxLength={200}
                 />
               </label>
-              <label className="text-xs font-bold">
+              <label className="text-xs font-bold text-slate-600">
                 هاتف المندوب
                 <input
                   value={editForm.courierPhone}
@@ -1199,21 +1278,24 @@ function LiveTrackingAdminRoute() {
                       ...f,
                       courierPhone: e.target.value,
                     }))}
-                  className="mt-1 w-full rounded-xl border p-2.5"
+                  className="mt-1 w-full rounded-xl border border-slate-200 p-2.5 outline-none focus:border-[#2196F3]"
                   maxLength={30}
                   dir="ltr"
                 />
               </label>
             </div>
-            <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-900">
-              لا يمكن من هذه النافذة تعديل المالك أو رقم التتبع أو حالة الشحنة أو
-              الملاحظات. الحذف منفصل ونهائي.
+            <p className="mt-3 flex items-start gap-2 rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-900">
+              <AlertCircle className="mt-0.5 size-4 shrink-0 text-amber-500" />
+              <span>
+                لا يمكن من هذه النافذة تعديل المالك أو رقم التتبع أو حالة
+                الشحنة أو الملاحظات. الحذف منفصل ونهائي.
+              </span>
             </p>
             <div className="mt-4 flex gap-2">
               <button
                 onClick={() => void saveEdit()}
                 disabled={savingEdit}
-                className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-blue-900 px-4 py-3 text-sm font-black text-white disabled:opacity-50"
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-l from-[#0F4C81] to-[#1565C0] px-4 py-3 text-sm font-black text-white shadow-md shadow-blue-500/20 transition hover:opacity-95 disabled:opacity-50"
               >
                 <Save className="size-4" />
                 {savingEdit ? "جارٍ الحفظ..." : "حفظ التعديلات"}
@@ -1221,7 +1303,7 @@ function LiveTrackingAdminRoute() {
               <button
                 onClick={() => setEditing(null)}
                 disabled={savingEdit}
-                className="rounded-xl border px-4 py-3 text-sm font-bold"
+                className="rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-600 transition hover:bg-slate-50"
               >
                 إلغاء
               </button>
