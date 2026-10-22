@@ -266,7 +266,7 @@ Deno.serve(async (req: Request) => {
   });
   const { data: order, error: orderError } = await admin.from("orders")
     .select(
-      "id,tracking_code,customer_name,phone,status,courier_name,courier_phone",
+      "id,tracking_code,customer_name,phone,customer_phone,status,courier_name,courier_phone",
     )
     .eq("id", orderId).maybeSingle();
   if (orderError) {
@@ -284,7 +284,7 @@ Deno.serve(async (req: Request) => {
       error: "لم تصل الشحنة إلى هذه المرحلة بعد؛ لم تُرسل رسالة.",
     });
   }
-  const recipient = normalizePhone(order.phone ?? "");
+  const recipient = normalizePhone(order.phone || order.customer_phone || "");
   if (!recipient) return json(req, 400, { error: "رقم هاتف العميل غير صالح." });
 
   const { data: prior, error: priorError } = await admin.from(
