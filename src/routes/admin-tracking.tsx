@@ -3,14 +3,17 @@ import { AdminRouteGuard } from "@/components/admin/AdminRouteGuard";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
+  AlertTriangle,
   Bell,
   Check,
+  CalendarDays,
   CheckCircle2,
   ChevronLeft,
   Circle,
   Clock3,
   CreditCard,
   History,
+  Layers,
   Loader2,
   MapPin,
   MessageCircle,
@@ -233,6 +236,13 @@ function LiveTrackingAdminRoute() {
   });
   const [savingEdit, setSavingEdit] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [storeFilter, setStoreFilter] = useState<"all" | "Amazon" | "SHEIN">(
+    "all",
+  );
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 8;
 
   useEffect(() => {
     let alive = true;
@@ -367,16 +377,52 @@ function LiveTrackingAdminRoute() {
     return () => clearTimeout(t);
   }, [notice]);
 
+  const isDelayed = (s: Shipment) => {
+    if (s.status === "delivered") return false;
+    const days = (Date.now() - new Date(s.createdAt).getTime()) /
+      (1000 * 60 * 60 * 24);
+    return days > 30;
+  };
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return shipments.filter(
-      (s) =>
-        !q ||
+    const from = dateFrom ? new Date(dateFrom).getTime() : null;
+    const to = dateTo ? new Date(dateTo).getTime() + 86400000 : null;
+    return shipments.filter((s) => {
+      const matchText = !q ||
         `${s.trackingCode} ${s.customerName} ${s.customerPhone} ${s.storeName}`
           .toLowerCase()
-          .includes(q),
-    );
-  }, [shipments, search]);
+          .includes(q);
+      const matchStore = storeFilter === "all" || s.storeName === storeFilter;
+      const created = new Date(s.createdAt).getTime();
+      const matchFrom = from === null || created >= from;
+      const matchTo = to === null || created < to;
+      return matchText && matchStore && matchFrom && matchTo;
+    });
+  }, [shipments, search, storeFilter, dateFrom, dateTo]);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const paged = useMemo(
+    () => filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
+    [filtered, safePage],
+  );
+  useEffect(() => {
+    setPage(1);
+  }, [search, storeFilter, dateFrom, dateTo]);
+  const stageCounts = useMemo(
+    () =>
+      STAGES.map(
+        (_stage, i) =>
+          shipments.filter((s) => stageIndex(s.status) === i).length,
+      ),
+    [shipments],
+  );
+  const resetFilters = () => {
+    setSearch("");
+    setStoreFilter("all");
+    setDateFrom("");
+    setDateTo("");
+    setPage(1);
+  };
   const startEdit = (shipment: Shipment) => {
     setEditing(shipment);
     setEditForm({
@@ -633,6 +679,7 @@ function LiveTrackingAdminRoute() {
       setBusy(false);
     }
   };
+
   const fontStack = { fontFamily: "Tajawal, system-ui, 'Segoe UI', sans-serif" };
 
   if (access === "loading") {
@@ -640,7 +687,7 @@ function LiveTrackingAdminRoute() {
       <div
         dir="rtl"
         style={fontStack}
-        className="grid min-h-screen place-items-center bg-gradient-to-b from-slate-50 to-slate-100 text-slate-600"
+        className="grid min-h-screen place-items-center bg-[#f7f8fb] text-slate-600"
       >
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="size-8 animate-spin text-[#2196F3]" />
@@ -654,7 +701,7 @@ function LiveTrackingAdminRoute() {
       <div
         dir="rtl"
         style={fontStack}
-        className="grid min-h-screen place-items-center bg-gradient-to-b from-slate-50 to-slate-100 p-6"
+        className="grid min-h-screen place-items-center bg-[#f7f8fb] p-6"
       >
         <div className="w-full max-w-md rounded-3xl border border-slate-100 bg-white p-8 text-center shadow-xl shadow-slate-200/60">
           <div className="mx-auto mb-4 grid size-16 place-items-center rounded-2xl bg-amber-50">
@@ -662,11 +709,11 @@ function LiveTrackingAdminRoute() {
           </div>
           <h1 className="text-lg font-black text-slate-800">هذه الصفحة للمدير والموظفين</h1>
           <p className="my-4 text-sm leading-6 text-slate-500">
-            سجّل الدخول بحساب مخوّل لمتابعة الشحنات.
+            سجّل الدخول بحساب مخوّل لمتابعة الطلبات.
           </p>
           <Link
             to="/login"
-            className="inline-block rounded-2xl bg-gradient-to-l from-[#0F4C81] to-[#1565C0] px-6 py-3 font-bold text-white shadow-lg shadow-blue-500/25 transition hover:opacity-95"
+            className="inline-block rounded-2xl bg-[#0F4C81] px-6 py-3 font-bold text-white shadow-lg shadow-blue-500/25 transition hover:opacity-95"
           >
             تسجيل الدخول
           </Link>
@@ -675,37 +722,40 @@ function LiveTrackingAdminRoute() {
     );
   }
 
+  const todayCount = shipments.filter(
+    (s) => new Date(s.createdAt).toDateString() === new Date().toDateString(),
+  ).length;
+  const deliveredCount = shipments.filter((s) => s.status === "delivered")
+    .length;
+  const delayedCount = shipments.filter((s) => isDelayed(s)).length;
   const stats = [
     {
-      label: "إجمالي الشحنات",
-      value: shipments.length,
-      icon: Package,
-      color: "#2196F3",
-      ring: "bg-blue-50 text-[#2196F3]",
-    },
-    {
       label: "طلبات اليوم",
-      value: shipments.filter(
-        (s) =>
-          new Date(s.createdAt).toDateString() === new Date().toDateString(),
-      ).length,
+      value: todayCount,
+      icon: CalendarDays,
+      color: "#2196F3",
+      soft: "bg-blue-50",
+    },
+    {
+      label: "إجمالي الطلبات",
+      value: shipments.length,
       icon: Clock3,
-      color: "#5E35B1",
-      ring: "bg-violet-50 text-[#5E35B1]",
+      color: "#6D28D9",
+      soft: "bg-violet-50",
     },
     {
-      label: "قيد التوصيل",
-      value: shipments.filter((s) => s.status === "out_for_delivery").length,
-      icon: Truck,
-      color: "#F97316",
-      ring: "bg-orange-50 text-[#F97316]",
-    },
-    {
-      label: "مكتملة",
-      value: shipments.filter((s) => s.status === "delivered").length,
+      label: "مكتملة / تم التسليم",
+      value: deliveredCount,
       icon: CheckCircle2,
-      color: "#2E7D32",
-      ring: "bg-emerald-50 text-[#2E7D32]",
+      color: "#16A34A",
+      soft: "bg-emerald-50",
+    },
+    {
+      label: "متأخرة أكثر من شهر",
+      value: delayedCount,
+      icon: AlertTriangle,
+      color: "#DC2626",
+      soft: "bg-red-50",
     },
   ];
 
@@ -713,84 +763,168 @@ function LiveTrackingAdminRoute() {
     <div
       dir="rtl"
       style={fontStack}
-      className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 pb-16 text-slate-800"
+      className="min-h-screen bg-[#f7f8fb] pb-16 text-slate-800"
     >
-      <header className="sticky top-0 z-20 bg-gradient-to-l from-[#0F4C81] to-[#1565C0] text-white shadow-lg shadow-blue-900/20">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
+      <header className="border-b border-slate-200 bg-white">
+        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <Link
               to="/admin"
-              className="grid size-10 place-items-center rounded-xl bg-white/15 transition hover:bg-white/25"
+              className="grid size-10 place-items-center rounded-xl bg-slate-100 text-slate-600 transition hover:bg-slate-200"
             >
               <ChevronLeft className="size-5" />
             </Link>
-            <div className="flex items-center gap-2.5">
-              <span className="grid size-10 place-items-center rounded-xl bg-white/15">
-                <Truck className="size-5" />
-              </span>
-              <div>
-                <h1 className="text-base font-black">مسار الشحنة وإشعارات العميل</h1>
-                <p className="text-[11px] text-sky-100">
-                  ثماني مراحل · تحديث مباشر
-                </p>
-              </div>
+            <div>
+              <h1 className="text-lg font-black text-slate-800">لوحة تحكم طلبات</h1>
+              <p className="mt-0.5 text-xs text-slate-500">
+                وسيط الطلبات – متابعة وإدارة طلبات Amazon و SHEIN
+              </p>
             </div>
           </div>
-          <button
-            onClick={() => void refresh()}
-            disabled={loading}
-            className="flex items-center gap-2 rounded-xl bg-white/15 px-3.5 py-2 text-xs font-bold transition hover:bg-white/25 disabled:opacity-60"
-          >
-            <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} />
-            {" "}
-            تحديث
-          </button>
+          <div className="flex items-center gap-2">
+            <div className="flex rounded-xl border border-slate-200 bg-slate-50 p-1">
+              <button
+                onClick={() => setStoreFilter("all")}
+                className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+                  storeFilter === "all"
+                    ? "bg-white text-slate-800 shadow-sm"
+                    : "text-slate-500"
+                }`}
+              >
+                الكل
+              </button>
+              <button
+                onClick={() => setStoreFilter("Amazon")}
+                className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+                  storeFilter === "Amazon"
+                    ? "bg-[#131921] text-white shadow-sm"
+                    : "text-slate-500"
+                }`}
+              >
+                Amazon
+              </button>
+              <button
+                onClick={() => setStoreFilter("SHEIN")}
+                className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+                  storeFilter === "SHEIN"
+                    ? "bg-[#F97316] text-white shadow-sm"
+                    : "text-slate-500"
+                }`}
+              >
+                SHEIN
+              </button>
+            </div>
+            <button
+              onClick={() => void refresh()}
+              disabled={loading}
+              className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-50 disabled:opacity-60"
+            >
+              <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} />
+              {" "}
+              تحديث
+            </button>
+          </div>
         </div>
       </header>
-      <main className="mx-auto max-w-6xl space-y-6 px-4 py-6">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+      <main className="mx-auto max-w-6xl space-y-5 px-4 py-6">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
           {stats.map((stat) => {
             const Icon = stat.icon;
             return (
               <div
                 key={stat.label}
-                className="group relative overflow-hidden rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition hover:shadow-md"
               >
-                <span
-                  className="absolute inset-x-0 top-0 h-1"
-                  style={{ backgroundColor: stat.color }}
-                />
-                <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <p className="text-xs font-bold text-slate-500">
-                      {stat.label}
-                    </p>
-                    <p
-                      className="mt-1.5 text-3xl font-black leading-none"
-                      style={{ color: stat.color }}
-                    >
-                      {stat.value}
-                    </p>
-                  </div>
+                <div className="flex items-start justify-between gap-2">
                   <span
-                    className={`grid size-11 shrink-0 place-items-center rounded-xl ${stat.ring}`}
+                    className={`grid size-11 shrink-0 place-items-center rounded-xl ${stat.soft}`}
+                    style={{ color: stat.color }}
                   >
                     <Icon className="size-5" />
                   </span>
                 </div>
+                <p
+                  className="mt-3 text-3xl font-black leading-none"
+                  style={{ color: stat.color }}
+                >
+                  {stat.value}
+                </p>
+                <p className="mt-1.5 text-xs font-bold text-slate-500">
+                  {stat.label}
+                </p>
               </div>
             );
           })}
         </div>
-        <label className="relative block">
-          <Search className="pointer-events-none absolute right-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="ابحث برقم الشحنة أو العميل أو الهاتف"
-            className="w-full rounded-2xl border border-slate-200 bg-white py-3.5 pr-11 pl-4 text-sm shadow-sm outline-none transition focus:border-[#2196F3] focus:ring-4 focus:ring-blue-500/10"
-          />
-        </label>
+        <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+          <h2 className="mb-3 flex items-center gap-2 text-sm font-black text-slate-700">
+            <Layers className="size-4 text-[#0F4C81]" />
+            توزيع الطلبات على المسارات
+          </h2>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
+            {STAGES.map((stage, i) => (
+              <div
+                key={stage.code}
+                className="rounded-xl border border-slate-100 bg-slate-50 p-2.5 text-center"
+              >
+                <p className="text-xl font-black text-[#0F4C81]">
+                  {stageCounts[i]}
+                </p>
+                <p className="mt-1 text-[10px] font-bold leading-tight text-slate-500">
+                  {stage.title}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_2fr_auto_auto]">
+            <label className="text-xs font-bold text-slate-500">
+              من
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="mt-1 w-full rounded-xl border border-slate-200 p-2.5 text-sm outline-none focus:border-[#2196F3]"
+              />
+            </label>
+            <label className="text-xs font-bold text-slate-500">
+              إلى
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="mt-1 w-full rounded-xl border border-slate-200 p-2.5 text-sm outline-none focus:border-[#2196F3]"
+              />
+            </label>
+            <label className="text-xs font-bold text-slate-500">
+              بحث
+              <div className="relative mt-1">
+                <Search className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="رقم الشحنة أو العميل أو الهاتف"
+                  className="w-full rounded-xl border border-slate-200 py-2.5 pr-10 pl-3 text-sm outline-none focus:border-[#2196F3]"
+                />
+              </div>
+            </label>
+            <button
+              onClick={resetFilters}
+              className="flex items-center justify-center gap-2 self-end rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-600 transition hover:bg-slate-50"
+            >
+              <RefreshCw className="size-4" />
+              إعادة تعيين
+            </button>
+            <button
+              onClick={() => setPage(1)}
+              className="flex items-center justify-center gap-2 self-end rounded-xl bg-[#0F4C81] px-5 py-2.5 text-sm font-black text-white shadow-md shadow-blue-500/20 transition hover:opacity-95"
+            >
+              <Search className="size-4" />
+              بحث
+            </button>
+          </div>
+        </div>
         {notice && (
           <div
             role="status"
@@ -800,116 +934,184 @@ function LiveTrackingAdminRoute() {
             {notice}
           </div>
         )}
-        {loading && !shipments.length
-          ? (
-            <div className="grid place-items-center gap-3 rounded-3xl border border-slate-100 bg-white p-12 text-center text-slate-500 shadow-sm">
-              <Loader2 className="size-7 animate-spin text-[#2196F3]" />
-              <span className="text-sm font-bold">جارٍ تحميل الشحنات...</span>
-            </div>
-          )
-          : filtered.length
-          ? (
-            <div className="grid gap-4 lg:grid-cols-2">
-              {filtered.map((s) => {
-                const idx = stageIndex(s.status);
-                const current = STAGES[idx];
-                const storeClass = s.storeName === "SHEIN"
-                  ? "bg-orange-50 text-[#F97316]"
-                  : s.storeName === "Amazon"
-                  ? "bg-slate-900 text-white"
-                  : "bg-slate-100 text-slate-600";
-                return (
-                  <article
-                    key={s.id}
-                    className="group rounded-3xl border border-slate-100 bg-white p-5 shadow-sm transition hover:border-blue-100 hover:shadow-md"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span
-                            dir="ltr"
-                            className="rounded-full bg-blue-50 px-3 py-1 font-mono text-xs font-black text-[#0F4C81]"
-                          >
-                            {s.trackingCode}
-                          </span>
-                          <span
-                            className={`rounded-lg px-2 py-1 text-[11px] font-bold ${storeClass}`}
-                          >
-                            {s.storeName}
-                          </span>
-                        </div>
-                        <h2 className="mt-2.5 flex items-center gap-1.5 font-black text-slate-800">
-                          <UserRound className="size-4 text-slate-400" />
-                          {s.customerName}
-                        </h2>
-                        <p className="mt-1 truncate text-xs text-slate-500">
-                          {s.productName} · {s.city}
-                        </p>
-                        <p
-                          dir="ltr"
-                          className="mt-1 flex items-center justify-end gap-1 text-xs text-slate-500"
-                        >
-                          {s.customerPhone}
-                          <Phone className="size-3.5 text-slate-400" />
-                        </p>
-                      </div>
-                      <span className="shrink-0 rounded-xl bg-emerald-50 px-3 py-2 text-center text-xs font-bold text-emerald-700">
-                        {current?.title}
-                      </span>
-                    </div>
-                    <div className="mt-4 flex items-center gap-1">
-                      {STAGES.map((st, i) => (
-                        <span
-                          key={st.code}
-                          title={`${i + 1}. ${st.title}`}
-                          className={`h-2 flex-1 rounded-full transition ${
-                            i <= idx ? "bg-emerald-500" : "bg-slate-200"
-                          }`}
-                        />
-                      ))}
-                    </div>
-                    <p className="mt-2 text-[11px] font-bold text-slate-400">
-                      المرحلة {idx + 1} من {STAGES.length}
-                    </p>
-                    <button
-                      onClick={() => setSelected(s)}
-                      className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-l from-[#0F4C81] to-[#1565C0] px-4 py-3 text-sm font-black text-white shadow-md shadow-blue-500/20 transition hover:opacity-95"
-                    >
-                      <Bell className="size-4" />
-                      مسار الشحنة وإشعار
-                    </button>
-                    {access === "admin" && (
-                      <div className="mt-2 grid grid-cols-2 gap-2">
-                        <button
-                          onClick={() => startEdit(s)}
-                          className="flex items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2.5 text-xs font-black text-[#0F4C81] transition hover:bg-blue-100"
-                        >
-                          <Pencil className="size-4" />
-                          تعديل البيانات
-                        </button>
-                        <button
-                          disabled={deletingId === s.id}
-                          onClick={() => void deleteShipment(s)}
-                          className="flex items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs font-black text-[#DC2626] transition hover:bg-red-100 disabled:opacity-50"
-                        >
-                          <Trash2 className="size-4" />
-                          {deletingId === s.id ? "جارٍ الحذف..." : "حذف نهائي"}
-                        </button>
-                      </div>
-                    )}
-                  </article>
-                );
-              })}
-            </div>
-          )
-          : (
-            <div className="grid place-items-center gap-3 rounded-3xl border border-slate-100 bg-white p-12 text-center text-slate-500 shadow-sm">
-              <div className="grid size-14 place-items-center rounded-2xl bg-slate-50">
-                <Package className="size-7 text-slate-300" />
+        <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+          {loading && !shipments.length
+            ? (
+              <div className="grid place-items-center gap-3 p-12 text-center text-slate-500">
+                <Loader2 className="size-7 animate-spin text-[#2196F3]" />
+                <span className="text-sm font-bold">جارٍ تحميل الطلبات...</span>
               </div>
-              <span className="text-sm font-bold">لا توجد شحنات مطابقة.</span>
+            )
+            : paged.length
+            ? (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[820px] text-right text-sm">
+                  <thead>
+                    <tr className="bg-slate-50 text-xs font-black text-slate-500">
+                      <th className="px-3 py-3">#</th>
+                      <th className="px-3 py-3">رقم الطلب</th>
+                      <th className="px-3 py-3">المتجر</th>
+                      <th className="px-3 py-3">المنتج</th>
+                      <th className="px-3 py-3">المرحلة الحالية</th>
+                      <th className="px-3 py-3">التاريخ</th>
+                      <th className="px-3 py-3">إجراءات</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {paged.map((s, rowIdx) => {
+                      const idx = stageIndex(s.status);
+                      const current = STAGES[idx];
+                      const delayed = isDelayed(s);
+                      const storeClass = s.storeName === "SHEIN"
+                        ? "bg-orange-50 text-[#F97316]"
+                        : s.storeName === "Amazon"
+                        ? "bg-slate-900 text-white"
+                        : "bg-slate-100 text-slate-600";
+                      return (
+                        <tr
+                          key={s.id}
+                          className={delayed ? "bg-red-50/60" : "bg-white"}
+                        >
+                          <td className="px-3 py-3 text-xs font-bold text-slate-400">
+                            {(safePage - 1) * PAGE_SIZE + rowIdx + 1}
+                          </td>
+                          <td className="px-3 py-3">
+                            <span
+                              dir="ltr"
+                              className="block font-mono text-xs font-black text-[#0F4C81]"
+                            >
+                              {s.trackingCode}
+                            </span>
+                            <span className="mt-1 block font-bold text-slate-700">
+                              {s.customerName}
+                            </span>
+                            <span
+                              dir="ltr"
+                              className="block text-[11px] text-slate-400"
+                            >
+                              {s.customerPhone}
+                            </span>
+                            {delayed && (
+                              <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-[#DC2626]">
+                                <AlertTriangle className="size-3" />
+                                متأخر
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-3 py-3">
+                            <span
+                              className={`inline-block rounded-lg px-2.5 py-1 text-[11px] font-bold ${storeClass}`}
+                            >
+                              {s.storeName}
+                            </span>
+                          </td>
+                          <td className="px-3 py-3">
+                            <span className="block max-w-[160px] truncate text-xs text-slate-600">
+                              {s.productName}
+                            </span>
+                            {s.productLink && (
+                              <button
+                                onClick={() =>
+                                  window.open(
+                                    s.productLink,
+                                    "_blank",
+                                    "noopener,noreferrer",
+                                  )}
+                                className="mt-1 text-[11px] font-bold text-[#2196F3] hover:underline"
+                              >
+                                رابط الشراء
+                              </button>
+                            )}
+                          </td>
+                          <td className="px-3 py-3">
+                            <div className="flex min-w-[140px] items-center gap-1">
+                              {STAGES.map((st, i) => (
+                                <span
+                                  key={st.code}
+                                  title={`${i + 1}. ${st.title}`}
+                                  className={`h-1.5 flex-1 rounded-full ${
+                                    i <= idx ? "bg-emerald-500" : "bg-slate-200"
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                            <span className="mt-1.5 inline-block rounded-lg bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
+                              {current?.title}
+                            </span>
+                          </td>
+                          <td className="px-3 py-3 text-xs text-slate-500">
+                            {new Date(s.createdAt).toLocaleDateString("ar-YE")}
+                          </td>
+                          <td className="px-3 py-3">
+                            <div className="flex flex-wrap gap-1.5">
+                              <button
+                                onClick={() => setSelected(s)}
+                                className="flex items-center gap-1 rounded-lg bg-[#0F4C81] px-2.5 py-1.5 text-[11px] font-bold text-white transition hover:opacity-95"
+                              >
+                                <Bell className="size-3.5" />
+                                المسار
+                              </button>
+                              {access === "admin" && (
+                                <>
+                                  <button
+                                    onClick={() => startEdit(s)}
+                                    className="flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-[11px] font-bold text-[#0F4C81] transition hover:bg-blue-100"
+                                  >
+                                    <Pencil className="size-3.5" />
+                                    تعديل
+                                  </button>
+                                  <button
+                                    disabled={deletingId === s.id}
+                                    onClick={() => void deleteShipment(s)}
+                                    className="flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-[11px] font-bold text-[#DC2626] transition hover:bg-red-100 disabled:opacity-50"
+                                  >
+                                    <Trash2 className="size-3.5" />
+                                    {deletingId === s.id ? "..." : "حذف"}
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )
+            : (
+              <div className="grid place-items-center gap-3 p-12 text-center text-slate-500">
+                <div className="grid size-14 place-items-center rounded-2xl bg-slate-50">
+                  <Package className="size-7 text-slate-300" />
+                </div>
+                <span className="text-sm font-bold">لا توجد طلبات مطابقة.</span>
+              </div>
+            )}
+        </div>
+        {filtered.length > 0 && (
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs text-slate-500">
+              عرض {(safePage - 1) * PAGE_SIZE + 1}–
+              {Math.min(safePage * PAGE_SIZE, filtered.length)} من{" "}
+              {filtered.length}
+            </p>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setPage(p)}
+                  className={`grid size-9 place-items-center rounded-lg text-xs font-bold transition ${
+                    p === safePage
+                      ? "bg-[#0F4C81] text-white"
+                      : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
             </div>
-          )}
+          </div>
+        )}
       </main>
       {selected && (
         <div
