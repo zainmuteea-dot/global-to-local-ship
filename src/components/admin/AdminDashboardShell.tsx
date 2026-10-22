@@ -12,6 +12,7 @@ import {
   LogOut,
   Menu,
   PackageCheck,
+  PackageOpen,
   Search,
   Settings,
   Truck,
@@ -111,6 +112,7 @@ const navItems = [
   { label: "العملاء", href: "/customers", icon: Users },
   { label: "الفواتير", href: "/sales-invoices", icon: FileText },
   { label: "التقارير", href: "/client-reports", icon: Activity },
+  { label: "المنتجات الفورية", href: "/products/manage", icon: PackageOpen },
 ] as const;
 
 function metricTone(tone: "blue" | "orange" | "green" | "purple") {
