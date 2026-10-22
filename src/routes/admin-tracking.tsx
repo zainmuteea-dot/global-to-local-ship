@@ -538,12 +538,19 @@ function LiveTrackingAdminRoute() {
       setNotice("لا يوجد رقم هاتف صالح لهذا العميل.");
       return;
     }
+    const activeCourierName = selected?.id === shipment.id
+      ? courierName.trim() || shipment.courierName.trim()
+      : shipment.courierName.trim();
+    const activeCourierPhone = selected?.id === shipment.id
+      ? courierPhone.trim() || shipment.courierPhone.trim()
+      : shipment.courierPhone.trim();
     if (
       stage.code === "out_for_delivery" &&
       action === "advance" &&
-      (!courierName.trim() || !normalizePhone(courierPhone))
+      (!activeCourierName || !normalizePhone(activeCourierPhone))
     ) {
-      setNotice("أدخل اسم المندوب ورقمه قبل تفعيل مرحلة التوصيل.");
+      setSelected(shipment);
+      setNotice("أدخل اسم المندوب ورقمه في تفاصيل الشحنة قبل تفعيل مرحلة التوصيل.");
       return;
     }
     const popup = channel === "whatsapp"
@@ -555,8 +562,8 @@ function LiveTrackingAdminRoute() {
       const text = messageFor(
         {
           ...shipment,
-          courierName: courierName.trim(),
-          courierPhone: courierPhone.trim(),
+          courierName: activeCourierName,
+          courierPhone: activeCourierPhone,
         },
         stage,
       );
@@ -567,10 +574,10 @@ function LiveTrackingAdminRoute() {
         _channel: channel,
         _message: text,
         _courier_name: stage.code === "out_for_delivery"
-          ? courierName.trim()
+          ? activeCourierName
           : null,
         _courier_phone: stage.code === "out_for_delivery"
-          ? normalizePhone(courierPhone)
+          ? normalizePhone(activeCourierPhone)
           : null,
       });
       if (error) throw error;
@@ -582,10 +589,10 @@ function LiveTrackingAdminRoute() {
                 ...s,
                 status: stage.code,
                 courierName: stage.code === "out_for_delivery"
-                  ? courierName.trim()
+                  ? activeCourierName
                   : s.courierName,
                 courierPhone: stage.code === "out_for_delivery"
-                  ? normalizePhone(courierPhone)
+                  ? normalizePhone(activeCourierPhone)
                   : s.courierPhone,
               }
               : s
@@ -645,6 +652,29 @@ function LiveTrackingAdminRoute() {
     } finally {
       setBusy(false);
     }
+  };
+
+  const handleStageSelection = (shipment: Shipment, stageCode: string) => {
+    const stage = STAGES.find((item) => item.code === stageCode);
+    if (!stage) return;
+    const requestedIndex = stageIndex(stage.code);
+    if (requestedIndex <= stageIndex(shipment.status)) return;
+
+    const hasCourierName = selected?.id === shipment.id
+      ? courierName.trim() || shipment.courierName.trim()
+      : shipment.courierName.trim();
+    const hasCourierPhone = selected?.id === shipment.id
+      ? courierPhone.trim() || shipment.courierPhone.trim()
+      : shipment.courierPhone.trim();
+    if (
+      stage.code === "out_for_delivery" &&
+      (!hasCourierName || !normalizePhone(hasCourierPhone))
+    ) {
+      setSelected(shipment);
+      setNotice("أدخل اسم المندوب ورقمه في تفاصيل الشحنة، ثم فعّل مرحلة التوصيل.");
+      return;
+    }
+    void doAction(shipment, stage, "advance", "app");
   };
 
   const retryStageSms = async (row: StageSmsRow) => {
@@ -1024,42 +1054,32 @@ function LiveTrackingAdminRoute() {
                             )}
                           </td>
                           <td className="px-3 py-3">
-                            <div
-                              className="grid w-[260px] min-w-[260px] grid-cols-4 gap-1.5"
-                              aria-label="مراحل الشحنة، اضغط على أي مرحلة لفتح المسار"
-                            >
-                              {STAGES.map((st, i) => {
-                                const isCurrent = i === idx;
-                                const isComplete = i < idx;
-                                return (
-                                  <button
-                                    key={st.code}
-                                    type="button"
-                                    title={`${i + 1}. ${st.title}`}
-                                    aria-label={`فتح مسار الشحنة عند المرحلة ${i + 1}: ${st.title}`}
-                                    aria-current={isCurrent ? "step" : undefined}
-                                    onClick={() => setSelected(s)}
-                                    className={`min-h-12 rounded-lg border px-1.5 py-1 text-right text-[9px] font-bold leading-3 transition focus:outline-none focus:ring-2 focus:ring-[#2196F3] ${
-                                      isCurrent
-                                        ? "border-[#0F4C81] bg-[#0F4C81] text-white shadow-sm"
-                                        : isComplete
-                                        ? "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
-                                        : "border-slate-200 bg-white text-slate-500 hover:border-blue-300 hover:bg-blue-50"
-                                    }`}
+                            <label className="block min-w-[245px]">
+                              <span className="sr-only">المرحلة الحالية للطلب {s.trackingCode}</span>
+                              <select
+                                dir="rtl"
+                                value={current?.code || STAGES[0].code}
+                                disabled={busy}
+                                onChange={(event) =>
+                                  handleStageSelection(s, event.target.value)}
+                                aria-label={`تغيير مرحلة الطلب ${s.trackingCode}`}
+                                className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-bold text-slate-800 shadow-sm outline-none transition hover:border-blue-300 focus:border-[#2196F3] focus:ring-2 focus:ring-blue-100 disabled:cursor-wait disabled:opacity-60"
+                              >
+                                {STAGES.map((stage, stageIdx) => (
+                                  <option
+                                    key={stage.code}
+                                    value={stage.code}
+                                    disabled={stageIdx <= idx}
                                   >
-                                    <span className="mb-0.5 block text-[10px] opacity-75">
-                                      {i + 1}
-                                    </span>
-                                    <span className="line-clamp-2 block">
-                                      {st.title}
-                                    </span>
-                                  </button>
-                                );
-                              })}
-                            </div>
-                            <span className="mt-1.5 inline-block rounded-lg bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
-                              {current?.title}
-                            </span>
+                                    {stageIdx + 1}. {stage.title}
+                                    {stageIdx === idx ? " — الحالية" : ""}
+                                  </option>
+                                ))}
+                              </select>
+                              <span className="mt-1 block text-[10px] text-slate-500">
+                                اختر مرحلة قادمة للتحديث الفوري وإشعار العميل
+                              </span>
+                            </label>
                           </td>
                           <td className="px-3 py-3 text-xs text-slate-500">
                             {new Date(s.createdAt).toLocaleDateString("ar-YE")}
