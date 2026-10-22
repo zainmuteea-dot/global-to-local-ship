@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import {
   Bell,
@@ -153,6 +153,7 @@ function CustomerNotificationsPage({
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [savingRead, setSavingRead] = useState(false);
+  const pendingReadIds = useRef(new Set<string>());
   const [error, setError] = useState<string | null>(roleError);
 
   useEffect(() => {
@@ -251,22 +252,50 @@ function CustomerNotificationsPage({
     };
   }, [userId, roleError]);
 
-  const markRead = async (notificationId: string) => {
-    if (readIds.has(notificationId)) return;
+  const markRead = useCallback(async (notificationId: string) => {
+    if (readIds.has(notificationId) || pendingReadIds.current.has(notificationId)) return;
+    pendingReadIds.current.add(notificationId);
     setSavingRead(true);
 
-    const { error: saveError } = await saveNotificationReadIds(userId, [notificationId]);
+    try {
+      const { error: saveError } = await saveNotificationReadIds(userId, [notificationId]);
+      if (saveError) {
+        console.error("تعذر حفظ قراءة الإشعار:", saveError);
+        setError("لم تُحفظ حالة القراءة. حاول مرة أخرى.");
+        return;
+      }
 
-    setSavingRead(false);
-    if (saveError) {
-      console.error("تعذر حفظ قراءة الإشعار:", saveError);
-      setError("لم تُحفظ حالة القراءة. حاول مرة أخرى.");
-      return;
+      setReadIds((current) => new Set(current).add(notificationId));
+      setError(null);
+    } finally {
+      pendingReadIds.current.delete(notificationId);
+      setSavingRead(pendingReadIds.current.size > 0);
     }
+  }, [readIds, userId]);
 
-    setReadIds((current) => new Set(current).add(notificationId));
-    setError(null);
-  };
+  // Mark a customer's notification read only after most of its card is visible on screen.
+  useEffect(() => {
+    if (loading || notifications.length === 0 || typeof IntersectionObserver === "undefined") return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          const notificationId = (entry.target as HTMLElement).dataset.customerNotificationId;
+          if (!notificationId) continue;
+          observer.unobserve(entry.target);
+          if (!readIds.has(notificationId)) void markRead(notificationId);
+        }
+      },
+      { threshold: 0.65 },
+    );
+
+    document
+      .querySelectorAll<HTMLElement>("[data-customer-notification-id]")
+      .forEach((card) => observer.observe(card));
+
+    return () => observer.disconnect();
+  }, [loading, notifications, readIds, markRead]);
 
   const markAllRead = async () => {
     const unread = notifications.filter((item) => !readIds.has(item.id));
@@ -344,6 +373,7 @@ function CustomerNotificationsPage({
             return (
               <article
                 key={notification.id}
+                data-customer-notification-id={notification.id}
                 className={`rounded-2xl border bg-white p-4 shadow-sm ${
                   isRead ? "border-slate-200" : "border-sky-300 ring-1 ring-sky-100"
                 }`}
