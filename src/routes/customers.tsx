@@ -63,6 +63,8 @@ type CustomerPayment = {
   currency: string | null;
   status: string | null;
   created_at: string;
+  method?: string | null;
+  payment_method?: string | null;
 };
 type Customer = ProfileRow & { orders: OrderRow[]; payments?: CustomerPayment[] };
 type CurrencyCode = "USD" | "YER" | "SAR";
@@ -216,6 +218,36 @@ function hasStoredValue(
   field: "paid_amount" | "remaining_amount" | "profit_amount",
 ) {
   return numeric(order[field]) !== null;
+}
+
+function approvedUnlinkedPaymentLines(customer: Customer) {
+  const orderTrackingCodes = new Set(
+    customer.orders
+      .map((order) => order.tracking_code?.trim())
+      .filter((tracking): tracking is string => Boolean(tracking)),
+  );
+  const totals = new Map<string, { label: string; total: number; count: number }>();
+
+  for (const payment of customer.payments ?? []) {
+    if (String(payment.status ?? "").trim().toLowerCase() !== "approved") continue;
+    const trackingCodes = [payment.order_tracking, payment.tracking_code]
+      .map((tracking) => tracking?.trim())
+      .filter((tracking): tracking is string => Boolean(tracking));
+    if (trackingCodes.some((tracking) => orderTrackingCodes.has(tracking))) continue;
+
+    const amount = numeric(payment.amount);
+    if (amount === null) continue;
+    const rawCurrency = payment.currency?.trim() || "عملة غير محددة";
+    const normalized = normalizeCurrency(rawCurrency);
+    const key = normalized ?? rawCurrency.toUpperCase();
+    const label = normalized ? CURRENCY_INFO[normalized].suffix : rawCurrency;
+    const current = totals.get(key) ?? { label, total: 0, count: 0 };
+    current.total += amount;
+    current.count += 1;
+    totals.set(key, current);
+  }
+
+  return Array.from(totals.entries()).map(([key, value]) => ({ key, ...value }));
 }
 
 function safeErrorText(value: unknown): string {
@@ -1148,6 +1180,20 @@ function CustomersPageContent() {
                     );
                   })}
                 </div>
+                {approvedUnlinkedPaymentLines(selected).length > 0 && (
+                  <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
+                    <h5 className="text-xs font-black text-amber-900">دفعات معتمدة مرتبطة بالحساب وغير مطابقة لطلب</h5>
+                    <p className="mt-1 text-[10px] leading-5 text-amber-800">تُعرض مستقلة ولا تُخصم من المتبقي أو تُنسب إلى طلب دون تطابق موثوق لرقم التتبع.</p>
+                    <ul className="mt-2 space-y-1">
+                      {approvedUnlinkedPaymentLines(selected).map((line) => (
+                        <li key={line.key} className="flex items-center justify-between gap-2 text-sm font-black text-amber-950">
+                          <span>{line.total.toLocaleString("ar-YE")} {line.label}</span>
+                          <span className="text-[10px] font-medium">{line.count.toLocaleString("ar-YE")} دفعة معتمدة</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
                 <p className="mt-3 text-[10px] leading-5 text-slate-400">
                   الطلبات التي لا تحتوي إجماليًا أو عملة موثوقة لا يُخمن رصيدها؛
                   وتظهر الدفعات المسجلة أدناه حتى لو تعذر حساب المتبقي.
@@ -1198,56 +1244,6 @@ function CustomersPageContent() {
                     {selected.orders.length.toLocaleString("ar-YE")} طلب
                   </span>
                 </div>
-                {selected.orders.length === 0
-                  ? (
-                    <p className="mt-3 rounded-xl bg-slate-50 p-4 text-center text-sm text-slate-500">
-                      لا توجد طلبات مرتبطة بهذا الحساب في قاعدة البيانات.
-                    </p>
-                  )
-                  : (
-                    <ul className="mt-3 space-y-2">
-                      {selected.orders.slice(0, 10).map((order) => (
-                        <li
-                          key={order.id}
-                          className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-slate-50 px-3 py-2.5"
-                        >
-                          <span
-                            dir="ltr"
-                            className="font-mono text-xs font-black text-slate-600"
-                          >
-                            {order.tracking_code ||
-                              `ORD-${order.id.slice(0, 8)}`}
-                          </span>
-                          <span className="text-xs text-slate-500">
-                            {order.status || "الحالة غير مسجلة"}
-                          </span>
-                          <span className="text-[11px] text-slate-400">
-                            {formatDate(order.created_at)}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                {selected.orders.length > 10 && (
-                  <p className="mt-2 text-center text-xs text-slate-400">
-                    يُعرض أحدث 10 طلبات من أصل {selected.orders.length}.
-                  </p>
-                )}
-              </div>
-            </div>
-          </section>
-        </div>
-      )}
-    </div>
-  );
-}
+                {selected.orders.leng
 
-function CustomersRoute() {
-  return (
-    <AdminRouteGuard allowStaff redirectTo="/customers">
-      <CustomersPageContent />
-    </AdminRouteGuard>
-  );
-}
-
-export default CustomersRoute;
+... [truncated — file is 53185 bytes, showing first 51200]
