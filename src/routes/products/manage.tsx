@@ -1,214 +1,187 @@
-/**
- * استبدل بهذا الملف كامل محتوى: src/routes/products/manage.tsx
- * هذا هو المسار الفرعي /products/manage، ويعرض لوحة إدارة المنتجات الفعلية.
- * لا تستبدل به src/routes/products.tsx؛ ذلك الملف يبقى صفحة التسوق الأب.
- */
-import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useState, type FormEvent, type SyntheticEvent } from "react";
-import { Pencil, Plus, RefreshCw, Trash2, X } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { Check, ImagePlus, Pencil, Plus, Trash2, X } from "lucide-react";
 import { AdminRouteGuard } from "@/components/admin/AdminRouteGuard";
 
-const db = supabase as any;
-
-type StoreRow = { id: string; name: string; location: string | null };
-type ProductRow = {
-  id: string; name: string; sku: string | null; store_id: string | null;
-  quantity: number | null; sell_price: number | null; image_url: string | null;
-  product_url: string | null; created_at: string | null;
-};
-type ProductDraft = {
-  name: string; sku: string; quantity: string; sell_price: string;
-  image_url: string; product_url: string;
+type LogoItem = {
+  slug: string;
+  name: string;
+  code: string;
+  color: string;
+  arabicLabel?: string;
 };
 
-const blankDraft: ProductDraft = { name: "", sku: "", quantity: "0", sell_price: "0", image_url: "", product_url: "" };
-const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=600&auto=format&fit=crop&q=80";
+const STORAGE_KEY = "your-global-shopper.admin-logos.v1";
+const INITIAL_LOGOS: LogoItem[] = [
+  { slug: "aliexpress", name: "AliExpress", code: "ALX-1024", color: "#FF4747" },
+  { slug: "amazon", name: "Amazon", code: "AMZ-2048", color: "#000000" },
+  { slug: "shein", name: "SHEIN", code: "SHN-3072", color: "#000000" },
+  { slug: "trendyol", name: "TrendYol", code: "TRL-4096", color: "#FF6900" },
+  { slug: "temu", name: "TEMU", code: "TMU-5120", color: "#FB7701" },
+  { slug: "local-products", name: "Local Products", code: "LPR-6144", color: "#16A34A", arabicLabel: "منتجات محلية" },
+  { slug: "discounts", name: "Discounts", code: "DSC-7168", color: "#7C3AED", arabicLabel: "تخفيضات وعروض" },
+];
 
-function ProductsManageRoute() {
-  return <AdminRouteGuard><ProductsManager /></AdminRouteGuard>;
+function escapeXml(value: string) {
+  return value.replace(/[<>&"']/g, (char) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&apos;" }[char] ?? char));
 }
 
-export const Route = createFileRoute("/products/manage")({ component: ProductsManageRoute });
+function logoImage(logo: LogoItem) {
+  const name = escapeXml(logo.name.slice(0, 22));
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><rect width="512" height="512" rx="44" fill="${logo.color}"/><circle cx="256" cy="190" r="82" fill="white" fill-opacity=".12"/><text x="256" y="282" text-anchor="middle" font-family="Arial,sans-serif" font-size="${logo.name.length > 11 ? 42 : 58}" font-weight="800" fill="white">${name}</text><path d="M156 336h200" stroke="white" stroke-opacity=".72" stroke-width="10" stroke-linecap="round"/></svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
 
-function ProductsManager() {
-  const [stores, setStores] = useState<StoreRow[]>([]);
-  const [products, setProducts] = useState<ProductRow[]>([]);
-  const [filterStoreId, setFilterStoreId] = useState("");
-  const [formStoreId, setFormStoreId] = useState("");
-  const [draft, setDraft] = useState<ProductDraft>(blankDraft);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+function readSavedLogos(): LogoItem[] | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return null;
+    return parsed.filter((item): item is LogoItem => Boolean(item && typeof item.slug === "string" && typeof item.name === "string" && typeof item.code === "string" && typeof item.color === "string"));
+  } catch {
+    return null;
+  }
+}
+
+function LogoDashboard() {
+  const [logos, setLogos] = useState<LogoItem[]>(INITIAL_LOGOS);
+  const [storageReady, setStorageReady] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [deleteMode, setDeleteMode] = useState(false);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [addOpen, setAddOpen] = useState(false);
   const [notice, setNotice] = useState("");
+  const [draft, setDraft] = useState({ name: "", code: "", slug: "", color: "#2563EB", arabicLabel: "" });
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    const [storeResult, productResult] = await Promise.all([
-      db.from("stores").select("id,name,location").order("name", { ascending: true }),
-      db.from("products").select("id,name,sku,store_id,quantity,sell_price,image_url,product_url,created_at").order("created_at", { ascending: false }),
-    ]);
-    if (storeResult.error) {
-      setStores([]);
-      setError(`تعذر تحميل المخازن: ${storeResult.error.message}. تأكد من سياسة وصول المدير إلى stores.`);
-    } else {
-      setStores((storeResult.data ?? []) as StoreRow[]);
-    }
-    if (productResult.error) {
-      setProducts([]);
-      setError((previous) => previous ? `${previous} | تعذر تحميل المنتجات: ${productResult.error.message}` : `تعذر تحميل المنتجات: ${productResult.error.message}`);
-    } else {
-      setProducts((productResult.data ?? []) as ProductRow[]);
-    }
-    setLoading(false);
+  useEffect(() => {
+    const saved = readSavedLogos();
+    if (saved) setLogos(saved);
+    setStorageReady(true);
   }, []);
 
-  useEffect(() => { void loadData(); }, [loadData]);
+  useEffect(() => {
+    if (!storageReady) return;
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(logos)); } catch { /* Local demo storage may be unavailable. */ }
+  }, [logos, storageReady]);
 
-  const visibleProducts = filterStoreId ? products.filter((product) => product.store_id === filterStoreId) : products;
-  const updateDraft = (key: keyof ProductDraft, value: string) => setDraft((current) => ({ ...current, [key]: value }));
-  const isValidHttpsUrl = (value: string) => {
-    if (!value) return true;
-    try { return new URL(value).protocol === "https:"; } catch { return false; }
+  const title = useMemo(() => `Logo Management - ${logos.length} Square Images`, [logos.length]);
+
+  const toggleEdit = () => {
+    setEditMode((value) => !value);
+    setDeleteMode(false);
+    setSelected([]);
+    setNotice("");
   };
 
-  const saveProduct = async (event: FormEvent<HTMLFormElement>) => {
+  const handleDelete = () => {
+    if (!deleteMode) {
+      setDeleteMode(true);
+      setEditMode(false);
+      setSelected([]);
+      setNotice("حدد الشعارات المطلوب حذفها، ثم اضغط Delete مرة أخرى.");
+      return;
+    }
+    if (selected.length === 0) {
+      setDeleteMode(false);
+      setNotice("");
+      return;
+    }
+    if (window.confirm(`حذف ${selected.length} من الشعارات المحددة؟`)) {
+      setLogos((items) => items.filter((item) => !selected.includes(item.slug)));
+      setNotice("تم حذف الشعارات المحددة من بيانات العرض التجريبية.");
+    }
+    setDeleteMode(false);
+    setSelected([]);
+  };
+
+  const updateLogo = (slug: string, key: "name" | "code", value: string) => {
+    setLogos((items) => items.map((item) => item.slug === slug ? { ...item, [key]: value } : item));
+  };
+
+  const addLogo = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (busy) return;
-    const name = draft.name.trim();
-    const quantity = Number(draft.quantity);
-    const sellPrice = Number(draft.sell_price);
-    const imageUrl = draft.image_url.trim();
-    const productUrl = draft.product_url.trim();
-    if (!formStoreId || !stores.some((store) => store.id === formStoreId)) {
-      setError("اختر مخزنًا فعليًا من القائمة قبل حفظ المنتج."); setNotice(""); return;
+    const slug = draft.slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+    const code = draft.code.trim();
+    if (!draft.name.trim() || !code || !slug) return;
+    if (logos.some((item) => item.slug === slug || item.code.toLowerCase() === code.toLowerCase())) {
+      setNotice("المسار أو الكود مستخدم بالفعل.");
+      return;
     }
-    if (!name || !Number.isInteger(quantity) || quantity < 0 || !Number.isFinite(sellPrice) || sellPrice < 0) {
-      setError("تحقق من الاسم والكمية وسعر البيع. يجب أن تكون الأرقام غير سالبة."); setNotice(""); return;
-    }
-    if (!isValidHttpsUrl(imageUrl) || !isValidHttpsUrl(productUrl)) {
-      setError("رابط الصورة ورابط المنتج يجب أن يكونا صحيحين ويبدآ بـ https://"); setNotice(""); return;
-    }
-    setBusy(true); setError(""); setNotice("");
-    const values = {
-      name, sku: draft.sku.trim() || null, store_id: formStoreId,
-      quantity, sell_price: sellPrice, image_url: imageUrl || null,
-      product_url: productUrl || null,
-    };
-    try {
-      const result = editingId
-        ? await db.from("products").update(values).eq("id", editingId).select("id").maybeSingle()
-        : await db.from("products").insert(values).select("id").single();
-      if (result.error) { setError(`تعذر حفظ المنتج: ${result.error.message}`); return; }
-      if (!result.data) { setError("لم يتم الحفظ. تحقق من دور المدير ومنح قاعدة البيانات وسياسات RLS."); return; }
-      const wasEditing = Boolean(editingId);
-      setDraft(blankDraft); setEditingId(null); setFormStoreId("");
-      setNotice(wasEditing ? "تم تحديث المنتج وربطه بالمخزن المحدد." : "تمت إضافة المنتج وربطه بالمخزن المحدد.");
-      await loadData();
-    } catch (cause) {
-      setError(`حدث خطأ: ${cause instanceof Error ? cause.message : "غير معروف"}`);
-    } finally { setBusy(false); }
+    setLogos((items) => [...items, { slug, name: draft.name.trim(), code, color: draft.color, arabicLabel: draft.arabicLabel.trim() || undefined }]);
+    setDraft({ name: "", code: "", slug: "", color: "#2563EB", arabicLabel: "" });
+    setAddOpen(false);
+    setNotice("تمت إضافة الشعار إلى بيانات العرض التجريبية المحفوظة على هذا الجهاز.");
   };
-
-  const beginEdit = (product: ProductRow) => {
-    setEditingId(product.id); setFormStoreId(product.store_id ?? "");
-    setDraft({ name: product.name ?? "", sku: product.sku ?? "", quantity: String(product.quantity ?? 0), sell_price: String(product.sell_price ?? 0), image_url: product.image_url ?? "", product_url: product.product_url ?? "" });
-    setError(""); setNotice(""); window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-  const cancelEdit = () => { setEditingId(null); setFormStoreId(""); setDraft(blankDraft); setError(""); setNotice(""); };
-
-  const deleteProduct = async (product: ProductRow) => {
-    if (busy || deletingId) return;
-    if (!window.confirm(`تأكيد حذف «${product.name}»؟`)) return;
-    setDeletingId(product.id); setError(""); setNotice("");
-    try {
-      const { data, error: deleteError } = await db.from("products").delete().eq("id", product.id).select("id").maybeSingle();
-      if (deleteError) { setError(`تعذر حذف المنتج: ${deleteError.message}`); return; }
-      if (!data) { setError("لم يُحذف المنتج. تحقق من سياسة الحذف ودور المدير."); return; }
-      setNotice("تم حذف المنتج.");
-      if (editingId === product.id) cancelEdit();
-      await loadData();
-    } finally { setDeletingId(null); }
-  };
-
-  const handleImageError = (event: SyntheticEvent<HTMLImageElement>) => {
-    event.currentTarget.onerror = null; event.currentTarget.src = FALLBACK_IMAGE;
-  };
-  const storeName = (storeId: string | null) => stores.find((store) => store.id === storeId)?.name ?? "غير مربوط بمخزن";
 
   return (
-    <main dir="rtl" className="min-h-screen bg-slate-50 p-5 font-sans text-slate-800 md:p-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <header className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border bg-white p-5 shadow-sm">
-          <div>
-            <h1 className="text-2xl font-black text-slate-900">إدارة المنتجات</h1>
-            <p className="mt-1 text-sm text-slate-500">المخازن ومعرّفاتها تُحمّل من قاعدة البيانات، ولا تُستخدم رموز ثابتة مكان UUID.</p>
-          </div>
-          <a href="/admin" className="rounded-xl border px-4 py-2 text-sm font-bold hover:bg-slate-50">العودة للإدارة</a>
-        </header>
-
-        <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          <button type="button" onClick={() => setFilterStoreId("")} className={`rounded-xl border bg-white p-3 text-sm font-bold ${!filterStoreId ? "border-blue-500 ring-2 ring-blue-100" : ""}`}>كل المخازن</button>
-          {stores.map((store) => (
-            <button type="button" key={store.id} onClick={() => setFilterStoreId(store.id)} className={`rounded-xl border bg-white p-3 text-right ${filterStoreId === store.id ? "border-blue-500 ring-2 ring-blue-100" : ""}`}>
-              <span className="block font-bold">{store.name}</span>
-              {store.location && <span className="mt-1 block text-xs text-slate-500">{store.location}</span>}
-            </button>
-          ))}
-        </section>
-
-        {stores.length === 0 && !loading && <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">لا توجد مخازن متاحة للاختيار. أضف مخزنًا من صفحة /stores أو تحقق من سياسات RLS.</div>}
-        {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm font-bold text-red-800">{error}</p>}
-        {notice && <p role="status" className="rounded-xl bg-emerald-50 p-3 text-sm font-bold text-emerald-800">{notice}</p>}
-
-        <section className="rounded-2xl border bg-white p-5 shadow-sm">
-          <h2 className="mb-4 flex items-center gap-2 text-lg font-black">{editingId ? <Pencil className="size-5" /> : <Plus className="size-5" />}{editingId ? "تعديل المنتج" : "إضافة منتج"}</h2>
-          <form onSubmit={saveProduct} className="grid grid-cols-1 gap-4 md:grid-cols-4">
-            <label className="space-y-1 text-sm font-bold md:col-span-2"><span>اسم المنتج</span><input required maxLength={200} value={draft.name} onChange={(e) => updateDraft("name", e.target.value)} className="w-full rounded-xl border bg-slate-50 px-3 py-2.5 font-normal" /></label>
-            <label className="space-y-1 text-sm font-bold"><span>المخزن</span><select required value={formStoreId} onChange={(e) => setFormStoreId(e.target.value)} className="w-full rounded-xl border bg-white px-3 py-2.5"><option value="">اختر مخزنًا</option>{stores.map((store) => <option key={store.id} value={store.id}>{store.name}</option>)}</select></label>
-            <label className="space-y-1 text-sm font-bold"><span>سعر البيع</span><input type="number" min="0" step="0.01" required value={draft.sell_price} onChange={(e) => updateDraft("sell_price", e.target.value)} className="w-full rounded-xl border bg-slate-50 px-3 py-2.5 font-normal" /></label>
-            <label className="space-y-1 text-sm font-bold"><span>الكمية</span><input type="number" min="0" step="1" required value={draft.quantity} onChange={(e) => updateDraft("quantity", e.target.value)} className="w-full rounded-xl border bg-slate-50 px-3 py-2.5 font-normal" /></label>
-            <label className="space-y-1 text-sm font-bold"><span>كود المنتج</span><input maxLength={100} value={draft.sku} onChange={(e) => updateDraft("sku", e.target.value)} className="w-full rounded-xl border bg-slate-50 px-3 py-2.5 font-normal" /></label>
-            <label className="space-y-1 text-sm font-bold"><span>رابط صورة المنتج</span><input type="url" value={draft.image_url} onChange={(e) => updateDraft("image_url", e.target.value)} placeholder="https://..." className="w-full rounded-xl border bg-slate-50 px-3 py-2.5 font-normal" /></label>
-            <label className="space-y-1 text-sm font-bold md:col-span-2"><span>رابط المنتج</span><input type="url" value={draft.product_url} onChange={(e) => updateDraft("product_url", e.target.value)} placeholder="https://..." className="w-full rounded-xl border bg-slate-50 px-3 py-2.5 font-normal" /></label>
-            <div className="flex flex-wrap items-end gap-2 md:col-span-4">
-              <button disabled={busy || stores.length === 0} type="submit" className="rounded-xl bg-emerald-700 px-5 py-2.5 font-bold text-white disabled:opacity-50">{busy ? "جارٍ الحفظ..." : editingId ? "حفظ التعديل" : "إضافة المنتج"}</button>
-              {editingId && <button type="button" disabled={busy} onClick={cancelEdit} className="inline-flex items-center gap-2 rounded-xl bg-slate-100 px-4 py-2.5 font-bold"><X className="size-4" /> إلغاء</button>}
-              <button type="button" disabled={loading || busy} onClick={() => void loadData()} className="mr-auto inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 font-bold"><RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} /> تحديث</button>
+    <AdminRouteGuard>
+      <main dir="rtl" className="min-h-screen bg-slate-50 px-4 py-6 text-slate-900 sm:px-8 sm:py-10">
+        <div className="mx-auto max-w-7xl">
+          <header className="mb-8 flex flex-col gap-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-7">
+            <div className="text-right">
+              <p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-blue-600">لوحة التحكم</p>
+              <h1 dir="ltr" className="text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">{title}</h1>
+              <p className="mt-2 text-sm text-slate-500">اختر شعارًا لفتح صفحة منتجاته. هذه بيانات تجريبية محفوظة محليًا في هذا المتصفح.</p>
             </div>
-          </form>
-          {draft.image_url && <img src={draft.image_url} alt="معاينة المنتج" className="mt-4 size-24 rounded-xl border object-cover" onError={handleImageError} />}
-        </section>
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button" onClick={toggleEdit} className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 ${editMode ? "bg-slate-700" : "bg-blue-600 hover:bg-blue-700"}`}>
+                {editMode ? <Check className="size-4" /> : <Pencil className="size-4" />}{editMode ? "تم" : "Edit"}
+              </button>
+              <button type="button" onClick={() => { setAddOpen(true); setEditMode(false); setDeleteMode(false); }} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-700">
+                <Plus className="size-4" /> Add
+              </button>
+              <button type="button" onClick={handleDelete} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-red-700">
+                {deleteMode ? <Check className="size-4" /> : <Trash2 className="size-4" />}{deleteMode ? (selected.length ? `Delete (${selected.length})` : "Cancel") : "Delete"}
+              </button>
+            </div>
+          </header>
 
-        <section>
-          <h2 className="mb-3 font-black">المنتجات ({visibleProducts.length})</h2>
-          {loading ? <p className="rounded-xl bg-white p-6 text-sm text-slate-500">جارٍ التحميل...</p> : visibleProducts.length === 0 ? (
-            <div className="rounded-2xl border-2 border-dashed bg-white p-10 text-center text-sm text-slate-500">لا توجد منتجات في هذا المخزن حتى الآن.</div>
-          ) : (
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {visibleProducts.map((product) => (
-                <article key={product.id} className="overflow-hidden rounded-2xl border bg-white shadow-sm">
-                  <img src={product.image_url || FALLBACK_IMAGE} alt={product.name} className="h-44 w-full bg-slate-100 object-cover" onError={handleImageError} />
-                  <div className="space-y-2 p-4">
-                    <h3 className="font-bold">{product.name}</h3>
-                    <p className="text-xs text-slate-500">المخزن: {storeName(product.store_id)}</p>
-                    <div className="flex items-center justify-between"><span className="font-black text-emerald-700">${Number(product.sell_price ?? 0).toFixed(2)}</span><span className="text-xs text-slate-500">الكمية: {product.quantity ?? 0}</span></div>
-                    <p className="truncate text-xs text-slate-500">{product.sku || "بلا كود"}</p>
-                    {product.product_url && <a href={product.product_url} target="_blank" rel="noreferrer" className="block text-xs text-blue-700 underline">فتح رابط المنتج</a>}
-                    <div className="grid grid-cols-2 gap-2 border-t pt-3">
-                      <button type="button" onClick={() => beginEdit(product)} className="inline-flex items-center justify-center gap-1 rounded-lg bg-blue-50 py-2 text-xs font-bold text-blue-800"><Pencil className="size-3.5" /> تعديل</button>
-                      <button type="button" disabled={Boolean(deletingId)} onClick={() => void deleteProduct(product)} className="inline-flex items-center justify-center gap-1 rounded-lg bg-rose-50 py-2 text-xs font-bold text-rose-800 disabled:opacity-50"><Trash2 className="size-3.5" />{deletingId === product.id ? "جارٍ الحذف" : "حذف"}</button>
-                    </div>
+          {notice && <div role="status" className="mb-5 flex items-center justify-between gap-3 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-800"><span>{notice}</span><button type="button" aria-label="إغلاق التنبيه" onClick={() => setNotice("")}><X className="size-4" /></button></div>}
+
+          <section aria-label="الشعارات السبعة" className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {logos.map((logo) => {
+              const selectedForDeletion = selected.includes(logo.slug);
+              const content = (
+                <article className={`group relative h-full rounded-2xl border bg-white p-4 shadow-sm transition duration-200 hover:scale-[1.02] hover:shadow-2xl ${selectedForDeletion ? "border-red-400 ring-2 ring-red-100" : "border-slate-200 hover:border-blue-200"}`}>
+                  {deleteMode && <label className="absolute left-4 top-4 z-10 flex items-center gap-2 rounded-lg bg-white px-2 py-1 text-xs font-bold text-red-700 shadow" onClick={(event) => event.stopPropagation()}><input type="checkbox" aria-label={`تحديد ${logo.name} للحذف`} checked={selectedForDeletion} onChange={(event) => setSelected((items) => event.target.checked ? [...items, logo.slug] : items.filter((slug) => slug !== logo.slug))} /> حذف</label>}
+                  <div className="mx-auto aspect-square w-full max-w-[280px] overflow-hidden rounded-2xl border border-slate-100 bg-slate-50 p-3">
+                    <img src={logoImage(logo)} alt={`شعار ${logo.name}`} className="h-full w-full rounded-xl object-cover shadow-inner" />
                   </div>
+                  {editMode ? (
+                    <div className="mt-4 space-y-2" onClick={(event) => event.preventDefault()}>
+                      <label className="block text-xs font-bold text-slate-500">اسم المتجر<input value={logo.name} onChange={(event) => updateLogo(logo.slug, "name", event.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500" /></label>
+                      <label className="block text-xs font-bold text-slate-500">الكود<input value={logo.code} onChange={(event) => updateLogo(logo.slug, "code", event.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500" /></label>
+                    </div>
+                  ) : (
+                    <div className="mt-4 text-center"><h2 className="font-black text-slate-900">{logo.arabicLabel || logo.name}</h2><p dir="ltr" className="mt-1 font-bold text-slate-700">{logo.code}</p><p dir="ltr" className="mt-1 break-all text-xs text-slate-500">/logos/{logo.slug}</p><p className="mt-2 text-xs font-semibold text-blue-600">فتح المنتجات: /admin/logos/{logo.slug}</p></div>
+                  )}
                 </article>
-              ))}
-            </div>
-          )}
-        </section>
-      </div>
-    </main>
+              );
+              return editMode || deleteMode ? <div key={logo.slug}>{content}</div> : <Link key={logo.slug} to={`/admin/logos/${logo.slug}` as any} aria-label={`فتح منتجات ${logo.name}`} className="block h-full rounded-2xl focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-300">{content}</Link>;
+            })}
+          </section>
+
+          {logos.length === 0 && <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center text-slate-500">لا توجد شعارات. استخدم زر Add لإضافة شعار.</div>}
+          <div className="mt-8 flex justify-start"><Link to="/admin" className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm hover:bg-slate-50">العودة إلى الإدارة</Link></div>
+        </div>
+
+        {addOpen && <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/50 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setAddOpen(false); }}>
+          <section role="dialog" aria-modal="true" aria-labelledby="add-logo-title" dir="rtl" className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl">
+            <div className="mb-5 flex items-center justify-between"><h2 id="add-logo-title" className="text-xl font-black">إضافة شعار</h2><button type="button" onClick={() => setAddOpen(false)} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100" aria-label="إغلاق"><X className="size-5" /></button></div>
+            <form onSubmit={addLogo} className="space-y-4">
+              <label className="block text-sm font-bold">اسم المتجر<input required maxLength={60} value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 outline-none focus:border-blue-500" /></label>
+              <label className="block text-sm font-bold">الكود<input required maxLength={40} value={draft.code} onChange={(event) => setDraft({ ...draft, code: event.target.value })} placeholder="NEW-8192" dir="ltr" className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-left outline-none focus:border-blue-500" /></label>
+              <label className="block text-sm font-bold">المسار المختصر<input required maxLength={60} value={draft.slug} onChange={(event) => setDraft({ ...draft, slug: event.target.value })} placeholder="store-name" dir="ltr" className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-left outline-none focus:border-blue-500" /></label>
+              <label className="block text-sm font-bold">لون الشعار<div className="mt-1 flex items-center gap-3"><input type="color" value={draft.color} onChange={(event) => setDraft({ ...draft, color: event.target.value })} className="h-11 w-16 rounded-lg border border-slate-200 p-1" /><span dir="ltr" className="text-sm text-slate-500">{draft.color}</span></div></label>
+              <label className="block text-sm font-bold">الاسم العربي (اختياري)<input value={draft.arabicLabel} onChange={(event) => setDraft({ ...draft, arabicLabel: event.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 outline-none focus:border-blue-500" /></label>
+              <div className="flex gap-2 pt-2"><button type="submit" className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 font-bold text-white hover:bg-emerald-700"><Plus className="size-4" /> Add</button><button type="button" onClick={() => setAddOpen(false)} className="rounded-xl border border-slate-200 px-5 py-2.5 font-bold text-slate-600 hover:bg-slate-50">إلغاء</button></div>
+            </form>
+          </section>
+        </div>}
+      </main>
+    </AdminRouteGuard>
   );
 }
+
+export const Route = createFileRoute("/products/manage")({ component: LogoDashboard });
