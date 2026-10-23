@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useLocation } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 
 const db = supabase as any;
@@ -1172,8 +1172,22 @@ export const ProductsPage: React.FC<ProductsRouteProps> = ({
   );
 };
 
+/**
+ * يعرض صفحة التسوق على /products، ويمرر المسارات الفرعية مثل
+ * /products/manage إلى Outlet حتى تظهر صفحة الإدارة التابعة للمسار.
+ */
+const ProductsRouteEntry: React.FC = () => {
+  const pathname = useLocation({ select: (location) => location.pathname });
+
+  if (pathname === "/products/manage") {
+    return <Outlet />;
+  }
+
+  return <ProductsPage />;
+};
+
 export const Route = createFileRoute("/products")({
-  component: ProductsPage,
+  component: ProductsRouteEntry,
 });
 
 export default ProductsPage;
