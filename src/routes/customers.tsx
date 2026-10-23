@@ -206,38 +206,69 @@ function hasStoredValue(
   return numeric(order[field]) !== null;
 }
 
+function safeErrorText(value: unknown): string {
+  if (typeof value !== "string") return "";
+  return value
+    .replace(/https?:\/\/[^\s"'<>]+/gi, "[عنوان مخفي]")
+    .replace(/\b(?:eyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}|sb_secret_[a-zA-Z0-9_-]+|sbp_[a-zA-Z0-9_-]+)\b/g, "[قيمة سرية مخفية]")
+    .slice(0, 240);
+}
+
 async function describeCustomerLoadError(cause: unknown): Promise<string> {
   let status: number | undefined;
   let serverMessage = "";
+  let errorName = "";
+  let errorMessage = "";
+
+  if (cause instanceof Error) {
+    errorName = cause.name;
+    errorMessage = safeErrorText(cause.message);
+  } else if (cause && typeof cause === "object") {
+    const record = cause as { name?: unknown; message?: unknown; status?: unknown };
+    if (typeof record.name === "string") errorName = record.name;
+    if (typeof record.message === "string") errorMessage = safeErrorText(record.message);
+    if (typeof record.status === "number") status = record.status;
+  }
 
   if (cause && typeof cause === "object") {
-    const context = (cause as { context?: unknown }).context;
+    const record = cause as { context?: unknown; status?: unknown };
+    if (typeof record.status === "number") status = record.status;
+    const context = record.context;
     if (context instanceof Response) {
       status = context.status;
       try {
         const payload = await context.clone().json();
-        if (typeof payload?.error === "string") serverMessage = payload.error;
+        if (typeof payload?.error === "string") serverMessage = safeErrorText(payload.error);
       } catch {
-        // Keep a safe, actionable status message when the response is not JSON.
+        // The HTTP status remains useful when the response body is not JSON.
       }
+    } else if (context instanceof Error && !errorMessage) {
+      errorMessage = safeErrorText(context.message);
     }
   }
 
   if (status === 404) {
-    return "الدالة admin-customers غير موجودة على مشروع Supabase الذي يستخدمه الموقع. انشر الدالة إلى مشروع الإنتاج الصحيح، ثم أعد المحاولة.";
+    return "الدالة admin-customers غير موجودة على مشروع Supabase الذي يستخدمه الموقع (HTTP 404). انشر الدالة إلى مشروع الإنتاج الصحيح.";
   }
   if (status === 401) {
-    return "رفض Supabase الجلسة أو رمز التحقق (401). سجّل الخروج والدخول مجددًا، وتأكد من إبقاء Verify JWT مفعّلًا للدالة.";
+    return "رفض Supabase الجلسة أو رمز التحقق (HTTP 401). سجّل الخروج والدخول مجددًا، وتأكد من إبقاء Verify JWT مفعّلًا للدالة.";
   }
   if (status === 403) {
-    return serverMessage || "حسابك لا يملك دور admin أو staff المطلوب لعرض العملاء.";
+    return serverMessage || "حسابك لا يملك دور admin أو staff المطلوب لعرض العملاء (HTTP 403).";
   }
   if (status && status >= 500) {
     return `${serverMessage || "تعذر تنفيذ الدالة على الخادم."} (HTTP ${status}). راجع سجلات Edge Function باسم admin-customers في مشروع الإنتاج؛ لا تُعد تشغيل أي ترحيل قاعدة بيانات بناءً على هذا الخطأ وحده.`;
   }
   if (serverMessage) return serverMessage;
-  if (status) return `فشل طلب إدارة العملاء (HTTP ${status}). تحقق من اتصال الموقع بمشروع الإنتاج ثم أعد المحاولة.`;
-  return "تعذر الاتصال بدالة admin-customers. تحقق من اتصال الموقع بالشبكة ومشروع Supabase الإنتاجي، ثم أعد المحاولة.";
+  if (status) {
+    return `فشل استدعاء admin-customers (HTTP ${status})${errorName ? ` · ${errorName}` : ""}. تحقق من إعداد الدالة في مشروع الإنتاج.`;
+  }
+
+  const kind = /FunctionsFetchError|TypeError/i.test(errorName)
+    ? "تعذر على المتصفح الوصول إلى Edge Function؛ غالبًا طلب شبكة أو CORS أو عنوان Supabase غير مطابق للنشر الحالي."
+    : "لم تصل استجابة HTTP من Edge Function.";
+  const details = [errorName, errorMessage].filter(Boolean).join(" · ");
+  return `${kind}${details ? ` (تشخيص آمن: ${details})` : " (لا توجد استجابة من الخادم)"} افتح أدوات المطور > Network، ثم أعد المحاولة وافحص طلب functions/v1/admin-customers وحالة الطلب فقط. لا تنسخ أو تشارك Headers أو قيم المفاتيح.`;
 }
 
 async function loadCustomerRecords(): Promise<
