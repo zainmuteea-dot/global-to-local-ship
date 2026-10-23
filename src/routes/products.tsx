@@ -1173,8 +1173,33 @@ export const ProductsPage: React.FC<ProductsRouteProps> = ({
 };
 
 /**
- * يعرض صفحة التسوق على /products، ويمرر المسارات الفرعية مثل
- * /products/manage إلى Outlet حتى تظهر صفحة الإدارة التابعة للمسار.
+ * صفحة العملاء لا تعرض كتالوج منتجات أو بطاقات متاجر أو عروض حاليًا.
+ * مسار الإدارة الفرعي /products/manage يظل متاحًا عبر Outlet.
+ */
+const CustomerProductsHiddenPage: React.FC = () => (
+  <main
+    dir="rtl"
+    lang="ar"
+    className="min-h-screen bg-slate-50 px-4 py-16 text-slate-900"
+  >
+    <section className="mx-auto flex min-h-[60vh] max-w-3xl flex-col items-center justify-center rounded-3xl border border-slate-200 bg-white px-6 py-12 text-center shadow-sm">
+      <div
+        aria-hidden="true"
+        className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 text-3xl"
+      >
+        🛍️
+      </div>
+      <h1 className="text-2xl font-black text-slate-900">الشامل للتسوق</h1>
+      <p className="mt-3 max-w-xl text-sm leading-7 text-slate-600">
+        لا توجد منتجات أو عروض معروضة حاليًا.
+      </p>
+    </section>
+  </main>
+);
+
+/**
+ * يعرض صفحة خالية من المنتجات والعروض على /products، ويُبقي صفحات الإدارة
+ * الفرعية مثل /products/manage داخل Outlet.
  */
 const ProductsRouteEntry: React.FC = () => {
   const pathname = useLocation({ select: (location) => location.pathname });
@@ -1183,7 +1208,7 @@ const ProductsRouteEntry: React.FC = () => {
     return <Outlet />;
   }
 
-  return <ProductsPage />;
+  return <CustomerProductsHiddenPage />;
 };
 
 export const Route = createFileRoute("/products")({
