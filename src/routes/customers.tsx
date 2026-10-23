@@ -206,6 +206,40 @@ function hasStoredValue(
   return numeric(order[field]) !== null;
 }
 
+async function describeCustomerLoadError(cause: unknown): Promise<string> {
+  let status: number | undefined;
+  let serverMessage = "";
+
+  if (cause && typeof cause === "object") {
+    const context = (cause as { context?: unknown }).context;
+    if (context instanceof Response) {
+      status = context.status;
+      try {
+        const payload = await context.clone().json();
+        if (typeof payload?.error === "string") serverMessage = payload.error;
+      } catch {
+        // Keep a safe, actionable status message when the response is not JSON.
+      }
+    }
+  }
+
+  if (status === 404) {
+    return "الدالة admin-customers غير موجودة على مشروع Supabase الذي يستخدمه الموقع. انشر الدالة إلى مشروع الإنتاج الصحيح، ثم أعد المحاولة.";
+  }
+  if (status === 401) {
+    return "رفض Supabase الجلسة أو رمز التحقق (401). سجّل الخروج والدخول مجددًا، وتأكد من إبقاء Verify JWT مفعّلًا للدالة.";
+  }
+  if (status === 403) {
+    return serverMessage || "حسابك لا يملك دور admin أو staff المطلوب لعرض العملاء.";
+  }
+  if (status && status >= 500) {
+    return `${serverMessage || "تعذر تنفيذ الدالة على الخادم."} (HTTP ${status}). راجع سجلات Edge Function باسم admin-customers في مشروع الإنتاج؛ لا تُعد تشغيل أي ترحيل قاعدة بيانات بناءً على هذا الخطأ وحده.`;
+  }
+  if (serverMessage) return serverMessage;
+  if (status) return `فشل طلب إدارة العملاء (HTTP ${status}). تحقق من اتصال الموقع بمشروع الإنتاج ثم أعد المحاولة.`;
+  return "تعذر الاتصال بدالة admin-customers. تحقق من اتصال الموقع بالشبكة ومشروع Supabase الإنتاجي، ثم أعد المحاولة.";
+}
+
 async function loadCustomerRecords(): Promise<
   { customers: Customer[]; canDelete: boolean }
 > {
@@ -213,8 +247,8 @@ async function loadCustomerRecords(): Promise<
     body: { action: "list" },
   });
   if (error) {
-    console.error("تعذر تحميل سجل العملاء من الدالة المحمية:", error.message);
-    throw new Error("تعذر الاتصال بدالة إدارة العملاء المحمية.");
+    console.error("تعذر تحميل سجل العملاء من الدالة المحمية:", error);
+    throw error;
   }
   if (!data || data.success !== true || !Array.isArray(data.customers)) {
     throw new Error(data?.error || "استجابة قائمة العملاء غير صالحة.");
@@ -251,9 +285,7 @@ function CustomersPageContent() {
       setPage(1);
     } catch (cause) {
       console.error("تعذر تحميل بيانات كشف العملاء:", cause);
-      setError(
-        "تعذر تحميل العملاء. تحقق من نشر دالة admin-customers والترحيل في مشروع Supabase الإنتاجي الصحيح، ثم أعد المحاولة.",
-      );
+      setError(await describeCustomerLoadError(cause));
     } finally {
       setLoading(false);
     }
