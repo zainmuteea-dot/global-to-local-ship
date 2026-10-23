@@ -43,6 +43,7 @@ type OrderRow = {
   customer_name: string | null;
   phone: string | null;
   customer_phone: string | null;
+  notes?: string | null;
   total_cost_usd: number | string | null;
   total_cost_yer: number | string | null;
   total_cost_sar: number | string | null;
@@ -52,7 +53,18 @@ type OrderRow = {
   quote_currency: string | null;
   original_currency: string | null;
 };
-type Customer = ProfileRow & { orders: OrderRow[] };
+type CustomerPayment = {
+  id: string;
+  tracking_code: string | null;
+  order_tracking?: string | null;
+  customer_name: string | null;
+  wallet: string | null;
+  amount: number | string | null;
+  currency: string | null;
+  status: string | null;
+  created_at: string;
+};
+type Customer = ProfileRow & { orders: OrderRow[]; payments?: CustomerPayment[] };
 type CurrencyCode = "USD" | "YER" | "SAR";
 type MoneyLine = {
   code: CurrencyCode;
@@ -1052,8 +1064,8 @@ function CustomersPageContent() {
                       الملخص المالي للطلبات
                     </h4>
                     <p className="mt-1 text-[11px] leading-5 text-slate-500">
-                      المجاميع مأخوذة من أعمدة الطلبات المحفوظة، ومفصولة حسب
-                      العملة لتجنّب جمع عملات مختلفة.
+                      المدفوع يعتمد على الدفعات المعتمدة المرتبطة برقم التتبع،
+                      والمتبقي يُحسب من إجمالي الطلب بعد طرح المقبوض.
                     </p>
                   </div>
                   <span className="shrink-0 rounded-lg bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600">
@@ -1137,10 +1149,45 @@ function CustomersPageContent() {
                   })}
                 </div>
                 <p className="mt-3 text-[10px] leading-5 text-slate-400">
-                  المدفوع والمتبقي والربح تُجمع فقط عندما تتحدد العملة من العملة
-                  المسجلة في الطلب أو من حقل التكلفة ذي العملة الواضحة. لا أستخدم
-                  جدول الدفعات حتى لا أكرر احتساب دفعة مرتبطة بطلب.
+                  الطلبات التي لا تحتوي إجماليًا أو عملة موثوقة لا يُخمن رصيدها؛
+                  وتظهر الدفعات المسجلة أدناه حتى لو تعذر حساب المتبقي.
                 </p>
+              </section>
+              <section className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h4 className="font-black text-slate-800">العمليات المالية</h4>
+                    <p className="mt-1 text-[11px] text-slate-500">دفعات العميل مع الحالة ورقم الطلب. تُحتسب المقبوضات المعتمدة فقط.</p>
+                  </div>
+                  <span className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600">
+                    {(selected.payments ?? []).length.toLocaleString("ar-YE")} عملية
+                  </span>
+                </div>
+                {(selected.payments ?? []).length === 0 ? (
+                  <p className="mt-3 rounded-xl bg-slate-50 p-4 text-center text-sm text-slate-500">
+                    لا توجد عمليات دفع مرتبطة بهذا الحساب. قد تكون الدفعات القديمة بلا user_id أو رقم تتبع مطابق.
+                  </p>
+                ) : (
+                  <ul className="mt-3 space-y-2">
+                    {(selected.payments ?? []).slice(0, 20).map((payment) => (
+                      <li key={payment.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-slate-50 px-3 py-2.5">
+                        <span dir="ltr" className="font-mono text-xs font-black text-slate-600">
+                          {payment.tracking_code || payment.order_tracking || "بدون رقم تتبع"}
+                        </span>
+                        <span className="text-sm font-black text-slate-800">
+                          {numeric(payment.amount)?.toLocaleString("ar-YE") ?? "غير مسجل"} {payment.currency || ""}
+                        </span>
+                        <span className={`rounded-full px-2 py-1 text-[11px] font-bold ${String(payment.status).toLowerCase() === "approved" ? "bg-emerald-100 text-emerald-700" : String(payment.status).toLowerCase() === "rejected" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"}`}>
+                          {payment.status || "غير محددة"}
+                        </span>
+                        <span className="text-[11px] text-slate-400">{formatDate(payment.created_at)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {(selected.payments ?? []).length > 20 && (
+                  <p className="mt-2 text-center text-xs text-slate-400">يُعرض أحدث 20 عملية من أصل {(selected.payments ?? []).length}.</p>
+                )}
               </section>
               <div className="rounded-2xl border border-slate-100 p-4">
                 <div className="flex items-center justify-between gap-3">
