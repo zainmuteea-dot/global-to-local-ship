@@ -161,9 +161,13 @@ function orderCurrency(order: OrderRow): CurrencyCode | null {
   const explicit = normalizeCurrency(order.quote_currency) ??
     normalizeCurrency(order.original_currency);
   if (explicit) return explicit;
+
+  // Legacy fallback: when no currency is recorded but the YER cost column
+  // contains a value, treat that stored cost and related balances as YER.
+  if (numeric(order.total_cost_yer) !== null) return "YER";
+
   const costValues: Array<[CurrencyCode, number | null]> = [
     ["USD", numeric(order.total_cost_usd)],
-    ["YER", numeric(order.total_cost_yer)],
     ["SAR", numeric(order.total_cost_sar)],
   ];
   const nonZero = costValues.filter(([, value]) =>
