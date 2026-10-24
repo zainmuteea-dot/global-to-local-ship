@@ -222,26 +222,21 @@ function hasStoredValue(
   return numeric(order[field]) !== null;
 }
 
-/** Sum only explicitly recorded order costs; do not infer a currency or treat
- * missing cost fields as zero. */
+/** The customer-facing order amount is shown in Yemeni rials only.
+ * `quote_currency` describes the original store price and must not relabel
+ * amounts stored in a different currency column. Missing YER costs stay
+ * unrecorded rather than being converted or guessed here. */
 function orderCostTotals(orders: OrderRow[]): MoneyLine[] {
-  const fields: Record<CurrencyCode, "total_cost_usd" | "total_cost_yer" | "total_cost_sar"> = {
-    USD: "total_cost_usd",
-    YER: "total_cost_yer",
-    SAR: "total_cost_sar",
-  };
-  return CURRENCY_CODES.flatMap((code) => {
-    const values = orders
-      .map((order) => numeric(order[fields[code]]))
-      .filter((value): value is number => value !== null);
-    if (!values.length) return [];
-    return [{
-      code,
-      total: values.reduce((sum, value) => sum + value, 0),
-      recorded: values.length,
-      expected: values.length,
-    }];
-  });
+  const values = orders
+    .map((order) => numeric(order.total_cost_yer))
+    .filter((value): value is number => value !== null);
+  if (!values.length) return [];
+  return [{
+    code: "YER",
+    total: values.reduce((sum, value) => sum + value, 0),
+    recorded: values.length,
+    expected: orders.length,
+  }];
 }
 
 function approvedLinkedPaymentTotals(customer: Customer): MoneyLine[] {
@@ -264,18 +259,18 @@ function approvedLinkedPaymentTotals(customer: Customer): MoneyLine[] {
 
     const amount = numeric(payment.amount);
     const code = normalizeCurrency(payment.currency);
-    if (amount === null || !code) continue;
-    const current = totals.get(code) ?? { total: 0, count: 0 };
+    // Customer payments in the order summary are denominated in YER only.
+    if (amount === null || code !== "YER") continue;
+    const current = totals.get("YER") ?? { total: 0, count: 0 };
     current.total += amount;
     current.count += 1;
-    totals.set(code, current);
+    totals.set("YER", current);
   }
 
-  return CURRENCY_CODES.flatMap((code) => {
-    const value = totals.get(code);
-    if (!value) return [];
-    return [{ code, total: value.total, recorded: value.count, expected: value.count }];
-  });
+  const value = totals.get("YER");
+  return value
+    ? [{ code: "YER", total: value.total, recorded: value.count, expected: value.count }]
+    : [];
 }
 
 /**
@@ -286,15 +281,6 @@ function approvedLinkedPaymentTotals(customer: Customer): MoneyLine[] {
  * Unmatched payments stay separate and are never silently subtracted.
  */
 function remainingTotals(customer: Customer): MoneyLine[] {
-  const costFieldByCurrency: Record<
-    CurrencyCode,
-    "total_cost_usd" | "total_cost_yer" | "total_cost_sar"
-  > = {
-    USD: "total_cost_usd",
-    YER: "total_cost_yer",
-    SAR: "total_cost_sar",
-  };
-
   const paidByOrderId = new Map<string, number>();
   const countedPaymentIds = new Set<string>();
 
@@ -305,8 +291,7 @@ function remainingTotals(customer: Customer): MoneyLine[] {
     if (countedPaymentIds.has(payment.id)) continue;
 
     const amount = numeric(payment.amount);
-    const paymentCurrency = normalizeCurrency(payment.currency);
-    if (amount === null || !paymentCurrency) continue;
+    if (amount === null || normalizeCurrency(payment.currency) !== "YER") continue;
 
     const paymentTrackings = new Set(
       [payment.order_tracking, payment.tracking_code]
@@ -323,7 +308,8 @@ function remainingTotals(customer: Customer): MoneyLine[] {
     // Do not assign a payment when a tracking value points to multiple orders.
     if (matchedOrders.length !== 1) continue;
     const order = matchedOrders[0];
-    if (orderCurrency(order) !== paymentCurrency) continue;
+    // Only calculate a YER balance for orders with a recorded YER cost.
+    if (numeric(order.total_cost_yer) === null) continue;
 
     countedPaymentIds.add(payment.id);
     paidByOrderId.set(
@@ -332,41 +318,30 @@ function remainingTotals(customer: Customer): MoneyLine[] {
     );
   }
 
-  return CURRENCY_CODES.flatMap((code) => {
-    const costField = costFieldByCurrency[code];
-    const relevantOrders = customer.orders.filter((order) => {
-      const explicitCurrency = orderCurrency(order);
-      if (explicitCurrency) return explicitCurrency === code;
-      // A populated currency-specific cost identifies the currency if the
-      // general currency fields were not set on the order.
-      return numeric(order[costField]) !== null;
-    });
-    if (relevantOrders.length === 0) return [];
+  let total = 0;
+  let recorded = 0;
+  for (const order of customer.orders) {
+    const storedCost = numeric(order.total_cost_yer);
+    // Without a recorded YER amount, neither quote_currency nor another
+    // currency-specific cost column is enough to infer a YER balance.
+    if (storedCost === null) continue;
 
-    let total = 0;
-    let recorded = 0;
-
-    for (const order of relevantOrders) {
-      const storedRemaining = numeric(order.remaining_amount);
-      const storedCost = numeric(order[costField]);
-
-      // Some schemas default remaining_amount to zero. Treat zero as a stored
-      // balance only when the order also has a recorded cost.
-      if (storedRemaining !== null && (storedRemaining !== 0 || storedCost !== null)) {
-        total += storedRemaining;
-        recorded += 1;
-        continue;
-      }
-
-      // Never infer a balance when the order cost itself is missing.
-      if (storedCost === null) continue;
-      total += storedCost - (paidByOrderId.get(order.id) ?? 0);
+    const storedRemaining = numeric(order.remaining_amount);
+    // A stored remaining amount is used only alongside a recorded YER cost,
+    // which establishes the currency context for this order's balance.
+    if (storedRemaining !== null) {
+      total += storedRemaining;
       recorded += 1;
+      continue;
     }
 
-    if (recorded === 0) return [];
-    return [{ code, total, recorded, expected: relevantOrders.length }];
-  });
+    total += storedCost - (paidByOrderId.get(order.id) ?? 0);
+    recorded += 1;
+  }
+
+  return recorded > 0
+    ? [{ code: "YER", total, recorded, expected: customer.orders.length }]
+    : [];
 }
 
 function approvedUnlinkedPaymentLines(customer: Customer) {
@@ -1245,8 +1220,7 @@ function CustomersPageContent() {
                       الملخص المالي للطلبات
                     </h4>
                     <p className="mt-1 text-[11px] leading-5 text-slate-500">
-                      المدفوع هو مجموع الدفعات المعتمدة المطابقة لرقم تتبع طلب،
-                      ويُعرض المتبقي من قيمة الطلب المسجلة، أو يُحسب من التكلفة ناقص الدفعات المعتمدة المطابقة لتتبع الطلب وبالعملة نفسها. الدفعات غير المطابقة تظهر منفصلة؛ والربح من الحقل المسجل.
+                      المستحق والمدفوع والمتبقي هنا بالريال اليمني فقط. تُستخدم تكلفة total_cost_yer والدفعات المعتمدة المسجلة YER والمطابقة لرقم تتبع الطلب؛ ولا تُحوّل عملة سعر السلعة الأصلية أو تُخمّن. الدفعات غير المطابقة تظهر منفصلة، والربح من الحقل المسجل.
                     </p>
                   </div>
                   <span className="shrink-0 rounded-lg bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600">
@@ -1256,13 +1230,13 @@ function CustomersPageContent() {
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {([
                     [
-                      "إجمالي التكلفة",
+                      "إجمالي التكلفة المسجلة بالريال اليمني",
                       "total_cost_usd",
                       "total_cost_yer",
                       "total_cost_sar",
                     ],
-                    ["المدفوع", "paid_amount"],
-                    ["المتبقي", "remaining_amount"],
+                    ["المدفوع بالريال اليمني", "paid_amount"],
+                    ["المتبقي بالريال اليمني", "remaining_amount"],
                     ["الربح المسجل", "profit_amount"],
                   ] as const).map(([label, ...fields]) => {
                     const financialField = fields[0] as
@@ -1359,8 +1333,7 @@ function CustomersPageContent() {
                   </div>
                 )}
                 <p className="mt-3 text-[10px] leading-5 text-slate-400">
-                  الطلبات التي لا تحتوي إجماليًا أو عملة موثوقة لا يُخمن رصيدها؛
-                  وتظهر الدفعات المسجلة أدناه حتى لو تعذر حساب المتبقي.
+                  الطلبات التي لا تحتوي مبلغًا مسجلًا في total_cost_yer لا يُخمن رصيدها بالريال اليمني؛ وتظهر الدفعات المسجلة أدناه حتى لو تعذر حساب المتبقي.
                 </p>
               </section>
               <section className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
