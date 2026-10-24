@@ -218,6 +218,74 @@ function hasStoredValue(
   return numeric(order[field]) !== null;
 }
 
+/** Sum only explicitly recorded order costs; do not infer a currency or treat
+ * missing cost fields as zero. */
+function orderCostTotals(orders: OrderRow[]): MoneyLine[] {
+  const fields: Record<CurrencyCode, "total_cost_usd" | "total_cost_yer" | "total_cost_sar"> = {
+    USD: "total_cost_usd",
+    YER: "total_cost_yer",
+    SAR: "total_cost_sar",
+  };
+  return CURRENCY_CODES.flatMap((code) => {
+    const values = orders
+      .map((order) => numeric(order[fields[code]]))
+      .filter((value): value is number => value !== null);
+    if (!values.length) return [];
+    return [{
+      code,
+      total: values.reduce((sum, value) => sum + value, 0),
+      recorded: values.length,
+      expected: values.length,
+    }];
+  });
+}
+
+function approvedLinkedPaymentTotals(customer: Customer): MoneyLine[] {
+  const orderTrackingCodes = new Set(
+    customer.orders
+      .map((order) => order.tracking_code?.trim())
+      .filter((tracking): tracking is string => Boolean(tracking)),
+  );
+  const totals = new Map<CurrencyCode, { total: number; count: number }>();
+  const countedPaymentIds = new Set<string>();
+
+  for (const payment of customer.payments ?? []) {
+    if (String(payment.status ?? "").trim().toLowerCase() !== "approved") continue;
+    const trackings = [payment.order_tracking, payment.tracking_code]
+      .map((tracking) => tracking?.trim())
+      .filter((tracking): tracking is string => Boolean(tracking));
+    if (!trackings.some((tracking) => orderTrackingCodes.has(tracking))) continue;
+    if (countedPaymentIds.has(payment.id)) continue;
+    countedPaymentIds.add(payment.id);
+
+    const amount = numeric(payment.amount);
+    const code = normalizeCurrency(payment.currency);
+    if (amount === null || !code) continue;
+    const current = totals.get(code) ?? { total: 0, count: 0 };
+    current.total += amount;
+    current.count += 1;
+    totals.set(code, current);
+  }
+
+  return CURRENCY_CODES.flatMap((code) => {
+    const value = totals.get(code);
+    if (!value) return [];
+    return [{ code, total: value.total, recorded: value.count, expected: value.count }];
+  });
+}
+
+/** Remaining = recorded order cost minus approved, tracking-matched payments
+ * in the same currency. Unmatched payments remain a separate account credit. */
+function remainingTotals(customer: Customer): MoneyLine[] {
+  const paidByCurrency = new Map(
+    approvedLinkedPaymentTotals(customer).map((line) => [line.code, line.total]),
+  );
+  return orderCostTotals(customer.orders).map((cost) => ({
+    ...cost,
+    total: cost.total - (paidByCurrency.get(cost.code) ?? 0),
+  }));
+}
+
 function approvedUnlinkedPaymentLines(customer: Customer) {
   const orderTrackingCodes = new Set(
     customer.orders
@@ -1094,8 +1162,8 @@ function CustomersPageContent() {
                       الملخص المالي للطلبات
                     </h4>
                     <p className="mt-1 text-[11px] leading-5 text-slate-500">
-                      المدفوع يعتمد على الدفعات المعتمدة المرتبطة برقم التتبع،
-                      والمتبقي يُحسب من إجمالي الطلب بعد طرح المقبوض.
+                      المدفوع هو مجموع الدفعات المعتمدة المطابقة لرقم تتبع طلب،
+                      والمتبقي = التكلفة المسجلة − تلك الدفعات بالعملة نفسها. الدفعات غير المطابقة تظهر منفصلة؛ والربح يُعرض من الحقل المسجل.
                     </p>
                   </div>
                   <span className="shrink-0 rounded-lg bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600">
@@ -1114,26 +1182,35 @@ function CustomersPageContent() {
                     ["المتبقي", "remaining_amount"],
                     ["الربح المسجل", "profit_amount"],
                   ] as const).map(([label, ...fields]) => {
+                    const financialField = fields[0] as
+                      | "total_cost_usd"
+                      | "total_cost_yer"
+                      | "total_cost_sar"
+                      | "paid_amount"
+                      | "remaining_amount"
+                      | "profit_amount";
                     const moneyLines = fields.length === 3
-                      ? fields.flatMap((field) =>
-                        currencyTotals(selected.orders, field)
-                      )
-                      : currencyTotals(
-                        selected.orders,
-                        fields[0] as
-                          | "paid_amount"
-                          | "remaining_amount"
-                          | "profit_amount",
-                      );
-                    const unknownCurrencyCount = fields.length === 1
+                      ? orderCostTotals(selected.orders)
+                      : financialField === "paid_amount"
+                      ? approvedLinkedPaymentTotals(selected)
+                      : financialField === "remaining_amount"
+                      ? remainingTotals(selected)
+                      : currencyTotals(selected.orders, "profit_amount");
+                    const unknownCurrencyCount = financialField === "paid_amount"
+                      ? (selected.payments ?? []).filter((payment) => {
+                        const trackings = [payment.order_tracking, payment.tracking_code]
+                          .map((tracking) => tracking?.trim())
+                          .filter((tracking): tracking is string => Boolean(tracking));
+                        const hasMatchingOrder = selected.orders.some((order) =>
+                          order.tracking_code && trackings.includes(order.tracking_code.trim())
+                        );
+                        return String(payment.status ?? "").trim().toLowerCase() === "approved" &&
+                          hasMatchingOrder && numeric(payment.amount) !== null &&
+                          !normalizeCurrency(payment.currency);
+                      }).length
+                      : financialField === "profit_amount"
                       ? selected.orders.filter((order) =>
-                        hasStoredValue(
-                          order,
-                          fields[0] as
-                            | "paid_amount"
-                            | "remaining_amount"
-                            | "profit_amount",
-                        ) && !orderCurrency(order)
+                        hasStoredValue(order, "profit_amount") && !orderCurrency(order)
                       ).length
                       : 0;
                     return (
@@ -1181,10 +1258,10 @@ function CustomersPageContent() {
                 {approvedUnlinkedPaymentLines(selected).length > 0 && (
                   <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
                     <h5 className="text-xs font-black text-amber-900">
-                      دفعات معتمدة مرتبطة بالحساب وغير مطابقة لطلب
+                      دفعات معتمدة غير مطابقة لطلبات هذا العميل
                     </h5>
                     <p className="mt-1 text-[10px] leading-5 text-amber-800">
-                      هذه المبالغ غير مرتبطة برقم تتبع طلب؛ لذلك تظهر مستقلة ولا تُخصم من المتبقي ولا تُنسب إلى طلب.
+هذه المبالغ لا يطابق رقم تتبعها أي طلب لهذا العميل؛ لذلك تظهر مستقلة ولا تدخل في المدفوع أو المتبقي المحسوب للطلبات.
                     </p>
                     <ul className="mt-2 space-y-1">
                       {approvedUnlinkedPaymentLines(selected).map((line) => (
