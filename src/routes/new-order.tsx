@@ -654,6 +654,25 @@ function NewOrderPage() {
       return;
     }
 
+    const enteredPrice = price.trim() ? Number(price) : null;
+    if (enteredPrice !== null && (!Number.isFinite(enteredPrice) || enteredPrice < 0)) {
+      setSbError("يرجى إدخال سعر صحيح أو ترك حقل السعر فارغًا.");
+      return;
+    }
+    const quoteCurrency = currency.includes("سعودي") || currency.includes("ر.س")
+      ? "SAR"
+      : currency.includes("$") || currency.includes("دولار")
+      ? "USD"
+      : "YER";
+    const conversionRate = quoteCurrency === "SAR"
+      ? 142
+      : quoteCurrency === "USD"
+      ? 535
+      : 1;
+    const totalCostYER = enteredPrice !== null && enteredPrice > 0
+      ? Math.round(enteredPrice * conversionRate)
+      : null;
+
     setStatus("sending");
 
     const storeLabel = store?.label || "متجر دولي";
@@ -689,6 +708,15 @@ function NewOrderPage() {
           product_link: url.trim(),
           product_name: resolvedProductName,
           notes: notesSummary,
+          total_cost_usd: enteredPrice !== null && enteredPrice > 0 && quoteCurrency === "USD"
+            ? enteredPrice
+            : null,
+          total_cost_sar: enteredPrice !== null && enteredPrice > 0 && quoteCurrency === "SAR"
+            ? enteredPrice
+            : null,
+          total_cost_yer: totalCostYER,
+          quote_currency: enteredPrice !== null && enteredPrice > 0 ? quoteCurrency : null,
+          original_currency: enteredPrice !== null && enteredPrice > 0 ? quoteCurrency : null,
           status: "جديد",
           user_id: user.id,
           sms_status: "pending",
@@ -719,6 +747,15 @@ function NewOrderPage() {
           phone: phone.trim(),
           product_link: url.trim(),
           product_name: resolvedProductName,
+          total_cost_usd: enteredPrice !== null && enteredPrice > 0 && quoteCurrency === "USD"
+            ? enteredPrice
+            : null,
+          total_cost_sar: enteredPrice !== null && enteredPrice > 0 && quoteCurrency === "SAR"
+            ? enteredPrice
+            : null,
+          total_cost_yer: totalCostYER,
+          quote_currency: enteredPrice !== null && enteredPrice > 0 ? quoteCurrency : null,
+          original_currency: enteredPrice !== null && enteredPrice > 0 ? quoteCurrency : null,
           status: "جديد",
           sms_status: "pending",
           created_at: new Date().toISOString(),
