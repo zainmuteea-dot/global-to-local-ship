@@ -644,21 +644,52 @@ export default function AdminOperationsPage() {
 
   // إضافة شحنة جديدة وحفظها بالقاعدة
   const handleCreateShipment = async (newOrder: OrderItem) => {
-    setOrders((prev) => [newOrder, ...prev]);
-    setIsAddModalOpen(false);
+    const originalPriceSAR = Number(newOrder.originalPrice);
+    const hasValidOriginalPrice = Number.isFinite(originalPriceSAR) && originalPriceSAR > 0;
+    const totalCostYER = hasValidOriginalPrice
+      ? Math.round(originalPriceSAR * 142)
+      : undefined;
+
+    // السعر المدخل في نموذج الإدارة موسوم بـ SAR. نخزن الأصل كما هو،
+    // ونحفظ مقابله بالريال اليمني حسب معامل التحويل المستخدم في صفحة الطلبات.
+    const insertPayload = {
+      tracking_code: newOrder.orderNumber,
+      customer_name: newOrder.customerName,
+      phone: newOrder.customerPhone,
+      product_link: `https://${newOrder.storeName.toLowerCase()}.com`,
+      product_name: newOrder.productTitle,
+      status: STATUS_MAP_TO_ARABIC[newOrder.status] || "جديد",
+      notes: newOrder.customerCity || "صنعاء",
+      ...(hasValidOriginalPrice
+        ? {
+            total_cost_sar: originalPriceSAR,
+            total_cost_yer: totalCostYER,
+            quote_currency: "YER",
+            original_currency: "SAR",
+          }
+        : {}),
+    };
 
     try {
-      await supabase.from("orders").insert({
-        tracking_code: newOrder.orderNumber,
-        customer_name: newOrder.customerName,
-        phone: newOrder.customerPhone,
-        product_link: `https://${newOrder.storeName.toLowerCase()}.com`,
-        product_name: newOrder.productTitle,
-        status: STATUS_MAP_TO_ARABIC[newOrder.status] || "جديد",
-        notes: newOrder.customerCity || "صنعاء",
+      const { error } = await supabase.from("orders").insert(insertPayload as any);
+      if (error) throw error;
+
+      setOrders((prev) => [newOrder, ...prev]);
+      setIsAddModalOpen(false);
+      setStatusNotice({
+        type: "success",
+        message: hasValidOriginalPrice
+          ? `تم حفظ الشحنة ${newOrder.orderNumber} والتكلفة ${totalCostYER?.toLocaleString("en-US")} ر.ي.`
+          : `تم حفظ الشحنة ${newOrder.orderNumber} دون تكلفة؛ لم يُدخل سعر موجب.`,
       });
     } catch (e) {
       console.error("فشل حفظ الشحنة بالقاعدة:", e);
+      setIsAddModalOpen(false);
+      setStatusNotice({
+        type: "error",
+        message:
+          "تعذّر حفظ الشحنة. لم تُضف للقائمة؛ تحقق من اتصال قاعدة البيانات ومن وجود أعمدة التكلفة في جدول orders ثم أعد المحاولة.",
+      });
     }
   };
 
