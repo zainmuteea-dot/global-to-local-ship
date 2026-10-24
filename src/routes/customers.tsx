@@ -274,16 +274,95 @@ function approvedLinkedPaymentTotals(customer: Customer): MoneyLine[] {
   });
 }
 
-/** Remaining = recorded order cost minus approved, tracking-matched payments
- * in the same currency. Unmatched payments remain a separate account credit. */
+/**
+ * Remaining balance priority:
+ * 1. Use each order's explicitly stored remaining_amount when present.
+ * 2. Otherwise calculate recorded cost minus approved payments uniquely
+ *    matched to that order and in the same currency.
+ * Unmatched payments stay separate and are never silently subtracted.
+ */
 function remainingTotals(customer: Customer): MoneyLine[] {
-  const paidByCurrency = new Map(
-    approvedLinkedPaymentTotals(customer).map((line) => [line.code, line.total]),
-  );
-  return orderCostTotals(customer.orders).map((cost) => ({
-    ...cost,
-    total: cost.total - (paidByCurrency.get(cost.code) ?? 0),
-  }));
+  const costFieldByCurrency: Record<
+    CurrencyCode,
+    "total_cost_usd" | "total_cost_yer" | "total_cost_sar"
+  > = {
+    USD: "total_cost_usd",
+    YER: "total_cost_yer",
+    SAR: "total_cost_sar",
+  };
+
+  const paidByOrderId = new Map<string, number>();
+  const countedPaymentIds = new Set<string>();
+
+  for (const payment of customer.payments ?? []) {
+    if (String(payment.status ?? "").trim().toLowerCase() !== "approved") {
+      continue;
+    }
+    if (countedPaymentIds.has(payment.id)) continue;
+
+    const amount = numeric(payment.amount);
+    const paymentCurrency = normalizeCurrency(payment.currency);
+    if (amount === null || !paymentCurrency) continue;
+
+    const paymentTrackings = new Set(
+      [payment.order_tracking, payment.tracking_code]
+        .map((value) => value?.trim())
+        .filter((value): value is string => Boolean(value)),
+    );
+    if (paymentTrackings.size === 0) continue;
+
+    const matchedOrders = customer.orders.filter((order) => {
+      const tracking = order.tracking_code?.trim();
+      return Boolean(tracking && paymentTrackings.has(tracking));
+    });
+
+    // Do not assign a payment when a tracking value points to multiple orders.
+    if (matchedOrders.length !== 1) continue;
+    const order = matchedOrders[0];
+    if (orderCurrency(order) !== paymentCurrency) continue;
+
+    countedPaymentIds.add(payment.id);
+    paidByOrderId.set(
+      order.id,
+      (paidByOrderId.get(order.id) ?? 0) + amount,
+    );
+  }
+
+  return CURRENCY_CODES.flatMap((code) => {
+    const costField = costFieldByCurrency[code];
+    const relevantOrders = customer.orders.filter((order) => {
+      const explicitCurrency = orderCurrency(order);
+      if (explicitCurrency) return explicitCurrency === code;
+      // A populated currency-specific cost identifies the currency if the
+      // general currency fields were not set on the order.
+      return numeric(order[costField]) !== null;
+    });
+    if (relevantOrders.length === 0) return [];
+
+    let total = 0;
+    let recorded = 0;
+
+    for (const order of relevantOrders) {
+      const storedRemaining = numeric(order.remaining_amount);
+      const storedCost = numeric(order[costField]);
+
+      // Some schemas default remaining_amount to zero. Treat zero as a stored
+      // balance only when the order also has a recorded cost.
+      if (storedRemaining !== null && (storedRemaining !== 0 || storedCost !== null)) {
+        total += storedRemaining;
+        recorded += 1;
+        continue;
+      }
+
+      // Never infer a balance when the order cost itself is missing.
+      if (storedCost === null) continue;
+      total += storedCost - (paidByOrderId.get(order.id) ?? 0);
+      recorded += 1;
+    }
+
+    if (recorded === 0) return [];
+    return [{ code, total, recorded, expected: relevantOrders.length }];
+  });
 }
 
 function approvedUnlinkedPaymentLines(customer: Customer) {
@@ -1163,7 +1242,7 @@ function CustomersPageContent() {
                     </h4>
                     <p className="mt-1 text-[11px] leading-5 text-slate-500">
                       المدفوع هو مجموع الدفعات المعتمدة المطابقة لرقم تتبع طلب،
-                      والمتبقي = التكلفة المسجلة − تلك الدفعات بالعملة نفسها. الدفعات غير المطابقة تظهر منفصلة؛ والربح يُعرض من الحقل المسجل.
+                      ويُعرض المتبقي من قيمة الطلب المسجلة، أو يُحسب من التكلفة ناقص الدفعات المعتمدة المطابقة لتتبع الطلب وبالعملة نفسها. الدفعات غير المطابقة تظهر منفصلة؛ والربح من الحقل المسجل.
                     </p>
                   </div>
                   <span className="shrink-0 rounded-lg bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600">
@@ -1233,7 +1312,7 @@ function CustomersPageContent() {
                                   <span className="text-[10px] font-medium text-slate-400">
                                     {CURRENCY_INFO[line.code].label}
                                     {line.recorded < line.expected
-                                      ? ` · محفوظ في ${line.recorded} من ${line.expected} طلبات`
+                                      ? ` · متاح في ${line.recorded} من ${line.expected} طلبات`
                                       : ""}
                                   </span>
                                 </li>
