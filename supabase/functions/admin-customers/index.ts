@@ -37,7 +37,7 @@ async function fetchAll<T>(
 }
 
 async function listCustomers(adminClient: SupabaseClient) {
-  const [profiles, roles, orders] = await Promise.all([
+  const [profiles, roles, orders, payments] = await Promise.all([
     fetchAll<any>((from, to) =>
       adminClient.from("profiles")
         .select("id,full_name,phone,created_at")
@@ -57,6 +57,13 @@ async function listCustomers(adminClient: SupabaseClient) {
         .order("created_at", { ascending: false })
         .range(from, to)
     ),
+    fetchAll<any>((from, to) =>
+      adminClient.from("payments")
+        .select("id,user_id,tracking_code,order_tracking,customer_name,wallet,amount,currency,status,created_at")
+        .not("user_id", "is", null)
+        .order("created_at", { ascending: false })
+        .range(from, to)
+    ),
   ]);
 
   const staffIds = new Set(
@@ -73,6 +80,15 @@ async function listCustomers(adminClient: SupabaseClient) {
       ...(profilesByPhone.get(phone) ?? []),
       profile.id,
     ]);
+  }
+
+  const paymentsByUser = new Map<string, any[]>();
+  for (const payment of payments) {
+    const ownerId = payment.user_id as string | null;
+    if (!ownerId || !customers.some((profile) => profile.id === ownerId)) continue;
+    const group = paymentsByUser.get(ownerId) ?? [];
+    group.push(payment);
+    paymentsByUser.set(ownerId, group);
   }
 
   const ordersByUser = new Map<string, any[]>();
@@ -100,6 +116,9 @@ async function listCustomers(adminClient: SupabaseClient) {
   return customers.map((profile) => ({
     ...profile,
     orders: (ordersByUser.get(profile.id) ?? []).sort((a, b) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    ),
+    payments: (paymentsByUser.get(profile.id) ?? []).sort((a, b) =>
       new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     ),
   }));
