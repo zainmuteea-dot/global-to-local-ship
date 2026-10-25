@@ -45,7 +45,7 @@ import { AccountsTreeModal } from "@/components/admin/AccountsTreeModal";
 import { AddShipmentModal } from "@/components/admin/AddShipmentModal";
 import { QuickScanModal } from "@/components/admin/QuickScanModal";
 import { PrintReceiptModal } from "@/components/admin/PrintReceiptModal";
-import type { OrderItem, OrderStatus } from "@/components/admin/types";
+import type { OrderItem, OrderStatus } from "@/types/orders";
 function AdminRouteError({ error }: { error: unknown }) {
   const message =
     error instanceof Error ? error.message : String(error);
@@ -509,7 +509,10 @@ export default function AdminOperationsPage() {
           productUrl: item.product_link || "",
           storeName: store,
           status: uiStatus,
-          originalPrice: 0,
+          originalPrice: item.total_cost_sar ?? undefined,
+          totalCostUSD: item.total_cost_usd ?? undefined,
+          totalCostSAR: item.total_cost_sar ?? undefined,
+          totalCostYER: item.total_cost_yer ?? undefined,
           intlTrackingNumber: item.tracking_code || "",
           notes: item.notes ?? "",
           createdAt: item.created_at || new Date().toISOString(),
