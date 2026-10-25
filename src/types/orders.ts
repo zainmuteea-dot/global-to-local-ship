@@ -11,6 +11,7 @@ export type OrderStatus =
 export interface OrderItem {
   id: string;
   orderNumber: string;
+  userId?: string | null;
   customerName?: string;
   customerPhone?: string;
   customerCity?: string;
@@ -18,7 +19,7 @@ export interface OrderItem {
   productTitle: string;
   productUrl?: string;
   storeName: string;
-  status: OrderStatus | string;
+  status: OrderStatus;
   originalPrice?: number;
   quantity?: number;
   totalCostUSD?: number;
