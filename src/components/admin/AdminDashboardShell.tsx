@@ -6,6 +6,7 @@ import {
   Check,
   CircleDollarSign,
   Clock3,
+  ClipboardPlus,
   FileText,
   Headphones,
   LayoutDashboard,
@@ -13,6 +14,7 @@ import {
   Menu,
   PackageCheck,
   PackageOpen,
+  PackageSearch,
   Search,
   Settings,
   Truck,
@@ -310,7 +312,12 @@ export function AdminDashboardShell({
                   لوحة القيادة
                 </h1>
                 <p className="mt-0.5 text-xs font-medium text-slate-500 sm:text-sm">
-                  ملخص أداء اليوم - {new Intl.DateTimeFormat("ar", { day: "numeric", month: "long", year: "numeric" }).format(new Date())}
+                  ملخص أداء اليوم -{" "}
+                  {new Intl.DateTimeFormat("ar", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  }).format(new Date())}
                 </p>
               </div>
             </div>
@@ -400,74 +407,99 @@ export function AdminDashboardShell({
 
           <section className="grid grid-cols-1 items-start gap-5 2xl:grid-cols-2" aria-label="تفاصيل اليوم">
             <Panel
-              title="تتبع الشحنات"
-              action="عرض الكل"
-              onAction={onViewAllShipments ?? (() => window.location.assign("/admin-tracking"))}
+              title="أحدث الطلبات وحالاتها"
+              icon={<PackageSearch className="size-5" aria-hidden="true" />}
+              action="عرض كل الطلبات"
+              onAction={onViewAllShipments ?? (() => window.location.assign("/admin-clients"))}
             >
               {shipments.length === 0 ? (
-                <p className="py-6 text-center text-sm font-medium text-slate-400">لا توجد شحنات متاحة للعرض حالياً.</p>
-              ) : <div className="divide-y divide-slate-100">
-                {shipments.map((shipment) => {
-                  const tone = shipmentTone(shipment.tone);
-                  return (
-                    <article key={shipment.id} className="py-4 first:pt-1 last:pb-1">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="flex items-center gap-2.5">
-                          <span className={`size-2.5 rounded-full ${tone.dot}`} />
-                          <h3 className="text-sm font-extrabold text-slate-800">شحنة #{shipment.id}</h3>
+                <p className="py-6 text-center text-sm font-medium text-slate-400">
+                  لا توجد طلبات متاحة للعرض حالياً.
+                </p>
+              ) : (
+                <div className="divide-y divide-slate-100">
+                  {shipments.map((shipment) => {
+                    const tone = shipmentTone(shipment.tone);
+                    return (
+                      <article key={shipment.id} className="py-4 first:pt-1 last:pb-1">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-2.5">
+                            <span className={`size-2.5 rounded-full ${tone.dot}`} />
+                            <h3 className="text-sm font-extrabold text-slate-800">
+                              طلب #{shipment.id}
+                            </h3>
+                          </div>
+                          <span className={`rounded-full px-3 py-1 text-xs font-bold ${tone.badge}`}>
+                            {shipment.status}
+                          </span>
                         </div>
-                        <span className={`rounded-full px-3 py-1 text-xs font-bold ${tone.badge}`}>
-                          {shipment.status}
-                        </span>
-                      </div>
-                      <p className="mt-3 text-sm leading-6 text-slate-500">{shipment.detail}</p>
-                      {shipment.progress !== null ? (
-                        <div
-                          className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100"
-                          role="progressbar"
-                          aria-label={`تقدم الشحنة ${shipment.id}`}
-                          aria-valuemin={0}
-                          aria-valuemax={100}
-                          aria-valuenow={shipment.progress}
-                        >
+                        <p className="mt-3 text-sm leading-6 text-slate-500">{shipment.detail}</p>
+                        {shipment.progress !== null ? (
                           <div
-                            className={`h-full rounded-full transition-all ${tone.bar}`}
-                            style={{ width: `${shipment.progress}%` }}
-                          />
-                        </div>
-                      ) : null}
-                    </article>
-                  );
-                })}
-              </div>}
+                            className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100"
+                            role="progressbar"
+                            aria-label={`تقدم الطلب ${shipment.id}`}
+                            aria-valuemin={0}
+                            aria-valuemax={100}
+                            aria-valuenow={shipment.progress}
+                          >
+                            <div
+                              className={`h-full rounded-full transition-all ${tone.bar}`}
+                              style={{ width: `${shipment.progress}%` }}
+                            />
+                          </div>
+                        ) : null}
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
             </Panel>
 
             <Panel
-              title="النشاط الأخير"
-              action="عرض الكل"
-              onAction={onViewAllActivity ?? (() => window.location.assign("/notifications"))}
+              title="أحدث الطلبات المسجّلة"
+              icon={<ClipboardPlus className="size-5" aria-hidden="true" />}
+              action="عرض كل الطلبات"
+              onAction={onViewAllActivity ?? (() => window.location.assign("/admin-clients"))}
             >
               {activities.length === 0 ? (
-                <p className="py-6 text-center text-sm font-medium text-slate-400">لا توجد أنشطة مسجلة لعرضها.</p>
-              ) : <div className="divide-y divide-slate-100">
-                {activities.map((activity, index) => (
-                  <article key={`${activity.time}-${index}`} className="flex gap-3.5 py-4 first:pt-1 last:pb-1">
-                    <ActivityIcon type={activity.icon} />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold leading-6 text-slate-700">{activity.text}</p>
-                      <p className="mt-1 text-xs font-medium text-slate-400">{activity.time}</p>
-                    </div>
-                  </article>
-                ))}
-              </div>}
+                <p className="py-6 text-center text-sm font-medium text-slate-400">
+                  لا توجد طلبات مسجّلة لعرضها.
+                </p>
+              ) : (
+                <div className="divide-y divide-slate-100">
+                  {activities.map((activity, index) => (
+                    <article
+                      key={`${activity.time}-${index}`}
+                      className="flex gap-3.5 py-4 first:pt-1 last:pb-1"
+                    >
+                      <ActivityIcon type={activity.icon} />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold leading-6 text-slate-700">
+                          {activity.text}
+                        </p>
+                        <p className="mt-1 text-xs font-medium text-slate-500">{activity.time}</p>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
             </Panel>
           </section>
 
           {notice && (
-            <div role="status" aria-live="polite" className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-800">
+            <div
+              role="status"
+              aria-live="polite"
+              className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-800"
+            >
               <div className="flex items-center justify-between gap-3">
                 <span>{notice}</span>
-                <button type="button" onClick={() => setNotice("")} aria-label="إغلاق الرسالة">
+                <button
+                  type="button"
+                  onClick={() => setNotice("")}
+                  aria-label="إغلاق الرسالة"
+                >
                   <X className="size-4" />
                 </button>
               </div>
@@ -505,7 +537,9 @@ function MetricCard({
             {value}
           </p>
         </div>
-        <div className={`grid size-12 shrink-0 place-items-center rounded-2xl ${colors.icon}`}>{icon}</div>
+        <div className={`grid size-12 shrink-0 place-items-center rounded-2xl ${colors.icon}`}>
+          {icon}
+        </div>
       </div>
       <p className={`mt-4 text-xs font-bold ${colors.note}`}>{note}</p>
     </article>
@@ -514,11 +548,13 @@ function MetricCard({
 
 function Panel({
   title,
+  icon,
   action,
   onAction,
   children,
 }: {
   title: string;
+  icon: ReactNode;
   action: string;
   onAction: () => void;
   children: ReactNode;
@@ -526,7 +562,10 @@ function Panel({
   return (
     <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6">
       <div className="mb-5 flex items-center justify-between gap-3 border-b border-slate-100 pb-4">
-        <h2 className="text-lg font-extrabold text-[#172554]">{title}</h2>
+        <div className="flex min-w-0 items-center gap-2.5 text-[#172554]">
+          <span className="shrink-0 text-blue-600">{icon}</span>
+          <h2 className="text-lg font-extrabold">{title}</h2>
+        </div>
         <button
           type="button"
           onClick={onAction}
@@ -542,13 +581,17 @@ function Panel({
 
 function ActivityIcon({ type }: { type: ActivityPreview["icon"] }) {
   const styles = {
-    plus: "bg-emerald-50 text-emerald-600",
+    plus: "bg-blue-50 text-blue-600",
     truck: "bg-blue-50 text-blue-600",
     alert: "bg-orange-50 text-orange-600",
   };
+
   return (
-    <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${styles[type]}`}>
-      {type === "plus" ? <Check className="size-5" /> : null}
+    <span
+      className={`grid size-10 shrink-0 place-items-center rounded-xl ${styles[type]}`}
+      aria-hidden="true"
+    >
+      {type === "plus" ? <ClipboardPlus className="size-5" /> : null}
       {type === "truck" ? <Truck className="size-5" /> : null}
       {type === "alert" ? <Clock3 className="size-5" /> : null}
     </span>
