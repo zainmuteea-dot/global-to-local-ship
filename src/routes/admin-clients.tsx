@@ -128,7 +128,7 @@ function aggregateMoney(orders: OrderItem[], field: "total_cost" | "paid" | "rem
     if (values.length) {
       result[code] = values.some((value) => value === null)
         ? null
-        : values.reduce((sum, value) => sum + (value as number), 0);
+        : values.reduce<number>((sum, value) => sum + (value ?? 0), 0);
     }
   }
   if (orders.some((order) => Object.prototype.hasOwnProperty.call(order[field] ?? {}, "UNKNOWN"))) {
@@ -141,7 +141,7 @@ function resolveOrderCurrency(row: any, costs: CurrencyMoney): CurrencyCode | nu
   const stated = normalizeCurrency(row.quote_currency) || normalizeCurrency(row.original_currency);
   if (stated) return stated;
   const known = CURRENCIES.filter(({ code }) => typeof costs[code] === "number");
-  return known.length === 1 ? known[0].code : null;
+  return known.length === 1 ? known[0]?.code ?? null : null;
 }
 
 function mapDatabaseOrder(row: any): OrderItem {
@@ -156,7 +156,7 @@ function mapDatabaseOrder(row: any): OrderItem {
   // أعمدة إجمالي التكلفة موسومة بعملتها صراحة؛ اجمع كل عملة على حدة.
   const totalCost: CurrencyMoney = {};
   for (const { code } of CURRENCIES) {
-    if (costs[code] !== null || currency === code) totalCost[code] = costs[code];
+    if (costs[code] !== null || currency === code) totalCost[code] = costs[code] ?? null;
   }
 
   const paidAmount = toNullableNumber(row.paid_amount);
