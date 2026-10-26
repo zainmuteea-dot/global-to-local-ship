@@ -53,11 +53,42 @@ const BoxIcon = () => (
 );
 
 const steps: Step[] = [
-  { num: 1, title: "أرسل الرابط", desc: "الصق رابط الصفحة من أي متجر إلكتروني", icon: <LinkIcon />, href: "/new-order" },
-  { num: 2, title: "تعرف السعر", desc: "نوضح لك التكلفة بالريال اليمني أو الدولار", icon: <DollarIcon />, href: "/new-order" },
-  { num: 3, title: "نشتري لك", desc: "نشتري بدلاً عنك ونضمن جودة وتطابق الطلب", icon: <CartIcon />, href: "/new-order" },
-  { num: 4, title: "تابع الشحنة", desc: "تتبع مسار شحنتك لحظة بلحظة برقم التتبع", icon: <SearchIcon />, href: "/track" },
-  { num: 5, title: "الاستلام", desc: "توصيل موثوق حتى باب بيتك في كافة المحافظات", icon: <BoxIcon />, href: "/new-order", wide: true },
+  {
+    num: 1,
+    title: "أرسل الرابط",
+    desc: "الصق رابط الصفحة من أي متجر إلكتروني",
+    icon: <LinkIcon />,
+    href: "/new-order",
+  },
+  {
+    num: 2,
+    title: "تعرف السعر",
+    desc: "نوضح لك التكلفة بالريال اليمني أو الدولار",
+    icon: <DollarIcon />,
+    href: "/new-order",
+  },
+  {
+    num: 3,
+    title: "نشتري لك",
+    desc: "نشتري بدلاً عنك ونضمن جودة وتطابق الطلب",
+    icon: <CartIcon />,
+    href: "/new-order",
+  },
+  {
+    num: 4,
+    title: "تابع الشحنة",
+    desc: "تتبع مسار شحنتك لحظة بلحظة برقم التتبع",
+    icon: <SearchIcon />,
+    href: "/track",
+  },
+  {
+    num: 5,
+    title: "الاستلام",
+    desc: "توصيل موثوق حتى باب بيتك في كافة المحافظات",
+    icon: <BoxIcon />,
+    href: "/new-order",
+    wide: true,
+  },
 ];
 
 const iconBox: CSSProperties = {
@@ -135,8 +166,20 @@ export default function StepsBest() {
           .sbg-card, .sbg-card::before, .sbg-gold-icon { animation: none !important; }
         }
       `}</style>
-      <section id="steps" className="fx-steps-section" dir="rtl" style={dottedBackground} aria-labelledby="sbg-title">
-        <svg width="0" height="0" style={{ position: "absolute" }} aria-hidden="true" focusable="false">
+      <section
+        id="steps"
+        className="fx-steps-section"
+        dir="rtl"
+        style={dottedBackground}
+        aria-labelledby="sbg-title"
+      >
+        <svg
+          width="0"
+          height="0"
+          style={{ position: "absolute" }}
+          aria-hidden="true"
+          focusable="false"
+        >
           <defs>
             <linearGradient id="sbg-gold-grad" x1="0%" y1="0%" x2="100%" y2="100%">
               <stop offset="0%" stopColor="#ffd700" />
@@ -145,7 +188,9 @@ export default function StepsBest() {
             </linearGradient>
           </defs>
         </svg>
-        <h2 id="sbg-title" className="sbg-title">كيف تعمل؟ خطوات بسيطة</h2>
+        <h2 id="sbg-title" className="sbg-title">
+          كيف تعمل؟ خطوات بسيطة
+        </h2>
         <div className="sbg-grid">
           {steps.map((step, index) => (
             <a
@@ -156,7 +201,8 @@ export default function StepsBest() {
             >
               <span className="sbg-card-text">
                 <span className="sbg-card-title">
-                  <span className="sbg-card-num">{step.num}. </span>{step.title}
+                  <span className="sbg-card-num">{step.num}. </span>
+                  {step.title}
                 </span>
                 <span className="sbg-card-desc">{step.desc}</span>
               </span>
@@ -165,9 +211,18 @@ export default function StepsBest() {
           ))}
         </div>
         <div className="sbg-cta-row">
-          <a href="/new-order" className="sbg-cta sbg-cta-main"><span aria-hidden="true">🛒</span><span>اطلب الآن فوراً</span></a>
-          <a href="#steps" className="sbg-cta sbg-cta-ghost"><span aria-hidden="true">📣</span><span>كيف نعمل</span></a>
-          <a href="/track" className="sbg-cta sbg-cta-ghost"><span aria-hidden="true">🔍</span><span>تتبع طلبك</span></a>
+          <a href="/new-order" className="sbg-cta sbg-cta-main">
+            <span aria-hidden="true">🛒</span>
+            <span>اطلب الآن فوراً</span>
+          </a>
+          <a href="#steps" className="sbg-cta sbg-cta-ghost">
+            <span aria-hidden="true">📣</span>
+            <span>كيف نعمل</span>
+          </a>
+          <a href="/track" className="sbg-cta sbg-cta-ghost">
+            <span aria-hidden="true">🔍</span>
+            <span>تتبع طلبك</span>
+          </a>
         </div>
       </section>
     </>

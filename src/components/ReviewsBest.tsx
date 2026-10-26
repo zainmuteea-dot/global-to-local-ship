@@ -2,7 +2,8 @@ import type { CSSProperties } from "react";
 
 const reviews = [
   {
-    quote: "اشتريت لعبتين للأولاد من شي إن، التعامل كان راقي وسريع والتوصيل وصل لباب البيت بدون أي عناء.",
+    quote:
+      "اشتريت لعبتين للأولاد من شي إن، التعامل كان راقي وسريع والتوصيل وصل لباب البيت بدون أي عناء.",
     name: "يوسف الحنفي",
     city: "صنعاء",
     delay: "0s",
@@ -66,8 +67,15 @@ export default function ReviewsBest() {
         @media (max-width: 760px) { .rbg-grid { grid-template-columns: 1fr; gap: 14px; } }
         @media (prefers-reduced-motion: reduce) { .rbg-card, .rbg-card::before { animation: none !important; } }
       `}</style>
-      <section className="fx-steps-section reviews rbg-section" dir="rtl" style={dottedBackground} aria-labelledby="rbg-title">
-        <h2 id="rbg-title" className="rbg-title">آراء عملائنا</h2>
+      <section
+        className="fx-steps-section reviews rbg-section"
+        dir="rtl"
+        style={dottedBackground}
+        aria-labelledby="rbg-title"
+      >
+        <h2 id="rbg-title" className="rbg-title">
+          آراء عملائنا
+        </h2>
         <div className="rbg-grid">
           {reviews.map((review) => (
             <figure
@@ -75,7 +83,9 @@ export default function ReviewsBest() {
               className="testimonial-fixed rbg-card"
               style={{ "--rbg-delay": review.delay } as CSSProperties}
             >
-              <div className="rbg-stars" aria-label="5 من 5 نجوم">★★★★★</div>
+              <div className="rbg-stars" aria-label="5 من 5 نجوم">
+                ★★★★★
+              </div>
               <blockquote className="rbg-quote">“{review.quote}”</blockquote>
               <figcaption>
                 <div className="rbg-divider" />

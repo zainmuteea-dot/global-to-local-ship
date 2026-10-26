@@ -843,7 +843,9 @@ export default function DashboardPage() {
               to="/my-account"
               className="block rounded-2xl bg-white/[0.08] p-3 text-right shadow-2xl shadow-[#04122A]/60 border border-sky-300/35 transition hover:-translate-y-0.5 hover:shadow-[0_0_24px_-4px_rgba(96,180,255,.55)] sm:p-4"
             >
-              <span className="block text-xs font-bold leading-relaxed text-sky-100/70">إجمالي طلباتي</span>
+              <span className="block text-xs font-bold leading-relaxed text-sky-100/70">
+                إجمالي طلباتي
+              </span>
               <div className="text-2xl font-black text-white mt-1">{orderStats.total}</div>
             </Link>
 
@@ -851,7 +853,9 @@ export default function DashboardPage() {
               to="/track"
               className="block rounded-2xl bg-white/[0.08] p-3 text-right shadow-2xl shadow-[#04122A]/60 border border-[#FF8A2B]/40 transition hover:-translate-y-0.5 hover:shadow-[0_0_24px_-4px_rgba(255,138,43,.65)] sm:p-4"
             >
-              <span className="block text-xs font-bold leading-relaxed text-sky-100/70">قيد الشراء والتجهيز</span>
+              <span className="block text-xs font-bold leading-relaxed text-sky-100/70">
+                قيد الشراء والتجهيز
+              </span>
               <div className="text-2xl font-black text-[#FFB37A] mt-1">{orderStats.inProgress}</div>
             </Link>
 
@@ -859,7 +863,9 @@ export default function DashboardPage() {
               to="/track"
               className="block rounded-2xl bg-white/[0.08] p-3 text-right shadow-2xl shadow-[#04122A]/60 border border-sky-300/40 transition hover:-translate-y-0.5 hover:shadow-[0_0_24px_-4px_rgba(96,180,255,.6)] sm:p-4"
             >
-              <span className="block text-xs font-bold leading-relaxed text-sky-100/70">شحنات في الطريق</span>
+              <span className="block text-xs font-bold leading-relaxed text-sky-100/70">
+                شحنات في الطريق
+              </span>
               <div className="text-2xl font-black text-[#38BDF8] mt-1">{orderStats.shipping}</div>
             </Link>
 
@@ -867,7 +873,9 @@ export default function DashboardPage() {
               to="/my-account"
               className="block rounded-2xl bg-white/[0.08] p-3 text-right shadow-2xl shadow-[#04122A]/60 border border-emerald-400/35 transition hover:-translate-y-0.5 hover:shadow-[0_0_24px_-4px_rgba(16,185,129,.6)] sm:p-4"
             >
-              <span className="block text-xs font-bold leading-relaxed text-sky-100/70">تم الاستلام</span>
+              <span className="block text-xs font-bold leading-relaxed text-sky-100/70">
+                تم الاستلام
+              </span>
               <div className="text-2xl font-black text-emerald-300 mt-1">
                 {orderStats.delivered}
               </div>

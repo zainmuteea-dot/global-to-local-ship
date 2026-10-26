@@ -252,30 +252,34 @@ function CustomerNotificationsPage({
     };
   }, [userId, roleError]);
 
-  const markRead = useCallback(async (notificationId: string) => {
-    if (readIds.has(notificationId) || pendingReadIds.current.has(notificationId)) return;
-    pendingReadIds.current.add(notificationId);
-    setSavingRead(true);
+  const markRead = useCallback(
+    async (notificationId: string) => {
+      if (readIds.has(notificationId) || pendingReadIds.current.has(notificationId)) return;
+      pendingReadIds.current.add(notificationId);
+      setSavingRead(true);
 
-    try {
-      const { error: saveError } = await saveNotificationReadIds(userId, [notificationId]);
-      if (saveError) {
-        console.error("تعذر حفظ قراءة الإشعار:", saveError);
-        setError("لم تُحفظ حالة القراءة. حاول مرة أخرى.");
-        return;
+      try {
+        const { error: saveError } = await saveNotificationReadIds(userId, [notificationId]);
+        if (saveError) {
+          console.error("تعذر حفظ قراءة الإشعار:", saveError);
+          setError("لم تُحفظ حالة القراءة. حاول مرة أخرى.");
+          return;
+        }
+
+        setReadIds((current) => new Set(current).add(notificationId));
+        setError(null);
+      } finally {
+        pendingReadIds.current.delete(notificationId);
+        setSavingRead(pendingReadIds.current.size > 0);
       }
-
-      setReadIds((current) => new Set(current).add(notificationId));
-      setError(null);
-    } finally {
-      pendingReadIds.current.delete(notificationId);
-      setSavingRead(pendingReadIds.current.size > 0);
-    }
-  }, [readIds, userId]);
+    },
+    [readIds, userId],
+  );
 
   // Mark a customer's notification read only after most of its card is visible on screen.
   useEffect(() => {
-    if (loading || notifications.length === 0 || typeof IntersectionObserver === "undefined") return;
+    if (loading || notifications.length === 0 || typeof IntersectionObserver === "undefined")
+      return;
 
     const observer = new IntersectionObserver(
       (entries) => {

@@ -1,7 +1,11 @@
-
 import { createFileRoute } from "@tanstack/react-router";
 import { AdminAlerts } from "@/components/admin/AdminAlerts";
-import { AdminDashboardShell, type ActivityPreview, type DashboardStats, type ShipmentPreview } from "@/components/admin/AdminDashboardShell";
+import {
+  AdminDashboardShell,
+  type ActivityPreview,
+  type DashboardStats,
+  type ShipmentPreview,
+} from "@/components/admin/AdminDashboardShell";
 import { AdminRouteGuard } from "@/components/admin/AdminRouteGuard";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -47,8 +51,7 @@ import { QuickScanModal } from "@/components/admin/QuickScanModal";
 import { PrintReceiptModal } from "@/components/admin/PrintReceiptModal";
 import type { OrderItem, OrderStatus } from "@/types/orders";
 function AdminRouteError({ error }: { error: unknown }) {
-  const message =
-    error instanceof Error ? error.message : String(error);
+  const message = error instanceof Error ? error.message : String(error);
 
   return (
     <main
@@ -133,14 +136,78 @@ interface Employee {
 }
 
 const INITIAL_EMPLOYEES: Employee[] = [
-  { id: "1", name: "زين مطيع", role: "المدير العام ومسؤول النظام (Super Admin)", department: "الإدارة العليا", phone: "772399745", status: "online", tasksCompleted: 142 },
-  { id: "2", name: "أحمد المهندس", role: "مسؤول المشتريات الدولية", department: "الشراء الدولي", phone: "771234567", status: "online", tasksCompleted: 98 },
-  { id: "3", name: "سارة الخولاني", role: "المديرة المالية ورئيسة المحاسبة", department: "المالية والمحاسبة", phone: "777890123", status: "online", tasksCompleted: 85 },
-  { id: "4", name: "عمر الشامي", role: "مشرف مستودع الفرز - صنعاء", department: "المستودعات الميدانية", phone: "775678901", status: "online", tasksCompleted: 114 },
-  { id: "5", name: "فؤاد العريقي", role: "منسق التوزيع والشحن - عدن", department: "فرع عدن", phone: "733456789", status: "online", tasksCompleted: 67 },
-  { id: "6", name: "ريهام العنسي", role: "خدمة العملاء والتتبع الفوري", department: "الدعم الفني", phone: "774567890", status: "online", tasksCompleted: 130 },
-  { id: "7", name: "طارق الحمادي", role: "مندوب التوصيل الميداني - صنعاء", department: "التوصيل الميداني", phone: "778901234", status: "online", tasksCompleted: 88 },
-  { id: "8", name: "كمال اليافعي", role: "مندوب التوصيل الميداني - عدن ولحج", department: "التوصيل الميداني", phone: "735678901", status: "online", tasksCompleted: 52 },
+  {
+    id: "1",
+    name: "زين مطيع",
+    role: "المدير العام ومسؤول النظام (Super Admin)",
+    department: "الإدارة العليا",
+    phone: "772399745",
+    status: "online",
+    tasksCompleted: 142,
+  },
+  {
+    id: "2",
+    name: "أحمد المهندس",
+    role: "مسؤول المشتريات الدولية",
+    department: "الشراء الدولي",
+    phone: "771234567",
+    status: "online",
+    tasksCompleted: 98,
+  },
+  {
+    id: "3",
+    name: "سارة الخولاني",
+    role: "المديرة المالية ورئيسة المحاسبة",
+    department: "المالية والمحاسبة",
+    phone: "777890123",
+    status: "online",
+    tasksCompleted: 85,
+  },
+  {
+    id: "4",
+    name: "عمر الشامي",
+    role: "مشرف مستودع الفرز - صنعاء",
+    department: "المستودعات الميدانية",
+    phone: "775678901",
+    status: "online",
+    tasksCompleted: 114,
+  },
+  {
+    id: "5",
+    name: "فؤاد العريقي",
+    role: "منسق التوزيع والشحن - عدن",
+    department: "فرع عدن",
+    phone: "733456789",
+    status: "online",
+    tasksCompleted: 67,
+  },
+  {
+    id: "6",
+    name: "ريهام العنسي",
+    role: "خدمة العملاء والتتبع الفوري",
+    department: "الدعم الفني",
+    phone: "774567890",
+    status: "online",
+    tasksCompleted: 130,
+  },
+  {
+    id: "7",
+    name: "طارق الحمادي",
+    role: "مندوب التوصيل الميداني - صنعاء",
+    department: "التوصيل الميداني",
+    phone: "778901234",
+    status: "online",
+    tasksCompleted: 88,
+  },
+  {
+    id: "8",
+    name: "كمال اليافعي",
+    role: "مندوب التوصيل الميداني - عدن ولحج",
+    department: "التوصيل الميداني",
+    phone: "735678901",
+    status: "online",
+    tasksCompleted: 52,
+  },
 ];
 
 function AdminNotificationComposer() {
@@ -152,9 +219,7 @@ function AdminNotificationComposer() {
     text: string;
   } | null>(null);
 
-  const sendNotification = async (
-    event: React.FormEvent<HTMLFormElement>,
-  ) => {
+  const sendNotification = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const cleanTitle = title.trim();
@@ -194,10 +259,7 @@ function AdminNotificationComposer() {
   };
 
   return (
-    <section
-      className="rounded-2xl border border-sky-100 bg-white p-4 shadow-sm"
-      dir="rtl"
-    >
+    <section className="rounded-2xl border border-sky-100 bg-white p-4 shadow-sm" dir="rtl">
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="grid size-9 place-items-center rounded-xl bg-orange-100 text-[#EA580C]">
@@ -205,9 +267,7 @@ function AdminNotificationComposer() {
           </span>
 
           <div>
-            <h3 className="text-sm font-black text-[#0A2540]">
-              بث إشعار فوري للعملاء
-            </h3>
+            <h3 className="text-sm font-black text-[#0A2540]">بث إشعار فوري للعملاء</h3>
             <p className="text-[11px] text-slate-500">
               سينشر الإشعار في حسابات العملاء ضمن الإشعارات داخل الموقع.
             </p>
@@ -215,10 +275,7 @@ function AdminNotificationComposer() {
         </div>
       </div>
 
-      <form
-        onSubmit={sendNotification}
-        className="grid grid-cols-1 gap-2.5 md:grid-cols-4"
-      >
+      <form onSubmit={sendNotification} className="grid grid-cols-1 gap-2.5 md:grid-cols-4">
         <input
           type="text"
           value={title}
@@ -269,22 +326,22 @@ function AdminNotificationComposer() {
 }
 
 const STATUS_MAP_TO_UI: Record<string, OrderStatus> = {
-  "جديد": "new",
+  جديد: "new",
   "قيد المراجعة": "reviewing",
   "تم الشراء": "purchased",
   "المستودع الدولي": "warehouse_china",
   "شحن دولي": "international_ship",
   "الفرز والتوصيل": "shipped",
   "تم التسليم": "delivered",
-  "ملغي": "cancelled",
-  "new": "new",
-  "reviewing": "reviewing",
-  "purchased": "purchased",
-  "warehouse_china": "warehouse_china",
-  "international_ship": "international_ship",
-  "shipped": "shipped",
-  "delivered": "delivered",
-  "cancelled": "cancelled",
+  ملغي: "cancelled",
+  new: "new",
+  reviewing: "reviewing",
+  purchased: "purchased",
+  warehouse_china: "warehouse_china",
+  international_ship: "international_ship",
+  shipped: "shipped",
+  delivered: "delivered",
+  cancelled: "cancelled",
 };
 
 const STATUS_MAP_TO_ARABIC: Record<OrderStatus, string> = {
@@ -325,7 +382,10 @@ export default function AdminOperationsPage() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStore, setSelectedStore] = useState("ALL");
-  const [statusNotice, setStatusNotice] = useState<{ type: "success" | "error" | "warning"; message: string } | null>(null);
+  const [statusNotice, setStatusNotice] = useState<{
+    type: "success" | "error" | "warning";
+    message: string;
+  } | null>(null);
   const [updatingOrderIds, setUpdatingOrderIds] = useState<Set<string>>(() => new Set());
   const updatingOrderIdsRef = useRef<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
@@ -384,9 +444,15 @@ export default function AdminOperationsPage() {
     refreshPendingPayments();
     const channel = supabase
       .channel("admin_pending_payments_badge")
-      .on("postgres_changes", { event: "*", schema: "public", table: "payments" }, refreshPendingPayments)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "payments" },
+        refreshPendingPayments,
+      )
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const downloadLocalBackup = async () => {
@@ -437,9 +503,7 @@ export default function AdminOperationsPage() {
     } catch (error) {
       console.error("فشل تصدير الطلبات:", error);
       window.alert(
-        `تعذّر تصدير الطلبات: ${
-          error instanceof Error ? error.message : String(error)
-        }`
+        `تعذّر تصدير الطلبات: ${error instanceof Error ? error.message : String(error)}`,
       );
     } finally {
       setBackupLoading(false);
@@ -469,7 +533,9 @@ export default function AdminOperationsPage() {
       setPosNotice("اسمح بالنوافذ المنبثقة لطباعة الفاتورة.");
       return;
     }
-    receiptWindow.document.write(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><title>فاتورة كاشير</title><style>body{font-family:Arial,sans-serif;padding:28px;color:#123}h1{font-size:20px}table{width:100%;border-collapse:collapse;margin-top:24px}td,th{border-bottom:1px solid #ddd;padding:12px;text-align:right}.total{font-size:18px;font-weight:bold;margin-top:24px}</style><h1>السوق الشامل — فاتورة كاشير</h1><p>${new Date().toLocaleString("ar-YE")}</p><table><tr><th>الصنف</th><th>الكمية</th><th>السعر</th></tr><tr><td>${posItemName.replace(/[<>]/g, "")}</td><td>${qty}</td><td>${unit.toLocaleString("en-US")}</td></tr></table><p class="total">الإجمالي: ${total.toLocaleString("en-US")} YER</p><script>window.onload=()=>window.print()<\/script></html>`);
+    receiptWindow.document.write(
+      `<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><title>فاتورة كاشير</title><style>body{font-family:Arial,sans-serif;padding:28px;color:#123}h1{font-size:20px}table{width:100%;border-collapse:collapse;margin-top:24px}td,th{border-bottom:1px solid #ddd;padding:12px;text-align:right}.total{font-size:18px;font-weight:bold;margin-top:24px}</style><h1>السوق الشامل — فاتورة كاشير</h1><p>${new Date().toLocaleString("ar-YE")}</p><table><tr><th>الصنف</th><th>الكمية</th><th>السعر</th></tr><tr><td>${posItemName.replace(/[<>]/g, "")}</td><td>${qty}</td><td>${unit.toLocaleString("en-US")}</td></tr></table><p class="total">الإجمالي: ${total.toLocaleString("en-US")} YER</p><script>window.onload=()=>window.print()<\/script></html>`,
+    );
     receiptWindow.document.close();
     setPosNotice("تم فتح إيصال الطباعة. هذه الفاتورة لا تُحفظ في قاعدة البيانات.");
   };
@@ -524,7 +590,11 @@ export default function AdminOperationsPage() {
     } catch (err) {
       console.error("خطأ في قراءة الطلبات من القاعدة:", err);
       setOrdersLoadedFromDatabase(false);
-      setStatusNotice({ type: "error", message: "تعذر تحميل الطلبات من قاعدة البيانات؛ لم تُعرض بيانات محلية على أنها سجلات حقيقية." });
+      setStatusNotice({
+        type: "error",
+        message:
+          "تعذر تحميل الطلبات من قاعدة البيانات؛ لم تُعرض بيانات محلية على أنها سجلات حقيقية.",
+      });
     } finally {
       setLoading(false);
     }
@@ -536,13 +606,9 @@ export default function AdminOperationsPage() {
 
     const channel = supabase
       .channel("admin_orders_realtime_sync")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "orders" },
-        () => {
-          fetchOrdersFromDatabase();
-        }
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => {
+        fetchOrdersFromDatabase();
+      })
       .subscribe();
 
     return () => {
@@ -553,12 +619,17 @@ export default function AdminOperationsPage() {
   // تحديث حالة الشحنة، مع منع الطلبات المتكررة ورسالة نتيجة واضحة.
   const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
     const targetOrder = orders.find((o) => o.id === orderId);
-    if (!targetOrder || targetOrder.status === newStatus || updatingOrderIdsRef.current.has(orderId)) return;
+    if (
+      !targetOrder ||
+      targetOrder.status === newStatus ||
+      updatingOrderIdsRef.current.has(orderId)
+    )
+      return;
 
     const currentStatus = STATUS_MAP_TO_ARABIC[targetOrder.status] || targetOrder.status;
     const nextStatus = STATUS_MAP_TO_ARABIC[newStatus] || newStatus;
     const confirmed = window.confirm(
-      `تأكيد تحديث الطلب ${targetOrder.orderNumber}:\n\nالحالة الحالية: ${currentStatus}\nالحالة الجديدة: ${nextStatus}\n\nهل تريد المتابعة؟`
+      `تأكيد تحديث الطلب ${targetOrder.orderNumber}:\n\nالحالة الحالية: ${currentStatus}\nالحالة الجديدة: ${nextStatus}\n\nهل تريد المتابعة؟`,
     );
     if (!confirmed) return;
 
@@ -574,7 +645,9 @@ export default function AdminOperationsPage() {
       if (error) throw error;
 
       setOrders((prev) =>
-        prev.map((o) => (o.id === orderId ? { ...o, status: newStatus, updatedAt: new Date().toISOString() } : o))
+        prev.map((o) =>
+          o.id === orderId ? { ...o, status: newStatus, updatedAt: new Date().toISOString() } : o,
+        ),
       );
 
       // Send one TextBee notice for each mapped shipment milestone. The server
@@ -613,7 +686,10 @@ export default function AdminOperationsPage() {
         });
         if (notificationError) {
           console.error("تم تحديث حالة الطلب لكن تعذر إنشاء الإشعار:", notificationError);
-          setStatusNotice({ type: "warning", message: `تم تحديث حالة الطلب ${targetOrder.orderNumber}، لكن تعذر حفظ إشعار التطبيق.${stageSmsNotice}` });
+          setStatusNotice({
+            type: "warning",
+            message: `تم تحديث حالة الطلب ${targetOrder.orderNumber}، لكن تعذر حفظ إشعار التطبيق.${stageSmsNotice}`,
+          });
           return;
         }
       } else {
@@ -624,10 +700,16 @@ export default function AdminOperationsPage() {
         return;
       }
 
-      setStatusNotice({ type: stageSmsNotice ? "warning" : "success", message: `تم تحديث حالة الطلب ${targetOrder.orderNumber} إلى «${nextStatus}» بنجاح.${stageSmsNotice}` });
+      setStatusNotice({
+        type: stageSmsNotice ? "warning" : "success",
+        message: `تم تحديث حالة الطلب ${targetOrder.orderNumber} إلى «${nextStatus}» بنجاح.${stageSmsNotice}`,
+      });
     } catch (error) {
       console.error("فشل تحديث حالة الطلب:", error);
-      setStatusNotice({ type: "error", message: `تعذر تحديث حالة الطلب ${targetOrder.orderNumber}. تحقق من الاتصال ثم حاول مرة أخرى.` });
+      setStatusNotice({
+        type: "error",
+        message: `تعذر تحديث حالة الطلب ${targetOrder.orderNumber}. تحقق من الاتصال ثم حاول مرة أخرى.`,
+      });
     } finally {
       updatingOrderIdsRef.current.delete(orderId);
       setUpdatingOrderIds(new Set(updatingOrderIdsRef.current));
@@ -649,9 +731,7 @@ export default function AdminOperationsPage() {
   const handleCreateShipment = async (newOrder: OrderItem) => {
     const originalPriceSAR = Number(newOrder.originalPrice);
     const hasValidOriginalPrice = Number.isFinite(originalPriceSAR) && originalPriceSAR > 0;
-    const totalCostYER = hasValidOriginalPrice
-      ? Math.round(originalPriceSAR * 142)
-      : undefined;
+    const totalCostYER = hasValidOriginalPrice ? Math.round(originalPriceSAR * 142) : undefined;
 
     // السعر المدخل في نموذج الإدارة موسوم بـ SAR. نخزن الأصل كما هو،
     // ونحفظ مقابله بالريال اليمني حسب معامل التحويل المستخدم في صفحة الطلبات.
@@ -724,20 +804,24 @@ export default function AdminOperationsPage() {
   // تصفية الشحنات
   const filteredOrders = useMemo(() => {
     return orders.filter((o) => {
-      const matchStore = selectedStore === "ALL" || o.storeName.toUpperCase() === selectedStore.toUpperCase();
+      const matchStore =
+        selectedStore === "ALL" || o.storeName.toUpperCase() === selectedStore.toUpperCase();
       const matchSearch =
         searchQuery === "" ||
         o.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (o.customerName ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
         (o.customerPhone ?? "").includes(searchQuery) ||
-        (o.intlTrackingNumber && o.intlTrackingNumber.toLowerCase().includes(searchQuery.toLowerCase()));
+        (o.intlTrackingNumber &&
+          o.intlTrackingNumber.toLowerCase().includes(searchQuery.toLowerCase()));
       return matchStore && matchSearch;
     });
   }, [orders, selectedStore, searchQuery]);
 
   // المؤشرات KPIs
   const totalShipments = orders.length;
-  const transitShipments = orders.filter((o) => ["purchased", "warehouse_china", "international_ship"].includes(o.status)).length;
+  const transitShipments = orders.filter((o) =>
+    ["purchased", "warehouse_china", "international_ship"].includes(o.status),
+  ).length;
   const deliveredShipments = orders.filter((o) => o.status === "delivered").length;
   const billedRevenue: number | null = null;
   const netProfit: number | null = null;
@@ -746,9 +830,15 @@ export default function AdminOperationsPage() {
     ? [...orders].sort((a, b) => Date.parse(b.createdAt ?? "") - Date.parse(a.createdAt ?? ""))
     : [];
   const dashboardStats: DashboardStats = {
-    activeShipments: ordersLoadedFromDatabase ? dashboardOrders.filter((order) => !["delivered", "cancelled"].includes(order.status)).length : null,
-    followUpOrders: ordersLoadedFromDatabase ? dashboardOrders.filter((order) => ["new", "reviewing"].includes(order.status)).length : null,
-    completedShipments: ordersLoadedFromDatabase ? dashboardOrders.filter((order) => order.status === "delivered").length : null,
+    activeShipments: ordersLoadedFromDatabase
+      ? dashboardOrders.filter((order) => !["delivered", "cancelled"].includes(order.status)).length
+      : null,
+    followUpOrders: ordersLoadedFromDatabase
+      ? dashboardOrders.filter((order) => ["new", "reviewing"].includes(order.status)).length
+      : null,
+    completedShipments: ordersLoadedFromDatabase
+      ? dashboardOrders.filter((order) => order.status === "delivered").length
+      : null,
     totalCollected: null,
   };
   const dashboardShipments: ShipmentPreview[] = dashboardOrders.slice(0, 3).map((order) => ({
@@ -756,7 +846,12 @@ export default function AdminOperationsPage() {
     status: STATUS_MAP_TO_ARABIC[order.status] || order.status,
     detail: `الحالة المسجلة في الطلب: ${STATUS_MAP_TO_ARABIC[order.status] || order.status}`,
     progress: null,
-    tone: order.status === "delivered" ? "green" : ["new", "reviewing"].includes(order.status) ? "orange" : "blue",
+    tone:
+      order.status === "delivered"
+        ? "green"
+        : ["new", "reviewing"].includes(order.status)
+          ? "orange"
+          : "blue",
   }));
   const relativeArabicTime = (isoDate: string) => {
     const minutes = Math.max(0, Math.floor((Date.now() - Date.parse(isoDate)) / 60_000));
@@ -788,10 +883,7 @@ export default function AdminOperationsPage() {
         loading: false,
         valid: false,
         deviceIdConfigured: null,
-        message:
-          error instanceof Error
-            ? error.message
-            : "تعذّر فحص إعداد TextBee.",
+        message: error instanceof Error ? error.message : "تعذّر فحص إعداد TextBee.",
       });
     }
   };
@@ -801,16 +893,67 @@ export default function AdminOperationsPage() {
       stats={dashboardStats}
       shipments={dashboardShipments}
       activities={dashboardActivities}
-      dataNotice={ordersLoadedFromDatabase ? "الأرقام والشحنات والنشاط مشتقة من جدول orders. مبلغ التحصيل غير معروض لعدم اعتماد مصدر مالي." : "لم يتم تحميل بيانات موثقة من جدول orders بعد؛ القيم المالية والنشاط التجريبي غير معروضين."}
+      dataNotice={
+        ordersLoadedFromDatabase
+          ? "الأرقام والشحنات والنشاط مشتقة من جدول orders. مبلغ التحصيل غير معروض لعدم اعتماد مصدر مالي."
+          : "لم يتم تحميل بيانات موثقة من جدول orders بعد؛ القيم المالية والنشاط التجريبي غير معروضين."
+      }
       onSearch={setSearchQuery}
-      toolbar={(
+      toolbar={
         <div className="flex flex-wrap items-center gap-2" dir="rtl">
-          <button type="button" onClick={() => setIsAddModalOpen(true)} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-orange-600 px-3 py-2 text-xs font-bold text-white hover:bg-orange-700"><PlusCircle className="size-4" /> إنشاء شحنة</button>
-          <button type="button" onClick={() => setIsQuickScanOpen(true)} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#1a2a52] px-3 py-2 text-xs font-bold text-white hover:bg-[#243a70]"><ScanLine className="size-4" /> مسح باركود</button>
-          <button type="button" onClick={fetchOrdersFromDatabase} disabled={loading} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 disabled:opacity-50"><RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} /> تحديث</button>
-          <button type="button" onClick={downloadLocalBackup} disabled={backupLoading} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 disabled:opacity-50"><Download className="size-4" /> {backupLoading ? "جارٍ التصدير…" : "تصدير"}</button>
-          <button type="button" onClick={() => { setPosNotice(""); setIsPosOpen(true); }} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700"><Wallet className="size-4" /> POS</button>
-          <button type="button" onClick={() => navigateTo("/notifications")} className="relative grid size-10 place-items-center rounded-xl border border-slate-200 bg-white text-slate-600" aria-label="الإشعارات"><Bell className="size-4" />{pendingPaymentsCount > 0 && <span className="absolute -top-1 -left-1 grid size-5 place-items-center rounded-full bg-red-600 text-[10px] font-black text-white">{pendingPaymentsCount}</span>}</button>
+          <button
+            type="button"
+            onClick={() => setIsAddModalOpen(true)}
+            className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-orange-600 px-3 py-2 text-xs font-bold text-white hover:bg-orange-700"
+          >
+            <PlusCircle className="size-4" /> إنشاء شحنة
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsQuickScanOpen(true)}
+            className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#1a2a52] px-3 py-2 text-xs font-bold text-white hover:bg-[#243a70]"
+          >
+            <ScanLine className="size-4" /> مسح باركود
+          </button>
+          <button
+            type="button"
+            onClick={fetchOrdersFromDatabase}
+            disabled={loading}
+            className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 disabled:opacity-50"
+          >
+            <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} /> تحديث
+          </button>
+          <button
+            type="button"
+            onClick={downloadLocalBackup}
+            disabled={backupLoading}
+            className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 disabled:opacity-50"
+          >
+            <Download className="size-4" /> {backupLoading ? "جارٍ التصدير…" : "تصدير"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setPosNotice("");
+              setIsPosOpen(true);
+            }}
+            className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700"
+          >
+            <Wallet className="size-4" /> POS
+          </button>
+          <button
+            type="button"
+            onClick={() => navigateTo("/notifications")}
+            className="relative grid size-10 place-items-center rounded-xl border border-slate-200 bg-white text-slate-600"
+            aria-label="الإشعارات"
+          >
+            <Bell className="size-4" />
+            {pendingPaymentsCount > 0 && (
+              <span className="absolute -top-1 -left-1 grid size-5 place-items-center rounded-full bg-red-600 text-[10px] font-black text-white">
+                {pendingPaymentsCount}
+              </span>
+            )}
+          </button>
           <button
             type="button"
             onClick={runTextBeeCheck}
@@ -838,10 +981,8 @@ export default function AdminOperationsPage() {
             </span>
           )}
         </div>
-      )}
+      }
     >
-
-
       <div className="mx-auto w-full min-w-0 max-w-[1600px] space-y-4 px-3 py-4 sm:space-y-6 sm:px-5 sm:py-6 lg:px-6 xl:px-8">
         {/* شريط التبويبات الثلاثية */}
         <div className="mx-auto flex w-full max-w-[1600px] min-w-0 gap-1 overflow-x-auto border-t border-slate-100 px-2 sm:gap-2 sm:px-5 lg:px-6 xl:px-8">
@@ -885,11 +1026,31 @@ export default function AdminOperationsPage() {
         {/* شريط الإحصائيات الحية الخماسي */}
         <AdminAlerts />
         <section className="grid grid-cols-1 md:grid-cols-2 gap-3" aria-label="التنبيهات العاجلة">
-          <button type="button" onClick={() => navigateTo("/payments")} className="flex items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-right hover:bg-amber-100">
-            <span><b className="block text-sm text-amber-900">طلبات الدفع المعلقة</b><small className="mt-1 block text-amber-800">{pendingPaymentsCount} طلب بانتظار المراجعة من قاعدة البيانات</small></span><span className="rounded-xl bg-white px-3 py-2 text-lg font-black text-amber-700">{pendingPaymentsCount}</span>
+          <button
+            type="button"
+            onClick={() => navigateTo("/payments")}
+            className="flex items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-right hover:bg-amber-100"
+          >
+            <span>
+              <b className="block text-sm text-amber-900">طلبات الدفع المعلقة</b>
+              <small className="mt-1 block text-amber-800">
+                {pendingPaymentsCount} طلب بانتظار المراجعة من قاعدة البيانات
+              </small>
+            </span>
+            <span className="rounded-xl bg-white px-3 py-2 text-lg font-black text-amber-700">
+              {pendingPaymentsCount}
+            </span>
           </button>
           <div className="flex items-center justify-between gap-3 rounded-2xl border border-orange-200 bg-orange-50 p-4 text-right">
-            <span><b className="block text-sm text-orange-900">شحنات التخليص الجمركي</b><small className="mt-1 block text-orange-800">راجع حالات الجمارك في قائمة الشحنات أو صفحة التتبع.</small></span><span className="rounded-xl bg-white px-3 py-2 text-lg font-black text-orange-700">{orders.filter((o) => /جمارك|customs/i.test(String(o.status))).length}</span>
+            <span>
+              <b className="block text-sm text-orange-900">شحنات التخليص الجمركي</b>
+              <small className="mt-1 block text-orange-800">
+                راجع حالات الجمارك في قائمة الشحنات أو صفحة التتبع.
+              </small>
+            </span>
+            <span className="rounded-xl bg-white px-3 py-2 text-lg font-black text-orange-700">
+              {orders.filter((o) => /جمارك|customs/i.test(String(o.status))).length}
+            </span>
           </div>
         </section>
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
@@ -916,7 +1077,9 @@ export default function AdminOperationsPage() {
               <span className="text-xs font-bold">تم التسليم بنجاح</span>
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
             </div>
-            <div className="text-2xl font-black text-emerald-600 font-mono">{deliveredShipments}</div>
+            <div className="text-2xl font-black text-emerald-600 font-mono">
+              {deliveredShipments}
+            </div>
             <div className="text-[11px] text-emerald-600 font-bold mt-1">تسليم لباب البيت</div>
           </div>
 
@@ -925,7 +1088,9 @@ export default function AdminOperationsPage() {
               <span className="text-xs font-bold">المبيعات المفوترة</span>
               <DollarSign className="w-4 h-4 text-[#0284C7]" />
             </div>
-            <div className="text-2xl font-black text-[#0284C7] font-mono">{billedRevenue === null ? "—" : Number(billedRevenue).toLocaleString("en-US")}</div>
+            <div className="text-2xl font-black text-[#0284C7] font-mono">
+              {billedRevenue === null ? "—" : Number(billedRevenue).toLocaleString("en-US")}
+            </div>
             <div className="text-[11px] text-slate-500 mt-1">تظهر بعد ربط بيانات الفواتير</div>
           </div>
 
@@ -934,20 +1099,111 @@ export default function AdminOperationsPage() {
               <span className="text-xs font-bold">صافي أرباح الوساطة</span>
               <TrendingUp className="w-4 h-4 text-emerald-600" />
             </div>
-            <div className="text-2xl font-black text-emerald-600 font-mono">{netProfit === null ? "—" : Number(netProfit).toLocaleString("en-US")}</div>
+            <div className="text-2xl font-black text-emerald-600 font-mono">
+              {netProfit === null ? "—" : Number(netProfit).toLocaleString("en-US")}
+            </div>
             <div className="text-[11px] text-slate-500 mt-1">تظهر بعد ربط بيانات الفواتير</div>
           </div>
         </div>
 
         <section className="grid grid-cols-1 xl:grid-cols-3 gap-4" aria-label="التحليل الأسبوعي">
           <div className="xl:col-span-2 rounded-2xl border border-sky-100 bg-white p-5 shadow-sm">
-            <div className="flex items-start justify-between gap-3"><div><h2 className="font-black text-[#0A2540]">حركة المبيعات والمشتريات — آخر 7 أيام</h2><p className="mt-1 text-[11px] text-slate-500">عرض توضيحي فقط؛ لا يمثل بيانات فعلية.</p></div><span className="rounded-full bg-sky-50 px-3 py-1 text-[10px] font-bold text-sky-700">أسبوعي</span></div>
-            <div className="mt-5 flex h-40 items-end justify-around gap-3 border-b border-slate-100 px-2">
-              {[{d:"السبت",s:55,p:31},{d:"الأحد",s:72,p:38},{d:"الاثنين",s:61,p:49},{d:"الثلاثاء",s:39,p:43},{d:"الأربعاء",s:28,p:20},{d:"الخميس",s:58,p:91},{d:"الجمعة",s:34,p:24}].map((day) => <div key={day.d} className="flex h-full min-w-7 flex-1 flex-col items-center justify-end gap-2"><div className="flex h-[118px] items-end gap-1"><span className="w-3 rounded-t bg-blue-500" style={{height:`${day.s}%`}} title="مبيعات توضيحية"/><span className="w-3 rounded-t bg-rose-400" style={{height:`${day.p}%`}} title="مشتريات توضيحية"/></div><span className="pb-2 text-[9px] text-slate-500">{day.d}</span></div>)}
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="font-black text-[#0A2540]">حركة المبيعات والمشتريات — آخر 7 أيام</h2>
+                <p className="mt-1 text-[11px] text-slate-500">
+                  عرض توضيحي فقط؛ لا يمثل بيانات فعلية.
+                </p>
+              </div>
+              <span className="rounded-full bg-sky-50 px-3 py-1 text-[10px] font-bold text-sky-700">
+                أسبوعي
+              </span>
             </div>
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[10px]"><span className="text-rose-700">يوم الذروة المعلن: 501,000 YER • يحتاج مطابقة مع الفواتير الفعلية</span><span className="flex gap-3"><span className="text-blue-700">■ المبيعات</span><span className="text-rose-600">■ المشتريات</span></span></div>
+            <div className="mt-5 flex h-40 items-end justify-around gap-3 border-b border-slate-100 px-2">
+              {[
+                { d: "السبت", s: 55, p: 31 },
+                { d: "الأحد", s: 72, p: 38 },
+                { d: "الاثنين", s: 61, p: 49 },
+                { d: "الثلاثاء", s: 39, p: 43 },
+                { d: "الأربعاء", s: 28, p: 20 },
+                { d: "الخميس", s: 58, p: 91 },
+                { d: "الجمعة", s: 34, p: 24 },
+              ].map((day) => (
+                <div
+                  key={day.d}
+                  className="flex h-full min-w-7 flex-1 flex-col items-center justify-end gap-2"
+                >
+                  <div className="flex h-[118px] items-end gap-1">
+                    <span
+                      className="w-3 rounded-t bg-blue-500"
+                      style={{ height: `${day.s}%` }}
+                      title="مبيعات توضيحية"
+                    />
+                    <span
+                      className="w-3 rounded-t bg-rose-400"
+                      style={{ height: `${day.p}%` }}
+                      title="مشتريات توضيحية"
+                    />
+                  </div>
+                  <span className="pb-2 text-[9px] text-slate-500">{day.d}</span>
+                </div>
+              ))}
+            </div>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[10px]">
+              <span className="text-rose-700">
+                يوم الذروة المعلن: 501,000 YER • يحتاج مطابقة مع الفواتير الفعلية
+              </span>
+              <span className="flex gap-3">
+                <span className="text-blue-700">■ المبيعات</span>
+                <span className="text-rose-600">■ المشتريات</span>
+              </span>
+            </div>
           </div>
-          <div className="rounded-2xl border border-sky-100 bg-white p-5 shadow-sm"><h2 className="font-black text-[#0A2540]">ملخص سير العمليات</h2><p className="mt-1 text-[11px] text-slate-500">محسوب من الشحنات المحمّلة في الصفحة.</p><div className="mt-5 space-y-4">{[{label:"طلبات قيد المراجعة",count:orders.filter(o=>o.status==="reviewing").length,color:"bg-amber-500"},{label:"طلبات قيد الشراء",count:orders.filter(o=>o.status==="purchased").length,color:"bg-blue-500"},{label:"شحنات دولية",count:orders.filter(o=>o.status==="international_ship").length,color:"bg-violet-500"},{label:"تم التسليم",count:deliveredShipments,color:"bg-emerald-500"}].map((x)=><div key={x.label}><div className="mb-1 flex justify-between text-xs"><span>{x.label}</span><b>{x.count}</b></div><div className="h-2 rounded-full bg-slate-100"><div className={`h-2 rounded-full ${x.color}`} style={{width:`${orders.length ? Math.max(4,Math.min(100,(x.count/orders.length)*100)) : 0}%`}}/></div></div>)}</div><a href="/payments" className="mt-5 block w-full rounded-xl bg-slate-50 px-3 py-2 text-center text-xs font-bold text-[#0F4C81]">مراجعة المدفوعات المعلقة ({pendingPaymentsCount})</a></div>
+          <div className="rounded-2xl border border-sky-100 bg-white p-5 shadow-sm">
+            <h2 className="font-black text-[#0A2540]">ملخص سير العمليات</h2>
+            <p className="mt-1 text-[11px] text-slate-500">محسوب من الشحنات المحمّلة في الصفحة.</p>
+            <div className="mt-5 space-y-4">
+              {[
+                {
+                  label: "طلبات قيد المراجعة",
+                  count: orders.filter((o) => o.status === "reviewing").length,
+                  color: "bg-amber-500",
+                },
+                {
+                  label: "طلبات قيد الشراء",
+                  count: orders.filter((o) => o.status === "purchased").length,
+                  color: "bg-blue-500",
+                },
+                {
+                  label: "شحنات دولية",
+                  count: orders.filter((o) => o.status === "international_ship").length,
+                  color: "bg-violet-500",
+                },
+                { label: "تم التسليم", count: deliveredShipments, color: "bg-emerald-500" },
+              ].map((x) => (
+                <div key={x.label}>
+                  <div className="mb-1 flex justify-between text-xs">
+                    <span>{x.label}</span>
+                    <b>{x.count}</b>
+                  </div>
+                  <div className="h-2 rounded-full bg-slate-100">
+                    <div
+                      className={`h-2 rounded-full ${x.color}`}
+                      style={{
+                        width: `${orders.length ? Math.max(4, Math.min(100, (x.count / orders.length) * 100)) : 0}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <a
+              href="/payments"
+              className="mt-5 block w-full rounded-xl bg-slate-50 px-3 py-2 text-center text-xs font-bold text-[#0F4C81]"
+            >
+              مراجعة المدفوعات المعلقة ({pendingPaymentsCount})
+            </a>
+          </div>
         </section>
 
         {/* مكون بث التنبيهات المباشرة */}
@@ -986,7 +1242,9 @@ export default function AdminOperationsPage() {
             {/* أدوات البحث وفلاتر المتاجر */}
             <div className="flex min-w-0 flex-col items-stretch gap-3 rounded-2xl border border-sky-100 bg-white p-3 shadow-xs sm:p-4 lg:flex-row lg:items-center lg:justify-between">
               <div className="relative w-full min-w-0 lg:w-auto lg:min-w-72 lg:flex-1">
-                <label htmlFor="orders-search" className="sr-only">البحث في الطلبات</label>
+                <label htmlFor="orders-search" className="sr-only">
+                  البحث في الطلبات
+                </label>
                 <input
                   id="orders-search"
                   type="search"
@@ -996,28 +1254,55 @@ export default function AdminOperationsPage() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="min-h-11 w-full min-w-0 rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-4 pr-10 text-xs font-bold outline-none transition focus:border-[#0284C7] focus:bg-white focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
                 />
-                <Search aria-hidden="true" className="pointer-events-none absolute right-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                <Search
+                  aria-hidden="true"
+                  className="pointer-events-none absolute right-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400"
+                />
               </div>
 
-              <div role="group" aria-label="تصفية الطلبات حسب المتجر" className="grid w-full min-w-0 grid-cols-2 gap-2 min-[390px]:grid-cols-3 lg:flex lg:w-auto lg:flex-wrap lg:justify-end">
-                {["ALL", "SHEIN", "Amazon", "AliExpress", "Trendyol", "iHerb", "TEMU"].map((store) => (
-                  <button
-                    key={store}
-                    type="button"
-                    onClick={() => setSelectedStore(store)}
-                    aria-pressed={selectedStore === store}
-                    className={`flex min-h-10 min-w-0 items-center justify-center rounded-xl px-2 py-2 text-center text-[11px] font-bold leading-tight transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 px-1.5 sm:px-3 sm:text-xs ${
-                      selectedStore === store
-                        ? "bg-[#0F4C81] text-white shadow-xs"
-                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                    }`}
-                  >
-                    <span className="break-words">{store === "ALL" ? "جميع المتاجر" : store === "iHerb" ? "آي هيرب iHerb" : store === "SHEIN" ? "شي إن SHEIN" : store === "Amazon" ? "أمازون Amazon" : store === "AliExpress" ? "علي إكسبريس" : store}</span>
-                  </button>
-                ))}
+              <div
+                role="group"
+                aria-label="تصفية الطلبات حسب المتجر"
+                className="grid w-full min-w-0 grid-cols-2 gap-2 min-[390px]:grid-cols-3 lg:flex lg:w-auto lg:flex-wrap lg:justify-end"
+              >
+                {["ALL", "SHEIN", "Amazon", "AliExpress", "Trendyol", "iHerb", "TEMU"].map(
+                  (store) => (
+                    <button
+                      key={store}
+                      type="button"
+                      onClick={() => setSelectedStore(store)}
+                      aria-pressed={selectedStore === store}
+                      className={`flex min-h-10 min-w-0 items-center justify-center rounded-xl px-2 py-2 text-center text-[11px] font-bold leading-tight transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 px-1.5 sm:px-3 sm:text-xs ${
+                        selectedStore === store
+                          ? "bg-[#0F4C81] text-white shadow-xs"
+                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      }`}
+                    >
+                      <span className="break-words">
+                        {store === "ALL"
+                          ? "جميع المتاجر"
+                          : store === "iHerb"
+                            ? "آي هيرب iHerb"
+                            : store === "SHEIN"
+                              ? "شي إن SHEIN"
+                              : store === "Amazon"
+                                ? "أمازون Amazon"
+                                : store === "AliExpress"
+                                  ? "علي إكسبريس"
+                                  : store}
+                      </span>
+                    </button>
+                  ),
+                )}
               </div>
-              <p role="status" aria-live="polite" aria-atomic="true" className="w-full min-w-0 break-words text-xs font-bold text-slate-600 lg:basis-full">
-                عدد الطلبات المطابقة: <span className="text-[#0F4C81]">{filteredOrders.length}</span>
+              <p
+                role="status"
+                aria-live="polite"
+                aria-atomic="true"
+                className="w-full min-w-0 break-words text-xs font-bold text-slate-600 lg:basis-full"
+              >
+                عدد الطلبات المطابقة:{" "}
+                <span className="text-[#0F4C81]">{filteredOrders.length}</span>
                 {searchQuery.trim() || selectedStore !== "ALL" ? " وفق البحث والفلاتر الحالية" : ""}
               </p>
             </div>
@@ -1029,84 +1314,178 @@ export default function AdminOperationsPage() {
                 className={`flex min-w-0 items-start gap-2 rounded-xl border px-3 py-3 text-xs font-bold sm:px-4 ${statusNotice.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : statusNotice.type === "warning" ? "border-amber-200 bg-amber-50 text-amber-900" : "border-red-200 bg-red-50 text-red-800"}`}
               >
                 <span className="min-w-0 flex-1 break-words">{statusNotice.message}</span>
-                <button type="button" onClick={() => setStatusNotice(null)} aria-label="إغلاق رسالة تحديث الحالة" className="shrink-0 rounded-md px-2 py-1 hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current">إغلاق</button>
+                <button
+                  type="button"
+                  onClick={() => setStatusNotice(null)}
+                  aria-label="إغلاق رسالة تحديث الحالة"
+                  className="shrink-0 rounded-md px-2 py-1 hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current"
+                >
+                  إغلاق
+                </button>
               </div>
             )}
 
             {/* بطاقات الطلبات للجوال: محتوى قابل للالتفاف بلا تمرير أفقي */}
-            <section className="min-w-0 space-y-3 2xl:hidden" aria-label="قائمة الشحنات للشاشات الصغيرة والمتوسطة">
+            <section
+              className="min-w-0 space-y-3 2xl:hidden"
+              aria-label="قائمة الشحنات للشاشات الصغيرة والمتوسطة"
+            >
               <div className="flex min-w-0 items-center justify-between gap-2 rounded-2xl border border-sky-100 bg-white px-3 py-3 sm:px-4">
                 <h2 className="min-w-0 font-black text-sm text-[#0A2540]">الطلبات والشحنات</h2>
-                <span className="shrink-0 rounded-full bg-sky-50 px-2.5 py-1 text-[11px] font-bold text-[#0F4C81]">{filteredOrders.length} نتيجة</span>
+                <span className="shrink-0 rounded-full bg-sky-50 px-2.5 py-1 text-[11px] font-bold text-[#0F4C81]">
+                  {filteredOrders.length} نتيجة
+                </span>
               </div>
               {filteredOrders.length === 0 ? (
-                <div className="rounded-2xl border bg-white p-8 text-center text-sm text-slate-500">لا توجد شحنات مطابقة.</div>
-              ) : filteredOrders.map((order) => (
-                <article key={order.id} className="w-full min-w-0 overflow-hidden rounded-2xl border border-sky-100 bg-white p-3 shadow-sm transition-shadow focus-within:border-sky-400 focus-within:ring-2 focus-within:ring-sky-400 focus-within:ring-offset-2 sm:p-4">
-                  <div className="flex min-w-0 flex-wrap items-start justify-between gap-2 border-b border-slate-100 pb-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="break-all font-mono text-sm font-black text-[#0F4C81]">{order.orderNumber}</p>
-                      <span className="mt-1 inline-flex max-w-full break-words rounded-md bg-orange-50 px-2 py-0.5 text-[10px] font-black text-orange-700">{order.storeName}</span>
-                    </div>
-                    <span className="max-w-full shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-600">{STATUS_MAP_TO_ARABIC[order.status]}</span>
-                  </div>
-
-                  <div className="mt-3 grid min-w-0 grid-cols-1 gap-3 text-xs sm:grid-cols-2">
-                    <div className="min-w-0 rounded-xl bg-slate-50 p-3">
-                      <p className="text-[10px] font-bold text-slate-400">العميل</p>
-                      <p className="mt-1 break-words font-bold text-[#0A2540]">{order.customerName || "—"}</p>
-                      <p dir="ltr" className="mt-1 break-all text-right font-mono text-slate-500">{order.customerPhone || "—"}</p>
-                    </div>
-                    <div className="min-w-0 rounded-xl bg-slate-50 p-3">
-                      <p className="text-[10px] font-bold text-slate-400">المنتج والمدينة</p>
-                      <p className="mt-1 break-words font-bold text-[#0A2540]">{order.productTitle || "—"}</p>
-                      <p className="mt-1 break-words text-slate-500">{order.customerCity || "صنعاء"}</p>
-                    </div>
-                    {order.intlTrackingNumber && (
-                      <div className="min-w-0 rounded-xl bg-sky-50 p-3 sm:col-span-2">
-                        <p className="text-[10px] font-bold text-slate-400">رقم التتبع الدولي</p>
-                        <p dir="ltr" className="mt-1 break-all text-right font-mono font-bold text-[#0F4C81]">{order.intlTrackingNumber}</p>
+                <div className="rounded-2xl border bg-white p-8 text-center text-sm text-slate-500">
+                  لا توجد شحنات مطابقة.
+                </div>
+              ) : (
+                filteredOrders.map((order) => (
+                  <article
+                    key={order.id}
+                    className="w-full min-w-0 overflow-hidden rounded-2xl border border-sky-100 bg-white p-3 shadow-sm transition-shadow focus-within:border-sky-400 focus-within:ring-2 focus-within:ring-sky-400 focus-within:ring-offset-2 sm:p-4"
+                  >
+                    <div className="flex min-w-0 flex-wrap items-start justify-between gap-2 border-b border-slate-100 pb-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="break-all font-mono text-sm font-black text-[#0F4C81]">
+                          {order.orderNumber}
+                        </p>
+                        <span className="mt-1 inline-flex max-w-full break-words rounded-md bg-orange-50 px-2 py-0.5 text-[10px] font-black text-orange-700">
+                          {order.storeName}
+                        </span>
                       </div>
-                    )}
-                  </div>
+                      <span className="max-w-full shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-600">
+                        {STATUS_MAP_TO_ARABIC[order.status]}
+                      </span>
+                    </div>
 
-                  <label className="mt-3 block min-w-0 text-[11px] font-bold text-slate-500">
-                    تحديث المرحلة
-                    <select aria-label={`تحديث مرحلة الطلب ${order.orderNumber}`} aria-busy={updatingOrderIds.has(order.id)} disabled={updatingOrderIds.has(order.id)} value={order.status} onChange={(e) => handleStatusChange(order.id, e.target.value as OrderStatus)} className="mt-1 min-h-11 w-full min-w-0 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-[#0A2540] outline-none transition focus:border-[#0284C7] focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60">
-                      <option value="new">1. استلام الطلب والاعتماد</option><option value="reviewing">2. تدقيق التكاليف والأوزان</option><option value="purchased">3. الشراء من المتجر الدولي</option><option value="warehouse_china">4. وصول المستودع الدولي</option><option value="international_ship">5. الشحن الدولي (جوي/بحري)</option><option value="shipped">6. الفرز والتسليم للمندوب</option><option value="delivered">7. تم التسليم بنجاح</option><option value="cancelled">إلغاء الطلب</option>
-                    </select>
-                  </label>
+                    <div className="mt-3 grid min-w-0 grid-cols-1 gap-3 text-xs sm:grid-cols-2">
+                      <div className="min-w-0 rounded-xl bg-slate-50 p-3">
+                        <p className="text-[10px] font-bold text-slate-400">العميل</p>
+                        <p className="mt-1 break-words font-bold text-[#0A2540]">
+                          {order.customerName || "—"}
+                        </p>
+                        <p dir="ltr" className="mt-1 break-all text-right font-mono text-slate-500">
+                          {order.customerPhone || "—"}
+                        </p>
+                      </div>
+                      <div className="min-w-0 rounded-xl bg-slate-50 p-3">
+                        <p className="text-[10px] font-bold text-slate-400">المنتج والمدينة</p>
+                        <p className="mt-1 break-words font-bold text-[#0A2540]">
+                          {order.productTitle || "—"}
+                        </p>
+                        <p className="mt-1 break-words text-slate-500">
+                          {order.customerCity || "صنعاء"}
+                        </p>
+                      </div>
+                      {order.intlTrackingNumber && (
+                        <div className="min-w-0 rounded-xl bg-sky-50 p-3 sm:col-span-2">
+                          <p className="text-[10px] font-bold text-slate-400">رقم التتبع الدولي</p>
+                          <p
+                            dir="ltr"
+                            className="mt-1 break-all text-right font-mono font-bold text-[#0F4C81]"
+                          >
+                            {order.intlTrackingNumber}
+                          </p>
+                        </div>
+                      )}
+                    </div>
 
-                  <div className="mt-3 grid min-w-0 grid-cols-2 gap-2">
-                    <button type="button" onClick={() => sendWhatsAppNotification(order)} className="flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl bg-emerald-50 px-2 text-xs font-bold text-emerald-700 hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2" aria-label="رسالة واتساب">
-                      <MessageCircle className="size-4 shrink-0" /><span>واتساب</span>
-                    </button>
-                    <button type="button" onClick={() => void copyTrackingCode(order)} className="flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl bg-amber-50 px-2 text-xs font-bold text-amber-700 hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2" aria-label="نسخ رقم التتبع">
-                      <Copy className="size-4 shrink-0" /><span>نسخ التتبع</span>
-                    </button>
-                    <button type="button" onClick={() => setPrintingOrder(order)} className="flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl bg-blue-50 px-2 text-xs font-bold text-blue-700 hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2" aria-label="طباعة السند">
-                      <Printer className="size-4 shrink-0" /><span>طباعة السند</span>
-                    </button>
-                    <button type="button" onClick={() => void handleDeleteOrder(order.id, order.orderNumber)} className="flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl bg-red-50 px-2 text-xs font-bold text-red-600 hover:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2" aria-label="حذف الشحنة">
-                      <Trash2 className="size-4 shrink-0" /><span>حذف</span>
-                    </button>
-                  </div>
-                </article>
-              ))}
+                    <label className="mt-3 block min-w-0 text-[11px] font-bold text-slate-500">
+                      تحديث المرحلة
+                      <select
+                        aria-label={`تحديث مرحلة الطلب ${order.orderNumber}`}
+                        aria-busy={updatingOrderIds.has(order.id)}
+                        disabled={updatingOrderIds.has(order.id)}
+                        value={order.status}
+                        onChange={(e) =>
+                          handleStatusChange(order.id, e.target.value as OrderStatus)
+                        }
+                        className="mt-1 min-h-11 w-full min-w-0 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-[#0A2540] outline-none transition focus:border-[#0284C7] focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60"
+                      >
+                        <option value="new">1. استلام الطلب والاعتماد</option>
+                        <option value="reviewing">2. تدقيق التكاليف والأوزان</option>
+                        <option value="purchased">3. الشراء من المتجر الدولي</option>
+                        <option value="warehouse_china">4. وصول المستودع الدولي</option>
+                        <option value="international_ship">5. الشحن الدولي (جوي/بحري)</option>
+                        <option value="shipped">6. الفرز والتسليم للمندوب</option>
+                        <option value="delivered">7. تم التسليم بنجاح</option>
+                        <option value="cancelled">إلغاء الطلب</option>
+                      </select>
+                    </label>
+
+                    <div className="mt-3 grid min-w-0 grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => sendWhatsAppNotification(order)}
+                        className="flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl bg-emerald-50 px-2 text-xs font-bold text-emerald-700 hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
+                        aria-label="رسالة واتساب"
+                      >
+                        <MessageCircle className="size-4 shrink-0" />
+                        <span>واتساب</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void copyTrackingCode(order)}
+                        className="flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl bg-amber-50 px-2 text-xs font-bold text-amber-700 hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
+                        aria-label="نسخ رقم التتبع"
+                      >
+                        <Copy className="size-4 shrink-0" />
+                        <span>نسخ التتبع</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPrintingOrder(order)}
+                        className="flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl bg-blue-50 px-2 text-xs font-bold text-blue-700 hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                        aria-label="طباعة السند"
+                      >
+                        <Printer className="size-4 shrink-0" />
+                        <span>طباعة السند</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleDeleteOrder(order.id, order.orderNumber)}
+                        className="flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl bg-red-50 px-2 text-xs font-bold text-red-600 hover:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
+                        aria-label="حذف الشحنة"
+                      >
+                        <Trash2 className="size-4 shrink-0" />
+                        <span>حذف</span>
+                      </button>
+                    </div>
+                  </article>
+                ))
+              )}
             </section>
 
             {/* جدول الشحنات للشاشات المتوسطة والكبيرة */}
-            <div id="orders-table" className="hidden min-w-0 rounded-2xl border border-sky-100 bg-white shadow-xs 2xl:block">
-              <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3"><h2 className="font-black text-sm text-[#0A2540]">الطلبات والشحنات</h2><span className="text-xs text-slate-500">{filteredOrders.length} نتيجة</span></div>
+            <div
+              id="orders-table"
+              className="hidden min-w-0 rounded-2xl border border-sky-100 bg-white shadow-xs 2xl:block"
+            >
+              <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+                <h2 className="font-black text-sm text-[#0A2540]">الطلبات والشحنات</h2>
+                <span className="text-xs text-slate-500">{filteredOrders.length} نتيجة</span>
+              </div>
               <div className="w-full min-w-0 overflow-hidden">
                 <table className="w-full table-fixed text-right text-xs">
                   <thead className="bg-[#F0F7FF] text-[#0F4C81] border-b border-sky-100">
                     <tr>
-                      <th className="w-[16%] break-words px-2 py-3 font-black sm:px-3">الشحنة / المتجر</th>
-                      <th className="w-[18%] break-words px-2 py-3 font-black sm:px-3">العميل والهاتف</th>
-                      <th className="w-[22%] break-words px-2 py-3 font-black sm:px-3">المنتج والتفاصيل</th>
-                      <th className="w-[24%] break-words px-2 py-3 font-black sm:px-3">المرحلة الحالية</th>
-                      <th className="w-[20%] break-words px-1 py-3 text-center font-black sm:px-2">إجراء فوري</th>
+                      <th className="w-[16%] break-words px-2 py-3 font-black sm:px-3">
+                        الشحنة / المتجر
+                      </th>
+                      <th className="w-[18%] break-words px-2 py-3 font-black sm:px-3">
+                        العميل والهاتف
+                      </th>
+                      <th className="w-[22%] break-words px-2 py-3 font-black sm:px-3">
+                        المنتج والتفاصيل
+                      </th>
+                      <th className="w-[24%] break-words px-2 py-3 font-black sm:px-3">
+                        المرحلة الحالية
+                      </th>
+                      <th className="w-[20%] break-words px-1 py-3 text-center font-black sm:px-2">
+                        إجراء فوري
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -1120,20 +1499,33 @@ export default function AdminOperationsPage() {
                       filteredOrders.map((order) => (
                         <tr key={order.id} className="hover:bg-slate-50/80 transition-colors">
                           <td className="break-words px-2 py-3 sm:px-3">
-                            <div className="break-all font-mono font-bold text-[#0F4C81]">{order.orderNumber}</div>
+                            <div className="break-all font-mono font-bold text-[#0F4C81]">
+                              {order.orderNumber}
+                            </div>
                             <span className="inline-block mt-1 px-2 py-0.5 rounded-md text-[10px] font-black bg-orange-100 text-[#EA580C]">
                               {order.storeName}
                             </span>
                           </td>
 
                           <td className="break-words px-2 py-3 sm:px-3">
-                            <div className="break-words font-bold text-[#0A2540]">{order.customerName}</div>
-                            <div dir="ltr" className="mt-0.5 break-all text-right font-mono text-[11px] text-slate-500">{order.customerPhone}</div>
+                            <div className="break-words font-bold text-[#0A2540]">
+                              {order.customerName}
+                            </div>
+                            <div
+                              dir="ltr"
+                              className="mt-0.5 break-all text-right font-mono text-[11px] text-slate-500"
+                            >
+                              {order.customerPhone}
+                            </div>
                           </td>
 
                           <td className="max-w-0 break-words px-2 py-3 sm:px-3">
-                            <div className="break-words font-bold text-slate-700">{order.productTitle}</div>
-                            <div className="text-[11px] text-slate-400 mt-0.5">{order.customerCity || "صنعاء"}</div>
+                            <div className="break-words font-bold text-slate-700">
+                              {order.productTitle}
+                            </div>
+                            <div className="text-[11px] text-slate-400 mt-0.5">
+                              {order.customerCity || "صنعاء"}
+                            </div>
                           </td>
 
                           <td className="min-w-0 break-words px-2 py-3 sm:px-3">
@@ -1142,7 +1534,9 @@ export default function AdminOperationsPage() {
                               aria-busy={updatingOrderIds.has(order.id)}
                               disabled={updatingOrderIds.has(order.id)}
                               value={order.status}
-                              onChange={(e) => handleStatusChange(order.id, e.target.value as OrderStatus)}
+                              onChange={(e) =>
+                                handleStatusChange(order.id, e.target.value as OrderStatus)
+                              }
                               className="w-full min-w-0 max-w-full rounded-xl border border-slate-200 bg-slate-50 px-1.5 py-2 text-[10px] font-bold text-[#0A2540] sm:px-2 sm:text-xs outline-none transition focus:border-[#0284C7] focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60"
                             >
                               <option value="new">1. استلام الطلب والاعتماد</option>
@@ -1160,7 +1554,8 @@ export default function AdminOperationsPage() {
                             <div className="flex flex-wrap items-center justify-center gap-1">
                               <button
                                 onClick={() => sendWhatsAppNotification(order)}
-                                className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition cursor-pointer" aria-label="رسالة واتساب للعميل"
+                                className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition cursor-pointer"
+                                aria-label="رسالة واتساب للعميل"
                                 title="إرسال واتساب للعميل"
                               >
                                 <MessageCircle className="w-4 h-4" />
@@ -1168,14 +1563,16 @@ export default function AdminOperationsPage() {
 
                               <button
                                 onClick={() => copyTrackingCode(order)}
-                                className="p-2.5 rounded-xl bg-amber-50 text-amber-700 hover:bg-amber-100 transition cursor-pointer" aria-label="نسخ رقم التتبع"
+                                className="p-2.5 rounded-xl bg-amber-50 text-amber-700 hover:bg-amber-100 transition cursor-pointer"
+                                aria-label="نسخ رقم التتبع"
                                 title="نسخ رقم التتبع"
                               >
                                 <Copy className="w-4 h-4" />
                               </button>
                               <button
                                 onClick={() => setPrintingOrder(order)}
-                                className="p-2.5 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition cursor-pointer" aria-label="طباعة السند"
+                                className="p-2.5 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition cursor-pointer"
+                                aria-label="طباعة السند"
                                 title="طباعة سند قبض رسمي"
                               >
                                 <Printer className="w-4 h-4" />
@@ -1183,7 +1580,8 @@ export default function AdminOperationsPage() {
 
                               <button
                                 onClick={() => handleDeleteOrder(order.id, order.orderNumber)}
-                                className="p-2.5 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 transition cursor-pointer" aria-label="حذف الشحنة"
+                                className="p-2.5 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 transition cursor-pointer"
+                                aria-label="حذف الشحنة"
                                 title="حذف الشحنة"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -1203,15 +1601,56 @@ export default function AdminOperationsPage() {
         {/* 2. تبويب النظام المالي والمحاسبي */}
         {activeTab === "finance" && (
           <div className="space-y-6">
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-bold text-amber-900">الأرصدة أدناه قيم ابتدائية واردة في المواصفات وليست قراءة مباشرة من قاعدة البيانات؛ لا تعتمدها للمحاسبة قبل ربط جدول funds.</div>
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-bold text-amber-900">
+              الأرصدة أدناه قيم ابتدائية واردة في المواصفات وليست قراءة مباشرة من قاعدة البيانات؛ لا
+              تعتمدها للمحاسبة قبل ربط جدول funds.
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
               {[
-                { name: "بنك الكريمي الرئيسي", amount: "3,450,000", currency: "YER", tone: "text-[#0F4C81]" },
-                { name: "محفظة ون كاش OneCash", amount: "820,000", currency: "YER", tone: "text-[#0284C7]" },
-                { name: "الخزينة المركزية — صنعاء", amount: "410,000", currency: "YER", tone: "text-emerald-700" },
-                { name: "صندوق التوزيع — عدن", amount: "280,000", currency: "YER", tone: "text-orange-600" },
-                { name: "مصرف الراجحي — حوالات", amount: "4,200", currency: "SAR", tone: "text-violet-700" },
-              ].map((fund) => <div key={fund.name} className="bg-white p-5 rounded-2xl border border-sky-100 shadow-xs"><span className="text-xs font-bold text-slate-500">{fund.name}</span><div className={`text-xl font-black font-mono mt-2 ${fund.tone}`}>{fund.amount} {fund.currency}</div><div className="text-[10px] text-amber-700 mt-2">قيمة توضيحية • غير متصلة بقاعدة البيانات</div></div>)}
+                {
+                  name: "بنك الكريمي الرئيسي",
+                  amount: "3,450,000",
+                  currency: "YER",
+                  tone: "text-[#0F4C81]",
+                },
+                {
+                  name: "محفظة ون كاش OneCash",
+                  amount: "820,000",
+                  currency: "YER",
+                  tone: "text-[#0284C7]",
+                },
+                {
+                  name: "الخزينة المركزية — صنعاء",
+                  amount: "410,000",
+                  currency: "YER",
+                  tone: "text-emerald-700",
+                },
+                {
+                  name: "صندوق التوزيع — عدن",
+                  amount: "280,000",
+                  currency: "YER",
+                  tone: "text-orange-600",
+                },
+                {
+                  name: "مصرف الراجحي — حوالات",
+                  amount: "4,200",
+                  currency: "SAR",
+                  tone: "text-violet-700",
+                },
+              ].map((fund) => (
+                <div
+                  key={fund.name}
+                  className="bg-white p-5 rounded-2xl border border-sky-100 shadow-xs"
+                >
+                  <span className="text-xs font-bold text-slate-500">{fund.name}</span>
+                  <div className={`text-xl font-black font-mono mt-2 ${fund.tone}`}>
+                    {fund.amount} {fund.currency}
+                  </div>
+                  <div className="text-[10px] text-amber-700 mt-2">
+                    قيمة توضيحية • غير متصلة بقاعدة البيانات
+                  </div>
+                </div>
+              ))}
             </div>
 
             <div className="flex gap-3">
@@ -1248,47 +1687,56 @@ export default function AdminOperationsPage() {
         {/* 3. تبويب طاقم العمل والموظفين */}
         {activeTab === "employees" && (
           <div className="space-y-4">
-          <p role="note" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-900">تنبيه: بيانات الموظفين هنا محفوظة محلياً/نموذجية، ولا تثبت وجود حسابات موظفين فعلية أو تعيين أدوار في قاعدة البيانات.</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {employees.map((emp) => (
-              <div key={emp.id} className="bg-white p-5 rounded-2xl border border-sky-100 shadow-xs space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
-                    <span className="text-xs font-bold text-slate-600">بيانات محلية نموذجية</span>
+            <p
+              role="note"
+              className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-900"
+            >
+              تنبيه: بيانات الموظفين هنا محفوظة محلياً/نموذجية، ولا تثبت وجود حسابات موظفين فعلية أو
+              تعيين أدوار في قاعدة البيانات.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {employees.map((emp) => (
+                <div
+                  key={emp.id}
+                  className="bg-white p-5 rounded-2xl border border-sky-100 shadow-xs space-y-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
+                      <span className="text-xs font-bold text-slate-600">بيانات محلية نموذجية</span>
+                    </div>
+                    <span className="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
+                      {emp.department}
+                    </span>
                   </div>
-                  <span className="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
-                    {emp.department}
-                  </span>
-                </div>
 
-                <div>
-                  <h4 className="font-bold text-sm text-[#0A2540]">{emp.name}</h4>
-                  <p className="text-xs text-slate-500 mt-0.5">{emp.role}</p>
-                </div>
+                  <div>
+                    <h4 className="font-bold text-sm text-[#0A2540]">{emp.name}</h4>
+                    <p className="text-xs text-slate-500 mt-0.5">{emp.role}</p>
+                  </div>
 
-                <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs font-mono text-slate-600">
-                  <span>{emp.phone}</span>
-                  <div className="flex gap-2">
-                    <a
-                      href={`https://wa.me/967${emp.phone}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
-                    >
-                      <MessageCircle className="w-3.5 h-3.5" />
-                    </a>
-                    <a
-                      href={`tel:${emp.phone}`}
-                      className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100"
-                    >
-                      <Phone className="w-3.5 h-3.5" />
-                    </a>
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs font-mono text-slate-600">
+                    <span>{emp.phone}</span>
+                    <div className="flex gap-2">
+                      <a
+                        href={`https://wa.me/967${emp.phone}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5" />
+                      </a>
+                      <a
+                        href={`tel:${emp.phone}`}
+                        className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100"
+                      >
+                        <Phone className="w-3.5 h-3.5" />
+                      </a>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
@@ -1297,7 +1745,9 @@ export default function AdminOperationsPage() {
       {isAccountsTreeOpen && <AccountsTreeModal onClose={() => setIsAccountsTreeOpen(false)} />}
 
       {/* 3. نافذة الفحص السريع */}
-      {isQuickScanOpen && <QuickScanModal orders={orders} onClose={() => setIsQuickScanOpen(false)} />}
+      {isQuickScanOpen && (
+        <QuickScanModal orders={orders} onClose={() => setIsQuickScanOpen(false)} />
+      )}
 
       {/* 4. نافذة إضافة شحنة جديدة وحفظها بالقاعدة */}
       {isAddModalOpen && (
@@ -1308,14 +1758,83 @@ export default function AdminOperationsPage() {
       )}
 
       {/* 5. طباعة السند الرسمي مع الباركود */}
-      {printingOrder && <PrintReceiptModal order={printingOrder} onClose={() => setPrintingOrder(null)} />}
+      {printingOrder && (
+        <PrintReceiptModal order={printingOrder} onClose={() => setPrintingOrder(null)} />
+      )}
 
       {isPosOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3" role="dialog" aria-modal="true" aria-labelledby="pos-title">
+        <div
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="pos-title"
+        >
           <section className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl" dir="rtl">
-            <div className="mb-5 flex items-center justify-between"><h2 id="pos-title" className="text-lg font-black text-[#0A2540]">كاشير POS سريع</h2><button type="button" onClick={() => setIsPosOpen(false)} className="rounded-xl bg-slate-100 p-2" aria-label="إغلاق"><X className="size-4" /></button></div>
-            <p className="mb-4 rounded-xl bg-amber-50 p-3 text-xs text-amber-900">هذه النسخة تحسب وتطبع إيصالاً محلياً فقط. لا تحفظ مبيعات في قاعدة البيانات لعدم توفر تعريف جدول الفواتير في الأنواع الحالية.</p>
-            <div className="space-y-3"><label className="block text-xs font-bold">اسم الصنف<input value={posItemName} onChange={(e) => setPosItemName(e.target.value)} className="mt-1 w-full rounded-xl border p-3" placeholder="مثال: رسوم شحن" /></label><div className="grid grid-cols-2 gap-3"><label className="block text-xs font-bold">الكمية<input type="number" min="1" value={posQuantity} onChange={(e) => setPosQuantity(e.target.value)} className="mt-1 w-full rounded-xl border p-3" /></label><label className="block text-xs font-bold">سعر الوحدة (YER)<input type="number" min="0" value={posUnitPrice} onChange={(e) => setPosUnitPrice(e.target.value)} className="mt-1 w-full rounded-xl border p-3" /></label></div><div className="rounded-xl bg-slate-50 p-3 text-sm font-black">الإجمالي: {(Math.max(1, Number(posQuantity) || 1) * Math.max(0, Number(posUnitPrice) || 0)).toLocaleString("en-US")} YER</div>{posNotice && <p className="text-xs font-bold text-sky-700">{posNotice}</p>}<button type="button" onClick={printPosReceipt} className="w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-black text-white">طباعة الإيصال</button></div>
+            <div className="mb-5 flex items-center justify-between">
+              <h2 id="pos-title" className="text-lg font-black text-[#0A2540]">
+                كاشير POS سريع
+              </h2>
+              <button
+                type="button"
+                onClick={() => setIsPosOpen(false)}
+                className="rounded-xl bg-slate-100 p-2"
+                aria-label="إغلاق"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+            <p className="mb-4 rounded-xl bg-amber-50 p-3 text-xs text-amber-900">
+              هذه النسخة تحسب وتطبع إيصالاً محلياً فقط. لا تحفظ مبيعات في قاعدة البيانات لعدم توفر
+              تعريف جدول الفواتير في الأنواع الحالية.
+            </p>
+            <div className="space-y-3">
+              <label className="block text-xs font-bold">
+                اسم الصنف
+                <input
+                  value={posItemName}
+                  onChange={(e) => setPosItemName(e.target.value)}
+                  className="mt-1 w-full rounded-xl border p-3"
+                  placeholder="مثال: رسوم شحن"
+                />
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block text-xs font-bold">
+                  الكمية
+                  <input
+                    type="number"
+                    min="1"
+                    value={posQuantity}
+                    onChange={(e) => setPosQuantity(e.target.value)}
+                    className="mt-1 w-full rounded-xl border p-3"
+                  />
+                </label>
+                <label className="block text-xs font-bold">
+                  سعر الوحدة (YER)
+                  <input
+                    type="number"
+                    min="0"
+                    value={posUnitPrice}
+                    onChange={(e) => setPosUnitPrice(e.target.value)}
+                    className="mt-1 w-full rounded-xl border p-3"
+                  />
+                </label>
+              </div>
+              <div className="rounded-xl bg-slate-50 p-3 text-sm font-black">
+                الإجمالي:{" "}
+                {(
+                  Math.max(1, Number(posQuantity) || 1) * Math.max(0, Number(posUnitPrice) || 0)
+                ).toLocaleString("en-US")}{" "}
+                YER
+              </div>
+              {posNotice && <p className="text-xs font-bold text-sky-700">{posNotice}</p>}
+              <button
+                type="button"
+                onClick={printPosReceipt}
+                className="w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-black text-white"
+              >
+                طباعة الإيصال
+              </button>
+            </div>
           </section>
         </div>
       )}
@@ -1398,7 +1917,9 @@ export default function AdminOperationsPage() {
               </button>
               <button
                 onClick={() => {
-                  alert("لم يُحفظ السند: جدول vouchers غير مربوط في نسخة قاعدة البيانات الحالية. اربط الجدول وسياساته أولاً حتى لا يظهر نجاح غير حقيقي.");
+                  alert(
+                    "لم يُحفظ السند: جدول vouchers غير مربوط في نسخة قاعدة البيانات الحالية. اربط الجدول وسياساته أولاً حتى لا يظهر نجاح غير حقيقي.",
+                  );
                 }}
                 className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#0F4C81] to-[#0284C7] text-white font-bold text-xs cursor-pointer shadow-sm"
               >

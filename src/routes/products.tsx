@@ -1177,11 +1177,7 @@ export const ProductsPage: React.FC<ProductsRouteProps> = ({
  * مسار الإدارة الفرعي /products/manage يظل متاحًا عبر Outlet.
  */
 const CustomerProductsHiddenPage: React.FC = () => (
-  <main
-    dir="rtl"
-    lang="ar"
-    className="min-h-screen bg-slate-50 px-4 py-16 text-slate-900"
-  >
+  <main dir="rtl" lang="ar" className="min-h-screen bg-slate-50 px-4 py-16 text-slate-900">
     <section className="mx-auto flex min-h-[60vh] max-w-3xl flex-col items-center justify-center rounded-3xl border border-slate-200 bg-white px-6 py-12 text-center shadow-sm">
       <div
         aria-hidden="true"

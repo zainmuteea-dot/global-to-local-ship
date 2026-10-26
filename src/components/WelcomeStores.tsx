@@ -230,13 +230,13 @@ export default function WelcomeStores({ onSubmitLink }: WelcomeStoresProps) {
 
       <section className="wsm-welcome" dir="rtl" aria-labelledby="wsm-welcome-title">
         <div className="wsm-badge">
-          <span className="wsm-badge-star" aria-hidden="true">★</span>
+          <span className="wsm-badge-star" aria-hidden="true">
+            ★
+          </span>
           <span>خدمة التسوق الأولى في اليمن</span>
         </div>
         <h1 id="wsm-welcome-title">تسوق عالمياً، واستمتع محلياً</h1>
-        <p>
-          اطلب من أي متجر عالمي ونوصله لباب بيتك في جميع المحافظات بأقل تكلفة وأعلى موثوقية
-        </p>
+        <p>اطلب من أي متجر عالمي ونوصله لباب بيتك في جميع المحافظات بأقل تكلفة وأعلى موثوقية</p>
       </section>
 
       <section className="wsm-stores" dir="rtl" aria-label="المتاجر العالمية">
@@ -261,7 +261,16 @@ export default function WelcomeStores({ onSubmitLink }: WelcomeStoresProps) {
       <section className="wsm-search" dir="rtl" aria-label="طلب منتج من رابط">
         <form className="wsm-search-form" onSubmit={handleSubmit}>
           <span className="wsm-search-icon" aria-hidden="true">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <circle cx="11" cy="11" r="8" />
               <line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
@@ -278,7 +287,9 @@ export default function WelcomeStores({ onSubmitLink }: WelcomeStoresProps) {
             onChange={(event) => setProductUrl(event.target.value)}
             required
           />
-          <button className="wsm-search-button" type="submit">اطلب الآن</button>
+          <button className="wsm-search-button" type="submit">
+            اطلب الآن
+          </button>
         </form>
       </section>
     </>
