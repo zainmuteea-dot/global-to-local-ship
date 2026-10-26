@@ -100,6 +100,8 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
   const [orders, setOrders] = useState<OrderItem[]>([]);
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [walletLoading, setWalletLoading] = useState(true);
+  const [walletLoadError, setWalletLoadError] = useState(false);
+  const [walletRetry, setWalletRetry] = useState(0);
 
   // بيانات الملف الشخصي
   const [customerName, setCustomerName] = useState("");
@@ -141,37 +143,48 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
     }
   }, [user]);
 
-  // تحميل الرصيد من معاملات المستخدم الحالي فقط.
+  // تحميل الرصيد من معاملات المستخدم الحالي فقط، بعد استعادة جلسة Supabase.
   useEffect(() => {
     let alive = true;
 
     const loadWalletBalance = async () => {
+      // useSession يبدأ باستعادة الجلسة؛ لا تنفذ استعلامًا قبل انتهاء الاستعادة.
+      if (isLoading) return;
+
       if (!user) {
         setWalletBalance(null);
+        setWalletLoadError(false);
         setWalletLoading(false);
         return;
       }
 
       setWalletLoading(true);
-      const { data, error } = await supabase
-        .from("wallet_transactions")
-        .select("amount")
-        .eq("user_id", user.id);
+      setWalletLoadError(false);
 
-      if (!alive) return;
+      try {
+        const { data, error } = await supabase
+          .from("wallet_transactions")
+          .select("amount")
+          .eq("user_id", user.id);
 
-      if (error) {
-        console.error("تعذر تحميل رصيد المحفظة:", error);
-        setWalletBalance(null);
-      } else {
+        if (error) throw error;
+        if (!alive) return;
+
         const balance = (data ?? []).reduce(
           (sum, transaction) => sum + Number(transaction.amount || 0),
           0,
         );
         setWalletBalance(balance);
+        setWalletLoadError(false);
+      } catch (error) {
+        if (!alive) return;
+        // التفاصيل الفنية تظهر للمطور في Console، لا في واجهة العميل.
+        console.error("تعذر تحميل رصيد المحفظة:", error);
+        setWalletBalance(null);
+        setWalletLoadError(true);
+      } finally {
+        if (alive) setWalletLoading(false);
       }
-
-      setWalletLoading(false);
     };
 
     void loadWalletBalance();
@@ -179,16 +192,18 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
     return () => {
       alive = false;
     };
-  }, [user]);
+  }, [user, isLoading, walletRetry]);
 
-  const walletBalanceText = walletLoading
+  const walletBalanceText = walletLoading || isLoading
     ? "جارٍ التحميل…"
-    : walletBalance === null
-      ? "تعذر التحميل"
-      : `${walletBalance.toLocaleString("ar-YE", {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })} ر.ي`;
+    : !user
+      ? "سجّل الدخول لعرض الرصيد"
+      : walletBalance === null
+        ? "تعذر تحميل الرصيد"
+        : `${walletBalance.toLocaleString("ar-YE", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })} ر.ي`;
 
   const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const input = event.currentTarget;
@@ -897,6 +912,16 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
                   <p className="text-xs text-slate-500 mt-1">
                     يمكنك استخدام الرصيد لدفع تكاليف الشحن والسلع مباشرة
                   </p>
+                  {walletLoadError && user && (
+                    <button
+                      type="button"
+                      onClick={() => setWalletRetry((attempt) => attempt + 1)}
+                      disabled={walletLoading}
+                      className="mt-2 text-xs font-bold text-sky-700 underline underline-offset-2 disabled:opacity-50"
+                    >
+                      {walletLoading ? "جارٍ إعادة المحاولة…" : "إعادة تحميل الرصيد"}
+                    </button>
+                  )}
                 </div>
                 <button
                   onClick={() => setActiveModal("support")}
