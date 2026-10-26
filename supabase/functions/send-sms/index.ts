@@ -2,9 +2,20 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const ALLOWED_ORIGINS = new Set([
   "https://alsouq-alshamel-kgr7rpu41-zain-muteea.vercel.app",
+  "https://alsouq-alshamel-kgr7rpu41-zain-muteea.vercel.app",
   "https://alsouq-alshamel-6a9edhh1c-zain-muteea.vercel.app",
   "https://alsouq-alshamel-hiev8qd1-zain-muteea.vercel.app",
 ]);
+
+// Vercel creates a new deployment hostname for each production/preview build.
+// Restrict the wildcard to this project and team instead of allowing every
+// Vercel origin.
+function isAllowedOrigin(origin: string | null): boolean {
+  if (!origin) return false;
+  return ALLOWED_ORIGINS.has(origin) ||
+    /^https:\/\/alsouq-alshamel-[a-z0-9-]+-zain-muteea\.vercel\.app$/i.test(origin) ||
+    /^http:\/\/localhost(?::\d+)?$/i.test(origin);
+}
 
 function corsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get("Origin");
@@ -16,8 +27,8 @@ function corsHeaders(req: Request): Record<string, string> {
     "Vary": "Origin",
   };
 
-  if (origin && ALLOWED_ORIGINS.has(origin)) {
-    headers["Access-Control-Allow-Origin"] = origin;
+  if (isAllowedOrigin(origin)) {
+    headers["Access-Control-Allow-Origin"] = origin!;
   }
 
   return headers;
@@ -93,7 +104,7 @@ Deno.serve(async (req: Request) => {
   try {
     const origin = req.headers.get("Origin");
 
-    if (origin && !ALLOWED_ORIGINS.has(origin)) {
+    if (origin && !isAllowedOrigin(origin)) {
       return json(req, 403, { error: "هذا النطاق غير مسموح." });
     }
 

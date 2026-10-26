@@ -72,8 +72,12 @@ const CSS = `
 .no-lbl{display:block;font-size:13.5px;font-weight:700;margin-bottom:7px;color:#334e73}
 .no-req{color:var(--orange-600);font-weight:900}
 .no-iw{position:relative}
-.no-iw .ic{position:absolute;inset-inline-start:13px;top:50%;transform:translateY(-50%);
+ .no-iw .ic{position:absolute;inset-inline-start:13px;top:50%;transform:translateY(-50%);
   color:var(--muted);width:18px;height:18px;pointer-events:none}
+ .no-location{position:absolute;inset-inline-end:8px;top:50%;transform:translateY(-50%);display:inline-flex;align-items:center;gap:5px;
+  border:0;border-radius:9px;background:var(--blue-800);color:#fff;padding:7px 9px;font:700 12px inherit;cursor:pointer}
+ .no-location:hover{background:var(--blue-600)}
+ .no-location:disabled{opacity:.65;cursor:wait}
 .no-root input,.no-root select,.no-root textarea{width:100%;font-family:inherit;font-size:14.5px;color:var(--ink);
   background:var(--blue-50);border:1.6px solid var(--line);border-radius:13px;padding:13px 15px;transition:.18s;outline:none}
 .no-root input.has-ic{padding-inline-start:42px}
@@ -501,6 +505,7 @@ function NewOrderPage() {
   const [url, setUrl] = useState("");
   // اسم المنتج لم يعد حقلاً مرئيًا؛ يُشتق تلقائيًا من المتجر أو من رابط الدخول.
   const [address, setAddress] = useState("");
+  const [isLocating, setIsLocating] = useState(false);
   const [price, setPrice] = useState("");
   const [currency, setCurrency] = useState("ر.س سعودي");
   const [notes, setNotes] = useState("");
@@ -596,6 +601,26 @@ function NewOrderPage() {
       active = false;
     };
   }, []);
+  const useCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setSbError("الموقع الجغرافي غير مدعوم في هذا المتصفح.");
+      return;
+    }
+
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        setAddress(`إحداثيات الموقع: ${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`);
+        setIsLocating(false);
+      },
+      () => {
+        setSbError("تعذر تحديد موقعك. اسمح بالوصول للموقع أو اكتب العنوان يدويًا.");
+        setIsLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
+    );
+  };
+
   // تفعيل الميكروفون والتسجيل الصوتي للملاحظات
   const toggleSpeechRecognition = () => {
     const SpeechRecognition =
@@ -1128,15 +1153,18 @@ function NewOrderPage() {
           <div className="no-q">
             هل توجد منتجات مكررة؟ <span className="no-req">*</span>
           </div>
-          <div className="no-choices">
+          <div className="no-choices" role="radiogroup" aria-label="هل توجد منتجات مكررة؟">
             {DUP_OPTS.map((o) => (
-              <div
+              <button
                 key={o}
+                type="button"
+                role="radio"
+                aria-checked={dup === o}
                 className={"no-choice" + (dup === o ? " active" : "")}
                 onClick={() => setDup(o)}
               >
                 {o}
-              </div>
+              </button>
             ))}
           </div>
         </section>
@@ -1158,11 +1186,22 @@ function NewOrderPage() {
               <Pin />
               <input
                 className="has-ic"
+                style={{ paddingInlineEnd: 112 }}
                 type="text"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 placeholder="مثال: صنعاء - شارع حدة - بجوار فندق برج السلام..."
               />
+              <button
+                className="no-location"
+                type="button"
+                onClick={useCurrentLocation}
+                disabled={isLocating}
+                aria-label="استخدام موقعي الحالي"
+              >
+                <Pin />
+                {isLocating ? "جارٍ التحديد" : "موقعي"}
+              </button>
             </div>
           </div>
           <div className="no-field">
