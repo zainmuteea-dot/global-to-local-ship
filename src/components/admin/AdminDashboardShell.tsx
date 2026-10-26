@@ -374,38 +374,60 @@ export function AdminDashboardShell({
             </span>
           </div>
 
-          <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4" aria-label="إحصائيات اليوم">
+          <section
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4"
+            aria-label="إحصائيات اليوم"
+          >
             <MetricCard
               title="مجموع الشحنات النشطة"
               value={stats.activeShipments === null ? "—" : String(stats.activeShipments)}
-              note={stats.activeShipments === null ? "بانتظار تحميل بيانات الطلبات" : "عدد فعلي من جدول الطلبات"}
+              note={
+                stats.activeShipments === null
+                  ? "بانتظار تحميل بيانات الطلبات"
+                  : "عدد فعلي من جدول الطلبات"
+              }
               tone="blue"
               icon={<Truck className="size-5" />}
             />
             <MetricCard
               title="طلبات تحتاج متابعة"
               value={stats.followUpOrders === null ? "—" : String(stats.followUpOrders)}
-              note={stats.followUpOrders === null ? "بانتظار تحميل بيانات الطلبات" : "طلبات جديدة أو قيد المراجعة"}
+              note={
+                stats.followUpOrders === null
+                  ? "بانتظار تحميل بيانات الطلبات"
+                  : "طلبات جديدة أو قيد المراجعة"
+              }
               tone="orange"
               icon={<Clock3 className="size-5" />}
             />
             <MetricCard
               title="شحنات مكتملة"
               value={stats.completedShipments === null ? "—" : String(stats.completedShipments)}
-              note={stats.completedShipments === null ? "بانتظار تحميل بيانات الطلبات" : "حالات التسليم في جدول الطلبات"}
+              note={
+                stats.completedShipments === null
+                  ? "بانتظار تحميل بيانات الطلبات"
+                  : "حالات التسليم في جدول الطلبات"
+              }
               tone="green"
               icon={<Check className="size-5" />}
             />
             <MetricCard
               title="إجمالي التحصيل"
               value={stats.totalCollected === null ? "—" : `SAR ${stats.totalCollected}`}
-              note={stats.totalCollected === null ? "يلزم ربط مصدر مالي موثوق" : "قيمة التحصيل من المصدر المالي"}
+              note={
+                stats.totalCollected === null
+                  ? "يلزم ربط مصدر مالي موثوق"
+                  : "قيمة التحصيل من المصدر المالي"
+              }
               tone="purple"
               icon={<CircleDollarSign className="size-5" />}
             />
           </section>
 
-          <section className="grid grid-cols-1 items-start gap-5 2xl:grid-cols-2" aria-label="تفاصيل اليوم">
+          <section
+            className="grid grid-cols-1 items-start gap-5 2xl:grid-cols-2"
+            aria-label="تفاصيل اليوم"
+          >
             <Panel
               title="أحدث الطلبات وحالاتها"
               icon={<PackageSearch className="size-5" aria-hidden="true" />}
@@ -429,7 +451,9 @@ export function AdminDashboardShell({
                               طلب #{shipment.id}
                             </h3>
                           </div>
-                          <span className={`rounded-full px-3 py-1 text-xs font-bold ${tone.badge}`}>
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-bold ${tone.badge}`}
+                          >
                             {shipment.status}
                           </span>
                         </div>
@@ -495,11 +519,7 @@ export function AdminDashboardShell({
             >
               <div className="flex items-center justify-between gap-3">
                 <span>{notice}</span>
-                <button
-                  type="button"
-                  onClick={() => setNotice("")}
-                  aria-label="إغلاق الرسالة"
-                >
+                <button type="button" onClick={() => setNotice("")} aria-label="إغلاق الرسالة">
                   <X className="size-4" />
                 </button>
               </div>

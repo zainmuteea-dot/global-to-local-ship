@@ -509,7 +509,9 @@ function NewOrderPage() {
   const [sbError, setSbError] = useState("");
   const [orderCode, setOrderCode] = useState("");
   const [trackingUnavailable, setTrackingUnavailable] = useState(false);
-  const [smsOutcome, setSmsOutcome] = useState<"pending" | "accepted" | "failed" | "unknown" | "not_sent">("not_sent");
+  const [smsOutcome, setSmsOutcome] = useState<
+    "pending" | "accepted" | "failed" | "unknown" | "not_sent"
+  >("not_sent");
   const [smsMessage, setSmsMessage] = useState("");
   const [copied, setCopied] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -659,19 +661,15 @@ function NewOrderPage() {
       setSbError("يرجى إدخال سعر صحيح أو ترك حقل السعر فارغًا.");
       return;
     }
-    const quoteCurrency = currency.includes("سعودي") || currency.includes("ر.س")
-      ? "SAR"
-      : currency.includes("$") || currency.includes("دولار")
-      ? "USD"
-      : "YER";
-    const conversionRate = quoteCurrency === "SAR"
-      ? 142
-      : quoteCurrency === "USD"
-      ? 535
-      : 1;
-    const totalCostYER = enteredPrice !== null && enteredPrice > 0
-      ? Math.round(enteredPrice * conversionRate)
-      : null;
+    const quoteCurrency =
+      currency.includes("سعودي") || currency.includes("ر.س")
+        ? "SAR"
+        : currency.includes("$") || currency.includes("دولار")
+          ? "USD"
+          : "YER";
+    const conversionRate = quoteCurrency === "SAR" ? 142 : quoteCurrency === "USD" ? 535 : 1;
+    const totalCostYER =
+      enteredPrice !== null && enteredPrice > 0 ? Math.round(enteredPrice * conversionRate) : null;
 
     setStatus("sending");
 
@@ -708,12 +706,14 @@ function NewOrderPage() {
           product_link: url.trim(),
           product_name: resolvedProductName,
           notes: notesSummary,
-          total_cost_usd: enteredPrice !== null && enteredPrice > 0 && quoteCurrency === "USD"
-            ? enteredPrice
-            : null,
-          total_cost_sar: enteredPrice !== null && enteredPrice > 0 && quoteCurrency === "SAR"
-            ? enteredPrice
-            : null,
+          total_cost_usd:
+            enteredPrice !== null && enteredPrice > 0 && quoteCurrency === "USD"
+              ? enteredPrice
+              : null,
+          total_cost_sar:
+            enteredPrice !== null && enteredPrice > 0 && quoteCurrency === "SAR"
+              ? enteredPrice
+              : null,
           total_cost_yer: totalCostYER,
           quote_currency: enteredPrice !== null && enteredPrice > 0 ? quoteCurrency : null,
           original_currency: enteredPrice !== null && enteredPrice > 0 ? quoteCurrency : null,
@@ -747,12 +747,14 @@ function NewOrderPage() {
           phone: phone.trim(),
           product_link: url.trim(),
           product_name: resolvedProductName,
-          total_cost_usd: enteredPrice !== null && enteredPrice > 0 && quoteCurrency === "USD"
-            ? enteredPrice
-            : null,
-          total_cost_sar: enteredPrice !== null && enteredPrice > 0 && quoteCurrency === "SAR"
-            ? enteredPrice
-            : null,
+          total_cost_usd:
+            enteredPrice !== null && enteredPrice > 0 && quoteCurrency === "USD"
+              ? enteredPrice
+              : null,
+          total_cost_sar:
+            enteredPrice !== null && enteredPrice > 0 && quoteCurrency === "SAR"
+              ? enteredPrice
+              : null,
           total_cost_yer: totalCostYER,
           quote_currency: enteredPrice !== null && enteredPrice > 0 ? quoteCurrency : null,
           original_currency: enteredPrice !== null && enteredPrice > 0 ? quoteCurrency : null,
@@ -808,18 +810,30 @@ function NewOrderPage() {
             setSmsMessage(detail);
           } else if (smsResult?.accepted === true) {
             setSmsOutcome("accepted");
-            setSmsMessage(`قبل مزود الخدمة رسالة تأكيد تتضمن رقم التتبع ${code}. هذا لا يؤكد وصولها للهاتف.`);
+            setSmsMessage(
+              `قبل مزود الخدمة رسالة تأكيد تتضمن رقم التتبع ${code}. هذا لا يؤكد وصولها للهاتف.`,
+            );
           } else if (smsResult?.status === "failed") {
             setSmsOutcome("failed");
-            setSmsMessage(typeof smsResult?.error === "string" ? smsResult.error : "تعذر إرسال SMS. راجع طلباتي قبل إعادة المحاولة.");
+            setSmsMessage(
+              typeof smsResult?.error === "string"
+                ? smsResult.error
+                : "تعذر إرسال SMS. راجع طلباتي قبل إعادة المحاولة.",
+            );
           } else {
             setSmsOutcome("unknown");
-            setSmsMessage(typeof smsResult?.error === "string" ? smsResult.error : "لم تصل نتيجة مؤكدة من خدمة الرسائل. راجع طلباتي قبل إعادة الإرسال.");
+            setSmsMessage(
+              typeof smsResult?.error === "string"
+                ? smsResult.error
+                : "لم تصل نتيجة مؤكدة من خدمة الرسائل. راجع طلباتي قبل إعادة الإرسال.",
+            );
           }
         } catch (smsError: unknown) {
           console.warn("نتيجة SMS غير مؤكدة؛ لا تعِد الإرسال قبل مراجعة الحالة.", smsError);
           setSmsOutcome("unknown");
-          setSmsMessage("تعذّر تأكيد نتيجة SMS. راجع حالة الطلب ولا تعِد الإرسال قبل التحقق لتجنب التكرار.");
+          setSmsMessage(
+            "تعذّر تأكيد نتيجة SMS. راجع حالة الطلب ولا تعِد الإرسال قبل التحقق لتجنب التكرار.",
+          );
         }
       }
       setStatus("done");
@@ -916,12 +930,14 @@ function NewOrderPage() {
             {!trackingUnavailable && smsOutcome !== "not_sent" && (
               <div className="no-warn" role="status" aria-live="polite">
                 <span>
-                  {smsMessage || (
-                    smsOutcome === "accepted" ? "قبل مزود الخدمة طلب SMS. هذا لا يؤكد وصول الرسالة إلى الهاتف." :
-                    smsOutcome === "failed" ? "تعذر إرسال SMS. يمكنك مراجعة الحالة وإعادة المحاولة من «طلباتي»." :
-                    smsOutcome === "unknown" ? "نتيجة SMS غير مؤكدة. راجع «طلباتي» ولا تعِد الإرسال قبل التأكد لتجنب التكرار." :
-                    "جارٍ تسجيل نتيجة رسالة التأكيد…"
-                  )}
+                  {smsMessage ||
+                    (smsOutcome === "accepted"
+                      ? "قبل مزود الخدمة طلب SMS. هذا لا يؤكد وصول الرسالة إلى الهاتف."
+                      : smsOutcome === "failed"
+                        ? "تعذر إرسال SMS. يمكنك مراجعة الحالة وإعادة المحاولة من «طلباتي»."
+                        : smsOutcome === "unknown"
+                          ? "نتيجة SMS غير مؤكدة. راجع «طلباتي» ولا تعِد الإرسال قبل التأكد لتجنب التكرار."
+                          : "جارٍ تسجيل نتيجة رسالة التأكيد…")}
                 </span>
               </div>
             )}

@@ -27,7 +27,6 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { AdminRouteGuard } from "@/components/admin/AdminRouteGuard";
 
-
 // ==========================================
 // 1. الأنواع والبيانات (DATA TYPES)
 // ==========================================
@@ -90,7 +89,9 @@ function toNullableNumber(value: unknown): number | null {
 }
 
 function normalizeCurrency(value: unknown): CurrencyCode | null {
-  const currency = String(value ?? "").trim().toUpperCase();
+  const currency = String(value ?? "")
+    .trim()
+    .toUpperCase();
   if (["USD", "US$", "$", "دولار", "دولار أمريكي"].includes(currency)) return "USD";
   if (["YER", "YRL", "ريال يمني", "ر.ي", "ر.ي.", "ريال"].includes(currency)) return "YER";
   if (["SAR", "ر.س", "ر.س.", "ريال سعودي"].includes(currency)) return "SAR";
@@ -103,23 +104,28 @@ function formatMoney(value: number | null | undefined): string {
 
 function formatCurrency(value: number | null | undefined, currency: CurrencyCode): string {
   const meta = CURRENCIES.find((item) => item.code === currency)!;
-  return value === null || value === undefined ? "غير مسجل" : `${formatMoney(value)} ${meta.suffix}`;
+  return value === null || value === undefined
+    ? "غير مسجل"
+    : `${formatMoney(value)} ${meta.suffix}`;
 }
 
 function formatBreakdown(values: CurrencyMoney | null | undefined): string {
-  const entries = CURRENCIES
-    .filter(({ code }) => Object.prototype.hasOwnProperty.call(values ?? {}, code))
-    .map(({ code, label }) => {
-      const amount = values![code];
-      return typeof amount === "number" ? formatCurrency(amount, code) : `${label}: غير مكتمل`;
-    });
+  const entries = CURRENCIES.filter(({ code }) =>
+    Object.prototype.hasOwnProperty.call(values ?? {}, code),
+  ).map(({ code, label }) => {
+    const amount = values![code];
+    return typeof amount === "number" ? formatCurrency(amount, code) : `${label}: غير مكتمل`;
+  });
   if (Object.prototype.hasOwnProperty.call(values ?? {}, "UNKNOWN")) {
     entries.push("غير مكتمل: العملة غير محددة");
   }
   return entries.length ? entries.join(" · ") : "غير مسجل";
 }
 
-function aggregateMoney(orders: OrderItem[], field: "total_cost" | "paid" | "remaining" | "profit"): CurrencyMoney {
+function aggregateMoney(
+  orders: OrderItem[],
+  field: "total_cost" | "paid" | "remaining" | "profit",
+): CurrencyMoney {
   const result: CurrencyMoney = {};
   for (const { code } of CURRENCIES) {
     const values = orders
@@ -141,7 +147,7 @@ function resolveOrderCurrency(row: any, costs: CurrencyMoney): CurrencyCode | nu
   const stated = normalizeCurrency(row.quote_currency) || normalizeCurrency(row.original_currency);
   if (stated) return stated;
   const known = CURRENCIES.filter(({ code }) => typeof costs[code] === "number");
-  return known.length === 1 ? known[0]?.code ?? null : null;
+  return known.length === 1 ? (known[0]?.code ?? null) : null;
 }
 
 function mapDatabaseOrder(row: any): OrderItem {
@@ -168,11 +174,12 @@ function mapDatabaseOrder(row: any): OrderItem {
       : {};
   const remaining: CurrencyMoney = currency
     ? {
-        [currency]: storedRemaining !== null
-          ? storedRemaining
-          : typeof totalCost[currency] === "number" && paidAmount !== null
-            ? Math.max(0, (totalCost[currency] as number) - paidAmount)
-            : null,
+        [currency]:
+          storedRemaining !== null
+            ? storedRemaining
+            : typeof totalCost[currency] === "number" && paidAmount !== null
+              ? Math.max(0, (totalCost[currency] as number) - paidAmount)
+              : null,
       }
     : storedRemaining !== null
       ? { UNKNOWN: null }
@@ -184,9 +191,8 @@ function mapDatabaseOrder(row: any): OrderItem {
       ? { UNKNOWN: null }
       : {};
   const quotedTotal = toNullableNumber(row.quote_total);
-  const originalPrice: CurrencyMoney = currency && quotedTotal !== null
-    ? { [currency]: quotedTotal }
-    : totalCost;
+  const originalPrice: CurrencyMoney =
+    currency && quotedTotal !== null ? { [currency]: quotedTotal } : totalCost;
 
   return {
     id,
@@ -194,7 +200,12 @@ function mapDatabaseOrder(row: any): OrderItem {
     customerName: row.customer_name || "عميل بدون اسم",
     customerPhone: row.customer_phone || row.phone || "",
     customerCity: row.customer_city || "غير مسجل",
-    productTitle: row.product_title || row.product_name || row.product_details || row.product_link || "طلب مشتريات",
+    productTitle:
+      row.product_title ||
+      row.product_name ||
+      row.product_details ||
+      row.product_link ||
+      "طلب مشتريات",
     productUrl: row.product_url || row.product_link || "",
     storeName: row.store_name || "غير مسجل",
     status: DATABASE_STATUS_TO_UI[String(row.status || "جديد")] || "new",
@@ -263,7 +274,9 @@ export const extractLast9Digits = (rawPhone?: string): string => {
 };
 
 function hasPositiveMoney(values: CurrencyMoney): boolean {
-  return CURRENCIES.some(({ code }) => typeof values[code] === "number" && (values[code] as number) > 0);
+  return CURRENCIES.some(
+    ({ code }) => typeof values[code] === "number" && (values[code] as number) > 0,
+  );
 }
 
 function isFullyPaid(values: CurrencyMoney): boolean {
@@ -297,7 +310,9 @@ export const groupOrdersByLast9 = (orders: OrderItem[]): GroupedClient[] => {
     const originalPhone =
       clientOrders.find((o) => o.customerPhone && o.customerPhone.replace(/\D/g, "").length >= 9)
         ?.customerPhone || `7${phoneLast9.slice(-8)}`;
-    const city = clientOrders.find((o) => o.customerCity && o.customerCity !== "غير مسجل")?.customerCity || "غير مسجل";
+    const city =
+      clientOrders.find((o) => o.customerCity && o.customerCity !== "غير مسجل")?.customerCity ||
+      "غير مسجل";
 
     const total_cost = aggregateMoney(clientOrders, "total_cost");
     const paid = aggregateMoney(clientOrders, "paid");
@@ -416,7 +431,9 @@ export function AdminOperationsDashboard({
     productTitle: "",
     productLink: "",
   });
-  const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(
+    null,
+  );
   const [savingOrderId, setSavingOrderId] = useState<string | null>(null);
 
   // قاعدة البيانات هي المصدر الوحيد؛ لا نعرض نسخة قديمة من localStorage كأنها سجل مركزي.
@@ -455,10 +472,22 @@ export function AdminOperationsDashboard({
   // حسابات بطاقات الملخص الـ 4 المطلوبة
   const summaryTotals = useMemo(() => {
     return {
-      sumRemaining: aggregateMoney(groupedClients.flatMap((client) => client.orders), "remaining"),
-      sumPaid: aggregateMoney(groupedClients.flatMap((client) => client.orders), "paid"),
-      sumCost: aggregateMoney(groupedClients.flatMap((client) => client.orders), "total_cost"),
-      sumProfit: aggregateMoney(groupedClients.flatMap((client) => client.orders), "profit"),
+      sumRemaining: aggregateMoney(
+        groupedClients.flatMap((client) => client.orders),
+        "remaining",
+      ),
+      sumPaid: aggregateMoney(
+        groupedClients.flatMap((client) => client.orders),
+        "paid",
+      ),
+      sumCost: aggregateMoney(
+        groupedClients.flatMap((client) => client.orders),
+        "total_cost",
+      ),
+      sumProfit: aggregateMoney(
+        groupedClients.flatMap((client) => client.orders),
+        "profit",
+      ),
       totalClients: groupedClients.length,
       totalOrders: orders.length,
     };
@@ -479,7 +508,9 @@ export function AdminOperationsDashboard({
       if (error) throw error;
       if (!data) throw new Error("لم يُحدّث أي طلب. تحقق من صلاحيتك أو من وجود الطلب.");
       const updatedOrder = mapDatabaseOrder(data);
-      setOrders((previous) => previous.map((order) => order.id === orderId ? updatedOrder : order));
+      setOrders((previous) =>
+        previous.map((order) => (order.id === orderId ? updatedOrder : order)),
+      );
       setFeedback({ type: "success", message: "تم تحديث حالة الطلب وحفظها." });
     } catch (error) {
       setFeedback({ type: "error", message: `تعذر تحديث الطلب: ${getErrorMessage(error)}` });
@@ -547,7 +578,10 @@ export function AdminOperationsDashboard({
       setOrders((previous) => [mapDatabaseOrder(data), ...previous]);
       setIsAddModalOpen(false);
       setNewOrderForm({ customerName: "", customerPhone: "", productTitle: "", productLink: "" });
-      setFeedback({ type: "success", message: `تم حفظ الطلب بنجاح. رقم التتبع: ${data.tracking_code}` });
+      setFeedback({
+        type: "success",
+        message: `تم حفظ الطلب بنجاح. رقم التتبع: ${data.tracking_code}`,
+      });
     } catch (error) {
       setFeedback({ type: "error", message: `تعذر حفظ الطلب: ${getErrorMessage(error)}` });
     } finally {
@@ -732,8 +766,13 @@ export function AdminOperationsDashboard({
       </div>
 
       <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-4 space-y-4">
-        <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-xs leading-6 text-sky-900" role="note">
-تُقرأ المبالغ من أعمدة الطلبات المالية، وتُعرض مجاميع USD وYER وSAR منفصلة دون تحويل بينها. إذا تعذّر تحديد عملة المدفوع أو الربح، أو كانت القيمة ناقصة، فستظهر كغير مكتملة بدل نسبتها إلى عملة تخمينية.
+        <div
+          className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-xs leading-6 text-sky-900"
+          role="note"
+        >
+          تُقرأ المبالغ من أعمدة الطلبات المالية، وتُعرض مجاميع USD وYER وSAR منفصلة دون تحويل
+          بينها. إذا تعذّر تحديد عملة المدفوع أو الربح، أو كانت القيمة ناقصة، فستظهر كغير مكتملة بدل
+          نسبتها إلى عملة تخمينية.
         </div>
         {feedback && (
           <div
@@ -850,15 +889,15 @@ export function AdminOperationsDashboard({
               </div>
             </div>
             <div className="text-2xl sm:text-3xl font-black text-red-600 font-mono tracking-tight mb-1">
-              {formatBreakdown(summaryTotals.sumRemaining)} 
+              {formatBreakdown(summaryTotals.sumRemaining)}
             </div>
             <div className="text-xs font-black text-red-950">إجمالي المبالغ المتبقية</div>
-            <div className="text-[10px] text-red-700 mt-0.5">
-              المبالغ المسجلة مفصولة حسب العملة
-            </div>
+            <div className="text-[10px] text-red-700 mt-0.5">المبالغ المسجلة مفصولة حسب العملة</div>
             <div className="mt-2 pt-2 border-t border-red-200/80 text-[10px] font-bold text-red-700 flex items-center justify-between">
               <span>sum(remaining)</span>
-              <span>{groupedClients.filter((c) => hasPositiveMoney(c.remaining)).length} عميل مدين</span>
+              <span>
+                {groupedClients.filter((c) => hasPositiveMoney(c.remaining)).length} عميل مدين
+              </span>
             </div>
           </div>
 
@@ -873,7 +912,7 @@ export function AdminOperationsDashboard({
               </div>
             </div>
             <div className="text-2xl sm:text-3xl font-black text-emerald-600 font-mono tracking-tight mb-1">
-              {formatBreakdown(summaryTotals.sumPaid)} 
+              {formatBreakdown(summaryTotals.sumPaid)}
             </div>
             <div className="text-xs font-black text-emerald-950">إجمالي المبالغ المدفوعة</div>
             <div className="text-[10px] text-emerald-700 mt-0.5">
@@ -896,7 +935,7 @@ export function AdminOperationsDashboard({
               </div>
             </div>
             <div className="text-2xl sm:text-3xl font-black text-white font-mono tracking-tight mb-1">
-              {formatBreakdown(summaryTotals.sumCost)} 
+              {formatBreakdown(summaryTotals.sumCost)}
             </div>
             <div className="text-xs font-black text-slate-100">إجمالي التكلفة الشاملة</div>
             <div className="text-[10px] text-slate-400 mt-0.5">
@@ -919,12 +958,10 @@ export function AdminOperationsDashboard({
               </div>
             </div>
             <div className="text-2xl sm:text-3xl font-black text-[#0284C7] font-mono tracking-tight mb-1">
-              {formatBreakdown(summaryTotals.sumProfit)} 
+              {formatBreakdown(summaryTotals.sumProfit)}
             </div>
             <div className="text-xs font-black text-sky-950">صافي أرباح الوساطة</div>
-            <div className="text-[10px] text-sky-700 mt-0.5">
-              المبالغ المسجلة مفصولة حسب العملة
-            </div>
+            <div className="text-[10px] text-sky-700 mt-0.5">المبالغ المسجلة مفصولة حسب العملة</div>
             <div className="mt-2 pt-2 border-t border-sky-200/80 text-[10px] font-bold text-sky-700 flex items-center justify-between">
               <span>sum(profit)</span>
               <span>حسب السجلات المتاحة</span>
@@ -1062,7 +1099,13 @@ export function AdminOperationsDashboard({
 
                           <td className="py-3.5 px-4 text-left font-mono font-black">
                             <span
-                              className={hasPositiveMoney(client.remaining) ? "text-red-600" : isFullyPaid(client.remaining) ? "text-emerald-600" : "text-slate-400"}
+                              className={
+                                hasPositiveMoney(client.remaining)
+                                  ? "text-red-600"
+                                  : isFullyPaid(client.remaining)
+                                    ? "text-emerald-600"
+                                    : "text-slate-400"
+                              }
                             >
                               {formatBreakdown(client.remaining)}
                             </span>
@@ -1365,7 +1408,15 @@ export function AdminOperationsDashboard({
                         التكلفة: <span className="font-bold">{formatBreakdown(cost)}</span>
                       </div>
                       <div className="text-emerald-600">المدفوع: {formatBreakdown(paid)}</div>
-                      <div className={hasPositiveMoney(rem) ? "text-red-600 font-bold" : isFullyPaid(rem) ? "text-emerald-600" : "text-slate-400"}>
+                      <div
+                        className={
+                          hasPositiveMoney(rem)
+                            ? "text-red-600 font-bold"
+                            : isFullyPaid(rem)
+                              ? "text-emerald-600"
+                              : "text-slate-400"
+                        }
+                      >
                         المتبقي: {formatBreakdown(rem)}
                       </div>
                     </div>
@@ -1378,8 +1429,12 @@ export function AdminOperationsDashboard({
               <span>إجمالي الطلبات: {selectedClientOrders.ordersCount}</span>
               <div className="flex gap-4">
                 <span>التكلفة: {formatBreakdown(selectedClientOrders.total_cost)}</span>
-                <span className="text-emerald-600">المدفوع: {formatBreakdown(selectedClientOrders.paid)}</span>
-                <span className="text-red-600">المتبقي: {formatBreakdown(selectedClientOrders.remaining)}</span>
+                <span className="text-emerald-600">
+                  المدفوع: {formatBreakdown(selectedClientOrders.paid)}
+                </span>
+                <span className="text-red-600">
+                  المتبقي: {formatBreakdown(selectedClientOrders.remaining)}
+                </span>
               </div>
             </div>
           </div>
@@ -1500,7 +1555,9 @@ export function AdminOperationsDashboard({
                   autoComplete="tel"
                   placeholder="770000000"
                   value={newOrderForm.customerPhone}
-                  onChange={(e) => setNewOrderForm({ ...newOrderForm, customerPhone: e.target.value })}
+                  onChange={(e) =>
+                    setNewOrderForm({ ...newOrderForm, customerPhone: e.target.value })
+                  }
                   className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] border border-slate-200 text-[#0A2540] font-mono text-left outline-none focus:bg-white focus:border-[#0284C7]"
                 />
               </div>
@@ -1519,17 +1576,24 @@ export function AdminOperationsDashboard({
               </div>
 
               <div>
-                <label className="block text-slate-700 font-bold mb-1">رابط المنتج (product_link) *</label>
+                <label className="block text-slate-700 font-bold mb-1">
+                  رابط المنتج (product_link) *
+                </label>
                 <input
                   type="url"
                   required
                   dir="ltr"
                   placeholder="https://..."
                   value={newOrderForm.productLink}
-                  onChange={(e) => setNewOrderForm({ ...newOrderForm, productLink: e.target.value })}
+                  onChange={(e) =>
+                    setNewOrderForm({ ...newOrderForm, productLink: e.target.value })
+                  }
                   className="w-full px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] border border-slate-200 text-[#0A2540] font-mono text-left outline-none focus:bg-white focus:border-[#0284C7]"
                 />
-                <p className="mt-1 text-[10px] leading-5 text-amber-700">المخطط الحالي لا يحتوي على حقول للمدينة أو المتجر أو المبالغ؛ لذلك لا أطلبها ولا أحفظها هنا.</p>
+                <p className="mt-1 text-[10px] leading-5 text-amber-700">
+                  المخطط الحالي لا يحتوي على حقول للمدينة أو المتجر أو المبالغ؛ لذلك لا أطلبها ولا
+                  أحفظها هنا.
+                </p>
               </div>
 
               <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-2 mt-4">

@@ -7,10 +7,7 @@ export type SendSmsResult = {
 };
 
 /** استدعاء دالة الخادم بعد تسجيل الدخول؛ لا تضع مفتاح TextBee هنا. */
-export async function sendSms(
-  phone: string,
-  message: string,
-): Promise<SendSmsResult> {
+export async function sendSms(phone: string, message: string): Promise<SendSmsResult> {
   const { data, error } = await supabase.functions.invoke("send-sms", {
     body: { phone, message },
   });
