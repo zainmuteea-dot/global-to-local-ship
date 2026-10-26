@@ -728,7 +728,7 @@ export default function AdminOperationsPage() {
       const matchSearch =
         searchQuery === "" ||
         o.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        o.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (o.customerName ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
         (o.customerPhone ?? "").includes(searchQuery) ||
         (o.intlTrackingNumber && o.intlTrackingNumber.toLowerCase().includes(searchQuery.toLowerCase()));
       return matchStore && matchSearch;
@@ -743,7 +743,7 @@ export default function AdminOperationsPage() {
   const netProfit: number | null = null;
 
   const dashboardOrders = ordersLoadedFromDatabase
-    ? [...orders].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+    ? [...orders].sort((a, b) => Date.parse(b.createdAt ?? "") - Date.parse(a.createdAt ?? ""))
     : [];
   const dashboardStats: DashboardStats = {
     activeShipments: ordersLoadedFromDatabase ? dashboardOrders.filter((order) => !["delivered", "cancelled"].includes(order.status)).length : null,
@@ -768,8 +768,8 @@ export default function AdminOperationsPage() {
   };
   const dashboardActivities: ActivityPreview[] = dashboardOrders.slice(0, 3).map((order) => ({
     icon: "plus",
-    text: `تم تسجيل الطلب #${order.orderNumber} للعميل ${order.customerName}`,
-    time: relativeArabicTime(order.createdAt),
+    text: `تم تسجيل الطلب #${order.orderNumber} للعميل ${order.customerName ?? "غير معروف"}`,
+    time: relativeArabicTime(order.createdAt ?? ""),
   }));
 
   const runTextBeeCheck = async () => {
@@ -925,7 +925,7 @@ export default function AdminOperationsPage() {
               <span className="text-xs font-bold">المبيعات المفوترة</span>
               <DollarSign className="w-4 h-4 text-[#0284C7]" />
             </div>
-            <div className="text-2xl font-black text-[#0284C7] font-mono">{billedRevenue === null ? "—" : billedRevenue.toLocaleString("en-US")}</div>
+            <div className="text-2xl font-black text-[#0284C7] font-mono">{billedRevenue === null ? "—" : Number(billedRevenue).toLocaleString("en-US")}</div>
             <div className="text-[11px] text-slate-500 mt-1">تظهر بعد ربط بيانات الفواتير</div>
           </div>
 
@@ -934,7 +934,7 @@ export default function AdminOperationsPage() {
               <span className="text-xs font-bold">صافي أرباح الوساطة</span>
               <TrendingUp className="w-4 h-4 text-emerald-600" />
             </div>
-            <div className="text-2xl font-black text-emerald-600 font-mono">{netProfit === null ? "—" : netProfit.toLocaleString("en-US")}</div>
+            <div className="text-2xl font-black text-emerald-600 font-mono">{netProfit === null ? "—" : Number(netProfit).toLocaleString("en-US")}</div>
             <div className="text-[11px] text-slate-500 mt-1">تظهر بعد ربط بيانات الفواتير</div>
           </div>
         </div>
