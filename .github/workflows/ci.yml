@@ -14,8 +14,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  typecheck-and-build:
-    name: TypeScript and production build
+  typecheck:
+    name: TypeScript
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -32,6 +32,22 @@ jobs:
 
       - name: TypeScript check
         run: npx tsc --noEmit
+
+  build:
+    name: Production build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
 
       - name: Production build
         run: npm run build
