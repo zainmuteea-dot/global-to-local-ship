@@ -74,7 +74,7 @@ function LogoManagementPage() {
       setNotice("الاسم المختصر أو الكود مستخدم بالفعل.");
       return;
     }
-    setLogos((current) => [...current, { slug, name: draft.name.trim(), code: draft.code.trim(), color: draft.color, arabicLabel: draft.arabicLabel.trim() || undefined }]);
+    setLogos((current) => [...current, { slug, name: draft.name.trim(), code: draft.code.trim(), color: draft.color, ...(draft.arabicLabel.trim() ? { arabicLabel: draft.arabicLabel.trim() } : {}) }]);
     setDraft({ name: "", code: "", slug: "", color: "#2563EB", arabicLabel: "" });
     setAddOpen(false);
     setNotice("أُضيف الشعار إلى العرض الحالي.");

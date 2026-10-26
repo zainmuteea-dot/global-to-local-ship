@@ -281,7 +281,7 @@ function CustomerNotificationsPage({
       (entries) => {
         for (const entry of entries) {
           if (!entry.isIntersecting) continue;
-          const notificationId = (entry.target as HTMLElement).dataset.customerNotificationId;
+          const notificationId = (entry.target as HTMLElement).dataset["customerNotificationId"];
           if (!notificationId) continue;
           observer.unobserve(entry.target);
           if (!readIds.has(notificationId)) void markRead(notificationId);

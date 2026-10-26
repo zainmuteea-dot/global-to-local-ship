@@ -173,9 +173,9 @@ function orderCurrency(order: OrderRow): CurrencyCode | null {
   const nonZero = costValues.filter(([, value]) =>
     value !== null && value !== 0
   );
-  if (nonZero.length === 1) return nonZero[0][0];
+  if (nonZero.length === 1) return nonZero[0]?.[0] ?? null;
   const present = costValues.filter(([, value]) => value !== null);
-  return present.length === 1 ? present[0][0] : null;
+  return present.length === 1 ? present[0]?.[0] ?? null : null;
 }
 
 function currencyTotals(
@@ -188,7 +188,7 @@ function currencyTotals(
     | "remaining_amount"
     | "profit_amount",
 ): MoneyLine[] {
-  const explicitCostCurrency: Partial<Record<CurrencyCode, string>> = {
+  const explicitCostCurrency: Partial<Record<typeof field, CurrencyCode>> = {
     total_cost_usd: "USD",
     total_cost_yer: "YER",
     total_cost_sar: "SAR",
@@ -308,6 +308,7 @@ function remainingTotals(customer: Customer): MoneyLine[] {
     // Do not assign a payment when a tracking value points to multiple orders.
     if (matchedOrders.length !== 1) continue;
     const order = matchedOrders[0];
+    if (!order) continue;
     // Only calculate a YER balance for orders with a recorded YER cost.
     if (numeric(order.total_cost_yer) === null) continue;
 
