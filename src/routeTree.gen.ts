@@ -57,6 +57,8 @@ import { Route as ApiSheinPriceRouteImport } from './routes/api/shein-price'
 import { Route as ProductsManageRouteImport } from './routes/products/manage'
 import { Route as TrackIndexRouteImport } from './routes/track/index'
 import { Route as TrackTrackingCodeRouteImport } from './routes/track/$trackingCode'
+import { Route as AdminLogosIndexRouteImport } from './routes/admin/logos/index'
+import { Route as AdminLogosSlugRouteImport } from './routes/admin/logos/$slug'
 import { Route as ApiPublicSheinPriceRouteImport } from './routes/api/public/shein-price'
 
 const IndexRoute = IndexRouteImport.update({
@@ -299,6 +301,16 @@ const TrackTrackingCodeRoute = TrackTrackingCodeRouteImport.update({
   path: '/track/$trackingCode',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminLogosIndexRoute = AdminLogosIndexRouteImport.update({
+  id: '/logos/',
+  path: '/logos/',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminLogosSlugRoute = AdminLogosSlugRouteImport.update({
+  id: '/logos/$slug',
+  path: '/logos/$slug',
+  getParentRoute: () => AdminRoute,
+} as any)
 const ApiPublicSheinPriceRoute = ApiPublicSheinPriceRouteImport.update({
   id: '/api/public/shein-price',
   path: '/api/public/shein-price',
@@ -310,7 +322,7 @@ export interface FileRoutesByFullPath {
   '/account-success': typeof AccountSuccessRoute
   '/accounting': typeof AccountingRoute
   '/accounts': typeof AccountsRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/admin-chat': typeof AdminChatRoute
   '/admin-client-detail': typeof AdminClientDetailRoute
   '/admin-clients': typeof AdminClientsRoute
@@ -354,14 +366,16 @@ export interface FileRoutesByFullPath {
   '/products/manage': typeof ProductsManageRoute
   '/track/$trackingCode': typeof TrackTrackingCodeRoute
   '/track/': typeof TrackIndexRoute
+  '/admin/logos/$slug': typeof AdminLogosSlugRoute
   '/api/public/shein-price': typeof ApiPublicSheinPriceRoute
+  '/admin/logos/': typeof AdminLogosIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/account-success': typeof AccountSuccessRoute
   '/accounting': typeof AccountingRoute
   '/accounts': typeof AccountsRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/admin-chat': typeof AdminChatRoute
   '/admin-client-detail': typeof AdminClientDetailRoute
   '/admin-clients': typeof AdminClientsRoute
@@ -405,7 +419,9 @@ export interface FileRoutesByTo {
   '/products/manage': typeof ProductsManageRoute
   '/track/$trackingCode': typeof TrackTrackingCodeRoute
   '/track': typeof TrackIndexRoute
+  '/admin/logos/$slug': typeof AdminLogosSlugRoute
   '/api/public/shein-price': typeof ApiPublicSheinPriceRoute
+  '/admin/logos': typeof AdminLogosIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -413,7 +429,7 @@ export interface FileRoutesById {
   '/account-success': typeof AccountSuccessRoute
   '/accounting': typeof AccountingRoute
   '/accounts': typeof AccountsRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/admin-chat': typeof AdminChatRoute
   '/admin-client-detail': typeof AdminClientDetailRoute
   '/admin-clients': typeof AdminClientsRoute
@@ -457,7 +473,9 @@ export interface FileRoutesById {
   '/products/manage': typeof ProductsManageRoute
   '/track/$trackingCode': typeof TrackTrackingCodeRoute
   '/track/': typeof TrackIndexRoute
+  '/admin/logos/$slug': typeof AdminLogosSlugRoute
   '/api/public/shein-price': typeof ApiPublicSheinPriceRoute
+  '/admin/logos/': typeof AdminLogosIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -510,7 +528,9 @@ export interface FileRouteTypes {
     | '/products/manage'
     | '/track/$trackingCode'
     | '/track/'
+    | '/admin/logos/$slug'
     | '/api/public/shein-price'
+    | '/admin/logos/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -561,7 +581,9 @@ export interface FileRouteTypes {
     | '/products/manage'
     | '/track/$trackingCode'
     | '/track'
+    | '/admin/logos/$slug'
     | '/api/public/shein-price'
+    | '/admin/logos'
   id:
     | '__root__'
     | '/'
@@ -612,7 +634,9 @@ export interface FileRouteTypes {
     | '/products/manage'
     | '/track/$trackingCode'
     | '/track/'
+    | '/admin/logos/$slug'
     | '/api/public/shein-price'
+    | '/admin/logos/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -620,7 +644,7 @@ export interface RootRouteChildren {
   AccountSuccessRoute: typeof AccountSuccessRoute
   AccountingRoute: typeof AccountingRoute
   AccountsRoute: typeof AccountsRoute
-  AdminRoute: typeof AdminRoute
+  AdminRoute: typeof AdminRouteWithChildren
   AdminChatRoute: typeof AdminChatRoute
   AdminClientDetailRoute: typeof AdminClientDetailRoute
   AdminClientsRoute: typeof AdminClientsRoute
@@ -1004,6 +1028,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TrackTrackingCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/logos/': {
+      id: '/admin/logos/'
+      path: '/logos'
+      fullPath: '/admin/logos/'
+      preLoaderRoute: typeof AdminLogosIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/logos/$slug': {
+      id: '/admin/logos/$slug'
+      path: '/logos/$slug'
+      fullPath: '/admin/logos/$slug'
+      preLoaderRoute: typeof AdminLogosSlugRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/api/public/shein-price': {
       id: '/api/public/shein-price'
       path: '/api/public/shein-price'
@@ -1013,6 +1051,18 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface AdminRouteChildren {
+  AdminLogosSlugRoute: typeof AdminLogosSlugRoute
+  AdminLogosIndexRoute: typeof AdminLogosIndexRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminLogosSlugRoute: AdminLogosSlugRoute,
+  AdminLogosIndexRoute: AdminLogosIndexRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 interface ProductsRouteChildren {
   ProductsManageRoute: typeof ProductsManageRoute
@@ -1031,7 +1081,7 @@ const rootRouteChildren: RootRouteChildren = {
   AccountSuccessRoute: AccountSuccessRoute,
   AccountingRoute: AccountingRoute,
   AccountsRoute: AccountsRoute,
-  AdminRoute: AdminRoute,
+  AdminRoute: AdminRouteWithChildren,
   AdminChatRoute: AdminChatRoute,
   AdminClientDetailRoute: AdminClientDetailRoute,
   AdminClientsRoute: AdminClientsRoute,

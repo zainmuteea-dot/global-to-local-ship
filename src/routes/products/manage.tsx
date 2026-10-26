@@ -108,7 +108,7 @@ function LogoDashboard() {
       setNotice("المسار أو الكود مستخدم بالفعل.");
       return;
     }
-    setLogos((items) => [...items, { slug, name: draft.name.trim(), code, color: draft.color, arabicLabel: draft.arabicLabel.trim() || undefined }]);
+    setLogos((items) => [...items, { slug, name: draft.name.trim(), code, color: draft.color, ...(draft.arabicLabel.trim() ? { arabicLabel: draft.arabicLabel.trim() } : {}) }]);
     setDraft({ name: "", code: "", slug: "", color: "#2563EB", arabicLabel: "" });
     setAddOpen(false);
     setNotice("تمت إضافة الشعار إلى بيانات العرض التجريبية المحفوظة على هذا الجهاز.");
