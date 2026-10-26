@@ -716,14 +716,45 @@ export default function AdminOperationsPage() {
     }
   };
 
-  // حذف شحنة من الواجهة والقاعدة
+  // حذف الطلب من قاعدة البيانات أولاً، ثم إزالته من الشاشة بعد تأكيد النجاح.
   const handleDeleteOrder = async (orderId: string, orderNumber: string) => {
+    // يمنع حذف الطلب أثناء تحديثه أو بدء أكثر من عملية على الطلب نفسه.
+    if (updatingOrderIdsRef.current.has(orderId)) return;
+
     if (!window.confirm(`هل أنت متأكد من حذف الشحنة (${orderNumber}) نهائياً؟`)) return;
-    setOrders((prev) => prev.filter((o) => o.id !== orderId));
+
+    updatingOrderIdsRef.current.add(orderId);
+    setUpdatingOrderIds(new Set(updatingOrderIdsRef.current));
+    setStatusNotice(null);
+
     try {
-      await supabase.from("orders").delete().eq("id", orderId);
-    } catch (e) {
-      console.error("فشل الحذف من القاعدة:", e);
+      const { data, error } = await supabase
+        .from("orders")
+        .delete()
+        .eq("id", orderId)
+        .select("id")
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!data) {
+        throw new Error("لم يُحذف أي سجل؛ قد يكون الطلب غير موجود أو لا تتوفر صلاحية الحذف.");
+      }
+
+      // لا تُحدّث القائمة إلا بعد تأكيد قاعدة البيانات حذف السجل.
+      setOrders((prev) => prev.filter((order) => order.id !== orderId));
+      setStatusNotice({
+        type: "success",
+        message: `تم حذف الطلب ${orderNumber} بنجاح.`,
+      });
+    } catch (error) {
+      console.error("فشل حذف الطلب من قاعدة البيانات:", error);
+      setStatusNotice({
+        type: "error",
+        message: `تعذر حذف الطلب ${orderNumber}. بقي في القائمة. تحقق من الاتصال أو صلاحية الحذف ثم حاول مرة أخرى.`,
+      });
+    } finally {
+      updatingOrderIdsRef.current.delete(orderId);
+      setUpdatingOrderIds(new Set(updatingOrderIdsRef.current));
     }
   };
 
