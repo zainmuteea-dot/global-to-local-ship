@@ -1150,17 +1150,15 @@ function CustomersPageContent() {
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {(
                     [
-                      [
-                        "إجمالي التكلفة المسجلة بالريال اليمني",
-                        "total_cost_usd",
-                        "total_cost_yer",
-                        "total_cost_sar",
-                      ],
-                      ["المدفوع بالريال اليمني", "paid_amount"],
-                      ["المتبقي بالريال اليمني", "remaining_amount"],
-                      ["الربح المسجل", "profit_amount"],
+                      {
+                        label: "إجمالي التكلفة بالريال اليمني",
+                        fields: ["total_cost_usd", "total_cost_yer", "total_cost_sar"],
+                      },
+                      { label: "المدفوع بالريال اليمني", fields: ["paid_amount"] },
+                      { label: "المتبقي بالريال اليمني", fields: ["remaining_amount"] },
+                      { label: "الربح المسجل", fields: ["profit_amount"] },
                     ] as const
-                  ).map(([label, ...fields]) => {
+                  ).map(({ label, fields }) => {
                     const financialField = fields[0] as
                       | "total_cost_usd"
                       | "total_cost_yer"
