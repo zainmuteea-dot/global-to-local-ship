@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   CalendarDays,
+  Megaphone,
   ChevronLeft,
   ChevronRight,
   Download,
@@ -73,6 +74,7 @@ type MoneyLine = {
   expected: number;
 };
 type FilterKind = "all" | "active" | "inactive";
+type CustomerOffer = { id: string; title: string; message: string | null; created_at: string };
 
 const PAGE_SIZE = 10;
 const FETCH_PAGE_SIZE = 500;
@@ -113,9 +115,11 @@ function isCancelled(status: string | null) {
 
 function customerIsActive(customer: Customer, now = Date.now()) {
   const cutoff = now - 90 * 24 * 60 * 60 * 1000;
-  return customer.orders.some(
-    (order) => !isCancelled(order.status) && new Date(order.created_at).getTime() >= cutoff,
-  );
+  return customer.orders.some((order) => {
+    if (isCancelled(order.status)) return false;
+    const orderTime = new Date(order.created_at).getTime();
+    return Number.isFinite(orderTime) && orderTime >= cutoff && orderTime <= now;
+  });
 }
 
 function accountLabel(id: string) {
@@ -273,70 +277,6 @@ function approvedLinkedPaymentTotals(customer: Customer): MoneyLine[] {
  *    matched to that order and in the same currency.
  * Unmatched payments stay separate and are never silently subtracted.
  */
-function remainingTotals(customer: Customer): MoneyLine[] {
-  const paidByOrderId = new Map<string, number>();
-  const countedPaymentIds = new Set<string>();
-
-  for (const payment of customer.payments ?? []) {
-    if (
-      String(payment.status ?? "")
-        .trim()
-        .toLowerCase() !== "approved"
-    ) {
-      continue;
-    }
-    if (countedPaymentIds.has(payment.id)) continue;
-
-    const amount = numeric(payment.amount);
-    if (amount === null || normalizeCurrency(payment.currency) !== "YER") continue;
-
-    const paymentTrackings = new Set(
-      [payment.order_tracking, payment.tracking_code]
-        .map((value) => value?.trim())
-        .filter((value): value is string => Boolean(value)),
-    );
-    if (paymentTrackings.size === 0) continue;
-
-    const matchedOrders = customer.orders.filter((order) => {
-      const tracking = order.tracking_code?.trim();
-      return Boolean(tracking && paymentTrackings.has(tracking));
-    });
-
-    // Do not assign a payment when a tracking value points to multiple orders.
-    if (matchedOrders.length !== 1) continue;
-    const order = matchedOrders[0];
-    if (!order) continue;
-    // Only calculate a YER balance for orders with a recorded YER cost.
-    if (numeric(order.total_cost_yer) === null) continue;
-
-    countedPaymentIds.add(payment.id);
-    paidByOrderId.set(order.id, (paidByOrderId.get(order.id) ?? 0) + amount);
-  }
-
-  let total = 0;
-  let recorded = 0;
-  for (const order of customer.orders) {
-    const storedCost = numeric(order.total_cost_yer);
-    // Without a recorded YER amount, neither quote_currency nor another
-    // currency-specific cost column is enough to infer a YER balance.
-    if (storedCost === null) continue;
-
-    const storedRemaining = numeric(order.remaining_amount);
-    // A stored remaining amount is used only alongside a recorded YER cost,
-    // which establishes the currency context for this order's balance.
-    if (storedRemaining !== null) {
-      total += storedRemaining;
-      recorded += 1;
-      continue;
-    }
-
-    total += storedCost - (paidByOrderId.get(order.id) ?? 0);
-    recorded += 1;
-  }
-
-  return recorded > 0 ? [{ code: "YER", total, recorded, expected: customer.orders.length }] : [];
-}
-
 function approvedUnlinkedPaymentLines(customer: Customer) {
   const orderTrackingCodes = new Set(
     customer.orders
@@ -459,6 +399,7 @@ async function loadCustomerRecords(): Promise<{ customers: Customer[]; canDelete
 
 function CustomersPageContent() {
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [offers, setOffers] = useState<CustomerOffer[]>([]);
   const [canDeleteCustomers, setCanDeleteCustomers] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -491,6 +432,18 @@ function CustomersPageContent() {
 
   useEffect(() => {
     void loadCustomers();
+    let active = true;
+    void (async () => {
+      const { data, error: offersError } = await (supabase.from("notifications") as any)
+        .select("id,title,message,created_at")
+        .is("user_id", null)
+        .eq("is_active", true)
+        .eq("type", "offer")
+        .order("created_at", { ascending: false })
+        .limit(3);
+      if (active && !offersError) setOffers((data ?? []) as CustomerOffer[]);
+    })();
+    return () => { active = false; };
   }, [loadCustomers]);
 
   const confirmDeleteCustomer = async () => {
@@ -604,8 +557,16 @@ function CustomersPageContent() {
         customerIsActive(customer) ? "نشط" : "غير نشط",
       ];
     });
+    const escapeCsvCell = (value: unknown) => {
+      const text = String(value ?? "");
+      // Prefix a single quote when a spreadsheet could interpret the cell as a formula.
+      const safeText = /^[\u0000-\u0020\uFEFF]*[=+\-@]/.test(text) || /^[\t\r\n]/.test(text)
+        ? `'${text}`
+        : text;
+      return `"${safeText.replaceAll('"', '""')}"`;
+    };
     const csv = [headers, ...rows]
-      .map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(","))
+      .map((row) => row.map(escapeCsvCell).join(","))
       .join("\r\n");
     const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -673,6 +634,20 @@ function CustomersPageContent() {
             <Plus className="size-4" /> إضافة عميل
           </button>
         </header>
+
+        {offers.length > 0 && (
+          <section className="overflow-hidden rounded-2xl border border-orange-200 bg-gradient-to-l from-orange-600 to-amber-500 p-4 text-white shadow-sm">
+            <div className="flex items-start gap-3">
+              <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white/20"><Megaphone className="size-5" /></span>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold text-orange-100">عروض وإعلانات للعملاء</p>
+                <h2 className="mt-1 text-lg font-black">{offers[0].title}</h2>
+                {offers[0].message && <p className="mt-1 text-sm leading-6 text-white/90">{offers[0].message}</p>}
+                {offers.length > 1 && <p className="mt-2 text-[11px] text-orange-100">يوجد {offers.length} عروض نشطة في حسابات العملاء</p>}
+              </div>
+            </div>
+          </section>
+        )}
 
         {error && (
           <div
@@ -1137,26 +1112,23 @@ function CustomersPageContent() {
                   <div>
                     <h4 className="font-black text-slate-800">الملخص المالي للطلبات</h4>
                     <p className="mt-1 text-[11px] leading-5 text-slate-500">
-                      المستحق والمدفوع والمتبقي هنا بالريال اليمني فقط. تُستخدم تكلفة total_cost_yer
-                      والدفعات المعتمدة المسجلة YER والمطابقة لرقم تتبع الطلب؛ ولا تُحوّل عملة سعر
-                      السلعة الأصلية أو تُخمّن. الدفعات غير المطابقة تظهر منفصلة، والربح من الحقل
-                      المسجل.
+                      تُعرض تكلفة total_cost_yer والدفعات المعتمدة المسجلة YER والمطابقة لرقم تتبع
+                      الطلب فقط؛ لا تُحوّل عملة سعر السلعة الأصلية أو تُخمّن. لا أعرض المتبقي حتى
+                      يتم التحقق من معنى الحقل وعملته في مخطط قاعدة البيانات. الدفعات غير المطابقة
+                      تظهر منفصلة، والربح من الحقل المسجل.
                     </p>
                   </div>
                   <span className="shrink-0 rounded-lg bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600">
                     {selected.orders.length.toLocaleString("ar-YE")} طلب
                   </span>
                 </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   {(
                     [
-                      {
-                        label: "إجمالي التكلفة بالريال اليمني",
-                        fields: ["total_cost_usd", "total_cost_yer", "total_cost_sar"],
-                      },
+                      { label: "إجمالي المبلغ بالريال اليمني", fields: ["total_cost_yer"] },
                       { label: "المدفوع بالريال اليمني", fields: ["paid_amount"] },
                       { label: "المتبقي بالريال اليمني", fields: ["remaining_amount"] },
-                      { label: "الربح المسجل", fields: ["profit_amount"] },
+                      { label: "الربح بالريال اليمني", fields: ["profit_amount"] },
                     ] as const
                   ).map(({ label, fields }) => {
                     const financialField = fields[0] as
@@ -1167,12 +1139,12 @@ function CustomersPageContent() {
                       | "remaining_amount"
                       | "profit_amount";
                     const moneyLines =
-                      fields.length === 3
+                      financialField === "total_cost_yer"
                         ? orderCostTotals(selected.orders)
                         : financialField === "paid_amount"
                           ? approvedLinkedPaymentTotals(selected)
                           : financialField === "remaining_amount"
-                            ? remainingTotals(selected)
+                            ? []
                             : currencyTotals(selected.orders, "profit_amount");
                     const unknownCurrencyCount =
                       financialField === "paid_amount"
@@ -1224,7 +1196,11 @@ function CustomersPageContent() {
                             ))}
                           </ul>
                         ) : (
-                          <p className="mt-2 text-sm font-bold text-slate-400">غير مسجل</p>
+                          <p className="mt-2 text-sm font-bold text-slate-400">
+                            {financialField === "remaining_amount"
+                              ? "غير معروض حتى التحقق من معنى الحقل وعملته"
+                              : "غير مسجل"}
+                          </p>
                         )}
                         {unknownCurrencyCount > 0 && (
                           <p className="mt-2 text-[11px] leading-5 text-amber-700">
@@ -1263,8 +1239,8 @@ function CustomersPageContent() {
                   </div>
                 )}
                 <p className="mt-3 text-[10px] leading-5 text-slate-400">
-                  الطلبات التي لا تحتوي مبلغًا مسجلًا في total_cost_yer لا يُخمن رصيدها بالريال
-                  اليمني؛ وتظهر الدفعات المسجلة أدناه حتى لو تعذر حساب المتبقي.
+                  لا يُعرض المتبقي المسجل قبل التحقق من معناه وعملته في مخطط قاعدة البيانات. تظهر
+                  تكلفة total_cost_yer والدفعات المؤكدة المطابقة فقط، دون تحويل أو تخمين.
                 </p>
               </section>
               <section className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
