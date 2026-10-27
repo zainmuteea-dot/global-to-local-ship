@@ -16,6 +16,7 @@ import {
   Trash2,
   UserCheck,
   Users,
+  Wallet,
   X,
 } from "lucide-react";
 import { AdminRouteGuard } from "@/components/admin/AdminRouteGuard";
@@ -64,7 +65,10 @@ type CustomerPayment = {
   status: string | null;
   created_at: string;
 };
-type Customer = ProfileRow & { orders: OrderRow[]; payments?: CustomerPayment[] };
+type Customer = ProfileRow & {
+  orders: OrderRow[];
+  payments?: CustomerPayment[];
+};
 type CurrencyCode = "USD" | "YER" | "SAR";
 type MoneyLine = {
   code: CurrencyCode;
@@ -72,11 +76,32 @@ type MoneyLine = {
   recorded: number;
   expected: number;
 };
+type ExchangeRates = Partial<Record<CurrencyCode, number>>;
+type RecordedAmount = {
+  tracking: string;
+  amount: number;
+  currency: CurrencyCode | null;
+  yerAmount: number | null;
+};
+type CustomerMoneySummary = {
+  total: number;
+  recorded: number;
+  expected: number;
+  amounts: RecordedAmount[];
+  unconverted: number;
+};
 type FilterKind = "all" | "active" | "inactive";
 
 const PAGE_SIZE = 10;
 const FETCH_PAGE_SIZE = 500;
-const AVATAR_COLORS = ["#0F4C81", "#2E7D32", "#F97316", "#5E35B1", "#0891B2", "#DB2777"];
+const AVATAR_COLORS = [
+  "#0F4C81",
+  "#2E7D32",
+  "#F97316",
+  "#5E35B1",
+  "#0891B2",
+  "#DB2777",
+];
 
 function getMonthStart(now = new Date()) {
   return new Date(now.getFullYear(), now.getMonth(), 1).getTime();
@@ -85,7 +110,9 @@ function getMonthStart(now = new Date()) {
 function formatDate(value: string | null | undefined) {
   if (!value) return "غير مسجل";
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "غير مسجل" : date.toLocaleDateString("ar-YE");
+  return Number.isNaN(date.getTime())
+    ? "غير مسجل"
+    : date.toLocaleDateString("ar-YE");
 }
 
 function initials(name: string) {
@@ -108,13 +135,17 @@ function colorFor(seed: string) {
 
 function isCancelled(status: string | null) {
   const value = (status ?? "").trim().toLowerCase();
-  return ["cancelled", "canceled", "ملغي", "ملغى", "ملغية", "ملغاه"].includes(value);
+  return ["cancelled", "canceled", "ملغي", "ملغى", "ملغية", "ملغاه"].includes(
+    value,
+  );
 }
 
 function customerIsActive(customer: Customer, now = Date.now()) {
   const cutoff = now - 90 * 24 * 60 * 60 * 1000;
   return customer.orders.some(
-    (order) => !isCancelled(order.status) && new Date(order.created_at).getTime() >= cutoff,
+    (order) =>
+      !isCancelled(order.status) &&
+      new Date(order.created_at).getTime() >= cutoff,
   );
 }
 
@@ -135,7 +166,9 @@ function numeric(value: number | string | null | undefined): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function normalizeCurrency(value: string | null | undefined): CurrencyCode | null {
+function normalizeCurrency(
+  value: string | null | undefined,
+): CurrencyCode | null {
   const currency = (value ?? "").trim().toUpperCase();
   if (["USD", "US$", "$", "دولار", "دولار أمريكي"].includes(currency)) {
     return "USD";
@@ -147,9 +180,66 @@ function normalizeCurrency(value: string | null | undefined): CurrencyCode | nul
   return null;
 }
 
+/** Exchange rates are stored as units of target currency per 1 USD. */
+function convertToYER(
+  amount: number,
+  currency: CurrencyCode | null,
+  rates: ExchangeRates,
+): number | null {
+  if (currency === "YER") return amount;
+  const yerPerUsd = rates.YER;
+  if (
+    typeof yerPerUsd !== "number" ||
+    !Number.isFinite(yerPerUsd) ||
+    yerPerUsd <= 0
+  ) {
+    return null;
+  }
+  if (currency === "USD") return amount * yerPerUsd;
+  if (currency === "SAR") {
+    const sarPerUsd = rates.SAR;
+    if (
+      typeof sarPerUsd !== "number" ||
+      !Number.isFinite(sarPerUsd) ||
+      sarPerUsd <= 0
+    ) {
+      return null;
+    }
+    return (amount / sarPerUsd) * yerPerUsd;
+  }
+  return null;
+}
+
+async function loadCustomerExchangeRates(): Promise<ExchangeRates> {
+  // Use the same USD-based exchange_rates records as the accounting screen;
+  // do not silently substitute example/default rates if the query fails.
+  const db = supabase as any;
+  const { data, error } = await db
+    .from("exchange_rates")
+    .select("from_currency,to_currency,rate")
+    .eq("from_currency", "USD");
+  if (error) throw error;
+
+  const rates: ExchangeRates = { USD: 1 };
+  for (const row of data ?? []) {
+    const code = normalizeCurrency(row.to_currency);
+    const rate = Number(row.rate);
+    if (
+      row.from_currency === "USD" &&
+      code &&
+      Number.isFinite(rate) &&
+      rate > 0
+    ) {
+      rates[code] = rate;
+    }
+  }
+  return rates;
+}
+
 function orderCurrency(order: OrderRow): CurrencyCode | null {
   const explicit =
-    normalizeCurrency(order.quote_currency) ?? normalizeCurrency(order.original_currency);
+    normalizeCurrency(order.quote_currency) ??
+    normalizeCurrency(order.original_currency);
   if (explicit) return explicit;
 
   // Legacy fallback: when no currency is recorded but the YER cost column
@@ -160,7 +250,9 @@ function orderCurrency(order: OrderRow): CurrencyCode | null {
     ["USD", numeric(order.total_cost_usd)],
     ["SAR", numeric(order.total_cost_sar)],
   ];
-  const nonZero = costValues.filter(([, value]) => value !== null && value !== 0);
+  const nonZero = costValues.filter(
+    ([, value]) => value !== null && value !== 0,
+  );
   if (nonZero.length === 1) return nonZero[0]?.[0] ?? null;
   const present = costValues.filter(([, value]) => value !== null);
   return present.length === 1 ? (present[0]?.[0] ?? null) : null;
@@ -185,7 +277,10 @@ function currencyTotals(
   const lines: MoneyLine[] = [];
   for (const code of CURRENCY_CODES) {
     const relevant = explicitCode
-      ? orders.filter((order) => orderCurrency(order) === code || numeric(order[field]) !== null)
+      ? orders.filter(
+          (order) =>
+            orderCurrency(order) === code || numeric(order[field]) !== null,
+        )
       : orders.filter((order) => orderCurrency(order) === code);
     if (!relevant.length) continue;
     const values = relevant.map((order) => numeric(order[field]));
@@ -246,7 +341,8 @@ function approvedLinkedPaymentTotals(customer: Customer): MoneyLine[] {
     const trackings = [payment.order_tracking, payment.tracking_code]
       .map((tracking) => tracking?.trim())
       .filter((tracking): tracking is string => Boolean(tracking));
-    if (!trackings.some((tracking) => orderTrackingCodes.has(tracking))) continue;
+    if (!trackings.some((tracking) => orderTrackingCodes.has(tracking)))
+      continue;
     if (countedPaymentIds.has(payment.id)) continue;
     countedPaymentIds.add(payment.id);
 
@@ -262,7 +358,14 @@ function approvedLinkedPaymentTotals(customer: Customer): MoneyLine[] {
 
   const value = totals.get("YER");
   return value
-    ? [{ code: "YER", total: value.total, recorded: value.count, expected: value.count }]
+    ? [
+        {
+          code: "YER",
+          total: value.total,
+          recorded: value.count,
+          expected: value.count,
+        },
+      ]
     : [];
 }
 
@@ -288,7 +391,8 @@ function remainingTotals(customer: Customer): MoneyLine[] {
     if (countedPaymentIds.has(payment.id)) continue;
 
     const amount = numeric(payment.amount);
-    if (amount === null || normalizeCurrency(payment.currency) !== "YER") continue;
+    if (amount === null || normalizeCurrency(payment.currency) !== "YER")
+      continue;
 
     const paymentTrackings = new Set(
       [payment.order_tracking, payment.tracking_code]
@@ -334,7 +438,9 @@ function remainingTotals(customer: Customer): MoneyLine[] {
     recorded += 1;
   }
 
-  return recorded > 0 ? [{ code: "YER", total, recorded, expected: customer.orders.length }] : [];
+  return recorded > 0
+    ? [{ code: "YER", total, recorded, expected: customer.orders.length }]
+    : [];
 }
 
 function approvedUnlinkedPaymentLines(customer: Customer) {
@@ -343,7 +449,10 @@ function approvedUnlinkedPaymentLines(customer: Customer) {
       .map((order) => order.tracking_code?.trim())
       .filter((tracking): tracking is string => Boolean(tracking)),
   );
-  const totals = new Map<string, { label: string; total: number; count: number }>();
+  const totals = new Map<
+    string,
+    { label: string; total: number; count: number }
+  >();
 
   for (const payment of customer.payments ?? []) {
     if (
@@ -355,7 +464,8 @@ function approvedUnlinkedPaymentLines(customer: Customer) {
     const trackingCodes = [payment.order_tracking, payment.tracking_code]
       .map((tracking) => tracking?.trim())
       .filter((tracking): tracking is string => Boolean(tracking));
-    if (trackingCodes.some((tracking) => orderTrackingCodes.has(tracking))) continue;
+    if (trackingCodes.some((tracking) => orderTrackingCodes.has(tracking)))
+      continue;
 
     const amount = numeric(payment.amount);
     if (amount === null) continue;
@@ -369,7 +479,141 @@ function approvedUnlinkedPaymentLines(customer: Customer) {
     totals.set(key, current);
   }
 
-  return Array.from(totals.entries()).map(([key, value]) => ({ key, ...value }));
+  return Array.from(totals.entries()).map(([key, value]) => ({
+    key,
+    ...value,
+  }));
+}
+
+function summarizeRecordedAmounts(
+  amounts: RecordedAmount[],
+  expected: number,
+): CustomerMoneySummary {
+  const converted = amounts
+    .map((entry) => entry.yerAmount)
+    .filter((value): value is number => value !== null);
+  return {
+    total: converted.reduce((sum, value) => sum + value, 0),
+    recorded: converted.length,
+    expected,
+    amounts,
+    unconverted: amounts.length - converted.length,
+  };
+}
+
+function orderCostSummary(
+  orders: OrderRow[],
+  rates: ExchangeRates,
+): CustomerMoneySummary {
+  const amounts: RecordedAmount[] = [];
+  for (const order of orders) {
+    const storedYer = numeric(order.total_cost_yer);
+    const sourceColumns: Record<CurrencyCode, number | null> = {
+      USD: numeric(order.total_cost_usd),
+      YER: storedYer,
+      SAR: numeric(order.total_cost_sar),
+    };
+    // A recorded YER total is authoritative. Otherwise infer currency from
+    // a matching populated column or one uniquely populated currency column.
+    let currency: CurrencyCode | null = storedYer !== null ? "YER" : null;
+    let amount = storedYer;
+    if (amount === null) {
+      const metadataCurrencies = [
+        normalizeCurrency(order.original_currency),
+        normalizeCurrency(order.quote_currency),
+      ].filter((code): code is CurrencyCode => code !== null);
+      const matchingCurrency = metadataCurrencies.find(
+        (code) => sourceColumns[code] !== null,
+      );
+      const populatedCurrencies = CURRENCY_CODES.filter(
+        (code) => sourceColumns[code] !== null,
+      );
+      currency =
+        matchingCurrency ??
+        (populatedCurrencies.length === 1 ? populatedCurrencies[0] : null);
+      if (currency) amount = sourceColumns[currency];
+    }
+    if (amount === null || currency === null) continue;
+
+    const yerAmount =
+      currency === "YER" && storedYer !== null
+        ? storedYer
+        : convertToYER(amount, currency, rates);
+    amounts.push({
+      tracking: order.tracking_code?.trim() || `طلب ${order.id.slice(0, 8)}`,
+      amount,
+      currency,
+      yerAmount: yerAmount === null ? null : Math.round(yerAmount),
+    });
+  }
+  return summarizeRecordedAmounts(amounts, orders.length);
+}
+
+function approvedPaymentSummary(
+  customer: Customer,
+  rates: ExchangeRates,
+): CustomerMoneySummary {
+  const amounts: RecordedAmount[] = [];
+  const seenPaymentIds = new Set<string>();
+
+  for (const payment of customer.payments ?? []) {
+    if (
+      String(payment.status ?? "")
+        .trim()
+        .toLowerCase() !== "approved"
+    )
+      continue;
+    if (seenPaymentIds.has(payment.id)) continue;
+    const trackings = [
+      ...new Set(
+        [payment.order_tracking, payment.tracking_code]
+          .map((value) => value?.trim())
+          .filter((value): value is string => Boolean(value)),
+      ),
+    ];
+    const matchedOrders = customer.orders.filter((order) => {
+      const code = order.tracking_code?.trim();
+      return Boolean(code && trackings.includes(code));
+    });
+    // Count a payment only when its tracking resolves to exactly one order.
+    if (matchedOrders.length !== 1) continue;
+    const amount = numeric(payment.amount);
+    if (amount === null) continue;
+    seenPaymentIds.add(payment.id);
+    const currency = normalizeCurrency(payment.currency);
+    const order = matchedOrders[0]!;
+    amounts.push({
+      tracking: order.tracking_code?.trim() || `طلب ${order.id.slice(0, 8)}`,
+      amount,
+      currency,
+      yerAmount: convertToYER(amount, currency, rates),
+    });
+  }
+  return summarizeRecordedAmounts(amounts, amounts.length);
+}
+
+function orderFieldSummary(
+  orders: OrderRow[],
+  field: "remaining_amount" | "profit_amount",
+  rates: ExchangeRates,
+): CustomerMoneySummary {
+  const amounts: RecordedAmount[] = [];
+  for (const order of orders) {
+    const amount = numeric(order[field]);
+    if (amount === null) continue;
+    // The schema has no explicit currency columns for these fields. Only
+    // label them YER when a YER order total establishes that context.
+    const currency: CurrencyCode | null =
+      numeric(order.total_cost_yer) !== null ? "YER" : null;
+    const converted = convertToYER(amount, currency, rates);
+    amounts.push({
+      tracking: order.tracking_code?.trim() || `طلب ${order.id.slice(0, 8)}`,
+      amount,
+      currency,
+      yerAmount: converted === null ? null : Math.round(converted),
+    });
+  }
+  return summarizeRecordedAmounts(amounts, orders.length);
 }
 
 function safeErrorText(value: unknown): string {
@@ -393,9 +637,14 @@ async function describeCustomerLoadError(cause: unknown): Promise<string> {
     errorName = cause.name;
     errorMessage = safeErrorText(cause.message);
   } else if (cause && typeof cause === "object") {
-    const record = cause as { name?: unknown; message?: unknown; status?: unknown };
+    const record = cause as {
+      name?: unknown;
+      message?: unknown;
+      status?: unknown;
+    };
     if (typeof record.name === "string") errorName = record.name;
-    if (typeof record.message === "string") errorMessage = safeErrorText(record.message);
+    if (typeof record.message === "string")
+      errorMessage = safeErrorText(record.message);
     if (typeof record.status === "number") status = record.status;
   }
 
@@ -407,7 +656,8 @@ async function describeCustomerLoadError(cause: unknown): Promise<string> {
       status = context.status;
       try {
         const payload = await context.clone().json();
-        if (typeof payload?.error === "string") serverMessage = safeErrorText(payload.error);
+        if (typeof payload?.error === "string")
+          serverMessage = safeErrorText(payload.error);
       } catch {
         // The HTTP status remains useful when the response body is not JSON.
       }
@@ -423,7 +673,10 @@ async function describeCustomerLoadError(cause: unknown): Promise<string> {
     return "رفض Supabase الجلسة أو رمز التحقق (HTTP 401). سجّل الخروج والدخول مجددًا، وتأكد من إبقاء Verify JWT مفعّلًا للدالة.";
   }
   if (status === 403) {
-    return serverMessage || "حسابك لا يملك دور admin أو staff المطلوب لعرض العملاء (HTTP 403).";
+    return (
+      serverMessage ||
+      "حسابك لا يملك دور admin أو staff المطلوب لعرض العملاء (HTTP 403)."
+    );
   }
   if (status && status >= 500) {
     return `${serverMessage || "تعذر تنفيذ الدالة على الخادم."} (HTTP ${status}). راجع سجلات Edge Function باسم admin-customers في مشروع الإنتاج؛ لا تُعد تشغيل أي ترحيل قاعدة بيانات بناءً على هذا الخطأ وحده.`;
@@ -440,7 +693,10 @@ async function describeCustomerLoadError(cause: unknown): Promise<string> {
   return `${kind}${details ? ` (تشخيص آمن: ${details})` : " (لا توجد استجابة من الخادم)"} افتح أدوات المطور > Network، ثم أعد المحاولة وافحص طلب functions/v1/admin-customers وحالة الطلب فقط. لا تنسخ أو تشارك Headers أو قيم المفاتيح.`;
 }
 
-async function loadCustomerRecords(): Promise<{ customers: Customer[]; canDelete: boolean }> {
+async function loadCustomerRecords(): Promise<{
+  customers: Customer[];
+  canDelete: boolean;
+}> {
   const { data, error } = await supabase.functions.invoke("admin-customers", {
     body: { action: "list" },
   });
@@ -460,6 +716,9 @@ async function loadCustomerRecords(): Promise<{ customers: Customer[]; canDelete
 function CustomersPageContent() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [canDeleteCustomers, setCanDeleteCustomers] = useState(false);
+  const [exchangeRates, setExchangeRates] = useState<ExchangeRates>({ USD: 1 });
+  const [exchangeRatesLoaded, setExchangeRatesLoaded] = useState(false);
+  const [exchangeRatesError, setExchangeRatesError] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -481,6 +740,21 @@ function CustomersPageContent() {
       setCustomers(result.customers);
       setCanDeleteCustomers(result.canDelete);
       setPage(1);
+      setExchangeRatesLoaded(false);
+      setExchangeRatesError(false);
+      try {
+        const rates = await loadCustomerExchangeRates();
+        setExchangeRates(rates);
+      } catch (rateError) {
+        console.error(
+          "تعذر تحميل أسعار الصرف من جدول exchange_rates:",
+          rateError,
+        );
+        setExchangeRates({ USD: 1 });
+        setExchangeRatesError(true);
+      } finally {
+        setExchangeRatesLoaded(true);
+      }
     } catch (cause) {
       console.error("تعذر تحميل بيانات كشف العملاء:", cause);
       setError(await describeCustomerLoadError(cause));
@@ -497,14 +771,19 @@ function CustomersPageContent() {
     if (!deleteTarget || deleting) return;
     setDeleting(true);
     try {
-      const { data, error } = await supabase.functions.invoke("admin-customers", {
-        body: { action: "delete", userId: deleteTarget.id },
-      });
+      const { data, error } = await supabase.functions.invoke(
+        "admin-customers",
+        {
+          body: { action: "delete", userId: deleteTarget.id },
+        },
+      );
       if (error) throw error;
       if (data?.success !== true) {
         if (data?.cleanupPending === true && typeof data.jobId === "string") {
           setCleanupJobId(data.jobId);
-          setCustomers((current) => current.filter((item) => item.id !== deleteTarget.id));
+          setCustomers((current) =>
+            current.filter((item) => item.id !== deleteTarget.id),
+          );
           setSelected(null);
           setDeleteTarget(null);
           setInfo(
@@ -514,7 +793,9 @@ function CustomersPageContent() {
         }
         throw new Error(data?.error || "تعذر حذف العميل.");
       }
-      setCustomers((current) => current.filter((item) => item.id !== deleteTarget.id));
+      setCustomers((current) =>
+        current.filter((item) => item.id !== deleteTarget.id),
+      );
       setSelected(null);
       setDeleteTarget(null);
       setInfo("تم حذف حساب العميل وطلباته وسجلاته المالية نهائيًا.");
@@ -532,9 +813,12 @@ function CustomersPageContent() {
     if (!cleanupJobId || retryingCleanup) return;
     setRetryingCleanup(true);
     try {
-      const { data, error } = await supabase.functions.invoke("admin-customers", {
-        body: { action: "resume", jobId: cleanupJobId },
-      });
+      const { data, error } = await supabase.functions.invoke(
+        "admin-customers",
+        {
+          body: { action: "resume", jobId: cleanupJobId },
+        },
+      );
       if (error) throw error;
       if (data?.success !== true) {
         throw new Error(data?.error || "لم يكتمل التنظيف.");
@@ -571,7 +855,9 @@ function CustomersPageContent() {
   const now = Date.now();
   const monthStart = getMonthStart();
   const weekStart = now - 7 * 24 * 60 * 60 * 1000;
-  const activeCount = customers.filter((customer) => customerIsActive(customer, now)).length;
+  const activeCount = customers.filter((customer) =>
+    customerIsActive(customer, now),
+  ).length;
   const newThisMonth = customers.filter(
     (customer) => new Date(customer.created_at).getTime() >= monthStart,
   ).length;
@@ -580,7 +866,10 @@ function CustomersPageContent() {
   ).length;
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
-  const pageRows = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const pageRows = filtered.slice(
+    (safePage - 1) * PAGE_SIZE,
+    safePage * PAGE_SIZE,
+  );
 
   const exportCsv = () => {
     const headers = [
@@ -605,7 +894,11 @@ function CustomersPageContent() {
       ];
     });
     const csv = [headers, ...rows]
-      .map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(","))
+      .map((row) =>
+        row
+          .map((value) => `"${String(value).replaceAll('"', '""')}"`)
+          .join(","),
+      )
       .join("\r\n");
     const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -652,13 +945,18 @@ function CustomersPageContent() {
   ];
 
   return (
-    <div dir="rtl" style={fontStack} className="min-h-screen bg-[#F4F6FB] pb-16 text-slate-800">
+    <div
+      dir="rtl"
+      style={fontStack}
+      className="min-h-screen bg-[#F4F6FB] pb-16 text-slate-800"
+    >
       <div className="mx-auto max-w-6xl space-y-5 px-4 py-6">
         <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-xl font-black text-slate-800">كشف العملاء</h1>
             <p className="mt-1 text-sm text-slate-500">
-              إدارة وعرض الحسابات المسجلة في قاعدة البيانات · {customers.length} عميل
+              إدارة وعرض الحسابات المسجلة في قاعدة البيانات · {customers.length}{" "}
+              عميل
             </p>
           </div>
           <button
@@ -704,10 +1002,15 @@ function CustomersPageContent() {
                 >
                   <Icon className="size-5" />
                 </span>
-                <p className="mt-3 text-3xl font-black leading-none" style={{ color: stat.color }}>
+                <p
+                  className="mt-3 text-3xl font-black leading-none"
+                  style={{ color: stat.color }}
+                >
                   {loading ? "—" : stat.value.toLocaleString("ar-YE")}
                 </p>
-                <p className="mt-1.5 text-xs font-bold text-slate-600">{stat.label}</p>
+                <p className="mt-1.5 text-xs font-bold text-slate-600">
+                  {stat.label}
+                </p>
                 <p className="mt-1 text-[10px] text-slate-400">{stat.hint}</p>
               </article>
             );
@@ -718,10 +1021,11 @@ function CustomersPageContent() {
           role="note"
           className="rounded-xl border border-sky-100 bg-sky-50 px-4 py-3 text-xs leading-6 text-sky-900"
         >
-          مصدر البيانات: الحسابات من <span dir="ltr">profiles</span>، والأدوار من{" "}
-          <span dir="ltr">user_roles</span>، والطلبات المرتبطة بمعرّف الحساب من{" "}
-          <span dir="ltr">orders</span>. يُحسب «نشط» بوجود طلب غير ملغى خلال آخر 90 يومًا. وتُربط
-          الطلبات القديمة التي بلا معرّف حساب بالهاتف فقط إذا كان الرقم يعود لحساب واحد دون التباس.
+          مصدر البيانات: الحسابات من <span dir="ltr">profiles</span>، والأدوار
+          من <span dir="ltr">user_roles</span>، والطلبات المرتبطة بمعرّف الحساب
+          من <span dir="ltr">orders</span>. يُحسب «نشط» بوجود طلب غير ملغى خلال
+          آخر 90 يومًا. وتُربط الطلبات القديمة التي بلا معرّف حساب بالهاتف فقط
+          إذا كان الرقم يعود لحساب واحد دون التباس.
         </p>
 
         <section className="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-white p-3 shadow-sm sm:flex-row sm:items-center">
@@ -783,16 +1087,25 @@ function CustomersPageContent() {
               <tbody className="divide-y divide-slate-100">
                 {loading ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-12 text-center text-slate-500">
+                    <td
+                      colSpan={7}
+                      className="px-4 py-12 text-center text-slate-500"
+                    >
                       <span className="inline-flex items-center gap-2">
-                        <Loader2 className="size-4 animate-spin" /> جارٍ تحميل سجلات العملاء…
+                        <Loader2 className="size-4 animate-spin" /> جارٍ تحميل
+                        سجلات العملاء…
                       </span>
                     </td>
                   </tr>
                 ) : pageRows.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-12 text-center text-slate-500">
-                      {error ? "تعذر عرض النتائج حتى نجاح الاتصال" : "لا توجد سجلات مطابقة"}
+                    <td
+                      colSpan={7}
+                      className="px-4 py-12 text-center text-slate-500"
+                    >
+                      {error
+                        ? "تعذر عرض النتائج حتى نجاح الاتصال"
+                        : "لا توجد سجلات مطابقة"}
                     </td>
                   </tr>
                 ) : (
@@ -800,7 +1113,10 @@ function CustomersPageContent() {
                     const active = customerIsActive(customer);
                     const latest = customer.orders[0];
                     return (
-                      <tr key={customer.id} className="bg-white transition hover:bg-slate-50">
+                      <tr
+                        key={customer.id}
+                        className="bg-white transition hover:bg-slate-50"
+                      >
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
                             <span
@@ -829,7 +1145,10 @@ function CustomersPageContent() {
                           {formatDate(customer.created_at)}
                         </td>
                         <td className="px-4 py-3">
-                          <span dir="ltr" className="block text-right text-xs text-slate-600">
+                          <span
+                            dir="ltr"
+                            className="block text-right text-xs text-slate-600"
+                          >
                             {customer.phone || "غير مسجل"}
                           </span>
                         </td>
@@ -846,11 +1165,13 @@ function CustomersPageContent() {
                         <td className="px-4 py-3">
                           {active ? (
                             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
-                              <span className="size-1.5 rounded-full bg-emerald-500" /> نشط
+                              <span className="size-1.5 rounded-full bg-emerald-500" />{" "}
+                              نشط
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-500">
-                              <span className="size-1.5 rounded-full bg-slate-400" /> غير نشط
+                              <span className="size-1.5 rounded-full bg-slate-400" />{" "}
+                              غير نشط
                             </span>
                           )}
                         </td>
@@ -887,7 +1208,8 @@ function CustomersPageContent() {
         <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
           <p className="text-xs text-slate-500">
             عرض {filtered.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1}–
-            {Math.min(safePage * PAGE_SIZE, filtered.length)} من {filtered.length} عميل
+            {Math.min(safePage * PAGE_SIZE, filtered.length)} من{" "}
+            {filtered.length} عميل
           </p>
           <div className="flex items-center gap-1">
             <button
@@ -920,7 +1242,9 @@ function CustomersPageContent() {
             })}
             <button
               type="button"
-              onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+              onClick={() =>
+                setPage((current) => Math.min(totalPages, current + 1))
+              }
               disabled={safePage >= totalPages}
               className="grid size-9 place-items-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 disabled:opacity-40"
               aria-label="التالي"
@@ -963,7 +1287,8 @@ function CustomersPageContent() {
               >
                 {retryingCleanup ? (
                   <>
-                    <Loader2 className="size-4 animate-spin" /> جارٍ استكمال الحذف…
+                    <Loader2 className="size-4 animate-spin" /> جارٍ استكمال
+                    الحذف…
                   </>
                 ) : (
                   "إعادة محاولة تنظيف السجلات"
@@ -997,19 +1322,24 @@ function CustomersPageContent() {
                 <Trash2 className="size-5" />
               </span>
               <div>
-                <h2 id="delete-customer-title" className="text-lg font-black text-slate-900">
+                <h2
+                  id="delete-customer-title"
+                  className="text-lg font-black text-slate-900"
+                >
                   تأكيد حذف العميل نهائيًا
                 </h2>
                 <p className="mt-1 text-sm leading-6 text-slate-600">
-                  سيُحذف حساب <strong>{deleteTarget.full_name || "العميل"}</strong> مع طلباته (
-                  {deleteTarget.orders.length}) وسجلات المدفوعات والمحفظة. لا يمكن التراجع عن هذا
-                  الإجراء.
+                  سيُحذف حساب{" "}
+                  <strong>{deleteTarget.full_name || "العميل"}</strong> مع
+                  طلباته ({deleteTarget.orders.length}) وسجلات المدفوعات
+                  والمحفظة. لا يمكن التراجع عن هذا الإجراء.
                 </p>
               </div>
             </div>
             <p className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-xs leading-6 text-red-800">
-              سيُحذف كذلك ملف الحساب والعناوين والإشعارات ومعاملات المحفظة المرتبطة به. أُبقي سجلات
-              العملية التقنية فقط عند تعذر إكمال التنظيف لضمان إمكانية استئنافه.
+              سيُحذف كذلك ملف الحساب والعناوين والإشعارات ومعاملات المحفظة
+              المرتبطة به. أُبقي سجلات العملية التقنية فقط عند تعذر إكمال
+              التنظيف لضمان إمكانية استئنافه.
             </p>
             <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <button
@@ -1053,7 +1383,10 @@ function CustomersPageContent() {
         >
           <section className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
             <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white/95 px-5 py-4 backdrop-blur">
-              <h2 id="customer-modal-title" className="font-black text-slate-800">
+              <h2
+                id="customer-modal-title"
+                className="font-black text-slate-800"
+              >
                 تفاصيل العميل
               </h2>
               <div className="flex items-center gap-2">
@@ -1097,7 +1430,9 @@ function CustomersPageContent() {
                   >
                     <span
                       className={`size-1.5 rounded-full ${
-                        customerIsActive(selected) ? "bg-emerald-500" : "bg-slate-400"
+                        customerIsActive(selected)
+                          ? "bg-emerald-500"
+                          : "bg-slate-400"
                       }`}
                     />
                     {customerIsActive(selected) ? "نشط" : "غير نشط"}
@@ -1109,12 +1444,17 @@ function CustomersPageContent() {
                   <p className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400">
                     <Phone className="size-3.5" /> الهاتف
                   </p>
-                  <p dir="ltr" className="mt-1 text-right text-xs font-bold text-slate-700">
+                  <p
+                    dir="ltr"
+                    className="mt-1 text-right text-xs font-bold text-slate-700"
+                  >
                     {selected.phone || "غير مسجل"}
                   </p>
                 </div>
                 <div className="rounded-2xl bg-slate-50 p-3">
-                  <p className="text-[11px] font-bold text-slate-400">معرّف الحساب</p>
+                  <p className="text-[11px] font-bold text-slate-400">
+                    معرّف الحساب
+                  </p>
                   <p
                     dir="ltr"
                     title={selected.id}
@@ -1132,157 +1472,229 @@ function CustomersPageContent() {
                   </p>
                 </div>
               </div>
-              <section className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <div>
-                    <h4 className="font-black text-slate-800">الملخص المالي للطلبات</h4>
-                    <p className="mt-1 text-[11px] leading-5 text-slate-500">
-                      المستحق والمدفوع والمتبقي هنا بالريال اليمني فقط. تُستخدم تكلفة total_cost_yer
-                      والدفعات المعتمدة المسجلة YER والمطابقة لرقم تتبع الطلب؛ ولا تُحوّل عملة سعر
-                      السلعة الأصلية أو تُخمّن. الدفعات غير المطابقة تظهر منفصلة، والربح من الحقل
-                      المسجل.
+              {(() => {
+                const financialCards = [
+                  {
+                    key: "cost",
+                    label: "إجمالي الطلبات",
+                    summary: orderCostSummary(selected.orders, exchangeRates),
+                    tone: "slate",
+                  },
+                  {
+                    key: "paid",
+                    label: "المدفوع المعتمد",
+                    summary: approvedPaymentSummary(selected, exchangeRates),
+                    tone: "emerald",
+                  },
+                  {
+                    key: "remaining",
+                    label: "المتبقي",
+                    summary: orderFieldSummary(
+                      selected.orders,
+                      "remaining_amount",
+                      exchangeRates,
+                    ),
+                    tone: "red",
+                  },
+                  {
+                    key: "profit",
+                    label: "الربح المسجل",
+                    summary: orderFieldSummary(
+                      selected.orders,
+                      "profit_amount",
+                      exchangeRates,
+                    ),
+                    tone: "violet",
+                  },
+                ] as const;
+                const totalCost = financialCards[0].summary.total;
+                const totalPaid = financialCards[1].summary.total;
+                const paidPercent =
+                  totalCost > 0
+                    ? Math.max(
+                        0,
+                        Math.min(
+                          100,
+                          Math.round((totalPaid / totalCost) * 100),
+                        ),
+                      )
+                    : 0;
+                const toneClasses = {
+                  slate: "bg-slate-50 text-slate-700",
+                  emerald: "bg-emerald-50 text-emerald-700",
+                  red: "bg-red-50 text-red-700",
+                  violet: "bg-violet-50 text-violet-700",
+                } as const;
+                const headingClasses = {
+                  slate: "text-slate-500",
+                  emerald: "text-emerald-700",
+                  red: "text-red-600",
+                  violet: "text-violet-700",
+                } as const;
+                return (
+                  <section className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+                    <div className="mb-4 flex items-center justify-between gap-3">
+                      <div>
+                        <h4 className="flex items-center gap-2 font-black text-slate-800">
+                          <Wallet className="size-4 text-[#0F4C81]" /> الحالة
+                          المالية
+                        </h4>
+                        <p className="mt-1 text-[11px] leading-5 text-slate-500">
+                          القيم بالريال اليمني، باستخدام أسعار الصرف المحفوظة في
+                          النظام. تظهر قيمة كل طلب الأصلية أيضًا؛ لا يتغير
+                          المبلغ المسجل في قاعدة البيانات.
+                        </p>
+                      </div>
+                      <span className="shrink-0 rounded-lg bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600">
+                        {selected.orders.length.toLocaleString("ar-YE")} طلب
+                      </span>
+                    </div>
+                    {!exchangeRatesLoaded && (
+                      <p className="mb-3 rounded-xl bg-sky-50 px-3 py-2 text-[11px] text-sky-800">
+                        جارٍ تحميل أسعار الصرف من النظام…
+                      </p>
+                    )}
+                    {exchangeRatesError && (
+                      <p
+                        role="status"
+                        className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] leading-5 text-amber-800"
+                      >
+                        تعذر جلب أسعار الصرف. ستظل القيم الأصلية ظاهرة، ولن
+                        أستخدم سعرًا افتراضيًا للتحويل.
+                      </p>
+                    )}
+                    {exchangeRatesLoaded &&
+                      !exchangeRatesError &&
+                      typeof exchangeRates.YER !== "number" && (
+                        <p
+                          role="status"
+                          className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] leading-5 text-amber-800"
+                        >
+                          سعر USD إلى YER غير مسجل في جدول أسعار الصرف؛ تظهر
+                          القيم الأصلية دون تحويل.
+                        </p>
+                      )}
+                    <div className="mb-4 h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
+                      <div
+                        className="h-full rounded-full bg-emerald-500 transition-all"
+                        style={{ width: `${paidPercent}%` }}
+                      />
+                    </div>
+                    <p className="mb-3 text-left text-xs font-black text-emerald-700">
+                      {paidPercent.toLocaleString("ar-YE")}٪ مدفوع
                     </p>
-                  </div>
-                  <span className="shrink-0 rounded-lg bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600">
-                    {selected.orders.length.toLocaleString("ar-YE")} طلب
-                  </span>
-                </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {(
-                    [
-                      {
-                        label: "إجمالي التكلفة بالريال اليمني",
-                        fields: ["total_cost_usd", "total_cost_yer", "total_cost_sar"],
-                      },
-                      { label: "المدفوع بالريال اليمني", fields: ["paid_amount"] },
-                      { label: "المتبقي بالريال اليمني", fields: ["remaining_amount"] },
-                      { label: "الربح المسجل", fields: ["profit_amount"] },
-                    ] as const
-                  ).map(({ label, fields }) => {
-                    const financialField = fields[0] as
-                      | "total_cost_usd"
-                      | "total_cost_yer"
-                      | "total_cost_sar"
-                      | "paid_amount"
-                      | "remaining_amount"
-                      | "profit_amount";
-                    const moneyLines =
-                      fields.length === 3
-                        ? orderCostTotals(selected.orders)
-                        : financialField === "paid_amount"
-                          ? approvedLinkedPaymentTotals(selected)
-                          : financialField === "remaining_amount"
-                            ? remainingTotals(selected)
-                            : currencyTotals(selected.orders, "profit_amount");
-                    const unknownCurrencyCount =
-                      financialField === "paid_amount"
-                        ? (selected.payments ?? []).filter((payment) => {
-                            const trackings = [payment.order_tracking, payment.tracking_code]
-                              .map((tracking) => tracking?.trim())
-                              .filter((tracking): tracking is string => Boolean(tracking));
-                            const hasMatchingOrder = selected.orders.some(
-                              (order) =>
-                                order.tracking_code &&
-                                trackings.includes(order.tracking_code.trim()),
-                            );
-                            return (
-                              String(payment.status ?? "")
-                                .trim()
-                                .toLowerCase() === "approved" &&
-                              hasMatchingOrder &&
-                              numeric(payment.amount) !== null &&
-                              !normalizeCurrency(payment.currency)
-                            );
-                          }).length
-                        : financialField === "profit_amount"
-                          ? selected.orders.filter(
-                              (order) =>
-                                hasStoredValue(order, "profit_amount") && !orderCurrency(order),
-                            ).length
-                          : 0;
-                    return (
-                      <div key={label} className="rounded-xl bg-slate-50 p-3">
-                        <p className="text-xs font-bold text-slate-500">{label}</p>
-                        {moneyLines.length ? (
-                          <ul className="mt-2 space-y-1.5">
-                            {moneyLines.map((line) => (
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                      {financialCards.map(({ key, label, summary, tone }) => (
+                        <article
+                          key={key}
+                          className={`min-w-0 rounded-2xl p-3 ${toneClasses[tone]}`}
+                        >
+                          <p
+                            className={`text-[11px] font-bold ${headingClasses[tone]}`}
+                          >
+                            {label}
+                          </p>
+                          <p className="mt-1 text-lg font-black" dir="auto">
+                            {summary.recorded > 0
+                              ? `${summary.total.toLocaleString("ar-YE")} ر.ي`
+                              : "غير مسجل"}
+                          </p>
+                          {summary.recorded > 0 &&
+                            summary.recorded < summary.expected && (
+                              <p className="mt-1 text-[10px] leading-4 opacity-75">
+                                تحويل أو تسجيل متاح لـ {summary.recorded} من{" "}
+                                {summary.expected} طلبات
+                              </p>
+                            )}
+                          {summary.amounts.length > 0 && (
+                            <ul className="mt-3 max-h-40 space-y-1.5 overflow-y-auto border-t border-current/10 pt-2">
+                              {summary.amounts.map((entry, index) => (
+                                <li
+                                  key={`${entry.tracking}-${index}`}
+                                  className="flex flex-col gap-0.5 border-b border-current/10 pb-1 text-[10px]"
+                                >
+                                  <span className="font-bold" dir="auto">
+                                    {entry.yerAmount !== null
+                                      ? `${entry.yerAmount.toLocaleString("ar-YE")} ر.ي`
+                                      : `${entry.amount.toLocaleString("ar-YE")} ${entry.currency ? CURRENCY_INFO[entry.currency].suffix : "عملة غير محددة"}`}
+                                  </span>
+                                  <span className="text-slate-500">
+                                    {entry.tracking}
+                                    {entry.yerAmount !== null &&
+                                    entry.currency !== "YER"
+                                      ? ` · الأصل: ${entry.amount.toLocaleString("ar-YE")} ${entry.currency ? CURRENCY_INFO[entry.currency].suffix : ""}`
+                                      : ""}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                          {summary.unconverted > 0 && (
+                            <p className="mt-2 text-[10px] leading-4 text-amber-800">
+                              {summary.unconverted} مبلغ ظاهر بعملته الأصلية،
+                              ولم يدخل مجموع الريال لعدم توفر عملة أو سعر صرف.
+                            </p>
+                          )}
+                        </article>
+                      ))}
+                    </div>
+                    {approvedUnlinkedPaymentLines(selected).length > 0 && (
+                      <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
+                        <h5 className="text-xs font-black text-amber-900">
+                          دفعات معتمدة غير مطابقة لطلبات هذا العميل
+                        </h5>
+                        <p className="mt-1 text-[10px] leading-5 text-amber-800">
+                          تظهر منفصلة ولا تدخل في مجموع المدفوع حتى يطابق رقم
+                          تتبعها طلبًا واحدًا فقط.
+                        </p>
+                        <ul className="mt-2 space-y-1">
+                          {approvedUnlinkedPaymentLines(selected).map(
+                            (line) => (
                               <li
-                                key={line.code}
-                                className="flex flex-wrap items-baseline justify-between gap-1 text-sm font-black text-slate-800"
+                                key={line.key}
+                                className="flex items-center justify-between gap-2 text-sm font-black text-amber-950"
                               >
                                 <span>
                                   {line.total.toLocaleString("ar-YE")}{" "}
-                                  {CURRENCY_INFO[line.code].suffix}
+                                  {line.label}
                                 </span>
-                                <span className="text-[10px] font-medium text-slate-400">
-                                  {CURRENCY_INFO[line.code].label}
-                                  {line.recorded < line.expected
-                                    ? ` · متاح في ${line.recorded} من ${line.expected} طلبات`
-                                    : ""}
+                                <span className="text-[10px] font-medium">
+                                  {line.count.toLocaleString("ar-YE")} دفعة
+                                  معتمدة
                                 </span>
                               </li>
-                            ))}
-                          </ul>
-                        ) : (
-                          <p className="mt-2 text-sm font-bold text-slate-400">غير مسجل</p>
-                        )}
-                        {unknownCurrencyCount > 0 && (
-                          <p className="mt-2 text-[11px] leading-5 text-amber-700">
-                            يوجد مبلغ محفوظ في {unknownCurrencyCount} طلب، لكن عملته غير محددة؛ لم
-                            أضفه إلى أي مجموع.
-                          </p>
-                        )}
+                            ),
+                          )}
+                        </ul>
                       </div>
-                    );
-                  })}
-                </div>
-                {approvedUnlinkedPaymentLines(selected).length > 0 && (
-                  <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
-                    <h5 className="text-xs font-black text-amber-900">
-                      دفعات معتمدة غير مطابقة لطلبات هذا العميل
-                    </h5>
-                    <p className="mt-1 text-[10px] leading-5 text-amber-800">
-                      هذه المبالغ لا يطابق رقم تتبعها أي طلب لهذا العميل؛ لذلك تظهر مستقلة ولا تدخل
-                      في المدفوع أو المتبقي المحسوب للطلبات.
+                    )}
+                    <p className="mt-3 text-[10px] leading-5 text-slate-400">
+                      التحويل للعرض فقط وبسعر الصرف الحالي المسجل في النظام؛ لا
+                      يُحدّث الطلب أو رصيده المحفوظ.
                     </p>
-                    <ul className="mt-2 space-y-1">
-                      {approvedUnlinkedPaymentLines(selected).map((line) => (
-                        <li
-                          key={line.key}
-                          className="flex items-center justify-between gap-2 text-sm font-black text-amber-950"
-                        >
-                          <span>
-                            {line.total.toLocaleString("ar-YE")} {line.label}
-                          </span>
-                          <span className="text-[10px] font-medium">
-                            {line.count.toLocaleString("ar-YE")} دفعة معتمدة
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                <p className="mt-3 text-[10px] leading-5 text-slate-400">
-                  الطلبات التي لا تحتوي مبلغًا مسجلًا في total_cost_yer لا يُخمن رصيدها بالريال
-                  اليمني؛ وتظهر الدفعات المسجلة أدناه حتى لو تعذر حساب المتبقي.
-                </p>
-              </section>
+                  </section>
+                );
+              })()}
               <section className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <h4 className="font-black text-slate-800">العمليات المالية</h4>
+                    <h4 className="font-black text-slate-800">
+                      العمليات المالية
+                    </h4>
                     <p className="mt-1 text-[11px] text-slate-500">
-                      دفعات العميل مع الحالة ورقم الطلب. تُحتسب المقبوضات المعتمدة فقط.
+                      دفعات العميل مع الحالة ورقم الطلب. تُحتسب المقبوضات
+                      المعتمدة فقط.
                     </p>
                   </div>
                   <span className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600">
-                    {(selected.payments ?? []).length.toLocaleString("ar-YE")} عملية
+                    {(selected.payments ?? []).length.toLocaleString("ar-YE")}{" "}
+                    عملية
                   </span>
                 </div>
                 {(selected.payments ?? []).length === 0 ? (
                   <p className="mt-3 rounded-xl bg-slate-50 p-4 text-center text-sm text-slate-500">
-                    لا توجد عمليات دفع مرتبطة بهذا الحساب. قد تكون الدفعات القديمة بلا user_id أو
-                    رقم تتبع مطابق.
+                    لا توجد عمليات دفع مرتبطة بهذا الحساب. قد تكون الدفعات
+                    القديمة بلا user_id أو رقم تتبع مطابق.
                   </p>
                 ) : (
                   <ul className="mt-3 space-y-2">
@@ -1291,11 +1703,17 @@ function CustomersPageContent() {
                         key={payment.id}
                         className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-slate-50 px-3 py-2.5"
                       >
-                        <span dir="ltr" className="font-mono text-xs font-black text-slate-600">
-                          {payment.tracking_code || payment.order_tracking || "بدون رقم تتبع"}
+                        <span
+                          dir="ltr"
+                          className="font-mono text-xs font-black text-slate-600"
+                        >
+                          {payment.tracking_code ||
+                            payment.order_tracking ||
+                            "بدون رقم تتبع"}
                         </span>
                         <span className="text-sm font-black text-slate-800">
-                          {numeric(payment.amount)?.toLocaleString("ar-YE") ?? "غير مسجل"}{" "}
+                          {numeric(payment.amount)?.toLocaleString("ar-YE") ??
+                            "غير مسجل"}{" "}
                           {payment.currency || ""}
                         </span>
                         <span
@@ -1312,7 +1730,8 @@ function CustomersPageContent() {
                 )}
                 {(selected.payments ?? []).length > 20 && (
                   <p className="mt-2 text-center text-xs text-slate-400">
-                    يُعرض أحدث 20 عملية من أصل {(selected.payments ?? []).length}.
+                    يُعرض أحدث 20 عملية من أصل{" "}
+                    {(selected.payments ?? []).length}.
                   </p>
                 )}
               </section>
@@ -1336,7 +1755,10 @@ function CustomersPageContent() {
                         key={order.id}
                         className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-slate-50 px-3 py-2.5"
                       >
-                        <span dir="ltr" className="font-mono text-xs font-black text-slate-600">
+                        <span
+                          dir="ltr"
+                          className="font-mono text-xs font-black text-slate-600"
+                        >
                           {order.tracking_code || `ORD-${order.id.slice(0, 8)}`}
                         </span>
                         <span className="text-xs text-slate-500">
