@@ -14,6 +14,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
 import { AccountShell, EmptyState } from "@/components/AccountShell";
+import { sendSms } from "@/services/sendSms";
 
 export const Route = createFileRoute("/notifications")({
   component: NotificationsPage,
@@ -464,7 +465,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
           .from("orders")
           .select("id,tracking_code,customer_name,phone,notes,status,created_at")
           .order("created_at", { ascending: false })
-          .limit(30),
+          .limit(500),
         (supabase.from("notifications") as any)
           .select("id,user_id,title,message,type,created_at,sent_by,href,is_active")
           .order("created_at", { ascending: false })
@@ -623,9 +624,24 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
       data as SystemNotification,
       ...current.filter((item) => item.id !== data.id),
     ]);
+
+    const { data: profiles } = await (supabase.from("profiles") as any)
+      .select("phone")
+      .not("phone", "is", null)
+      .limit(1000);
+    const phones = [...new Set((profiles ?? []).map((profile: { phone?: string | null }) =>
+      (profile.phone ?? "").trim()).filter(Boolean))];
+    const smsResults = await Promise.allSettled(
+      phones.map((phone) => sendSms(phone, `${title}\n${message}`)),
+    );
+    const failedSms = smsResults.filter((result) => result.status === "rejected").length;
     setDraftTitle("");
     setDraftMessage("");
-    setError("تم إرسال الإشعار لجميع العملاء.");
+    setError(
+      failedSms === 0
+        ? `تم نشر العرض وإرسال SMS إلى ${phones.length} عميل.`
+        : `تم نشر العرض، لكن تعذر إرسال SMS إلى ${failedSms} من أصل ${phones.length} عميل.`,
+    );
   };
 
   const deleteCustomerNotification = async (notification: SystemNotification) => {
@@ -701,67 +717,27 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
           text="ستظهر طلبات العملاء هنا عند وصولها."
         />
       ) : (
-        <div className="space-y-3">
-          {orders.map((order) => {
-            const phone = (order.phone || "").replace(/\D/g, "");
-            return (
-              <article
-                key={order.id}
-                className={`rounded-2xl border bg-white p-4 shadow-sm ${
-                  order.read ? "border-slate-200" : "border-orange-300 ring-1 ring-orange-100"
-                }`}
-              >
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="font-bold text-slate-900">{order.customer_name}</h3>
-                      {!order.read && (
-                        <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700">
-                          جديد
-                        </span>
-                      )}
-                      <span className="font-mono text-xs text-slate-500">
-                        {order.tracking_code}
-                      </span>
-                    </div>
-                    {order.notes && <p className="mt-1 text-sm text-slate-600">{order.notes}</p>}
-                    <p className="mt-1 text-xs text-slate-500">
-                      الحالة: {order.status} • {new Date(order.created_at).toLocaleString("ar-YE")}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {phone && (
-                      <>
-                        <a
-                          aria-label="اتصال بالعميل"
-                          href={`tel:${phone}`}
-                          className="rounded-xl bg-sky-700 p-2.5 text-white"
-                        >
-                          <Phone className="size-4" />
-                        </a>
-                        <a
-                          aria-label="مراسلة العميل عبر واتساب"
-                          href={`https://wa.me/${phone}?text=${encodeURIComponent(`مرحبًا ${order.customer_name}، وصلنا طلبك ${order.tracking_code}`)}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="rounded-xl bg-emerald-600 p-2.5 text-white"
-                        >
-                          <MessageCircle className="size-4" />
-                        </a>
-                      </>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => void markOrderSeen(order.id)}
-                      className="rounded-xl border border-emerald-200 px-3 py-2 text-xs font-bold text-emerald-800"
-                    >
-                      تمت المتابعة
-                    </button>
-                  </div>
-                </div>
-              </article>
-            );
-          })}
+        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <table className="min-w-[760px] w-full text-right text-sm">
+            <thead className="bg-slate-50 text-xs font-black text-slate-600">
+              <tr><th className="px-4 py-3">العميل</th><th className="px-4 py-3">رقم الطلب</th><th className="px-4 py-3">الحالة</th><th className="px-4 py-3">التاريخ</th><th className="px-4 py-3">الإشعارات والإجراء</th></tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {orders.map((order) => {
+                const phone = (order.phone || "").replace(/\D/g, "");
+                return <tr key={order.id} className={!order.read ? "bg-orange-50/40" : ""}>
+                  <td className="px-4 py-3 font-bold text-slate-900">{order.customer_name}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-slate-600">{order.tracking_code}</td>
+                  <td className="px-4 py-3"><span className="rounded-full bg-slate-100 px-2 py-1 text-xs">{order.status}</span></td>
+                  <td className="px-4 py-3 text-xs text-slate-500">{new Date(order.created_at).toLocaleString("ar-YE")}</td>
+                  <td className="px-4 py-3"><div className="flex items-center gap-2">
+                    {phone && <><a aria-label="اتصال بالعميل" href={`tel:${phone}`} className="rounded-lg bg-sky-700 p-2 text-white"><Phone className="size-4" /></a><a aria-label="مراسلة العميل عبر واتساب" href={`https://wa.me/${phone}?text=${encodeURIComponent(`مرحبًا ${order.customer_name}، وصلنا طلبك ${order.tracking_code}`)}`} target="_blank" rel="noreferrer" className="rounded-lg bg-emerald-600 p-2 text-white"><MessageCircle className="size-4" /></a></>}
+                    <button type="button" onClick={() => void markOrderSeen(order.id)} className="rounded-lg border border-emerald-200 px-3 py-2 text-xs font-bold text-emerald-800">تمت المتابعة</button>
+                  </div></td>
+                </tr>;
+              })}
+            </tbody>
+          </table>
         </div>
       )}
 
