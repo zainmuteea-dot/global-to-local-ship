@@ -412,12 +412,12 @@ export function AdminDashboardShell({
               icon={<Check className="size-5" />}
             />
             <MetricCard
-              title="إجمالي التحصيل"
-              value={stats.totalCollected === null ? "—" : `SAR ${stats.totalCollected}`}
+              title="إجمالي الطلبات بالريال اليمني"
+              value={stats.totalCollected === null ? "—" : `${stats.totalCollected} ريال يمني`}
               note={
                 stats.totalCollected === null
-                  ? "يلزم ربط مصدر مالي موثوق"
-                  : "قيمة التحصيل من المصدر المالي"
+                  ? "لا توجد تكاليف يمنية مسجلة بعد"
+                  : "مجموع total_cost_yer من الطلبات"
               }
               tone="purple"
               icon={<CircleDollarSign className="size-5" />}
