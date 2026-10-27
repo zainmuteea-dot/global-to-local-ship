@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   CalendarDays,
+  Megaphone,
   ChevronLeft,
   ChevronRight,
   Download,
@@ -49,7 +50,6 @@ type OrderRow = {
   total_cost_sar: number | string | null;
   paid_amount: number | string | null;
   remaining_amount: number | string | null;
-  profit_amount: number | string | null;
   quote_currency: string | null;
   original_currency: string | null;
 };
@@ -73,6 +73,7 @@ type MoneyLine = {
   expected: number;
 };
 type FilterKind = "all" | "active" | "inactive";
+type CustomerOffer = { id: string; title: string; message: string | null; created_at: string };
 
 const PAGE_SIZE = 10;
 const FETCH_PAGE_SIZE = 500;
@@ -127,7 +128,6 @@ const CURRENCY_INFO: Record<CurrencyCode, { label: string; suffix: string }> = {
   YER: { label: "ريال يمني", suffix: "ر.ي" },
   SAR: { label: "ريال سعودي", suffix: "ر.س" },
 };
-const CURRENCY_CODES: CurrencyCode[] = ["USD", "YER", "SAR"];
 
 function numeric(value: number | string | null | undefined): number | null {
   if (value === null || value === undefined || value === "") return null;
@@ -164,48 +164,6 @@ function orderCurrency(order: OrderRow): CurrencyCode | null {
   if (nonZero.length === 1) return nonZero[0]?.[0] ?? null;
   const present = costValues.filter(([, value]) => value !== null);
   return present.length === 1 ? (present[0]?.[0] ?? null) : null;
-}
-
-function currencyTotals(
-  orders: OrderRow[],
-  field:
-    | "total_cost_usd"
-    | "total_cost_yer"
-    | "total_cost_sar"
-    | "paid_amount"
-    | "remaining_amount"
-    | "profit_amount",
-): MoneyLine[] {
-  const explicitCostCurrency: Partial<Record<typeof field, CurrencyCode>> = {
-    total_cost_usd: "USD",
-    total_cost_yer: "YER",
-    total_cost_sar: "SAR",
-  };
-  const explicitCode = explicitCostCurrency[field] as CurrencyCode | undefined;
-  const lines: MoneyLine[] = [];
-  for (const code of CURRENCY_CODES) {
-    const relevant = explicitCode
-      ? orders.filter((order) => orderCurrency(order) === code || numeric(order[field]) !== null)
-      : orders.filter((order) => orderCurrency(order) === code);
-    if (!relevant.length) continue;
-    const values = relevant.map((order) => numeric(order[field]));
-    const recorded = values.filter((value): value is number => value !== null);
-    if (!recorded.length) continue;
-    lines.push({
-      code,
-      total: recorded.reduce((sum, value) => sum + value, 0),
-      recorded: recorded.length,
-      expected: relevant.length,
-    });
-  }
-  return lines;
-}
-
-function hasStoredValue(
-  order: OrderRow,
-  field: "paid_amount" | "remaining_amount" | "profit_amount",
-) {
-  return numeric(order[field]) !== null;
 }
 
 /** The customer-facing order amount is shown in Yemeni rials only.
@@ -459,6 +417,7 @@ async function loadCustomerRecords(): Promise<{ customers: Customer[]; canDelete
 
 function CustomersPageContent() {
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [offers, setOffers] = useState<CustomerOffer[]>([]);
   const [canDeleteCustomers, setCanDeleteCustomers] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -491,6 +450,18 @@ function CustomersPageContent() {
 
   useEffect(() => {
     void loadCustomers();
+    let active = true;
+    void (async () => {
+      const { data, error: offersError } = await (supabase.from("notifications") as any)
+        .select("id,title,message,created_at")
+        .is("user_id", null)
+        .eq("is_active", true)
+        .eq("type", "offer")
+        .order("created_at", { ascending: false })
+        .limit(3);
+      if (active && !offersError) setOffers((data ?? []) as CustomerOffer[]);
+    })();
+    return () => { active = false; };
   }, [loadCustomers]);
 
   const confirmDeleteCustomer = async () => {
@@ -673,6 +644,20 @@ function CustomersPageContent() {
             <Plus className="size-4" /> إضافة عميل
           </button>
         </header>
+
+        {offers.length > 0 && (
+          <section className="overflow-hidden rounded-2xl border border-orange-200 bg-gradient-to-l from-orange-600 to-amber-500 p-4 text-white shadow-sm">
+            <div className="flex items-start gap-3">
+              <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white/20"><Megaphone className="size-5" /></span>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold text-orange-100">عروض وإعلانات للعملاء</p>
+                <h2 className="mt-1 text-lg font-black">{offers[0].title}</h2>
+                {offers[0].message && <p className="mt-1 text-sm leading-6 text-white/90">{offers[0].message}</p>}
+                {offers.length > 1 && <p className="mt-2 text-[11px] text-orange-100">يوجد {offers.length} عروض نشطة في حسابات العملاء</p>}
+              </div>
+            </div>
+          </section>
+        )}
 
         {error && (
           <div
@@ -1139,43 +1124,29 @@ function CustomersPageContent() {
                     <p className="mt-1 text-[11px] leading-5 text-slate-500">
                       المستحق والمدفوع والمتبقي هنا بالريال اليمني فقط. تُستخدم تكلفة total_cost_yer
                       والدفعات المعتمدة المسجلة YER والمطابقة لرقم تتبع الطلب؛ ولا تُحوّل عملة سعر
-                      السلعة الأصلية أو تُخمّن. الدفعات غير المطابقة تظهر منفصلة، والربح من الحقل
-                      المسجل.
+                      السلعة الأصلية أو تُخمّن. الدفعات غير المطابقة تظهر منفصلة.
                     </p>
                   </div>
                   <span className="shrink-0 rounded-lg bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600">
                     {selected.orders.length.toLocaleString("ar-YE")} طلب
                   </span>
                 </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   {(
                     [
-                      {
-                        label: "إجمالي التكلفة بالريال اليمني",
-                        fields: ["total_cost_usd", "total_cost_yer", "total_cost_sar"],
-                      },
-                      { label: "المدفوع بالريال اليمني", fields: ["paid_amount"] },
-                      { label: "المتبقي بالريال اليمني", fields: ["remaining_amount"] },
-                      { label: "الربح المسجل", fields: ["profit_amount"] },
+                      { label: "إجمالي المبلغ بالريال اليمني", kind: "cost" },
+                      { label: "المدفوع بالريال اليمني", kind: "paid" },
+                      { label: "المتبقي بالريال اليمني", kind: "remaining" },
                     ] as const
-                  ).map(({ label, fields }) => {
-                    const financialField = fields[0] as
-                      | "total_cost_usd"
-                      | "total_cost_yer"
-                      | "total_cost_sar"
-                      | "paid_amount"
-                      | "remaining_amount"
-                      | "profit_amount";
+                  ).map(({ label, kind }) => {
                     const moneyLines =
-                      fields.length === 3
+                      kind === "cost"
                         ? orderCostTotals(selected.orders)
-                        : financialField === "paid_amount"
+                        : kind === "paid"
                           ? approvedLinkedPaymentTotals(selected)
-                          : financialField === "remaining_amount"
-                            ? remainingTotals(selected)
-                            : currencyTotals(selected.orders, "profit_amount");
+                          : remainingTotals(selected);
                     const unknownCurrencyCount =
-                      financialField === "paid_amount"
+                      kind === "paid"
                         ? (selected.payments ?? []).filter((payment) => {
                             const trackings = [payment.order_tracking, payment.tracking_code]
                               .map((tracking) => tracking?.trim())
@@ -1194,12 +1165,7 @@ function CustomersPageContent() {
                               !normalizeCurrency(payment.currency)
                             );
                           }).length
-                        : financialField === "profit_amount"
-                          ? selected.orders.filter(
-                              (order) =>
-                                hasStoredValue(order, "profit_amount") && !orderCurrency(order),
-                            ).length
-                          : 0;
+                        : 0;
                     return (
                       <div key={label} className="rounded-xl bg-slate-50 p-3">
                         <p className="text-xs font-bold text-slate-500">{label}</p>
@@ -1211,8 +1177,7 @@ function CustomersPageContent() {
                                 className="flex flex-wrap items-baseline justify-between gap-1 text-sm font-black text-slate-800"
                               >
                                 <span>
-                                  {line.total.toLocaleString("ar-YE")}{" "}
-                                  {CURRENCY_INFO[line.code].suffix}
+                                  {line.total.toLocaleString("ar-YE")} {CURRENCY_INFO[line.code].suffix}
                                 </span>
                                 <span className="text-[10px] font-medium text-slate-400">
                                   {CURRENCY_INFO[line.code].label}
