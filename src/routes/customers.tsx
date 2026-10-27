@@ -1147,16 +1147,13 @@ function CustomersPageContent() {
                     {selected.orders.length.toLocaleString("ar-YE")} طلب
                   </span>
                 </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   {(
                     [
-                      {
-                        label: "إجمالي التكلفة بالريال اليمني",
-                        fields: ["total_cost_usd", "total_cost_yer", "total_cost_sar"],
-                      },
+                      { label: "إجمالي المبلغ بالريال اليمني", fields: ["total_cost_yer"] },
                       { label: "المدفوع بالريال اليمني", fields: ["paid_amount"] },
                       { label: "المتبقي بالريال اليمني", fields: ["remaining_amount"] },
-                      { label: "الربح المسجل", fields: ["profit_amount"] },
+                      { label: "الربح بالريال اليمني", fields: ["profit_amount"] },
                     ] as const
                   ).map(({ label, fields }) => {
                     const financialField = fields[0] as
