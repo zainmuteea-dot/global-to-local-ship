@@ -412,12 +412,12 @@ export function AdminDashboardShell({
               icon={<Check className="size-5" />}
             />
             <MetricCard
-              title="إجمالي الطلبات بالريال اليمني"
-              value={stats.totalCollected === null ? "—" : `${stats.totalCollected} ريال يمني`}
+              title="إجمالي تكلفة الطلبات"
+              value={stats.totalCollected === null ? "—" : `${stats.totalCollected.toLocaleString("ar-YE")} ر.ي`}
               note={
                 stats.totalCollected === null
-                  ? "لا توجد تكاليف يمنية مسجلة بعد"
-                  : "مجموع total_cost_yer من الطلبات"
+                  ? "لا توجد تكلفة بالريال اليمني مسجلة"
+                  : "مجموع تكلفة الطلبات بالريال اليمني"
               }
               tone="purple"
               icon={<CircleDollarSign className="size-5" />}
