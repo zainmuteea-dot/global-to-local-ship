@@ -856,6 +856,10 @@ export default function AdminOperationsPage() {
   const deliveredShipments = orders.filter((o) => o.status === "delivered").length;
   const billedRevenue: number | null = null;
   const netProfit: number | null = null;
+  const totalCollectedYER = ordersLoadedFromDatabase
+    ? dashboardOrders.reduce((total, order) => total + (order.totalCostYER ?? 0), 0)
+    : null;
+  const hasCollectedYER = ordersLoadedFromDatabase && dashboardOrders.some((order) => order.totalCostYER != null);
 
   const dashboardOrders = ordersLoadedFromDatabase
     ? [...orders].sort((a, b) => Date.parse(b.createdAt ?? "") - Date.parse(a.createdAt ?? ""))
@@ -870,7 +874,7 @@ export default function AdminOperationsPage() {
     completedShipments: ordersLoadedFromDatabase
       ? dashboardOrders.filter((order) => order.status === "delivered").length
       : null,
-    totalCollected: null,
+    totalCollected: hasCollectedYER ? totalCollectedYER : null,
   };
   const dashboardShipments: ShipmentPreview[] = dashboardOrders.slice(0, 3).map((order) => ({
     id: order.orderNumber,
