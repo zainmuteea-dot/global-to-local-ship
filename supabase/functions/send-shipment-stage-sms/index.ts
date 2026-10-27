@@ -77,6 +77,12 @@ const STAGES: Record<
   },
 };
 
+function isAllowedOrigin(origin: string, configuredOrigins: Set<string>): boolean {
+  return configuredOrigins.has(origin) ||
+    /^https:\/\/alsouq-alshamel-[a-z0-9-]+-zain-muteea\.vercel\.app$/i.test(origin) ||
+    /^http:\/\/localhost(?::\d+)?$/i.test(origin);
+}
+
 function corsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get("Origin");
   const configuredOrigins = (Deno.env.get("ALLOWED_ORIGINS") ?? "")
@@ -91,7 +97,7 @@ function corsHeaders(req: Request): Record<string, string> {
     "Access-Control-Max-Age": "86400",
     "Vary": "Origin",
   };
-  if (origin && allowedOrigins.has(origin)) {
+  if (origin && isAllowedOrigin(origin, allowedOrigins)) {
     headers["Access-Control-Allow-Origin"] = origin;
   }
   return headers;
