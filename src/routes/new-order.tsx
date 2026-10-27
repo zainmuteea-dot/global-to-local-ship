@@ -1369,138 +1369,10 @@ function NewOrderPage() {
           </div>
         )}
 
-        {/* 1 - تفاصيل السلة */}
+        {/* 1 - سعر السلعة في المتجر الأصلي */}
         <section className="no-card">
           <div className="no-head">
             <div className="no-num">1</div>
-            <div className="no-ico">
-              <Cart />
-            </div>
-            <div className="no-title">تفاصيل السلة</div>
-          </div>
-          {store && <span className="no-pill">{store.label}</span>}
-          <div className="no-field">
-            <label className="no-lbl">
-              رابط السلة / المنتج <span className="no-req">*</span>
-            </label>
-            <div className="no-iw">
-              <LinkIcon />
-              <input
-                id="new-order-product-url"
-                className="has-ic"
-                type="text"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                dir="ltr"
-                style={{ textAlign: "right" }}
-                placeholder="الصق رابط المنتج من أي متجر عالمي (SHEIN، Amazon، AliExpress...)"
-              />
-            </div>
-            {store && (
-              <div className="no-ok">
-                <Check s={18} />
-                <span>تم التعرف على متجر {store.label} بنجاح</span>
-                <Flash />
-              </div>
-            )}
-          </div>
-          <div className="no-q">
-            هل توجد منتجات مكررة؟ <span className="no-req">*</span>
-          </div>
-          <div
-            className="no-choices"
-            role="radiogroup"
-            aria-label="هل توجد منتجات مكررة؟"
-          >
-            {DUP_OPTS.map((o) => (
-              <button
-                key={o}
-                type="button"
-                role="radio"
-                aria-checked={dup === o}
-                className={"no-choice" + (dup === o ? " active" : "")}
-                onClick={() => setDup(o)}
-              >
-                {o}
-              </button>
-            ))}
-          </div>
-        </section>
-
-        {/* 2 - عنوان التوصيل وبيانات المستلم */}
-        <section className="no-card">
-          <div className="no-head">
-            <div className="no-num">2</div>
-            <div className="no-ico">
-              <Truck />
-            </div>
-            <div className="no-title">عنوان التوصيل وبيانات المستلم</div>
-          </div>
-          <div className="no-field">
-            <label className="no-lbl">
-              عنوان التوصيل بالتفصيل (المدينة، الحي، أقرب معلم){" "}
-              <span className="no-req">*</span>
-            </label>
-            <div className="no-iw">
-              <Pin />
-              <input
-                className="has-ic"
-                style={{ paddingInlineEnd: 112 }}
-                type="text"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                placeholder="مثال: صنعاء - شارع حدة - بجوار فندق برج السلام..."
-              />
-              <button
-                className="no-location"
-                type="button"
-                onClick={useCurrentLocation}
-                disabled={isLocating}
-                aria-label="استخدام موقعي الحالي"
-              >
-                <Pin />
-                {isLocating ? "جارٍ التحديد" : "موقعي"}
-              </button>
-            </div>
-          </div>
-          <div className="no-field">
-            <label className="no-lbl">
-              اسم المستلم الكريم <span className="no-req">*</span>
-            </label>
-            <div className="no-iw">
-              <User />
-              <input
-                className="has-ic"
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="اسم المستلم"
-              />
-            </div>
-          </div>
-          <div className="no-field">
-            <label className="no-lbl">
-              رقم الهاتف / الواتساب <span className="no-req">*</span>
-            </label>
-            <div className="no-iw">
-              <Phone />
-              <input
-                className="has-ic"
-                type="tel"
-                dir="ltr"
-                style={{ textAlign: "right" }}
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="7XXXXXXXX"
-              />
-            </div>
-          </div>
-        </section>
-
-        {/* 3 - سعر السلعة في المتجر الأصلي */}
-        <section className="no-card">
-          <div className="no-head alt">
-            <div className="no-num">3</div>
             <div className="no-ico">
               <Bag />
             </div>
@@ -1574,6 +1446,132 @@ function NewOrderPage() {
                 </div>
               );
             })()}
+        </section>
+
+        {/* 2 - تفاصيل السلة */}
+        <section className="no-card">
+          <div className="no-head">
+            <div className="no-num">2</div>
+            <div className="no-ico">
+              <Cart />
+            </div>
+            <div className="no-title">تفاصيل السلة</div>
+          </div>
+          {store && <span className="no-pill">{store.label}</span>}
+          <div className="no-field">
+            <label className="no-lbl">
+              رابط السلة / المنتج <span className="no-req">*</span>
+            </label>
+            <div className="no-iw">
+              <LinkIcon />
+              <input
+                id="new-order-product-url"
+                className="has-ic"
+                type="text"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                dir="ltr"
+                style={{ textAlign: "right" }}
+                placeholder="الصق رابط المنتج من أي متجر عالمي (SHEIN، Amazon، AliExpress...)"
+              />
+            </div>
+            {store && (
+              <div className="no-ok">
+                <Check s={18} />
+                <span>تم التعرف على متجر {store.label} بنجاح</span>
+                <Flash />
+              </div>
+            )}
+          </div>
+          <div className="no-q">
+            هل توجد منتجات مكررة؟ <span className="no-req">*</span>
+          </div>
+          <div
+            className="no-choices"
+            role="radiogroup"
+            aria-label="هل توجد منتجات مكررة؟"
+          >
+            {DUP_OPTS.map((o) => (
+              <button
+                key={o}
+                type="button"
+                role="radio"
+                aria-checked={dup === o}
+                className={"no-choice" + (dup === o ? " active" : "")}
+                onClick={() => setDup(o)}
+              >
+                {o}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {/* 3 - عنوان التوصيل وبيانات المستلم */}
+        <section className="no-card">
+          <div className="no-head">
+            <div className="no-num">3</div>
+            <div className="no-ico">
+              <Truck />
+            </div>
+            <div className="no-title">عنوان التوصيل وبيانات المستلم</div>
+          </div>
+          <div className="no-field">
+            <label className="no-lbl">
+              عنوان التوصيل بالتفصيل (المدينة، الحي، أقرب معلم){" "}
+              <span className="no-req">*</span>
+            </label>
+            <div className="no-iw">
+              <input
+                style={{ paddingInlineEnd: 112 }}
+                type="text"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="مثال: صنعاء - شارع حدة - بجوار فندق برج السلام..."
+              />
+              <button
+                className="no-location"
+                type="button"
+                onClick={useCurrentLocation}
+                disabled={isLocating}
+                aria-label="استخدام موقعي الحالي"
+              >
+                <Pin />
+                {isLocating ? "جارٍ التحديد" : "موقعي"}
+              </button>
+            </div>
+          </div>
+          <div className="no-field">
+            <label className="no-lbl">
+              اسم المستلم الكريم <span className="no-req">*</span>
+            </label>
+            <div className="no-iw">
+              <User />
+              <input
+                className="has-ic"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="اسم المستلم"
+              />
+            </div>
+          </div>
+          <div className="no-field">
+            <label className="no-lbl">
+              رقم الهاتف / الواتساب <span className="no-req">*</span>
+            </label>
+            <div className="no-iw">
+              <Phone />
+              <input
+                className="has-ic"
+                type="tel"
+                dir="ltr"
+                style={{ textAlign: "right" }}
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="7XXXXXXXX"
+              />
+            </div>
+          </div>
         </section>
 
         {/* 4 - ملاحظات إضافية */}
