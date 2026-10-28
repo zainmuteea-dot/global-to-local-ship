@@ -84,6 +84,12 @@ function getAllowedOrigins(): Set<string> {
   return new Set([...ALLOWED_ORIGINS, ...configuredOrigins]);
 }
 
+function isAllowedOrigin(origin: string, allowedOrigins: Set<string>): boolean {
+  return allowedOrigins.has(origin) ||
+    /^https:\/\/alsouq-alshamel-[a-z0-9-]+-zain-muteea\.vercel\.app$/i.test(origin) ||
+    /^http:\/\/localhost(?::\d+)?$/i.test(origin);
+}
+
 function corsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get("Origin");
   const headers: Record<string, string> = {
@@ -93,7 +99,7 @@ function corsHeaders(req: Request): Record<string, string> {
     "Access-Control-Max-Age": "86400",
     "Vary": "Origin",
   };
-  if (origin && getAllowedOrigins().has(origin)) {
+  if (origin && isAllowedOrigin(origin, getAllowedOrigins())) {
     headers["Access-Control-Allow-Origin"] = origin;
   }
   return headers;

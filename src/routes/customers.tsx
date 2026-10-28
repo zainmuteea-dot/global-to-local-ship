@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   CalendarDays,
+  Megaphone,
   ChevronLeft,
   ChevronRight,
   Download,
@@ -73,6 +74,7 @@ type MoneyLine = {
   expected: number;
 };
 type FilterKind = "all" | "active" | "inactive";
+type CustomerOffer = { id: string; title: string; message: string | null; created_at: string };
 
 const PAGE_SIZE = 10;
 const FETCH_PAGE_SIZE = 500;
@@ -459,6 +461,7 @@ async function loadCustomerRecords(): Promise<{ customers: Customer[]; canDelete
 
 function CustomersPageContent() {
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [offers, setOffers] = useState<CustomerOffer[]>([]);
   const [canDeleteCustomers, setCanDeleteCustomers] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -491,6 +494,18 @@ function CustomersPageContent() {
 
   useEffect(() => {
     void loadCustomers();
+    let active = true;
+    void (async () => {
+      const { data, error: offersError } = await (supabase.from("notifications") as any)
+        .select("id,title,message,created_at")
+        .is("user_id", null)
+        .eq("is_active", true)
+        .eq("type", "offer")
+        .order("created_at", { ascending: false })
+        .limit(3);
+      if (active && !offersError) setOffers((data ?? []) as CustomerOffer[]);
+    })();
+    return () => { active = false; };
   }, [loadCustomers]);
 
   const confirmDeleteCustomer = async () => {
@@ -674,6 +689,20 @@ function CustomersPageContent() {
           </button>
         </header>
 
+        {offers.length > 0 && (
+          <section className="overflow-hidden rounded-2xl border border-orange-200 bg-gradient-to-l from-orange-600 to-amber-500 p-4 text-white shadow-sm">
+            <div className="flex items-start gap-3">
+              <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white/20"><Megaphone className="size-5" /></span>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold text-orange-100">عروض وإعلانات للعملاء</p>
+                <h2 className="mt-1 text-lg font-black">{offers[0]?.title}</h2>
+                {offers[0]?.message && <p className="mt-1 text-sm leading-6 text-white/90">{offers[0].message}</p>}
+                {offers.length > 1 && <p className="mt-2 text-[11px] text-orange-100">يوجد {offers.length} عروض نشطة في حسابات العملاء</p>}
+              </div>
+            </div>
+          </section>
+        )}
+
         {error && (
           <div
             role="alert"
@@ -792,7 +821,7 @@ function CustomersPageContent() {
                 ) : pageRows.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-4 py-12 text-center text-slate-500">
-                      {error ? "تعذر عرض النتائج حتى نجاح الاتصال" : "لا توجد سجلات مطابقة"}
+                      {error ? "تعذر عرض ا��نتائج حتى نجاح الاتصال" : "لا توجد سجلات مطابقة"}
                     </td>
                   </tr>
                 ) : (
@@ -1147,16 +1176,13 @@ function CustomersPageContent() {
                     {selected.orders.length.toLocaleString("ar-YE")} طلب
                   </span>
                 </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   {(
                     [
-                      {
-                        label: "إجمالي التكلفة بالريال اليمني",
-                        fields: ["total_cost_usd", "total_cost_yer", "total_cost_sar"],
-                      },
+                      { label: "إجمالي المبلغ بالريال اليمني", fields: ["total_cost_yer"] },
                       { label: "المدفوع بالريال اليمني", fields: ["paid_amount"] },
                       { label: "المتبقي بالريال اليمني", fields: ["remaining_amount"] },
-                      { label: "الربح المسجل", fields: ["profit_amount"] },
+                      { label: "الربح بالريال اليمني", fields: ["profit_amount"] },
                     ] as const
                   ).map(({ label, fields }) => {
                     const financialField = fields[0] as
@@ -1167,7 +1193,7 @@ function CustomersPageContent() {
                       | "remaining_amount"
                       | "profit_amount";
                     const moneyLines =
-                      fields.length === 3
+                      financialField === "total_cost_yer"
                         ? orderCostTotals(selected.orders)
                         : financialField === "paid_amount"
                           ? approvedLinkedPaymentTotals(selected)

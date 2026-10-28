@@ -856,10 +856,13 @@ export default function AdminOperationsPage() {
   const deliveredShipments = orders.filter((o) => o.status === "delivered").length;
   const billedRevenue: number | null = null;
   const netProfit: number | null = null;
-
   const dashboardOrders = ordersLoadedFromDatabase
     ? [...orders].sort((a, b) => Date.parse(b.createdAt ?? "") - Date.parse(a.createdAt ?? ""))
     : [];
+  const totalCollectedYER = ordersLoadedFromDatabase
+    ? dashboardOrders.reduce((total, order) => total + (order.totalCostYER ?? 0), 0)
+    : null;
+  const hasCollectedYER = ordersLoadedFromDatabase && dashboardOrders.some((order) => order.totalCostYER != null);
   const dashboardStats: DashboardStats = {
     activeShipments: ordersLoadedFromDatabase
       ? dashboardOrders.filter((order) => !["delivered", "cancelled"].includes(order.status)).length
@@ -870,7 +873,7 @@ export default function AdminOperationsPage() {
     completedShipments: ordersLoadedFromDatabase
       ? dashboardOrders.filter((order) => order.status === "delivered").length
       : null,
-    totalCollected: null,
+    totalCollected: hasCollectedYER ? String(totalCollectedYER) : null,
   };
   const dashboardShipments: ShipmentPreview[] = dashboardOrders.slice(0, 3).map((order) => ({
     id: order.orderNumber,
@@ -1254,7 +1257,7 @@ export default function AdminOperationsPage() {
               <div className="p-3.5 bg-gradient-to-br from-orange-50 to-white border border-orange-100 rounded-2xl">
                 <span className="text-[11px] font-bold text-orange-600">المحطة 2</span>
                 <h4 className="font-bold text-xs text-[#0A2540] mt-1">الشحن الدولي</h4>
-                <p className="text-[11px] text-slate-500 mt-0.5">رحلات جوية وبحرية مباشرة</p>
+                <p className="text-[11px] text-slate-500 mt-0.5">رحلات ��وية وبحرية مباشرة</p>
               </div>
 
               <div className="p-3.5 bg-gradient-to-br from-sky-50 to-white border border-sky-100 rounded-2xl">
