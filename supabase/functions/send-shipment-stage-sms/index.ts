@@ -28,7 +28,6 @@ const STAGES: Record<
       "priced_waiting_pay",
       "تدقيق مالي",
       "قيد التسعير",
-      "قيد المراجعة",
     ],
   },
   purchased: {
@@ -77,19 +76,22 @@ const STAGES: Record<
   },
 };
 
-function isAllowedOrigin(origin: string, configuredOrigins: Set<string>): boolean {
-  return configuredOrigins.has(origin) ||
+function getAllowedOrigins(): Set<string> {
+  const configuredOrigins = (Deno.env.get("ALLOWED_ORIGINS") ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  return new Set([...ALLOWED_ORIGINS, ...configuredOrigins]);
+}
+
+function isAllowedOrigin(origin: string, allowedOrigins: Set<string>): boolean {
+  return allowedOrigins.has(origin) ||
     /^https:\/\/alsouq-alshamel-[a-z0-9-]+-zain-muteea\.vercel\.app$/i.test(origin) ||
     /^http:\/\/localhost(?::\d+)?$/i.test(origin);
 }
 
 function corsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get("Origin");
-  const configuredOrigins = (Deno.env.get("ALLOWED_ORIGINS") ?? "")
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean);
-  const allowedOrigins = new Set([...ALLOWED_ORIGINS, ...configuredOrigins]);
   const headers: Record<string, string> = {
     "Access-Control-Allow-Headers":
       "authorization, x-client-info, apikey, content-type, x-supabase-api-version",
@@ -97,7 +99,7 @@ function corsHeaders(req: Request): Record<string, string> {
     "Access-Control-Max-Age": "86400",
     "Vary": "Origin",
   };
-  if (origin && isAllowedOrigin(origin, allowedOrigins)) {
+  if (origin && isAllowedOrigin(origin, getAllowedOrigins())) {
     headers["Access-Control-Allow-Origin"] = origin;
   }
   return headers;
@@ -113,40 +115,21 @@ function json(req: Request, status: number, body: Record<string, unknown>) {
   });
 }
 
-function stageRankForStatus(status: string): number | null {
-  const aliases: Record<string, string> = {
-    new: "new",
-    accepted: "new",
-    جديد: "new",
-    "قيد المراجعة": "new",
-    payment_review: "payment_review",
-    reviewing: "payment_review",
-    pricing: "payment_review",
-    priced_waiting_pay: "payment_review",
-    "تدقيق مالي": "payment_review",
-    "قيد التسعير": "payment_review",
-    purchased: "purchased",
-    processing: "purchased",
-    "تم الشراء": "purchased",
-    "قيد الشراء والتجهيز": "purchased",
-    international_warehouse: "international_warehouse",
-    warehouse_china: "international_warehouse",
-    "المستودع الدولي": "international_warehouse",
-    international_transit: "international_transit",
-    international_ship: "international_transit",
-    shipped: "international_transit",
-    "شحن دولي": "international_transit",
-    customs_local: "customs_local",
-    local_warehouse: "customs_local",
-    "الفرز والتوصيل": "customs_local",
-    out_for_delivery: "out_for_delivery",
-    delivered: "delivered",
-    "تم التسليم": "delivered",
-  };
+function stageForStatus(status: string): string | null {
   const normalized = status.trim().toLowerCase();
-  const code = aliases[normalized] ??
-    (normalized in STAGES ? normalized : null);
-  return code ? Object.keys(STAGES).indexOf(code) : null;
+  if (!normalized) return null;
+
+  let matchedStage: string | null = null;
+  for (const [stageCode, stage] of Object.entries(STAGES)) {
+    const matches = stage.allowedStatuses.some(
+      (allowedStatus) => allowedStatus.trim().toLowerCase() === normalized,
+    );
+    if (!matches) continue;
+    // Ambiguous status aliases fail closed instead of choosing a stage implicitly.
+    if (matchedStage && matchedStage !== stageCode) return null;
+    matchedStage = stageCode;
+  }
+  return matchedStage;
 }
 
 function normalizePhone(input: string): string | null {
@@ -283,11 +266,13 @@ Deno.serve(async (req: Request) => {
     return json(req, 500, { error: "تعذر التحقق من الشحنة." });
   }
   if (!order) return json(req, 404, { error: "الشحنة غير موجودة." });
-  const currentRank = stageRankForStatus(String(order.status ?? ""));
-  const requestedRank = Object.keys(STAGES).indexOf(stageCode);
-  if (currentRank === null || currentRank < requestedRank) {
+  const currentStage = stageForStatus(String(order.status ?? ""));
+  if (currentStage !== stageCode) {
     return json(req, 409, {
-      error: "لم تصل الشحنة إلى هذه المرحلة بعد؛ لم تُرسل رسالة.",
+      error:
+        currentStage === null
+          ? "حالة الطلب غير معروفة أو ملتبسة؛ لم تُرسل رسالة."
+          : "المرحلة المطلوبة لا تطابق حالة الطلب الحالية؛ لم تُرسل رسالة.",
     });
   }
   const recipient = normalizePhone(order.phone || order.customer_phone || "");
@@ -425,13 +410,15 @@ Deno.serve(async (req: Request) => {
       : null;
 
     if (!response.ok) {
-      const rejected = response.status >= 400 && response.status < 500;
+      // TextBee documents these statuses as rejected/not sent; other errors remain
+      // unknown because a transient provider failure may happen after acceptance.
+      const confirmedNotAccepted = [400, 401, 429].includes(response.status);
       const safeError = safeProviderError(parsed, [
         apiKey,
         deviceId,
         recipient,
       ]);
-      const status = rejected ? "failed" : "unknown";
+      const status = confirmedNotAccepted ? "failed" : "unknown";
       const detail = safeError.message;
       const saved = await persist({
         sms_status: status,
@@ -447,11 +434,11 @@ Deno.serve(async (req: Request) => {
           message: "تعذر حفظ نتيجة TextBee؛ تحقق من سجل المزود قبل أي إجراء.",
         });
       }
-      return json(req, rejected ? 502 : 502, {
+      return json(req, 502, {
         status,
-        message: rejected
-          ? `رفض TextBee الرسالة: ${detail}`
-          : "نتيجة TextBee غير مؤكدة؛ تحقق من سجل المزود قبل إعادة الإرسال.",
+        message: confirmedNotAccepted
+          ? `رفض TextBee الرسالة (HTTP ${response.status}): ${detail}`
+          : "نتيجة TextBee غير مؤكدة؛ تحقق من سجل المزود ولا تُعد الإرسال الآن.",
       });
     }
 
