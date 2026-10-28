@@ -19,7 +19,7 @@ export function AccountShell({
 
   return (
     <div dir="rtl" lang="ar" className="min-h-screen bg-background px-4 py-6 font-body">
-      <div className={`mx-auto w-full max-w-md ${wide ? "lg:max-w-6xl" : ""}`}>
+      <div className={`mx-auto w-full max-w-md ${wide ? "lg:max-w-7xl xl:max-w-[1440px]" : ""}`}>
         <div className="mb-6 flex items-center justify-between">
           <button
             type="button"
