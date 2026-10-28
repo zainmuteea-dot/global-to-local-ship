@@ -16,7 +16,7 @@ const STAGES: Record<
   new: {
     title: "استلام الطلب والتدقيق",
     message: "تم استلام طلبك وبدأنا تدقيق التفاصيل.",
-    allowedStatuses: ["new", "accepted", "جديد", "قيد المراجعة"],
+    allowedStatuses: ["new", "accepted", "جديد", "قيد المراجعة", "استلام الطلب والتدقيق"],
   },
   payment_review: {
     title: "التدقيق المالي والدفع",
@@ -28,6 +28,7 @@ const STAGES: Record<
       "priced_waiting_pay",
       "تدقيق مالي",
       "قيد التسعير",
+      "التدقيق المالي والدفع",
     ],
   },
   purchased: {
@@ -38,6 +39,7 @@ const STAGES: Record<
       "processing",
       "تم الشراء",
       "قيد الشراء والتجهيز",
+      "الشراء من المتجر الدولي",
     ],
   },
   international_warehouse: {
@@ -47,6 +49,7 @@ const STAGES: Record<
       "international_warehouse",
       "warehouse_china",
       "المستودع الدولي",
+      "وصول مستودع التجميع الدولي",
     ],
   },
   international_transit: {
@@ -57,22 +60,23 @@ const STAGES: Record<
       "international_ship",
       "shipped",
       "شحن دولي",
+      "الشحن الدولي في الترانزيت",
     ],
   },
   customs_local: {
     title: "الجمارك والفرز المحلي",
     message: "وصلت شحنتك إلى مرحلة التخليص والفرز المحلي.",
-    allowedStatuses: ["customs_local", "local_warehouse", "الفرز والتوصيل"],
+    allowedStatuses: ["customs_local", "local_warehouse", "الفرز والتوصيل", "الجمارك والفرز بالمستودع المحلي"],
   },
   out_for_delivery: {
     title: "جاري التوصيل",
     message: "خرجت شحنتك للتوصيل مع المندوب.",
-    allowedStatuses: ["out_for_delivery"],
+    allowedStatuses: ["out_for_delivery", "جاري التوصيل مع المندوب"],
   },
   delivered: {
     title: "تم التسليم",
     message: "تم تسليم طلبك بنجاح. شكراً لاختيارك السوق الشامل.",
-    allowedStatuses: ["delivered", "تم التسليم"],
+    allowedStatuses: ["delivered", "تم التسليم", "تم التسليم للعميل بنجاح"],
   },
 };
 

@@ -81,14 +81,14 @@ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'order_not_found' USING ERRCODE = 'P0002'; END IF;
 
   v_current_rank := CASE lower(trim(coalesce(v_status,'')))
-    WHEN 'new' THEN 0 WHEN 'accepted' THEN 0 WHEN 'جديد' THEN 0 WHEN 'قيد المراجعة' THEN 0
-    WHEN 'payment_review' THEN 1 WHEN 'reviewing' THEN 1 WHEN 'pricing' THEN 1 WHEN 'priced_waiting_pay' THEN 1 WHEN 'تدقيق مالي' THEN 1 WHEN 'قيد التسعير' THEN 1
-    WHEN 'purchased' THEN 2 WHEN 'processing' THEN 2 WHEN 'تم الشراء' THEN 2 WHEN 'قيد الشراء والتجهيز' THEN 2
-    WHEN 'international_warehouse' THEN 3 WHEN 'warehouse_china' THEN 3 WHEN 'المستودع الدولي' THEN 3
-    WHEN 'international_transit' THEN 4 WHEN 'international_ship' THEN 4 WHEN 'shipped' THEN 4 WHEN 'شحن دولي' THEN 4
-    WHEN 'customs_local' THEN 5 WHEN 'local_warehouse' THEN 5 WHEN 'الفرز والتوصيل' THEN 5
-    WHEN 'out_for_delivery' THEN 6
-    WHEN 'delivered' THEN 7 WHEN 'تم التسليم' THEN 7
+    WHEN 'new' THEN 0 WHEN 'accepted' THEN 0 WHEN 'جديد' THEN 0 WHEN 'قيد المراجعة' THEN 0 WHEN 'استلام الطلب والتدقيق' THEN 0
+    WHEN 'payment_review' THEN 1 WHEN 'reviewing' THEN 1 WHEN 'pricing' THEN 1 WHEN 'priced_waiting_pay' THEN 1 WHEN 'تدقيق مالي' THEN 1 WHEN 'قيد التسعير' THEN 1 WHEN 'التدقيق المالي والدفع' THEN 1
+    WHEN 'purchased' THEN 2 WHEN 'processing' THEN 2 WHEN 'تم الشراء' THEN 2 WHEN 'قيد الشراء والتجهيز' THEN 2 WHEN 'الشراء من المتجر الدولي' THEN 2
+    WHEN 'international_warehouse' THEN 3 WHEN 'warehouse_china' THEN 3 WHEN 'المستودع الدولي' THEN 3 WHEN 'وصول مستودع التجميع الدولي' THEN 3
+    WHEN 'international_transit' THEN 4 WHEN 'international_ship' THEN 4 WHEN 'shipped' THEN 4 WHEN 'شحن دولي' THEN 4 WHEN 'الشحن الدولي في الترانزيت' THEN 4
+    WHEN 'customs_local' THEN 5 WHEN 'local_warehouse' THEN 5 WHEN 'الفرز والتوصيل' THEN 5 WHEN 'الجمارك والفرز بالمستودع المحلي' THEN 5
+    WHEN 'out_for_delivery' THEN 6 WHEN 'جاري التوصيل مع المندوب' THEN 6
+    WHEN 'delivered' THEN 7 WHEN 'تم التسليم' THEN 7 WHEN 'تم التسليم للعميل بنجاح' THEN 7
     ELSE -1 END;
   v_requested_rank := array_position(v_stage_codes, _stage_code) - 1;
 
