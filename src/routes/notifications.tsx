@@ -629,8 +629,8 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
       .select("phone")
       .not("phone", "is", null)
       .limit(1000);
-    const phones = [...new Set((profiles ?? []).map((profile: { phone?: string | null }) =>
-      (profile.phone ?? "").trim()).filter(Boolean))];
+    const phones: string[] = [...new Set((profiles ?? []).map((profile: { phone?: string | null }) =>
+      (profile.phone ?? "").trim()).filter(Boolean))] as string[];
     const smsResults = await Promise.allSettled(
       phones.map((phone: string) => sendSms(phone, `${title}\n${message}`)),
     );
