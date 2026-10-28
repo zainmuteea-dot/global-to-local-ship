@@ -632,7 +632,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
     const phones = [...new Set((profiles ?? []).map((profile: { phone?: string | null }) =>
       (profile.phone ?? "").trim()).filter(Boolean))];
     const smsResults = await Promise.allSettled(
-      phones.map((phone) => sendSms(phone, `${title}\n${message}`)),
+      phones.map((phone: string) => sendSms(phone, `${title}\n${message}`)),
     );
     const failedSms = smsResults.filter((result) => result.status === "rejected").length;
     setDraftTitle("");

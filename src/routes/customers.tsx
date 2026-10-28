@@ -695,8 +695,8 @@ function CustomersPageContent() {
               <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white/20"><Megaphone className="size-5" /></span>
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-bold text-orange-100">عروض وإعلانات للعملاء</p>
-                <h2 className="mt-1 text-lg font-black">{offers[0].title}</h2>
-                {offers[0].message && <p className="mt-1 text-sm leading-6 text-white/90">{offers[0].message}</p>}
+                <h2 className="mt-1 text-lg font-black">{offers[0]?.title}</h2>
+                {offers[0]?.message && <p className="mt-1 text-sm leading-6 text-white/90">{offers[0].message}</p>}
                 {offers.length > 1 && <p className="mt-2 text-[11px] text-orange-100">يوجد {offers.length} عروض نشطة في حسابات العملاء</p>}
               </div>
             </div>
@@ -821,7 +821,7 @@ function CustomersPageContent() {
                 ) : pageRows.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-4 py-12 text-center text-slate-500">
-                      {error ? "تعذر عرض النتائج حتى نجاح الاتصال" : "لا توجد سجلات مطابقة"}
+                      {error ? "تعذر عرض ا��نتائج حتى نجاح الاتصال" : "لا توجد سجلات مطابقة"}
                     </td>
                   </tr>
                 ) : (
@@ -1193,7 +1193,7 @@ function CustomersPageContent() {
                       | "remaining_amount"
                       | "profit_amount";
                     const moneyLines =
-                      fields.length === 3
+                      financialField === "total_cost_yer"
                         ? orderCostTotals(selected.orders)
                         : financialField === "paid_amount"
                           ? approvedLinkedPaymentTotals(selected)

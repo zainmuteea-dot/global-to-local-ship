@@ -413,7 +413,7 @@ export function AdminDashboardShell({
             />
             <MetricCard
               title="إجمالي تكلفة الطلبات"
-              value={stats.totalCollected === null ? "—" : `${stats.totalCollected.toLocaleString("ar-YE")} ر.ي`}
+              value={stats.totalCollected === null ? "—" : `${Number(stats.totalCollected).toLocaleString("ar-YE")} ر.ي`}
               note={
                 stats.totalCollected === null
                   ? "لا توجد تكلفة بالريال اليمني مسجلة"
