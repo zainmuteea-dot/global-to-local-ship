@@ -223,6 +223,7 @@ function LiveTrackingAdminRoute() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [smsHistoryError, setSmsHistoryError] = useState<string | null>(null);
+  const [smsAuditUnavailable, setSmsAuditUnavailable] = useState(false);
   const historyRequestId = useRef(0);
   const [courierName, setCourierName] = useState("");
   const [courierPhone, setCourierPhone] = useState("");
@@ -385,13 +386,13 @@ function LiveTrackingAdminRoute() {
 
       if (smsResult.error) {
         const message = asErrorMessage(smsResult.error);
-        if (message.includes("shipment_stage_sms") || message.includes("schema cache")) {
-          setSmsHistory([]);
-          setSmsHistoryError("سجل SMS غير مفعّل بعد؛ سيتم الإرسال مع عرض النتيجة مباشرة.");
-        } else {
-          setSmsHistoryError(message);
-        }
+        const auditMissing = message.includes("shipment_stage_sms") || message.includes("schema cache");
+        setSmsAuditUnavailable(auditMissing);
+        setSmsHistory([]);
+        setSmsHistoryError(auditMissing ? null : message);
       } else {
+        setSmsAuditUnavailable(false);
+        setSmsHistoryError(null);
         setSmsHistory(smsResult.data || []);
       }
     } catch (error) {
@@ -933,7 +934,7 @@ function LiveTrackingAdminRoute() {
               <RefreshCw
                 className={`size-4 ${loading ? "animate-spin" : ""}`}
               />{" "}
-              تحديث
+              تحدي��
             </button>
           </div>
         </div>
@@ -1505,15 +1506,14 @@ function LiveTrackingAdminRoute() {
                   className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-800"
                   role="alert"
                 >
-                  <p className="font-bold">
-                    تعذّر تحميل سجل SMS من قاعدة البيانات.
-                  </p>
-                  <p className="mt-1 break-words">
-                    تفاصيل الخطأ: {smsHistoryError}
-                  </p>
+                  <p className="font-bold">تعذّر تحميل سجل SMS.</p>
+                  <p className="mt-1 break-words">تفاصيل الخطأ: {smsHistoryError}</p>
+                </div>
+              ) : smsAuditUnavailable ? (
+                <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                  <p className="font-bold">سجل SMS غير مفعّل في قاعدة البيانات بعد.</p>
                   <p className="mt-1">
-                    تحقق من اتصال قاعدة البيانات وصلاحيات الحساب وإعداد ترحيل
-                    SMS.
+                    سيحاول النظام إرسال الإشعار إلى TextBee، لكن لن يظهر سجل المحاولة ولن تتوفر حماية منع التكرار حتى تطبيق ترحيل SMS.
                   </p>
                 </div>
               ) : smsHistory.length ? (
@@ -1564,7 +1564,7 @@ function LiveTrackingAdminRoute() {
                             className="mt-2 rounded-lg border border-orange-200 bg-white px-3 py-2 font-bold text-[#F97316] transition hover:bg-orange-50 disabled:opacity-50"
                           >
                             {busy
-                              ? "جارٍ التحقق..."
+                              ? "جا��ٍ التحقق..."
                               : "إعادة محاولة بعد تصحيح السبب"}
                           </button>
                         )}
