@@ -625,23 +625,27 @@ function LiveTrackingAdminRoute() {
       });
       if (error) throw error;
       if (action === "advance") {
+        const applyStage = (current: Shipment): Shipment => ({
+          ...current,
+          status: stage.code,
+          courierName:
+            stage.code === "out_for_delivery"
+              ? activeCourierName
+              : current.courierName,
+          courierPhone:
+            stage.code === "out_for_delivery"
+              ? normalizePhone(activeCourierPhone)
+              : current.courierPhone,
+        });
         setShipments((prev) =>
-          prev.map((s) =>
-            s.id === shipment.id
-              ? {
-                  ...s,
-                  status: stage.code,
-                  courierName:
-                    stage.code === "out_for_delivery"
-                      ? activeCourierName
-                      : s.courierName,
-                  courierPhone:
-                    stage.code === "out_for_delivery"
-                      ? normalizePhone(activeCourierPhone)
-                      : s.courierPhone,
-                }
-              : s,
+          prev.map((current) =>
+            current.id === shipment.id ? applyStage(current) : current,
           ),
+        );
+        // The open modal renders from `selected`, not from the shipments list.
+        // Keep it in sync after the database RPC succeeds.
+        setSelected((current) =>
+          current?.id === shipment.id ? applyStage(current) : current,
         );
       }
       await loadHistory(shipment);
