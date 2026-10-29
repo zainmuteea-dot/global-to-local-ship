@@ -384,7 +384,13 @@ function LiveTrackingAdminRoute() {
       }
 
       if (smsResult.error) {
-        setSmsHistoryError(asErrorMessage(smsResult.error));
+        const message = asErrorMessage(smsResult.error);
+        if (message.includes("shipment_stage_sms") || message.includes("schema cache")) {
+          setSmsHistory([]);
+          setSmsHistoryError("سجل SMS غير مفعّل بعد؛ سيتم الإرسال مع عرض النتيجة مباشرة.");
+        } else {
+          setSmsHistoryError(message);
+        }
       } else {
         setSmsHistory(smsResult.data || []);
       }

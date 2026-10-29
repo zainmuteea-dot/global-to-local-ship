@@ -287,19 +287,23 @@ Deno.serve(async (req: Request) => {
   )
     .select("id,sms_status,sms_attempt_count,sms_provider_batch_id")
     .eq("order_id", orderId).eq("stage_code", stageCode).maybeSingle();
-  if (priorError) {
+  const auditAvailable = !priorError || priorError.code !== "PGRST205";
+  if (priorError && auditAvailable) {
     console.error(
       "send-shipment-stage-sms: audit lookup failed",
       priorError.message,
     );
-    return json(req, 500, {
-      error: "تعذر قراءة سجل SMS للمرحلة. لم تُرسل رسالة.",
-    });
+    return json(req, 500, { error: "تعذر قراءة سجل SMS للمرحلة." });
+  }
+  if (!auditAvailable) {
+    console.warn(
+      "send-shipment-stage-sms: audit table is not deployed; sending without audit protection",
+    );
   }
 
   let attemptCount = 1;
-  let claimId: string;
-  if (!prior) {
+  let claimId: string | null = null;
+  if (auditAvailable && !prior) {
     const { data: inserted, error: insertError } = await admin.from(
       "shipment_stage_sms",
     )
@@ -324,8 +328,8 @@ Deno.serve(async (req: Request) => {
       });
     }
     claimId = inserted.id;
-  } else {
-    if (prior.sms_status === "accepted") {
+  } else if (auditAvailable) {
+    if (prior?.sms_status === "accepted") {
       return json(req, 200, {
         status: "accepted",
         duplicate: true,
@@ -380,6 +384,7 @@ Deno.serve(async (req: Request) => {
   const timeout = setTimeout(() => controller.abort(), 15000);
 
   const persist = async (patch: Record<string, unknown>) => {
+    if (!auditAvailable || !claimId) return true;
     const { error } = await admin.from("shipment_stage_sms").update(patch).eq(
       "id",
       claimId,
