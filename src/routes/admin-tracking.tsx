@@ -647,17 +647,33 @@ function LiveTrackingAdminRoute() {
       await loadHistory(shipment);
       let smsNotice = "";
       if (action === "advance") {
-        const { data: smsResult, error: smsError } =
-          await supabase.functions.invoke("send-shipment-stage-sms", {
-            body: { orderId: shipment.id, stageCode: stage.code },
-          });
-        if (smsError) {
+        try {
+          const { data: smsResult, error: smsError } =
+            await supabase.functions.invoke("send-shipment-stage-sms", {
+              body: { orderId: shipment.id, stageCode: stage.code },
+            });
+          if (smsError) {
+            smsNotice =
+              "لم يتم تأكيد إرسال SMS. راجع سجل SMS قبل أي إعادة محاولة.";
+          } else if (smsResult?.status === "accepted") {
+            smsNotice =
+              "قبل TextBee طلب SMS، لكن هذا لا يؤكد وصول الرسالة إلى هاتف العميل.";
+          } else if (
+            smsResult?.status === "unknown" ||
+            smsResult?.status === "sending"
+          ) {
+            smsNotice =
+              smsResult?.message ||
+              "نتيجة SMS غير محسومة؛ تحقق من سجل المزود ولا تعِد الإرسال الآن.";
+          } else if (smsResult?.status === "failed") {
+            smsNotice = `لم تُرسل SMS: ${smsResult?.message || "رفض مزود الرسائل الطلب."}`;
+          } else {
+            smsNotice = `تعذر تأكيد إرسال SMS: ${smsResult?.message || "راجع سجل SMS."}`;
+          }
+        } catch {
+          // The stage was already saved. Keep SMS transport errors separate from stage success.
           smsNotice =
-            " تعذّر إرسال SMS للمرحلة؛ افحص سجل SMS قبل أي إعادة محاولة.";
-        } else if (smsResult?.status === "accepted") {
-          smsNotice = " أُرسل طلب SMS وقبله TextBee؛ هذا لا يؤكد وصوله للهاتف.";
-        } else {
-          smsNotice = ` حالة SMS: ${smsResult?.message || "تحقق من سجل SMS للمرحلة."}`;
+            "لم يتم تأكيد إرسال SMS بسبب تعذر الاتصال؛ راجع سجل SMS قبل أي إعادة محاولة.";
         }
         await loadHistory(shipment);
       }
@@ -676,13 +692,17 @@ function LiveTrackingAdminRoute() {
             "فُتح واتساب برسالة جاهزة. لم تُرسل تلقائياً؛ أكّد الإرسال داخل واتساب.",
           );
         }
+      } else if (action === "advance") {
+        const inAppNotice =
+          data?.notification_state === "created"
+            ? "وحُفظ إشعار العميل داخل التطبيق."
+            : "لكن العميل لا يملك حساباً مرتبطاً لتلقي إشعار داخل التطبيق.";
+        setNotice(`تم تفعيل المرحلة بنجاح ${inAppNotice} ${smsNotice}`);
       } else {
         setNotice(
           data?.notification_state === "created"
-            ? action === "advance"
-              ? `تم تحديث المرحلة وحفظ إشعار العميل داخل التطبيق.${smsNotice}`
-              : "تم حفظ التذكير داخل التطبيق دون تغيير حالة الشحنة."
-            : `تم تحديث السجل، لكن العميل لا يملك حساباً مرتبطاً لتلقي إشعار داخل التطبيق.${smsNotice}`,
+            ? "تم حفظ التذكير داخل التطبيق دون تغيير حالة الشحنة."
+            : "تم حفظ السجل، لكن العميل لا يملك حساباً مرتبطاً لتلقي إشعار داخل التطبيق.",
         );
       }
       if (action === "advance") await refresh();
@@ -1010,10 +1030,23 @@ function LiveTrackingAdminRoute() {
         {notice && (
           <div
             role="status"
-            className="flex items-start gap-2 rounded-2xl border border-sky-200 bg-sky-50 p-3.5 text-sm font-bold text-sky-900 shadow-sm"
+            aria-live="polite"
+            className={`flex items-start gap-2 rounded-2xl border p-3.5 text-sm font-bold shadow-sm ${
+              notice.startsWith("تم تفعيل المرحلة بنجاح")
+                ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+                : notice.startsWith("لم تكتمل العملية") ||
+                    notice.startsWith("تعذّر") ||
+                    notice.startsWith("تعذر")
+                  ? "border-red-200 bg-red-50 text-red-900"
+                  : "border-sky-200 bg-sky-50 text-sky-900"
+            }`}
           >
-            <Bell className="mt-0.5 size-4 shrink-0" />
-            {notice}
+            {notice.startsWith("تم تفعيل المرحلة بنجاح") ? (
+              <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
+            ) : (
+              <Bell className="mt-0.5 size-4 shrink-0" />
+            )}
+            <span>{notice}</span>
           </div>
         )}
         <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
