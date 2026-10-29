@@ -4,9 +4,12 @@ import type { FormEvent } from "react";
 import {
   Bell,
   CheckCheck,
+  Clock,
+  Inbox,
   MessageCircle,
   PackagePlus,
   Phone,
+  RefreshCw,
   Send,
   Trash2,
   Tag,
@@ -62,7 +65,10 @@ async function loadNotificationReadIds(userId: string) {
   };
 }
 
-async function saveNotificationReadIds(userId: string, notificationIds: string[]) {
+async function saveNotificationReadIds(
+  userId: string,
+  notificationIds: string[],
+) {
   if (notificationIds.length === 0) return { error: null };
 
   return await (supabase.from("notification_reads") as any).upsert(
@@ -100,7 +106,10 @@ function NotificationsPage() {
     ]).then(([adminResult, staffResult]) => {
       if (!active) return;
       if (adminResult.error || staffResult.error) {
-        console.error("تعذر التحقق من صلاحية الإدارة:", adminResult.error ?? staffResult.error);
+        console.error(
+          "تعذر التحقق من صلاحية الإدارة:",
+          adminResult.error ?? staffResult.error,
+        );
         setCanManage(false);
         setRoleError("تعذر التحقق من الصلاحية. لم نعرض أدوات إدارة الإشعارات.");
         return;
@@ -164,7 +173,9 @@ function CustomerNotificationsPage({
       setLoading(true);
       const [notificationsResult, readsResult] = await Promise.all([
         (supabase.from("notifications") as any)
-          .select("id,user_id,title,message,type,created_at,sent_by,href,is_active")
+          .select(
+            "id,user_id,title,message,type,created_at,sent_by,href,is_active",
+          )
           .or(`and(user_id.is.null,is_active.eq.true),user_id.eq.${userId}`)
           .order("created_at", { ascending: false })
           .limit(50),
@@ -175,10 +186,13 @@ function CustomerNotificationsPage({
 
       if (notificationsResult.error) {
         console.error("تعذر تحميل إشعارات العميل:", notificationsResult.error);
-        setError("تعذر تحميل الإشعارات. تحقق من الاتصال والصلاحيات ثم حاول مجددًا.");
+        setError(
+          "تعذر تحميل الإشعارات. تحقق من الاتصال والصلاحيات ثم حاول مجددًا.",
+        );
       } else {
         const rows = (notificationsResult.data ?? []).filter(
-          (item: SystemNotification) => !ADMIN_ONLY_NOTIFICATION_KINDS.has(item.type),
+          (item: SystemNotification) =>
+            !ADMIN_ONLY_NOTIFICATION_KINDS.has(item.type),
         );
         setNotifications(rows as SystemNotification[]);
         setError(roleError);
@@ -198,7 +212,8 @@ function CustomerNotificationsPage({
 
     const isVisibleToCustomer = (notification: SystemNotification) => {
       const isOwnNotification = notification.user_id === userId;
-      const isActiveBroadcast = notification.user_id === null && notification.is_active === true;
+      const isActiveBroadcast =
+        notification.user_id === null && notification.is_active === true;
 
       return (
         (isOwnNotification || isActiveBroadcast) &&
@@ -214,12 +229,17 @@ function CustomerNotificationsPage({
 
       if (!isVisibleToCustomer(notification)) {
         // Remove it if a broadcast was deactivated or the row is no longer visible.
-        setNotifications((current) => current.filter((item) => item.id !== notification.id));
+        setNotifications((current) =>
+          current.filter((item) => item.id !== notification.id),
+        );
         return;
       }
 
       setNotifications((current) =>
-        [notification, ...current.filter((item) => item.id !== notification.id)].slice(0, 50),
+        [
+          notification,
+          ...current.filter((item) => item.id !== notification.id),
+        ].slice(0, 50),
       );
     };
 
@@ -242,7 +262,9 @@ function CustomerNotificationsPage({
           if (!active) return;
           const deleted = payload.old as { id?: string };
           if (!deleted?.id) return;
-          setNotifications((current) => current.filter((item) => item.id !== deleted.id));
+          setNotifications((current) =>
+            current.filter((item) => item.id !== deleted.id),
+          );
         },
       )
       .subscribe();
@@ -255,12 +277,18 @@ function CustomerNotificationsPage({
 
   const markRead = useCallback(
     async (notificationId: string) => {
-      if (readIds.has(notificationId) || pendingReadIds.current.has(notificationId)) return;
+      if (
+        readIds.has(notificationId) ||
+        pendingReadIds.current.has(notificationId)
+      )
+        return;
       pendingReadIds.current.add(notificationId);
       setSavingRead(true);
 
       try {
-        const { error: saveError } = await saveNotificationReadIds(userId, [notificationId]);
+        const { error: saveError } = await saveNotificationReadIds(userId, [
+          notificationId,
+        ]);
         if (saveError) {
           console.error("تعذر حفظ قراءة الإشعار:", saveError);
           setError("لم تُحفظ حالة القراءة. حاول مرة أخرى.");
@@ -279,14 +307,20 @@ function CustomerNotificationsPage({
 
   // Mark a customer's notification read only after most of its card is visible on screen.
   useEffect(() => {
-    if (loading || notifications.length === 0 || typeof IntersectionObserver === "undefined")
+    if (
+      loading ||
+      notifications.length === 0 ||
+      typeof IntersectionObserver === "undefined"
+    )
       return;
 
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
           if (!entry.isIntersecting) continue;
-          const notificationId = (entry.target as HTMLElement).dataset["customerNotificationId"];
+          const notificationId = (entry.target as HTMLElement).dataset[
+            "customerNotificationId"
+          ];
           if (!notificationId) continue;
           observer.unobserve(entry.target);
           if (!readIds.has(notificationId)) void markRead(notificationId);
@@ -319,11 +353,15 @@ function CustomerNotificationsPage({
       return;
     }
 
-    setReadIds((current) => new Set([...current, ...unread.map((item) => item.id)]));
+    setReadIds(
+      (current) => new Set([...current, ...unread.map((item) => item.id)]),
+    );
     setError(null);
   };
 
-  const unreadCount = notifications.filter((item) => !readIds.has(item.id)).length;
+  const unreadCount = notifications.filter(
+    (item) => !readIds.has(item.id),
+  ).length;
   const latestFirst = [...notifications].sort(
     (a, b) => Date.parse(b.created_at) - Date.parse(a.created_at),
   );
@@ -334,7 +372,9 @@ function CustomerNotificationsPage({
         <div>
           <h2 className="font-bold text-slate-900">تحديثات حسابك</h2>
           <p className="mt-1 text-xs text-slate-500">
-            {unreadCount > 0 ? `${unreadCount} إشعار غير مقروء` : "لا توجد إشعارات غير مقروءة"}
+            {unreadCount > 0
+              ? `${unreadCount} إشعار غير مقروء`
+              : "لا توجد إشعارات غير مقروءة"}
           </p>
         </div>
         {unreadCount > 0 && (
@@ -380,16 +420,22 @@ function CustomerNotificationsPage({
                 key={notification.id}
                 data-customer-notification-id={notification.id}
                 className={`rounded-2xl border bg-white p-4 shadow-sm ${
-                  isRead ? "border-slate-200" : "border-sky-300 ring-1 ring-sky-100"
+                  isRead
+                    ? "border-slate-200"
+                    : "border-sky-300 ring-1 ring-sky-100"
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="font-bold text-slate-900">{notification.title}</h3>
+                      <h3 className="font-bold text-slate-900">
+                        {notification.title}
+                      </h3>
                       <span
                         className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                          isRead ? "bg-slate-100 text-slate-500" : "bg-orange-100 text-orange-800"
+                          isRead
+                            ? "bg-slate-100 text-slate-500"
+                            : "bg-orange-100 text-orange-800"
                         }`}
                       >
                         {isRead ? "مقروء" : "جديد"}
@@ -404,7 +450,9 @@ function CustomerNotificationsPage({
                       className="mt-2 block text-xs text-slate-400"
                       dateTime={notification.created_at}
                     >
-                      {new Date(notification.created_at).toLocaleString("ar-YE")}
+                      {new Date(notification.created_at).toLocaleString(
+                        "ar-YE",
+                      )}
                     </time>
                   </div>
                   {!isRead && (
@@ -433,9 +481,12 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
   const [notifications, setNotifications] = useState<SystemNotification[]>([]);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [soundOn, setSoundOn] = useState(() =>
-    typeof window === "undefined" ? true : window.localStorage.getItem("sc_notify") !== "0",
+    typeof window === "undefined"
+      ? true
+      : window.localStorage.getItem("sc_notify") !== "0",
   );
   const [savingRead, setSavingRead] = useState(false);
   const [sending, setSending] = useState(false);
@@ -450,7 +501,9 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
 
   const playSound = () => {
     if (!soundOnRef.current || typeof window === "undefined") return;
-    new Audio("https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3")
+    new Audio(
+      "https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3",
+    )
       .play()
       .catch(() => undefined);
   };
@@ -460,18 +513,26 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
 
     const loadAdminNotifications = async () => {
       setLoading(true);
-      const [ordersResult, notificationsResult, readsResult] = await Promise.all([
-        supabase
-          .from("orders")
-          .select("id,tracking_code,customer_name,phone,notes,status,created_at")
-          .order("created_at", { ascending: false })
-          .limit(500),
-        (supabase.from("notifications") as any)
-          .select("id,user_id,title,message,type,created_at,sent_by,href,is_active")
-          .order("created_at", { ascending: false })
-          .limit(100),
-        supabase.from("notification_reads").select("notification_id").eq("user_id", userId),
-      ]);
+      const [ordersResult, notificationsResult, readsResult] =
+        await Promise.all([
+          supabase
+            .from("orders")
+            .select(
+              "id,tracking_code,customer_name,phone,notes,status,created_at",
+            )
+            .order("created_at", { ascending: false })
+            .limit(500),
+          (supabase.from("notifications") as any)
+            .select(
+              "id,user_id,title,message,type,created_at,sent_by,href,is_active",
+            )
+            .order("created_at", { ascending: false })
+            .limit(100),
+          supabase
+            .from("notification_reads")
+            .select("notification_id")
+            .eq("user_id", userId),
+        ]);
 
       if (!active) return;
 
@@ -479,21 +540,27 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
         console.error("تعذر تحميل طلبات العملاء للإدارة:", ordersResult.error);
         setError("تعذر تحميل طلبات العملاء. تحقق من صلاحيات الإدارة وRLS.");
       } else {
-        setOrders((ordersResult.data ?? []).map((order) => ({ ...order, read: true })));
+        setOrders(
+          (ordersResult.data ?? []).map((order) => ({ ...order, read: true })),
+        );
       }
 
       if (notificationsResult.error) {
         console.error("تعذر تحميل إشعارات الإدارة:", notificationsResult.error);
         setError((current) => current ?? "تعذر تحميل إشعارات الإدارة.");
       } else {
-        setNotifications((notificationsResult.data ?? []) as SystemNotification[]);
+        setNotifications(
+          (notificationsResult.data ?? []) as SystemNotification[],
+        );
       }
 
       if (readsResult.error) {
         console.error("تعذر تحميل سجل القراءة:", readsResult.error);
         setError((current) => current ?? "تعذر تحميل حالة قراءة الإشعارات.");
       } else {
-        setReadIds(new Set((readsResult.data ?? []).map((row) => row.notification_id)));
+        setReadIds(
+          new Set((readsResult.data ?? []).map((row) => row.notification_id)),
+        );
       }
 
       setLoading(false);
@@ -503,21 +570,28 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
 
     const orderChannel = supabase
       .channel(`admin-orders-notifications-${userId}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "orders" }, (payload) => {
-        const order = payload.new as Omit<OrderNotification, "read">;
-        setOrders((current) =>
-          [{ ...order, read: false }, ...current.filter((item) => item.id !== order.id)].slice(
-            0,
-            30,
-          ),
-        );
-        playSound();
-        if ("Notification" in window && Notification.permission === "granted") {
-          new Notification("طلب جديد - السوق الشامل", {
-            body: `${order.customer_name} • ${order.tracking_code}`,
-          });
-        }
-      })
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "orders" },
+        (payload) => {
+          const order = payload.new as Omit<OrderNotification, "read">;
+          setOrders((current) =>
+            [
+              { ...order, read: false },
+              ...current.filter((item) => item.id !== order.id),
+            ].slice(0, 30),
+          );
+          playSound();
+          if (
+            "Notification" in window &&
+            Notification.permission === "granted"
+          ) {
+            new Notification("طلب جديد - السوق الشامل", {
+              body: `${order.customer_name} • ${order.tracking_code}`,
+            });
+          }
+        },
+      )
       .subscribe();
 
     const systemChannel = supabase
@@ -527,9 +601,13 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
         { event: "INSERT", schema: "public", table: "notifications" },
         (payload) => {
           const notification = payload.new as SystemNotification;
-          if (notification.user_id !== null && notification.user_id !== userId) return;
+          if (notification.user_id !== null && notification.user_id !== userId)
+            return;
           setNotifications((current) =>
-            [notification, ...current.filter((item) => item.id !== notification.id)].slice(0, 50),
+            [
+              notification,
+              ...current.filter((item) => item.id !== notification.id),
+            ].slice(0, 50),
           );
           setError(null);
           playSound();
@@ -544,9 +622,65 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
     };
   }, [userId]);
 
+  const refreshAdminLists = async () => {
+    if (loading || refreshing) return;
+    setRefreshing(true);
+    const [ordersResult, notificationsResult, readsResult] = await Promise.all([
+      supabase
+        .from("orders")
+        .select("id,tracking_code,customer_name,phone,notes,status,created_at")
+        .order("created_at", { ascending: false })
+        .limit(500),
+      (supabase.from("notifications") as any)
+        .select(
+          "id,user_id,title,message,type,created_at,sent_by,href,is_active",
+        )
+        .order("created_at", { ascending: false })
+        .limit(100),
+      supabase
+        .from("notification_reads")
+        .select("notification_id")
+        .eq("user_id", userId),
+    ]);
+
+    const refreshErrors: string[] = [];
+    if (ordersResult.error) {
+      console.error("تعذر تحديث طلبات العملاء:", ordersResult.error);
+      refreshErrors.push("تعذر تحديث طلبات العملاء.");
+    } else {
+      setOrders(
+        (ordersResult.data ?? []).map((order) => ({ ...order, read: true })),
+      );
+    }
+    if (notificationsResult.error) {
+      console.error("تعذر تحديث إشعارات الإدارة:", notificationsResult.error);
+      refreshErrors.push("تعذر تحديث الإشعارات.");
+    } else {
+      setNotifications(
+        (notificationsResult.data ?? []) as SystemNotification[],
+      );
+    }
+    if (readsResult.error) {
+      console.error("تعذر تحديث حالة القراءة:", readsResult.error);
+      refreshErrors.push("تعذر تحديث حالة القراءة.");
+    } else {
+      setReadIds(
+        new Set((readsResult.data ?? []).map((row) => row.notification_id)),
+      );
+    }
+    setError(
+      refreshErrors.length ? refreshErrors.join(" ") : "تم تحديث القائمة.",
+    );
+    setRefreshing(false);
+  };
+
   const toggleSound = async () => {
     const next = !soundOn;
-    if (next && "Notification" in window && Notification.permission === "default") {
+    if (
+      next &&
+      "Notification" in window &&
+      Notification.permission === "default"
+    ) {
       await Notification.requestPermission();
     }
     setSoundOn(next);
@@ -567,7 +701,9 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
 
     setOrders((current) =>
       current.map((order) =>
-        order.id === orderId ? { ...order, status: "تم التواصل", read: true } : order,
+        order.id === orderId
+          ? { ...order, status: "تم التواصل", read: true }
+          : order,
       ),
     );
     setError(null);
@@ -590,11 +726,15 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
       return;
     }
 
-    setReadIds((current) => new Set([...current, ...unread.map((item) => item.id)]));
+    setReadIds(
+      (current) => new Set([...current, ...unread.map((item) => item.id)]),
+    );
     setError(null);
   };
 
-  const sendCustomerNotification = async (event: FormEvent<HTMLFormElement>) => {
+  const sendCustomerNotification = async (
+    event: FormEvent<HTMLFormElement>,
+  ) => {
     event.preventDefault();
     const title = draftTitle.trim();
     const message = draftMessage.trim();
@@ -602,7 +742,9 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
 
     setSending(true);
     setError(null);
-    const { data, error: insertError } = await (supabase.from("notifications") as any)
+    const { data, error: insertError } = await (
+      supabase.from("notifications") as any
+    )
       .insert({
         user_id: null,
         title,
@@ -616,7 +758,9 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
 
     if (insertError) {
       console.error("تعذر إرسال إشعار العملاء:", insertError);
-      setError("تعذر إرسال الإشعار. تحقق من الاتصال وسياسات قاعدة البيانات ثم حاول مجددًا.");
+      setError(
+        "تعذر إرسال الإشعار. تحقق من الاتصال وسياسات قاعدة البيانات ثم حاول مجددًا.",
+      );
       return;
     }
 
@@ -629,12 +773,21 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
       .select("phone")
       .not("phone", "is", null)
       .limit(1000);
-    const phones: string[] = [...new Set((profiles ?? []).map((profile: { phone?: string | null }) =>
-      (profile.phone ?? "").trim()).filter(Boolean))] as string[];
+    const phones: string[] = [
+      ...new Set(
+        (profiles ?? [])
+          .map((profile: { phone?: string | null }) =>
+            (profile.phone ?? "").trim(),
+          )
+          .filter(Boolean),
+      ),
+    ] as string[];
     const smsResults = await Promise.allSettled(
       phones.map((phone: string) => sendSms(phone, `${title}\n${message}`)),
     );
-    const failedSms = smsResults.filter((result) => result.status === "rejected").length;
+    const failedSms = smsResults.filter(
+      (result) => result.status === "rejected",
+    ).length;
     setDraftTitle("");
     setDraftMessage("");
     setError(
@@ -644,8 +797,14 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
     );
   };
 
-  const deleteCustomerNotification = async (notification: SystemNotification) => {
-    if (!window.confirm(`حذف الإشعار «${notification.title}» نهائيًا؟ لن يظهر للعملاء بعد الحذف.`))
+  const deleteCustomerNotification = async (
+    notification: SystemNotification,
+  ) => {
+    if (
+      !window.confirm(
+        `حذف الإشعار «${notification.title}» نهائيًا؟ لن يظهر للعملاء بعد الحذف.`,
+      )
+    )
       return;
     setError(null);
     const { error: deleteError } = await (supabase.from("notifications") as any)
@@ -653,10 +812,14 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
       .eq("id", notification.id);
     if (deleteError) {
       console.error("تعذر حذف الإشعار:", deleteError);
-      setError("تعذر حذف الإشعار. تحقق من صلاحيات المدير/الموظف ثم حاول مرة أخرى.");
+      setError(
+        "تعذر حذف الإشعار. تحقق من صلاحيات المدير/الموظف ثم حاول مرة أخرى.",
+      );
       return;
     }
-    setNotifications((current) => current.filter((item) => item.id !== notification.id));
+    setNotifications((current) =>
+      current.filter((item) => item.id !== notification.id),
+    );
     setReadIds((current) => {
       const next = new Set(current);
       next.delete(notification.id);
@@ -666,96 +829,90 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
   };
 
   const unreadOrders = orders.filter((order) => !order.read).length;
-  const unreadSystem = notifications.filter((item) => !readIds.has(item.id)).length;
+  const unreadSystem = notifications.filter(
+    (item) => !readIds.has(item.id),
+  ).length;
   const latestFirst = [...notifications].sort(
     (a, b) => Date.parse(b.created_at) - Date.parse(a.created_at),
   );
 
   return (
     <AccountShell title="إشعارات الإدارة" back="/admin" wide>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <Bell className="size-6 text-orange-600" />
-            {unreadOrders > 0 && (
-              <span className="absolute -left-2 -top-2 grid size-5 place-items-center rounded-full bg-red-600 text-[10px] font-bold text-white">
-                {unreadOrders}
-              </span>
-            )}
+      <div className="rounded-3xl border border-slate-200 bg-gradient-to-l from-orange-50 via-white to-white p-4 shadow-sm sm:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-orange-100 text-orange-700">
+              <Bell className="size-5" />
+            </span>
+            <div>
+              <h2 className="font-black text-slate-900">
+                مركز إشعارات الإدارة
+              </h2>
+              <p className="mt-1 text-xs text-slate-500">
+                تابع طلبات العملاء وأرسل العروض من مكان واحد.
+              </p>
+            </div>
           </div>
-          <h2 className="font-black text-slate-900">طلبات العملاء اللحظية</h2>
+          <button
+            type="button"
+            onClick={() => void toggleSound()}
+            className={`rounded-xl border px-3 py-2 text-xs font-bold shadow-sm transition ${
+              soundOn
+                ? "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+                : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+            }`}
+          >
+            {soundOn ? "🔔 الصوت يعمل" : "🔕 الصوت متوقف"}
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={() => void toggleSound()}
-          className="rounded-xl border border-sky-200 bg-white px-3 py-2 text-xs font-bold text-sky-800"
-        >
-          {soundOn ? "🔔 الصوت يعمل" : "🔕 الصوت متوقف"}
-        </button>
+        <div className="mt-4 grid grid-cols-2 gap-2.5 sm:max-w-md">
+          <div className="flex items-center gap-2 rounded-2xl border border-orange-200 bg-orange-50 px-3 py-2 text-orange-800">
+            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-white/80">
+              <PackagePlus className="size-4" />
+            </span>
+            <div>
+              <p className="text-base font-black">{unreadOrders}</p>
+              <p className="text-[11px] opacity-75">طلبات جديدة</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 rounded-2xl border border-sky-200 bg-sky-50 px-3 py-2 text-sky-800">
+            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-white/80">
+              <Bell className="size-4" />
+            </span>
+            <div>
+              <p className="text-base font-black">{unreadSystem}</p>
+              <p className="text-[11px] opacity-75">إشعارات غير مقروءة</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {error && (
         <p
-          role="alert"
-          className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800"
+          role="status"
+          className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800"
         >
           {error}
         </p>
       )}
 
-      {loading ? (
-        <p
-          role="status"
-          className="rounded-2xl border border-slate-200 bg-white p-4 text-center text-sm text-slate-600"
-        >
-          جارٍ تحميل بيانات الإدارة…
-        </p>
-      ) : orders.length === 0 ? (
-        <EmptyState
-          icon={<PackagePlus className="size-8" />}
-          title="لا توجد طلبات جديدة"
-          text="ستظهر طلبات العملاء هنا عند وصولها."
-        />
-      ) : (
-        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <table className="min-w-[760px] w-full text-right text-sm">
-            <thead className="bg-slate-50 text-xs font-black text-slate-600">
-              <tr><th className="px-4 py-3">العميل</th><th className="px-4 py-3">رقم الطلب</th><th className="px-4 py-3">الحالة</th><th className="px-4 py-3">التاريخ</th><th className="px-4 py-3">الإشعارات والإجراء</th></tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {orders.map((order) => {
-                const phone = (order.phone || "").replace(/\D/g, "");
-                return <tr key={order.id} className={!order.read ? "bg-orange-50/40" : ""}>
-                  <td className="px-4 py-3 font-bold text-slate-900">{order.customer_name}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-slate-600">{order.tracking_code}</td>
-                  <td className="px-4 py-3"><span className="rounded-full bg-slate-100 px-2 py-1 text-xs">{order.status}</span></td>
-                  <td className="px-4 py-3 text-xs text-slate-500">{new Date(order.created_at).toLocaleString("ar-YE")}</td>
-                  <td className="px-4 py-3"><div className="flex items-center gap-2">
-                    {phone && <><a aria-label="اتصال بالعميل" href={`tel:${phone}`} className="rounded-lg bg-sky-700 p-2 text-white"><Phone className="size-4" /></a><a aria-label="مراسلة العميل عبر واتساب" href={`https://wa.me/${phone}?text=${encodeURIComponent(`مرحبًا ${order.customer_name}، وصلنا طلبك ${order.tracking_code}`)}`} target="_blank" rel="noreferrer" className="rounded-lg bg-emerald-600 p-2 text-white"><MessageCircle className="size-4" /></a></>}
-                    <button type="button" onClick={() => void markOrderSeen(order.id)} className="rounded-lg border border-emerald-200 px-3 py-2 text-xs font-bold text-emerald-800">تمت المتابعة</button>
-                  </div></td>
-                </tr>;
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      <section className="mt-6 rounded-2xl border border-orange-200 bg-orange-50 p-4">
-        <div className="mb-3 flex items-center gap-2">
-          <span className="grid size-9 place-items-center rounded-xl bg-white text-orange-700">
-            <Tag className="size-4" />
+      <section className="mt-5 rounded-3xl border border-orange-200 bg-orange-50/60 p-4 sm:p-5">
+        <div className="mb-3 flex items-center gap-3">
+          <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-orange-100 text-orange-700">
+            <Send className="size-5" />
           </span>
           <div>
-            <h2 className="font-bold text-slate-900">إرسال إشعار أو عرض للعملاء</h2>
-            <p className="text-xs text-slate-600">
-              سيصل الإشعار إلى حسابات العملاء، ويمكن حذفه من القائمة أدناه.
+            <h2 className="font-black text-slate-900">
+              إرسال إشعار أو عرض للعملاء
+            </h2>
+            <p className="mt-0.5 text-xs text-slate-500">
+              يصل الإشعار إلى حسابات العملاء، ويمكن حذفه من الجدول أدناه.
             </p>
           </div>
         </div>
         <form
           onSubmit={(event) => void sendCustomerNotification(event)}
-          className="grid gap-2 md:grid-cols-2"
+          className="grid gap-2.5 md:grid-cols-2"
         >
           <input
             value={draftTitle}
@@ -763,12 +920,12 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
             required
             maxLength={120}
             placeholder="عنوان العرض أو الإشعار"
-            className="rounded-xl border border-orange-200 bg-white px-3 py-2 text-sm"
+            className="rounded-xl border border-orange-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
           />
           <select
             value={draftType}
             onChange={(event) => setDraftType(event.target.value)}
-            className="rounded-xl border border-orange-200 bg-white px-3 py-2 text-sm"
+            className="rounded-xl border border-orange-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
           >
             <option value="offer">عرض</option>
             <option value="system">إشعار عام</option>
@@ -783,90 +940,388 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
             maxLength={2000}
             rows={3}
             placeholder="اكتب تفاصيل العرض أو الإشعار"
-            className="rounded-xl border border-orange-200 bg-white px-3 py-2 text-sm md:col-span-2"
+            className="rounded-xl border border-orange-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-100 md:col-span-2"
           />
           <button
             type="submit"
             disabled={sending}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50 md:col-span-2"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50 md:col-span-2"
           >
-            <Send className="size-4" /> {sending ? "جارٍ الإرسال…" : "إرسال لجميع العملاء"}
+            <Send className="size-4" />{" "}
+            {sending ? "جارٍ الإرسال…" : "إرسال لجميع العملاء"}
           </button>
         </form>
       </section>
 
-      <section className="mt-6">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h2 className="font-bold text-slate-900">إشعارات العملاء والإدارة</h2>
-            <p className="mt-1 text-xs text-slate-500">
-              {unreadSystem > 0 ? `${unreadSystem} غير مقروء` : "لا توجد إشعارات غير مقروءة"}
-            </p>
-          </div>
-          {unreadSystem > 0 && (
-            <button
-              type="button"
-              disabled={savingRead}
-              onClick={() => void markAllSystemRead()}
-              className="inline-flex items-center gap-1 rounded-xl border border-sky-200 bg-white px-3 py-2 text-xs font-bold text-sky-800 disabled:opacity-50"
-            >
-              <CheckCheck className="size-4" /> تحديد إشعارات الإدارة كمقروءة
-            </button>
-          )}
-        </div>
-
-        {notifications.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-slate-300 bg-white p-4 text-center text-sm text-slate-500">
-            لا توجد إشعارات إدارية.
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {latestFirst.map((notification) => {
-              const isRead = readIds.has(notification.id);
-              return (
-                <article
-                  key={notification.id}
-                  className={`rounded-2xl border bg-white p-4 ${
-                    isRead ? "border-slate-200" : "border-orange-300"
-                  }`}
+      <div className="mt-6 grid grid-cols-1 items-start gap-4 lg:grid-cols-2 lg:gap-5">
+        <section className="mt-0 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm lg:col-start-2 lg:row-start-1">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-white p-4">
+            <div className="flex items-center gap-3">
+              <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-sky-100 text-sky-700">
+                <Tag className="size-5" />
+              </span>
+              <div>
+                <h2 className="font-black text-slate-900">
+                  إشعارات العملاء والإدارة
+                </h2>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  {unreadSystem > 0
+                    ? `${unreadSystem} غير مقروء`
+                    : "لا توجد إشعارات غير مقروءة"}
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                disabled={loading || refreshing}
+                onClick={() => void refreshAdminLists()}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-sky-200 bg-white px-3 py-2 text-xs font-bold text-sky-800 shadow-sm transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <RefreshCw
+                  className={`size-4 ${refreshing ? "animate-spin" : ""}`}
+                />
+                {refreshing ? "جارٍ التحديث…" : "تحديث القائمة"}
+              </button>
+              {unreadSystem > 0 && (
+                <button
+                  type="button"
+                  disabled={savingRead}
+                  onClick={() => void markAllSystemRead()}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-sky-200 bg-white px-3 py-2 text-xs font-bold text-sky-800 shadow-sm transition hover:bg-sky-50 disabled:opacity-50"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <h3 className="font-bold text-slate-900">{notification.title}</h3>
-                      {notification.message && (
-                        <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-slate-600">
-                          {notification.message}
-                        </p>
-                      )}
-                      <time
-                        className="mt-2 block text-xs text-slate-400"
-                        dateTime={notification.created_at}
-                      >
-                        {new Date(notification.created_at).toLocaleString("ar-YE")}
-                      </time>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-600">
-                        {notification.user_id === null ? "إشعار عام" : "إشعار حساب"} ·{" "}
-                        {isRead ? "مقروء" : "جديد"}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => void deleteCustomerNotification(notification)}
-                        aria-label={`حذف إشعار ${notification.title}`}
-                        title="حذف الإشعار"
-                        className="rounded-lg border border-red-200 p-2 text-red-700 hover:bg-red-50"
-                      >
-                        <Trash2 className="size-4" />
-                      </button>
-                    </div>
-                  </div>
-                </article>
-              );
-            })}
+                  <CheckCheck className="size-4" /> تحديد الكل كمقروء
+                </button>
+              )}
+            </div>
           </div>
-        )}
-      </section>
+          {loading ? (
+            <p
+              role="status"
+              className="m-4 rounded-2xl border border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-600"
+            >
+              جارٍ تحميل الإشعارات…
+            </p>
+          ) : notifications.length === 0 ? (
+            <div className="p-4">
+              <EmptyState
+                icon={<Inbox className="size-8" />}
+                title="لا توجد إشعارات إدارية"
+                text="ستظهر هنا إشعارات الدفع والعروض التي ترسلها."
+              />
+            </div>
+          ) : (
+            <>
+              <div className="hidden overflow-x-auto md:block">
+                <table className="w-full min-w-[600px] text-right text-sm">
+                  <thead className="bg-slate-50 text-xs font-black text-slate-500">
+                    <tr>
+                      <th className="px-4 py-3">الإشعار</th>
+                      <th className="px-4 py-3">النوع</th>
+                      <th className="px-4 py-3">الحالة</th>
+                      <th className="px-4 py-3">التاريخ</th>
+                      <th className="px-4 py-3">حذف</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {latestFirst.map((notification) => {
+                      const isRead = readIds.has(notification.id);
+                      const isBroadcast = notification.user_id === null;
+                      return (
+                        <tr
+                          key={notification.id}
+                          className={
+                            !isRead
+                              ? "bg-orange-50/50"
+                              : "transition hover:bg-slate-50/70"
+                          }
+                        >
+                          <td className="px-4 py-3 align-top">
+                            <div className="font-bold text-slate-900">
+                              {notification.title}
+                            </div>
+                            {notification.message && (
+                              <p className="mt-1 max-w-md whitespace-pre-wrap text-xs leading-5 text-slate-500">
+                                {notification.message}
+                              </p>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 align-top">
+                            <span
+                              className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${isBroadcast ? "bg-sky-100 text-sky-700" : "bg-violet-100 text-violet-700"}`}
+                            >
+                              {isBroadcast ? "إشعار عام" : "إشعار حساب"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 align-top">
+                            <span
+                              className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${isRead ? "bg-slate-100 text-slate-500" : "bg-orange-100 text-orange-800"}`}
+                            >
+                              {isRead ? "مقروء" : "جديد"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 align-top text-xs text-slate-500">
+                            {new Date(notification.created_at).toLocaleString(
+                              "ar-YE",
+                            )}
+                          </td>
+                          <td className="px-4 py-3 align-top">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                void deleteCustomerNotification(notification)
+                              }
+                              aria-label={`حذف إشعار ${notification.title}`}
+                              title="حذف الإشعار"
+                              className="rounded-lg border border-red-200 p-2 text-red-600 transition hover:bg-red-50"
+                            >
+                              <Trash2 className="size-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <div className="space-y-2.5 p-3 md:hidden">
+                {latestFirst.map((notification) => {
+                  const isRead = readIds.has(notification.id);
+                  const isBroadcast = notification.user_id === null;
+                  return (
+                    <article
+                      key={notification.id}
+                      className={`relative overflow-hidden rounded-2xl border bg-white p-4 pr-5 shadow-sm ${isRead ? "border-slate-200" : "border-orange-200 ring-1 ring-orange-100"}`}
+                    >
+                      <span
+                        aria-hidden
+                        className={`absolute inset-y-0 right-0 w-1.5 ${isRead ? "bg-slate-200" : "bg-orange-500"}`}
+                      />
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="font-bold text-slate-900">
+                              {notification.title}
+                            </h3>
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${isBroadcast ? "bg-sky-100 text-sky-700" : "bg-violet-100 text-violet-700"}`}
+                            >
+                              {isBroadcast ? "إشعار عام" : "إشعار حساب"}
+                            </span>
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${isRead ? "bg-slate-100 text-slate-500" : "bg-orange-100 text-orange-800"}`}
+                            >
+                              {isRead ? "مقروء" : "جديد"}
+                            </span>
+                          </div>
+                          {notification.message && (
+                            <p className="mt-1.5 whitespace-pre-wrap text-sm leading-6 text-slate-600">
+                              {notification.message}
+                            </p>
+                          )}
+                          <time
+                            className="mt-2 flex items-center gap-1 text-xs text-slate-400"
+                            dateTime={notification.created_at}
+                          >
+                            <Clock className="size-3.5" />
+                            {new Date(notification.created_at).toLocaleString(
+                              "ar-YE",
+                            )}
+                          </time>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            void deleteCustomerNotification(notification)
+                          }
+                          aria-label={`حذف إشعار ${notification.title}`}
+                          title="حذف الإشعار"
+                          className="shrink-0 rounded-lg border border-red-200 p-2 text-red-600 transition hover:bg-red-50"
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </section>
+        <section className="mt-0 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm lg:col-start-1 lg:row-start-1">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-white p-4">
+            <div className="flex items-center gap-3">
+              <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-orange-100 text-orange-700">
+                <PackagePlus className="size-5" />
+              </span>
+              <div>
+                <h2 className="font-black text-slate-900">
+                  طلبات العملاء اللحظية
+                </h2>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  {unreadOrders > 0
+                    ? `${unreadOrders} طلب بحاجة إلى متابعة`
+                    : "لا توجد طلبات بانتظار المتابعة"}
+                </p>
+              </div>
+            </div>
+          </div>
+          {loading ? (
+            <p
+              role="status"
+              className="m-4 rounded-2xl border border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-600"
+            >
+              جارٍ تحميل بيانات الإدارة…
+            </p>
+          ) : orders.length === 0 ? (
+            <div className="p-4">
+              <EmptyState
+                icon={<PackagePlus className="size-8" />}
+                title="لا توجد طلبات جديدة"
+                text="ستظهر طلبات العملاء هنا عند وصولها."
+              />
+            </div>
+          ) : (
+            <>
+              <div className="hidden overflow-x-auto md:block">
+                <table className="w-full min-w-[660px] text-right text-sm">
+                  <thead className="bg-slate-50 text-xs font-black text-slate-500">
+                    <tr>
+                      <th className="px-4 py-3">العميل</th>
+                      <th className="px-4 py-3">رقم الطلب</th>
+                      <th className="px-4 py-3">الحالة</th>
+                      <th className="px-4 py-3">التاريخ</th>
+                      <th className="px-4 py-3">الإجراء</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {orders.map((order) => {
+                      const phone = (order.phone || "").replace(/\D/g, "");
+                      return (
+                        <tr
+                          key={order.id}
+                          className={
+                            !order.read
+                              ? "bg-orange-50/50"
+                              : "transition hover:bg-slate-50/70"
+                          }
+                        >
+                          <td className="px-4 py-3 font-bold text-slate-900">
+                            {order.customer_name}
+                          </td>
+                          <td className="px-4 py-3 font-mono text-xs text-slate-600">
+                            {order.tracking_code}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
+                              {order.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-xs text-slate-500">
+                            {new Date(order.created_at).toLocaleString("ar-YE")}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              {phone && (
+                                <>
+                                  <a
+                                    aria-label="اتصال بالعميل"
+                                    href={`tel:${phone}`}
+                                    className="grid size-9 place-items-center rounded-lg bg-sky-700 text-white transition hover:bg-sky-800"
+                                  >
+                                    <Phone className="size-4" />
+                                  </a>
+                                  <a
+                                    aria-label="مراسلة العميل عبر واتساب"
+                                    href={`https://wa.me/${phone}?text=${encodeURIComponent(`مرحبًا ${order.customer_name}، وصلنا طلبك ${order.tracking_code}`)}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="grid size-9 place-items-center rounded-lg bg-emerald-600 text-white transition hover:bg-emerald-700"
+                                  >
+                                    <MessageCircle className="size-4" />
+                                  </a>
+                                </>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => void markOrderSeen(order.id)}
+                                className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800 transition hover:bg-emerald-100"
+                              >
+                                تمت المتابعة
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <div className="space-y-3 p-3 md:hidden">
+                {orders.map((order) => {
+                  const phone = (order.phone || "").replace(/\D/g, "");
+                  return (
+                    <article
+                      key={order.id}
+                      className={`rounded-2xl border bg-white p-4 shadow-sm ${!order.read ? "border-orange-300 ring-1 ring-orange-100" : "border-slate-200"}`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h3 className="font-bold text-slate-900">
+                            {order.customer_name}
+                          </h3>
+                          <p className="mt-1 font-mono text-xs text-slate-500">
+                            {order.tracking_code}
+                          </p>
+                        </div>
+                        <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-700">
+                          {order.status}
+                        </span>
+                      </div>
+                      <time
+                        className="mt-2 flex items-center gap-1 text-xs text-slate-400"
+                        dateTime={order.created_at}
+                      >
+                        <Clock className="size-3.5" />
+                        {new Date(order.created_at).toLocaleString("ar-YE")}
+                      </time>
+                      <div className="mt-3 flex items-center gap-2">
+                        {phone && (
+                          <>
+                            <a
+                              aria-label="اتصال بالعميل"
+                              href={`tel:${phone}`}
+                              className="grid size-9 place-items-center rounded-lg bg-sky-700 text-white"
+                            >
+                              <Phone className="size-4" />
+                            </a>
+                            <a
+                              aria-label="مراسلة العميل عبر واتساب"
+                              href={`https://wa.me/${phone}?text=${encodeURIComponent(`مرحبًا ${order.customer_name}، وصلنا طلبك ${order.tracking_code}`)}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="grid size-9 place-items-center rounded-lg bg-emerald-600 text-white"
+                            >
+                              <MessageCircle className="size-4" />
+                            </a>
+                          </>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => void markOrderSeen(order.id)}
+                          className="flex-1 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800"
+                        >
+                          تمت المتابعة
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </section>
+      </div>
     </AccountShell>
   );
 }
