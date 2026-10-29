@@ -223,6 +223,7 @@ function LiveTrackingAdminRoute() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [smsHistoryError, setSmsHistoryError] = useState<string | null>(null);
+  const [smsAuditUnavailable, setSmsAuditUnavailable] = useState(false);
   const historyRequestId = useRef(0);
   const [courierName, setCourierName] = useState("");
   const [courierPhone, setCourierPhone] = useState("");
@@ -380,18 +381,31 @@ function LiveTrackingAdminRoute() {
       if (historyResult.error) {
         setHistoryError(asErrorMessage(historyResult.error));
       } else {
+        setHistoryError(null);
         setHistory(historyResult.data || []);
       }
 
       if (smsResult.error) {
         const message = asErrorMessage(smsResult.error);
-        if (message.includes("shipment_stage_sms") || message.includes("schema cache")) {
-          setSmsHistory([]);
-          setSmsHistoryError("سجل SMS غير مفعّل بعد؛ سيتم الإرسال مع عرض النتيجة مباشرة.");
-        } else {
-          setSmsHistoryError(message);
-        }
+        const errorCode =
+          typeof smsResult.error === "object" &&
+          smsResult.error !== null &&
+          "code" in smsResult.error
+            ? String((smsResult.error as { code: unknown }).code)
+            : "";
+        const auditMissing =
+          errorCode === "PGRST205" ||
+          (message.includes("shipment_stage_sms") &&
+            message.includes("schema cache")) ||
+          message.includes(
+            "Could not find the table 'public.shipment_stage_sms'",
+          );
+        setSmsHistory([]);
+        setSmsAuditUnavailable(auditMissing);
+        setSmsHistoryError(auditMissing ? null : message);
       } else {
+        setSmsAuditUnavailable(false);
+        setSmsHistoryError(null);
         setSmsHistory(smsResult.data || []);
       }
     } catch (error) {
@@ -399,6 +413,7 @@ function LiveTrackingAdminRoute() {
       const message = asErrorMessage(error);
       setHistoryError(message);
       setSmsHistoryError(message);
+      setSmsAuditUnavailable(false);
     } finally {
       if (requestId === historyRequestId.current) setHistoryLoading(false);
     }
@@ -414,6 +429,7 @@ function LiveTrackingAdminRoute() {
       setSmsHistory([]);
       setHistoryError(null);
       setSmsHistoryError(null);
+      setSmsAuditUnavailable(false);
       setHistoryLoading(false);
     }
   }, [selected, loadHistory]);
@@ -1514,6 +1530,19 @@ function LiveTrackingAdminRoute() {
                   <p className="mt-1">
                     تحقق من اتصال قاعدة البيانات وصلاحيات الحساب وإعداد ترحيل
                     SMS.
+                  </p>
+                </div>
+              ) : smsAuditUnavailable ? (
+                <div
+                  className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900"
+                  role="status"
+                >
+                  <p className="font-bold">
+                    سجل SMS غير متاح في قاعدة البيانات.
+                  </p>
+                  <p className="mt-1">
+                    لم تُرسل رسالة SMS لأن حماية منع التكرار وسجل المحاولات غير
+                    جاهزين. يلزم تطبيق ومراجعة ترحيل قاعدة البيانات أولاً.
                   </p>
                 </div>
               ) : smsHistory.length ? (
