@@ -16,7 +16,13 @@ const STAGES: Record<
   new: {
     title: "استلام الطلب والتدقيق",
     message: "تم استلام طلبك وبدأنا تدقيق التفاصيل.",
-    allowedStatuses: ["new", "accepted", "جديد", "قيد المراجعة", "استلام الطلب والتدقيق"],
+    allowedStatuses: [
+      "new",
+      "accepted",
+      "جديد",
+      "قيد المراجعة",
+      "استلام الطلب والتدقيق",
+    ],
   },
   payment_review: {
     title: "التدقيق المالي والدفع",
@@ -66,7 +72,12 @@ const STAGES: Record<
   customs_local: {
     title: "الجمارك والفرز المحلي",
     message: "وصلت شحنتك إلى مرحلة التخليص والفرز المحلي.",
-    allowedStatuses: ["customs_local", "local_warehouse", "الفرز والتوصيل", "الجمارك والفرز بالمستودع المحلي"],
+    allowedStatuses: [
+      "customs_local",
+      "local_warehouse",
+      "الفرز والتوصيل",
+      "الجمارك والفرز بالمستودع المحلي",
+    ],
   },
   out_for_delivery: {
     title: "جاري التوصيل",
@@ -89,9 +100,13 @@ function getAllowedOrigins(): Set<string> {
 }
 
 function isAllowedOrigin(origin: string, allowedOrigins: Set<string>): boolean {
-  return allowedOrigins.has(origin) ||
-    /^https:\/\/alsouq-alshamel-[a-z0-9-]+-zain-muteea\.vercel\.app$/i.test(origin) ||
-    /^http:\/\/localhost(?::\d+)?$/i.test(origin);
+  return (
+    allowedOrigins.has(origin) ||
+    /^https:\/\/alsouq-alshamel-[a-z0-9-]+-zain-muteea\.vercel\.app$/i.test(
+      origin,
+    ) ||
+    /^http:\/\/localhost(?::\d+)?$/i.test(origin)
+  );
 }
 
 function corsHeaders(req: Request): Record<string, string> {
@@ -101,7 +116,7 @@ function corsHeaders(req: Request): Record<string, string> {
       "authorization, x-client-info, apikey, content-type, x-supabase-api-version",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Max-Age": "86400",
-    "Vary": "Origin",
+    Vary: "Origin",
   };
   if (origin && isAllowedOrigin(origin, getAllowedOrigins())) {
     headers["Access-Control-Allow-Origin"] = origin;
@@ -150,16 +165,22 @@ function safeProviderError(
   parsed: any,
   secrets: Array<string | null | undefined>,
 ) {
-  const rawCode = parsed?.code ?? parsed?.errorCode ?? parsed?.error?.code ??
+  const rawCode =
+    parsed?.code ??
+    parsed?.errorCode ??
+    parsed?.error?.code ??
     parsed?.data?.code;
-  const rawMessage = parsed?.message ??
+  const rawMessage =
+    parsed?.message ??
     (typeof parsed?.error === "string"
       ? parsed.error
       : parsed?.error?.message) ??
-    parsed?.detail ?? parsed?.data?.message;
-  let message = typeof rawMessage === "string"
-    ? rawMessage.replace(/\s+/g, " ").trim()
-    : "رفض TextBee الطلب دون تفاصيل إضافية.";
+    parsed?.detail ??
+    parsed?.data?.message;
+  let message =
+    typeof rawMessage === "string"
+      ? rawMessage.replace(/\s+/g, " ").trim()
+      : "رفض TextBee الطلب دون تفاصيل إضافية.";
   for (const secret of secrets) {
     if (secret && secret.length >= 4) {
       message = message.split(secret).join("[محذوف]");
@@ -173,9 +194,12 @@ function safeProviderError(
       "[قيمة محذوفة]",
     )
     .slice(0, 180);
-  const code = typeof rawCode === "string" || typeof rawCode === "number"
-    ? String(rawCode).replace(/[^A-Za-z0-9_.:-]/g, "").slice(0, 64) || null
-    : null;
+  const code =
+    typeof rawCode === "string" || typeof rawCode === "number"
+      ? String(rawCode)
+          .replace(/[^A-Za-z0-9_.:-]/g, "")
+          .slice(0, 64) || null
+      : null;
   return { code, message };
 }
 
@@ -218,8 +242,9 @@ Deno.serve(async (req: Request) => {
   const { orderId, stageCode, retry } = body;
   if (
     typeof orderId !== "string" ||
-    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-      .test(orderId)
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      orderId,
+    )
   ) {
     return json(req, 400, { error: "معرّف الطلب غير صالح." });
   }
@@ -257,11 +282,13 @@ Deno.serve(async (req: Request) => {
   const admin = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  const { data: order, error: orderError } = await admin.from("orders")
+  const { data: order, error: orderError } = await admin
+    .from("orders")
     .select(
-      "id,tracking_code,customer_name,phone,customer_phone,status,courier_name,courier_phone",
+      "id,tracking_code,customer_name,phone,status,courier_name,courier_phone",
     )
-    .eq("id", orderId).maybeSingle();
+    .eq("id", orderId)
+    .maybeSingle();
   if (orderError) {
     console.error(
       "send-shipment-stage-sms: order lookup failed",
@@ -279,41 +306,48 @@ Deno.serve(async (req: Request) => {
           : "المرحلة المطلوبة لا تطابق حالة الطلب الحالية؛ لم تُرسل رسالة.",
     });
   }
-  const recipient = normalizePhone(order.phone || order.customer_phone || "");
+  const recipient = normalizePhone(order.phone || "");
   if (!recipient) return json(req, 400, { error: "رقم هاتف العميل غير صالح." });
 
-  const { data: prior, error: priorError } = await admin.from(
-    "shipment_stage_sms",
-  )
+  const { data: prior, error: priorError } = await admin
+    .from("shipment_stage_sms")
     .select("id,sms_status,sms_attempt_count,sms_provider_batch_id")
-    .eq("order_id", orderId).eq("stage_code", stageCode).maybeSingle();
-  const auditAvailable = !priorError || priorError.code !== "PGRST205";
-  if (priorError && auditAvailable) {
+    .eq("order_id", orderId)
+    .eq("stage_code", stageCode)
+    .maybeSingle();
+  if (priorError) {
+    const auditTableMissing =
+      priorError.code === "PGRST205" ||
+      priorError.message?.includes("shipment_stage_sms") ||
+      priorError.message?.includes("schema cache");
     console.error(
-      "send-shipment-stage-sms: audit lookup failed",
-      priorError.message,
+      "send-shipment-stage-sms: audit lookup failed; no message sent",
+      { code: priorError.code ?? "unknown", auditTableMissing },
     );
-    return json(req, 500, { error: "تعذر قراءة سجل SMS للمرحلة." });
+    return json(req, auditTableMissing ? 503 : 500, {
+      status: "unavailable",
+      error: auditTableMissing
+        ? "سجل SMS غير موجود أو غير متاح في قاعدة البيانات؛ لم تُرسل الرسالة. طبّق الترحيل بعد مراجعته ثم أعد المحاولة."
+        : "تعذر قراءة سجل SMS؛ لم تُرسل الرسالة. أصلح اتصال قاعدة البيانات ثم أعد المحاولة.",
+    });
   }
-  if (!auditAvailable) {
-    console.warn(
-      "send-shipment-stage-sms: audit table is not deployed; sending without audit protection",
-    );
-  }
+  // Sending is only allowed after a successful audit lookup. The table's unique
+  // (order_id, stage_code) row is the idempotency guard for every provider call.
+  const auditAvailable = true;
 
   let attemptCount = 1;
   let claimId: string | null = null;
   if (auditAvailable && !prior) {
-    const { data: inserted, error: insertError } = await admin.from(
-      "shipment_stage_sms",
-    )
+    const { data: inserted, error: insertError } = await admin
+      .from("shipment_stage_sms")
       .insert({
         order_id: orderId,
         stage_code: stageCode,
         sms_status: "sending",
         sms_attempt_count: 1,
       })
-      .select("id").single();
+      .select("id")
+      .single();
     if (insertError || !inserted) {
       // A parallel invocation may have claimed the unique order/stage row; never send twice.
       if (insertError?.code !== "23505") {
@@ -328,8 +362,8 @@ Deno.serve(async (req: Request) => {
       });
     }
     claimId = inserted.id;
-  } else if (auditAvailable) {
-    if (prior?.sms_status === "accepted") {
+  } else if (auditAvailable && prior) {
+    if (prior.sms_status === "accepted") {
       return json(req, 200, {
         status: "accepted",
         duplicate: true,
@@ -349,15 +383,17 @@ Deno.serve(async (req: Request) => {
       });
     }
     attemptCount = (prior.sms_attempt_count ?? 0) + 1;
-    const { data: claimed, error: claimError } = await admin.from(
-      "shipment_stage_sms",
-    )
+    const { data: claimed, error: claimError } = await admin
+      .from("shipment_stage_sms")
       .update({
         sms_status: "sending",
         sms_attempt_count: attemptCount,
         sms_error: null,
       })
-      .eq("id", prior.id).eq("sms_status", "failed").select("id").maybeSingle();
+      .eq("id", prior.id)
+      .eq("sms_status", "failed")
+      .select("id")
+      .maybeSingle();
     if (claimError || !claimed) {
       return json(req, 409, {
         error: "بدأت محاولة أخرى أو تعذر حجز إعادة الإرسال؛ لم تُرسل رسالة.",
@@ -385,10 +421,11 @@ Deno.serve(async (req: Request) => {
 
   const persist = async (patch: Record<string, unknown>) => {
     if (!auditAvailable || !claimId) return true;
-    const { error } = await admin.from("shipment_stage_sms").update(patch).eq(
-      "id",
-      claimId,
-    ).eq("sms_status", "sending");
+    const { error } = await admin
+      .from("shipment_stage_sms")
+      .update(patch)
+      .eq("id", claimId)
+      .eq("sms_status", "sending");
     if (error) {
       console.error(
         "send-shipment-stage-sms: outcome persistence failed",
@@ -412,11 +449,12 @@ Deno.serve(async (req: Request) => {
     let parsed: any = null;
     try {
       parsed = JSON.parse(responseText);
-    } catch { /* Raw provider body is never persisted or logged. */ }
+    } catch {
+      /* Raw provider body is never persisted or logged. */
+    }
     const result = parsed?.data ?? parsed;
-    const batchId = typeof result?.smsBatchId === "string"
-      ? result.smsBatchId
-      : null;
+    const batchId =
+      typeof result?.smsBatchId === "string" ? result.smsBatchId : null;
 
     if (!response.ok) {
       // TextBee documents these statuses as rejected/not sent; other errors remain
@@ -451,15 +489,14 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const successCount = typeof result?.successCount === "number"
-      ? result.successCount
-      : null;
-    const failureCount = typeof result?.failureCount === "number"
-      ? result.failureCount
-      : null;
+    const successCount =
+      typeof result?.successCount === "number" ? result.successCount : null;
+    const failureCount =
+      typeof result?.failureCount === "number" ? result.failureCount : null;
     if (
       result?.success === false ||
-      (failureCount !== null && failureCount > 0 &&
+      (failureCount !== null &&
+        failureCount > 0 &&
         (successCount === null || successCount === 0))
     ) {
       const saved = await persist({
@@ -479,7 +516,9 @@ Deno.serve(async (req: Request) => {
           "TextBee لم يقبل رسالة المرحلة؛ راجع سبب الرفض قبل إعادة المحاولة.",
       });
     }
-    const clearlyAccepted = batchId !== null || result?.success === true ||
+    const clearlyAccepted =
+      batchId !== null ||
+      result?.success === true ||
       (successCount !== null && successCount > 0);
     if (!clearlyAccepted) {
       await persist({
@@ -501,9 +540,10 @@ Deno.serve(async (req: Request) => {
       sms_provider_response: {
         smsBatchId: batchId,
         success: typeof result?.success === "boolean" ? result.success : null,
-        recipientCount: typeof result?.recipientCount === "number"
-          ? result.recipientCount
-          : null,
+        recipientCount:
+          typeof result?.recipientCount === "number"
+            ? result.recipientCount
+            : null,
         successCount,
         failureCount,
       },
