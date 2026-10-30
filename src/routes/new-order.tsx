@@ -505,7 +505,6 @@ function detectStore(url: string): Store | null {
   return STORES.find((s) => s.test.test(u)) ?? null;
 }
 
-const DUP_OPTS = ["نعم", "لا", "غير متأكد"] as const;
 /** يمنع تعبئة حقول العميل بقيمة تبدو كرابط صفحة أو رابط متجر. */
 function isUrlLike(value?: string | null): boolean {
   const candidate = value?.trim();
@@ -639,7 +638,6 @@ function NewOrderPage() {
   const [exchangeRatesState, setExchangeRatesState] =
     useState<ExchangeRatesState>("loading");
   const [notes, setNotes] = useState("");
-  const [dup, setDup] = useState<(typeof DUP_OPTS)[number]>("لا");
   const [status, setStatus] = useState<"idle" | "sending" | "done">("idle");
   const [sbError, setSbError] = useState("");
   const [orderCode, setOrderCode] = useState("");
@@ -914,7 +912,6 @@ function NewOrderPage() {
     const notesSummary = [
       address ? `العنوان: ${address.trim()}` : "",
       price ? `السعر المعلن: ${price} ${currency}` : "",
-      `تكرار: ${dup}`,
       notes ? `ملاحظات: ${notes.trim()}` : "",
     ]
       .filter(Boolean)
@@ -1117,7 +1114,6 @@ function NewOrderPage() {
     setAddress("");
     setPrice("");
     setNotes("");
-    setDup("لا");
     setOrderCode("");
     setTrackingUnavailable(false);
     setStatus("idle");
@@ -1482,27 +1478,6 @@ function NewOrderPage() {
                 <Flash />
               </div>
             )}
-          </div>
-          <div className="no-q">
-            هل توجد منتجات مكررة؟ <span className="no-req">*</span>
-          </div>
-          <div
-            className="no-choices"
-            role="radiogroup"
-            aria-label="هل توجد منتجات مكررة؟"
-          >
-            {DUP_OPTS.map((o) => (
-              <button
-                key={o}
-                type="button"
-                role="radio"
-                aria-checked={dup === o}
-                className={"no-choice" + (dup === o ? " active" : "")}
-                onClick={() => setDup(o)}
-              >
-                {o}
-              </button>
-            ))}
           </div>
         </section>
 
