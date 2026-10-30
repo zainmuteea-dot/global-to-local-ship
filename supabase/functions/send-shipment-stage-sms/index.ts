@@ -165,22 +165,19 @@ function safeProviderError(
   parsed: any,
   secrets: Array<string | null | undefined>,
 ) {
-  const rawCode =
-    parsed?.code ??
+  const rawCode = parsed?.code ??
     parsed?.errorCode ??
     parsed?.error?.code ??
     parsed?.data?.code;
-  const rawMessage =
-    parsed?.message ??
+  const rawMessage = parsed?.message ??
     (typeof parsed?.error === "string"
       ? parsed.error
       : parsed?.error?.message) ??
     parsed?.detail ??
     parsed?.data?.message;
-  let message =
-    typeof rawMessage === "string"
-      ? rawMessage.replace(/\s+/g, " ").trim()
-      : "رفض TextBee الطلب دون تفاصيل إضافية.";
+  let message = typeof rawMessage === "string"
+    ? rawMessage.replace(/\s+/g, " ").trim()
+    : "رفض TextBee الطلب دون تفاصيل إضافية.";
   for (const secret of secrets) {
     if (secret && secret.length >= 4) {
       message = message.split(secret).join("[محذوف]");
@@ -194,12 +191,11 @@ function safeProviderError(
       "[قيمة محذوفة]",
     )
     .slice(0, 180);
-  const code =
-    typeof rawCode === "string" || typeof rawCode === "number"
-      ? String(rawCode)
-          .replace(/[^A-Za-z0-9_.:-]/g, "")
-          .slice(0, 64) || null
-      : null;
+  const code = typeof rawCode === "string" || typeof rawCode === "number"
+    ? String(rawCode)
+      .replace(/[^A-Za-z0-9_.:-]/g, "")
+      .slice(0, 64) || null
+    : null;
   return { code, message };
 }
 
@@ -242,9 +238,10 @@ Deno.serve(async (req: Request) => {
   const { orderId, stageCode, retry } = body;
   if (
     typeof orderId !== "string" ||
-    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-      orderId,
-    )
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+      .test(
+        orderId,
+      )
   ) {
     return json(req, 400, { error: "معرّف الطلب غير صالح." });
   }
@@ -300,10 +297,9 @@ Deno.serve(async (req: Request) => {
   const currentStage = stageForStatus(String(order.status ?? ""));
   if (currentStage !== stageCode) {
     return json(req, 409, {
-      error:
-        currentStage === null
-          ? "حالة الطلب غير معروفة أو ملتبسة؛ لم تُرسل رسالة."
-          : "المرحلة المطلوبة لا تطابق حالة الطلب الحالية؛ لم تُرسل رسالة.",
+      error: currentStage === null
+        ? "حالة الطلب غير معروفة أو ملتبسة؛ لم تُرسل رسالة."
+        : "المرحلة المطلوبة لا تطابق حالة الطلب الحالية؛ لم تُرسل رسالة.",
     });
   }
   const recipient = normalizePhone(order.phone || "");
@@ -316,8 +312,7 @@ Deno.serve(async (req: Request) => {
     .eq("stage_code", stageCode)
     .maybeSingle();
   if (priorError) {
-    const auditTableMissing =
-      priorError.code === "PGRST205" ||
+    const auditTableMissing = priorError.code === "PGRST205" ||
       priorError.message?.includes("shipment_stage_sms") ||
       priorError.message?.includes("schema cache");
     console.error(
@@ -435,6 +430,129 @@ Deno.serve(async (req: Request) => {
     return !error;
   };
 
+  // Read-only preflight against TextBee. If the configured device is invalid,
+  // disabled, or cannot be verified, stop before the SMS POST.
+  const deviceController = new AbortController();
+  const deviceTimeout = setTimeout(() => deviceController.abort(), 10000);
+  type DeviceCheck =
+    | { ok: true }
+    | {
+      ok: false;
+      kind: string;
+      httpStatus: number | null;
+      errorType?: string;
+    };
+  let deviceCheck: DeviceCheck;
+  try {
+    const deviceResponse = await fetch(
+      `https://api.textbee.dev/api/v1/gateway/devices/${
+        encodeURIComponent(deviceId)
+      }`,
+      {
+        method: "GET",
+        headers: { "x-api-key": apiKey },
+        signal: deviceController.signal,
+      },
+    );
+    let devicePayload: any = null;
+    try {
+      devicePayload = await deviceResponse.json();
+    } catch {
+      // Provider response bodies are never logged or returned to the client.
+    }
+    const device = devicePayload?.data ?? devicePayload;
+    const returnedDeviceId = typeof device?._id === "string"
+      ? device._id
+      : typeof device?.id === "string"
+      ? device.id
+      : null;
+
+    if (!deviceResponse.ok) {
+      const kind =
+        deviceResponse.status === 401 || deviceResponse.status === 403
+          ? "api_key_rejected"
+          : deviceResponse.status === 400 || deviceResponse.status === 404
+          ? "invalid_device_id"
+          : "device_check_unavailable";
+      deviceCheck = { ok: false, kind, httpStatus: deviceResponse.status };
+    } else if (!returnedDeviceId || returnedDeviceId !== deviceId) {
+      deviceCheck = {
+        ok: false,
+        kind: "device_id_unverified",
+        httpStatus: deviceResponse.status,
+      };
+    } else if (device?.enabled === false) {
+      deviceCheck = {
+        ok: false,
+        kind: "device_disabled",
+        httpStatus: deviceResponse.status,
+      };
+    } else {
+      deviceCheck = { ok: true };
+    }
+  } catch (error) {
+    // Log only a coarse error class. Never persist provider messages, URLs, keys, or IDs.
+    const isTimeout = error instanceof DOMException &&
+      error.name === "AbortError";
+    const errorType = isTimeout
+      ? "timeout"
+      : error instanceof TypeError
+      ? "network_type_error"
+      : error instanceof Error
+      ? "runtime_error"
+      : "unknown_error";
+    deviceCheck = {
+      ok: false,
+      kind: isTimeout ? "device_check_timeout" : "device_check_unavailable",
+      httpStatus: null,
+      errorType,
+    };
+    console.error("send-shipment-stage-sms: device preflight failed", {
+      kind: deviceCheck.kind,
+      errorType,
+      httpStatus: null,
+    });
+  } finally {
+    clearTimeout(deviceTimeout);
+  }
+
+  if (!deviceCheck.ok) {
+    const deviceFailureMessages: Record<string, string> = {
+      invalid_device_id:
+        "معرّف جهاز TextBee غير صالح لهذا المفتاح. طابق TEXTBEE_DEVICE_ID مع معرّف جهاز ظاهر في حساب TextBee المرتبط بالمفتاح. لم تُرسل رسالة.",
+      api_key_rejected:
+        "لم يقبل TextBee المفتاح أو لا يملك صلاحية قراءة الجهاز. تحقق من تطابق TEXTBEE_API_KEY مع حساب الجهاز. لم تُرسل رسالة.",
+      device_id_unverified:
+        "تعذر مطابقة معرّف الجهاز مع رد TextBee؛ أوقفنا الإرسال احتياطياً. لم تُرسل رسالة.",
+      device_disabled:
+        "جهاز TextBee المحدد معطّل. فعّله في حساب TextBee قبل الإرسال. لم تُرسل رسالة.",
+      device_check_unavailable:
+        "تعذر الاتصال بخدمة التحقق من جهاز TextBee. لم تُرسل رسالة؛ راجع سجل الدالة.",
+      device_check_timeout:
+        "انتهت مهلة التحقق من جهاز TextBee. لم تُرسل رسالة؛ راجع اتصال الخدمة ثم أعد الفحص.",
+    };
+    const failureMessage = deviceFailureMessages[deviceCheck.kind] ??
+      deviceFailureMessages.device_check_unavailable;
+    const saved = await persist({
+      sms_status: "failed",
+      sms_error: failureMessage.slice(0, 240),
+      sms_provider_response: {
+        outcome: "device_preflight_failed",
+        reason: deviceCheck.kind,
+        errorType: deviceCheck.errorType ?? null,
+        httpStatus: deviceCheck.httpStatus,
+      },
+    });
+    if (!saved) {
+      return json(req, 502, {
+        status: "unknown",
+        message:
+          "فشل فحص جهاز TextBee وتعذر حفظ النتيجة. لم يُرسل طلب SMS؛ تحقق من سجل المحاولة قبل أي إجراء.",
+      });
+    }
+    return json(req, 502, { status: "failed", message: failureMessage });
+  }
+
   try {
     const response = await fetch(
       "https://api.textbee.dev/api/v1/gateway/send-sms",
@@ -453,8 +571,9 @@ Deno.serve(async (req: Request) => {
       /* Raw provider body is never persisted or logged. */
     }
     const result = parsed?.data ?? parsed;
-    const batchId =
-      typeof result?.smsBatchId === "string" ? result.smsBatchId : null;
+    const batchId = typeof result?.smsBatchId === "string"
+      ? result.smsBatchId
+      : null;
 
     if (!response.ok) {
       // TextBee documents these statuses as rejected/not sent; other errors remain
@@ -489,10 +608,12 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const successCount =
-      typeof result?.successCount === "number" ? result.successCount : null;
-    const failureCount =
-      typeof result?.failureCount === "number" ? result.failureCount : null;
+    const successCount = typeof result?.successCount === "number"
+      ? result.successCount
+      : null;
+    const failureCount = typeof result?.failureCount === "number"
+      ? result.failureCount
+      : null;
     if (
       result?.success === false ||
       (failureCount !== null &&
@@ -516,8 +637,7 @@ Deno.serve(async (req: Request) => {
           "TextBee لم يقبل رسالة المرحلة؛ راجع سبب الرفض قبل إعادة المحاولة.",
       });
     }
-    const clearlyAccepted =
-      batchId !== null ||
+    const clearlyAccepted = batchId !== null ||
       result?.success === true ||
       (successCount !== null && successCount > 0);
     if (!clearlyAccepted) {
@@ -540,10 +660,9 @@ Deno.serve(async (req: Request) => {
       sms_provider_response: {
         smsBatchId: batchId,
         success: typeof result?.success === "boolean" ? result.success : null,
-        recipientCount:
-          typeof result?.recipientCount === "number"
-            ? result.recipientCount
-            : null,
+        recipientCount: typeof result?.recipientCount === "number"
+          ? result.recipientCount
+          : null,
         successCount,
         failureCount,
       },
