@@ -354,23 +354,37 @@ export default function DashboardPage() {
     );
     if (unread.length === 0) return;
 
-    const { error } = await supabase.from("notification_reads").upsert(
-      unread.map((notification) => ({ notification_id: notification.id, user_id: userId })),
-      { onConflict: "notification_id,user_id" },
-    );
+    try {
+      const { error } = await supabase.from("notification_reads").upsert(
+        unread.map((notification) => ({ notification_id: notification.id, user_id: userId })),
+        { onConflict: "notification_id,user_id" },
+      );
 
-    if (error) {
-      console.error("تعذر حفظ قراءة الإشعارات:", error);
-      setNotificationError("لم تُحفظ القراءة. حاول مرة أخرى.");
-      return;
+      if (error) {
+        console.error("تعذر حفظ قراءة الإشعارات:", error);
+        const details = [error.message, error.details, error.hint, error.code]
+          .filter(Boolean)
+          .join(" — ");
+        setNotificationError(
+          details ? `تعذر حفظ القراءة: ${details}` : "تعذر حفظ القراءة. حاول مرة أخرى.",
+        );
+        return;
+      }
+
+      setReadNotificationIds((current) => {
+        const next = new Set(current);
+        unread.forEach((notification) => next.add(notification.id));
+        return next;
+      });
+      setNotificationError(null);
+    } catch (error) {
+      console.error("تعذر الاتصال لحفظ قراءة الإشعارات:", error);
+      setNotificationError(
+        error instanceof Error
+          ? `تعذر الاتصال لحفظ القراءة: ${error.message}`
+          : "تعذر الاتصال لحفظ القراءة. تحقق من الاتصال وحاول مرة أخرى.",
+      );
     }
-
-    setReadNotificationIds((current) => {
-      const next = new Set(current);
-      unread.forEach((notification) => next.add(notification.id));
-      return next;
-    });
-    setNotificationError(null);
   };
 
   const handleMarkNotificationAsRead = async (notificationId: string) => {
