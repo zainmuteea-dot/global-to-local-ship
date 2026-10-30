@@ -593,7 +593,12 @@ export default function DashboardPage() {
             {/* 🔔 جرس مراجعة الإشعارات التفاعلي */}
             <div className="relative">
               <button
-                onClick={() => setIsNotifOpen(!isNotifOpen)}
+                onClick={async () => {
+                  // علّم الإشعارات الحالية كمقروءة عند الضغط على الجرس.
+                  // لا يتغير العداد إلا بعد نجاح الحفظ في قاعدة البيانات.
+                  await handleMarkAllAsRead();
+                  setIsNotifOpen((current) => !current);
+                }}
                 className="relative grid size-11 place-items-center rounded-2xl bg-white/[0.09] text-sky-300 ring-1 ring-sky-400/40 shadow-xs hover:bg-white/15 transition active:scale-95 cursor-pointer"
                 title="مراجعة الإشعارات"
               >
