@@ -18,10 +18,7 @@ function getOrderCurrency(value: string): OrderCurrency {
   return "YER";
 }
 
-function convertOrderPriceToYER(
-  amount: number,
-  currency: OrderCurrency,
-): number {
+function convertOrderPriceToYER(amount: number, currency: OrderCurrency): number {
   return Math.round(amount * FIXED_YER_RATE[currency]);
 }
 
@@ -42,10 +39,7 @@ export const Route = createFileRoute("/new-order")({
     name: typeof search["name"] === "string" ? search["name"] : undefined,
     phone: typeof search["phone"] === "string" ? search["phone"] : undefined,
     store: typeof search["store"] === "string" ? search["store"] : undefined,
-    productName:
-      typeof search["productName"] === "string"
-        ? search["productName"]
-        : undefined,
+    productName: typeof search["productName"] === "string" ? search["productName"] : undefined,
     step: NEW_ORDER_ENTRY_STEPS.includes(search["step"] as NewOrderEntryStep)
       ? (search["step"] as NewOrderEntryStep)
       : undefined,
@@ -306,13 +300,7 @@ const Check = ({ s = 15 }: { s?: number }) => (
   </svg>
 );
 const Flash = () => (
-  <svg
-    className="flash"
-    width="16"
-    height="16"
-    viewBox="0 0 24 24"
-    fill="currentColor"
-  >
+  <svg className="flash" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
     <path d="M13 2L3 14h7l-1 8 10-12h-7z" />
   </svg>
 );
@@ -392,10 +380,7 @@ const Logo = () => (
     />
     <circle cx="22" cy="54" r="4" fill="url(#gOr)" />
     <circle cx="42" cy="54" r="4" fill="url(#gOr)" />
-    <path
-      d="M50 10 l1.6 3.4 L55 15 l-3.4 1.6 L50 20 l-1.6-3.4 L45 15 l3.4-1.6 Z"
-      fill="#F5A623"
-    />
+    <path d="M50 10 l1.6 3.4 L55 15 l-3.4 1.6 L50 20 l-1.6-3.4 L45 15 l3.4-1.6 Z" fill="#F5A623" />
   </svg>
 );
 
@@ -533,12 +518,8 @@ function NewOrderPage() {
   }, [search.step]);
 
   // 🌟 تعبئة الاسم ورقم الهاتف فورياً ومباشرة لحظة فتح الصفحة
-  const [name, setName] = useState<string>(() =>
-    getInitialClientName(search.name),
-  );
-  const [phone, setPhone] = useState<string>(() =>
-    getInitialClientPhone(search.phone),
-  );
+  const [name, setName] = useState<string>(() => getInitialClientName(search.name));
+  const [phone, setPhone] = useState<string>(() => getInitialClientPhone(search.phone));
 
   const [url, setUrl] = useState("");
   // اسم المنتج لم يعد حقلاً مرئيًا؛ يُشتق تلقائيًا من المتجر أو من رابط الدخول.
@@ -573,10 +554,7 @@ function NewOrderPage() {
   }, [search.store]);
 
   // رابط المنتج يتقدم على اختيار لوحة التحكم عند التعرف على متجره.
-  const store = useMemo(
-    () => detectStore(url) ?? selectedStore,
-    [url, selectedStore],
-  );
+  const store = useMemo(() => detectStore(url) ?? selectedStore, [url, selectedStore]);
 
   // اسم المنتج المُرسَل للطلب: من رابط الدخول إن وجد، وإلا اسم المتجر.
   const resolvedProductName = useMemo(() => {
@@ -625,12 +603,9 @@ function NewOrderPage() {
         }
 
         if (active) {
-          const meta = user.user_metadata as
-            Record<string, unknown> | undefined;
+          const meta = user.user_metadata as Record<string, unknown> | undefined;
           const metaName = validClientName(meta?.["full_name"]);
-          const metaPhone = validClientPhone(
-            user.phone || (meta?.["phone"] as string | undefined),
-          );
+          const metaPhone = validClientPhone(user.phone || (meta?.["phone"] as string | undefined));
           if (metaName) setName((prev) => prev || metaName);
           if (metaPhone) setPhone((prev) => prev || metaPhone);
         }
@@ -659,9 +634,7 @@ function NewOrderPage() {
         setIsLocating(false);
       },
       () => {
-        setSbError(
-          "تعذر تحديد موقعك. اسمح بالوصول للموقع أو اكتب العنوان يدويًا.",
-        );
+        setSbError("تعذر تحديد موقعك. اسمح بالوصول للموقع أو اكتب العنوان يدويًا.");
         setIsLocating(false);
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
@@ -671,12 +644,9 @@ function NewOrderPage() {
   // تفعيل الميكروفون والتسجيل الصوتي للملاحظات
   const toggleSpeechRecognition = () => {
     const SpeechRecognition =
-      (window as any).SpeechRecognition ||
-      (window as any).webkitSpeechRecognition;
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert(
-        "ميزة التسجيل الصوتي غير مدعومة في متصفحك الحالي، يمكنك كتابة الملاحظات مباشرة.",
-      );
+      alert("ميزة التسجيل الصوتي غير مدعومة في متصفحك الحالي، يمكنك كتابة الملاحظات مباشرة.");
       return;
     }
 
@@ -732,10 +702,7 @@ function NewOrderPage() {
     }
 
     const enteredPrice = price.trim() ? Number(price) : null;
-    if (
-      enteredPrice !== null &&
-      (!Number.isFinite(enteredPrice) || enteredPrice < 0)
-    ) {
+    if (enteredPrice !== null && (!Number.isFinite(enteredPrice) || enteredPrice < 0)) {
       setSbError("يرجى إدخال سعر صحيح أو ترك حقل السعر فارغًا.");
       return;
     }
@@ -763,8 +730,7 @@ function NewOrderPage() {
         data: { user },
         error: authError,
       } = await supabase.auth.getUser();
-      if (authError)
-        throw new Error(`تعذر التحقق من تسجيل الدخول: ${authError.message}`);
+      if (authError) throw new Error(`تعذر التحقق من تسجيل الدخول: ${authError.message}`);
       if (!user) {
         const next = window.location.pathname + window.location.search;
         window.location.replace(`/login?next=${encodeURIComponent(next)}`);
@@ -790,10 +756,8 @@ function NewOrderPage() {
               ? enteredPrice
               : null,
           total_cost_yer: totalCostYER,
-          quote_currency:
-            enteredPrice !== null && enteredPrice > 0 ? quoteCurrency : null,
-          original_currency:
-            enteredPrice !== null && enteredPrice > 0 ? quoteCurrency : null,
+          quote_currency: enteredPrice !== null && enteredPrice > 0 ? quoteCurrency : null,
+          original_currency: enteredPrice !== null && enteredPrice > 0 ? quoteCurrency : null,
           status: "جديد",
           user_id: user.id,
           sms_status: "pending",
@@ -815,9 +779,7 @@ function NewOrderPage() {
       // تخزين نسخة محلية للعرض فقط؛ مصدر الحقيقة هو قاعدة البيانات.
       try {
         const localOrdersRaw = localStorage.getItem("alsouk_orders");
-        const parsedOrders: unknown = localOrdersRaw
-          ? JSON.parse(localOrdersRaw)
-          : [];
+        const parsedOrders: unknown = localOrdersRaw ? JSON.parse(localOrdersRaw) : [];
         const currentList = Array.isArray(parsedOrders) ? parsedOrders : [];
         const newRecord = {
           id: savedOrder.id,
@@ -835,19 +797,14 @@ function NewOrderPage() {
               ? enteredPrice
               : null,
           total_cost_yer: totalCostYER,
-          quote_currency:
-            enteredPrice !== null && enteredPrice > 0 ? quoteCurrency : null,
-          original_currency:
-            enteredPrice !== null && enteredPrice > 0 ? quoteCurrency : null,
+          quote_currency: enteredPrice !== null && enteredPrice > 0 ? quoteCurrency : null,
+          original_currency: enteredPrice !== null && enteredPrice > 0 ? quoteCurrency : null,
           status: "جديد",
           sms_status: "pending",
           created_at: new Date().toISOString(),
           user_id: user.id,
         };
-        localStorage.setItem(
-          "alsouk_orders",
-          JSON.stringify([newRecord, ...currentList]),
-        );
+        localStorage.setItem("alsouk_orders", JSON.stringify([newRecord, ...currentList]));
 
         localStorage.setItem(
           "alsouk_current_user",
@@ -860,10 +817,7 @@ function NewOrderPage() {
         localStorage.setItem("sc_name", name.trim());
         localStorage.setItem("sc_phone", phone.trim());
       } catch (storageError) {
-        console.warn(
-          "تم حفظ الطلب، لكن تعذر تحديث التخزين المحلي:",
-          storageError,
-        );
+        console.warn("تم حفظ الطلب، لكن تعذر تحديث التخزين المحلي:", storageError);
       }
 
       if (!code) {
@@ -880,29 +834,23 @@ function NewOrderPage() {
         setSmsOutcome("pending");
         setSmsMessage("");
         try {
-          const { data: smsResult, error: smsError } =
-            await supabase.functions.invoke("send-sms", {
-              body: { orderId: savedOrder.id },
-            });
+          const { data: smsResult, error: smsError } = await supabase.functions.invoke("send-sms", {
+            body: { orderId: savedOrder.id },
+          });
           if (smsError) {
             let detail = smsError.message || "تعذر الاتصال بدالة إرسال SMS.";
             let serverStatus: string | undefined;
-            const context = (smsError as unknown as { context?: unknown })
-              .context;
+            const context = (smsError as unknown as { context?: unknown }).context;
             if (context instanceof Response) {
               try {
                 const body = await context.clone().json();
                 if (typeof body?.error === "string") detail = body.error;
-                if (typeof body?.status === "string")
-                  serverStatus = body.status;
+                if (typeof body?.status === "string") serverStatus = body.status;
               } catch {
                 // احتفظ برسالة الخطأ العامة إن لم يرجع الخادم JSON.
               }
             }
-            console.warn(
-              "تعذر تأكيد نتيجة SMS؛ راجع حالة الطلب قبل أي إعادة إرسال.",
-              detail,
-            );
+            console.warn("تعذر تأكيد نتيجة SMS؛ راجع حالة الطلب قبل أي إعادة إرسال.", detail);
             setSmsOutcome(serverStatus === "failed" ? "failed" : "unknown");
             setSmsMessage(detail);
           } else if (smsResult?.accepted === true) {
@@ -926,10 +874,7 @@ function NewOrderPage() {
             );
           }
         } catch (smsError: unknown) {
-          console.warn(
-            "نتيجة SMS غير مؤكدة؛ لا تعِد الإرسال قبل مراجعة الحالة.",
-            smsError,
-          );
+          console.warn("نتيجة SMS غير مؤكدة؛ لا تعِد الإرسال قبل مراجعة الحالة.", smsError);
           setSmsOutcome("unknown");
           setSmsMessage(
             "تعذّر تأكيد نتيجة SMS. راجع حالة الطلب ولا تعِد الإرسال قبل التحقق لتجنب التكرار.",
@@ -941,9 +886,7 @@ function NewOrderPage() {
     } catch (err: unknown) {
       console.error(err);
       setSbError(
-        err instanceof Error
-          ? err.message
-          : "حدث خطأ أثناء حفظ الطلب. يرجى المحاولة مجدداً.",
+        err instanceof Error ? err.message : "حدث خطأ أثناء حفظ الطلب. يرجى المحاولة مجدداً.",
       );
       setStatus("idle");
     }
@@ -1102,11 +1045,7 @@ function NewOrderPage() {
                 </button>
               ) : (
                 <>
-                  <button
-                    className="no-btn no-gold"
-                    type="button"
-                    onClick={resetForm}
-                  >
+                  <button className="no-btn no-gold" type="button" onClick={resetForm}>
                     <span>طلب منتج آخر</span>
                     <svg
                       width="18"
@@ -1177,19 +1116,14 @@ function NewOrderPage() {
         {Header}
 
         {search.step && (
-          <section
-            className="no-card no-entry-guidance"
-            role="status"
-            aria-live="polite"
-          >
+          <section className="no-card no-entry-guidance" role="status" aria-live="polite">
             <div className="no-title">
               {search.step === "link" && "أرسل رابط المنتج"}
               {search.step === "price" && "أدخل سعر المنتج الظاهر في المتجر"}
               {search.step === "buy" && "راجع تفاصيل طلبك قبل الإرسال"}
             </div>
             <p>
-              {search.step === "link" &&
-                "الصق رابط المنتج، ثم أضف بيانات الطلب والتوصيل."}
+              {search.step === "link" && "الصق رابط المنتج، ثم أضف بيانات الطلب والتوصيل."}
               {search.step === "price" &&
                 "أدخل السعر الذي يظهر في المتجر إن توفر. السعر النهائي يؤكّد بعد مراجعة الطلب، ولا يُحسب فورياً هنا."}
               {search.step === "buy" &&
@@ -1252,9 +1186,7 @@ function NewOrderPage() {
             <div className="no-title">سعر السلعة في المتجر الأصلي</div>
           </div>
           <div className="no-field">
-            <label className="no-lbl">
-              سعر السلعة في المتجر الأصلي (اختياري)
-            </label>
+            <label className="no-lbl">سعر السلعة في المتجر الأصلي (اختياري)</label>
             <div className="no-price">
               <div className="no-iw">
                 <input
@@ -1265,27 +1197,21 @@ function NewOrderPage() {
                   placeholder="0.00"
                 />
               </div>
-              <select
-                value={currency}
-                onChange={(e) => setCurrency(e.target.value)}
-              >
+              <select value={currency} onChange={(e) => setCurrency(e.target.value)}>
                 <option>ر.س سعودي</option>
                 <option>$ دولار</option>
               </select>
             </div>
             <p className="no-entry-guidance">
-              أدخل السعر بالريال السعودي أو الدولار؛ يُحوّل تلقائيًا إلى الريال
-              اليمني بسعر ثابت: السعودي 140 والدولار 535.
+              أدخل السعر بالريال السعودي أو الدولار؛ يُحوّل تلقائيًا إلى الريال اليمني بسعر ثابت:
+              السعودي 140 والدولار 535.
             </p>
             {price.trim() &&
               Number.isFinite(Number(price)) &&
               Number(price) > 0 &&
               (() => {
                 const currentCurrency = getOrderCurrency(currency);
-                const amountYER = convertOrderPriceToYER(
-                  Number(price),
-                  currentCurrency,
-                );
+                const amountYER = convertOrderPriceToYER(Number(price), currentCurrency);
                 const rateToYER = getOrderConversionRateToYER(currentCurrency);
                 if (amountYER !== null && rateToYER !== null) {
                   return (
@@ -1327,8 +1253,7 @@ function NewOrderPage() {
           </div>
           <div className="no-field">
             <label className="no-lbl">
-              عنوان التوصيل بالتفصيل (المدينة، الحي، أقرب معلم){" "}
-              <span className="no-req">*</span>
+              عنوان التوصيل بالتفصيل (المدينة، الحي، أقرب معلم) <span className="no-req">*</span>
             </label>
             <div className="no-iw">
               <input
@@ -1402,11 +1327,7 @@ function NewOrderPage() {
             <button
               className={`mic ${isRecording ? "listening" : ""}`}
               type="button"
-              title={
-                isRecording
-                  ? "جارٍ الاستماع... انقر للإيقاف"
-                  : "تسجيل صوتي للملاحظات"
-              }
+              title={isRecording ? "جارٍ الاستماع... انقر للإيقاف" : "تسجيل صوتي للملاحظات"}
               onClick={toggleSpeechRecognition}
             >
               <Mic />
@@ -1423,9 +1344,7 @@ function NewOrderPage() {
           disabled={status === "sending"}
         >
           <Rocket />
-          <span>
-            {status === "sending" ? "جارٍ إرسال وحفظ الطلب..." : "تقديم الطلب"}
-          </span>
+          <span>{status === "sending" ? "جارٍ إرسال وحفظ الطلب..." : "تقديم الطلب"}</span>
         </button>
 
         {/* زر الرجوع للصفحة الرئيسية */}
