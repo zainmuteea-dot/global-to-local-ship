@@ -174,9 +174,7 @@ const stageIndex = (status: string) => {
     delivered: "delivered",
     "تم التسليم": "delivered",
   };
-  const code =
-    aliases[s] ||
-    (stageCodes.includes(s as StageCode) ? (s as StageCode) : "new");
+  const code = aliases[s] || (stageCodes.includes(s as StageCode) ? (s as StageCode) : "new");
   return stageCodes.indexOf(code);
 };
 const detectStore = (link: string) => {
@@ -195,8 +193,7 @@ const detectStore = (link: string) => {
               ? "TEMU"
               : "متجر دولي";
 };
-const trackingUrl = (code: string) =>
-  `${window.location.origin}/track/${encodeURIComponent(code)}`;
+const trackingUrl = (code: string) => `${window.location.origin}/track/${encodeURIComponent(code)}`;
 const messageFor = (s: Shipment, stage: (typeof STAGES)[number]) =>
   `مرحباً ${s.customerName}، تحديث شحنتك ${s.trackingCode}\nالمتجر: ${s.storeName}\nالمرحلة: ${stage.title}\n${stage.detail}${
     stage.code === "out_for_delivery" && s.courierName
@@ -211,12 +208,11 @@ const normalizePhone = (input: string) => {
   return digits;
 };
 function LiveTrackingAdminRoute() {
-  const [access, setAccess] = useState<
-    "loading" | "admin" | "staff" | "denied"
-  >("loading");
+  const [access, setAccess] = useState<"loading" | "admin" | "staff" | "denied">("loading");
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [showDelivered, setShowDelivered] = useState(false);
   const [selected, setSelected] = useState<Shipment | null>(null);
   const [history, setHistory] = useState<EventRow[]>([]);
   const [smsHistory, setSmsHistory] = useState<StageSmsRow[]>([]);
@@ -240,9 +236,7 @@ function LiveTrackingAdminRoute() {
   });
   const [savingEdit, setSavingEdit] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [storeFilter, setStoreFilter] = useState<"all" | "Amazon" | "SHEIN">(
-    "all",
-  );
+  const [storeFilter, setStoreFilter] = useState<"all" | "Amazon" | "SHEIN">("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [page, setPage] = useState(1);
@@ -260,28 +254,24 @@ function LiveTrackingAdminRoute() {
           if (alive) setAccess("denied");
           return;
         }
-        const [
-          { data: isAdmin, error: adminError },
-          { data: isStaff, error: staffError },
-        ] = await Promise.all([
-          supabase.rpc("has_role", {
-            _user_id: user.id,
-            _role: "admin",
-          } as any),
-          supabase.rpc("has_role", {
-            _user_id: user.id,
-            _role: "staff",
-          } as any),
-        ]);
+        const [{ data: isAdmin, error: adminError }, { data: isStaff, error: staffError }] =
+          await Promise.all([
+            supabase.rpc("has_role", {
+              _user_id: user.id,
+              _role: "admin",
+            } as any),
+            supabase.rpc("has_role", {
+              _user_id: user.id,
+              _role: "staff",
+            } as any),
+          ]);
         if (!alive) return;
         if (adminError || staffError) {
           setAccess("denied");
           setNotice("تعذر التحقق من دور الحساب. راجع صلاحيات RPC has_role.");
           return;
         }
-        setAccess(
-          isAdmin === true ? "admin" : isStaff === true ? "staff" : "denied",
-        );
+        setAccess(isAdmin === true ? "admin" : isStaff === true ? "staff" : "denied");
       } catch {
         if (alive) {
           setAccess("denied");
@@ -365,14 +355,10 @@ function LiveTrackingAdminRoute() {
           .catch((error: unknown) => ({ data: null, error })),
         db
           .from("shipment_stage_sms")
-          .select(
-            "id,stage_code,sms_status,sms_attempt_count,sms_error,sms_accepted_at,updated_at",
-          )
+          .select("id,stage_code,sms_status,sms_attempt_count,sms_error,sms_accepted_at,updated_at")
           .eq("order_id", shipment.id)
           .order("updated_at", { ascending: false })
-          .then(
-            (result: { data: StageSmsRow[] | null; error: unknown }) => result,
-          )
+          .then((result: { data: StageSmsRow[] | null; error: unknown }) => result)
           .catch((error: unknown) => ({ data: null, error })),
       ]);
 
@@ -387,21 +373,18 @@ function LiveTrackingAdminRoute() {
 
       if (smsResult.error) {
         const message = asErrorMessage(smsResult.error);
-  const errorCode =
-  typeof smsResult.error === "object" &&
-  smsResult.error !== null &&
-  "code" in smsResult.error
-  ? String((smsResult.error as { code: unknown }).code)
-  : "";
-  const auditMissing =
-  errorCode === "PGRST205" ||
-  (message.includes("shipment_stage_sms") &&
-  message.includes("schema cache")) ||
-  message.includes(
-  "Could not find the table 'public.shipment_stage_sms'",
-  );
-  setSmsHistory([]);
-  setSmsAuditUnavailable(auditMissing);
+        const errorCode =
+          typeof smsResult.error === "object" &&
+          smsResult.error !== null &&
+          "code" in smsResult.error
+            ? String((smsResult.error as { code: unknown }).code)
+            : "";
+        const auditMissing =
+          errorCode === "PGRST205" ||
+          (message.includes("shipment_stage_sms") && message.includes("schema cache")) ||
+          message.includes("Could not find the table 'public.shipment_stage_sms'");
+        setSmsHistory([]);
+        setSmsAuditUnavailable(auditMissing);
         setSmsHistoryError(auditMissing ? null : message);
       } else {
         setSmsAuditUnavailable(false);
@@ -441,8 +424,7 @@ function LiveTrackingAdminRoute() {
 
   const isDelayed = (s: Shipment) => {
     if (s.status === "delivered") return false;
-    const days =
-      (Date.now() - new Date(s.createdAt).getTime()) / (1000 * 60 * 60 * 24);
+    const days = (Date.now() - new Date(s.createdAt).getTime()) / (1000 * 60 * 60 * 24);
     return days > 30;
   };
   const filtered = useMemo(() => {
@@ -450,6 +432,8 @@ function LiveTrackingAdminRoute() {
     const from = dateFrom ? new Date(dateFrom).getTime() : null;
     const to = dateTo ? new Date(dateTo).getTime() + 86400000 : null;
     return shipments.filter((s) => {
+      const isDelivered = stageIndex(s.status) === stageCodes.length - 1;
+      if (isDelivered !== showDelivered) return false;
       const matchText =
         !q ||
         `${s.trackingCode} ${s.customerName} ${s.customerPhone} ${s.storeName}`
@@ -461,7 +445,7 @@ function LiveTrackingAdminRoute() {
       const matchTo = to === null || created < to;
       return matchText && matchStore && matchFrom && matchTo;
     });
-  }, [shipments, search, storeFilter, dateFrom, dateTo]);
+  }, [shipments, search, storeFilter, dateFrom, dateTo, showDelivered]);
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const paged = useMemo(
@@ -470,13 +454,9 @@ function LiveTrackingAdminRoute() {
   );
   useEffect(() => {
     setPage(1);
-  }, [search, storeFilter, dateFrom, dateTo]);
+  }, [search, storeFilter, dateFrom, dateTo, showDelivered]);
   const stageCounts = useMemo(
-    () =>
-      STAGES.map(
-        (_stage, i) =>
-          shipments.filter((s) => stageIndex(s.status) === i).length,
-      ),
+    () => STAGES.map((_stage, i) => shipments.filter((s) => stageIndex(s.status) === i).length),
     [shipments],
   );
   const resetFilters = () => {
@@ -489,8 +469,7 @@ function LiveTrackingAdminRoute() {
   const startEdit = (shipment: Shipment) => {
     setEditing(shipment);
     setEditForm({
-      customerName:
-        shipment.customerName === "عميل" ? "" : shipment.customerName,
+      customerName: shipment.customerName === "عميل" ? "" : shipment.customerName,
       customerPhone: shipment.customerPhone,
       productName: shipment.productName === "شحنة" ? "" : shipment.productName,
       productLink: shipment.productLink,
@@ -526,9 +505,7 @@ function LiveTrackingAdminRoute() {
         .maybeSingle();
       if (error) throw error;
       if (!data) {
-        throw new Error(
-          "لم يتم تحديث السجل. تأكد من دور admin وسياسات RLS في قاعدة البيانات.",
-        );
+        throw new Error("لم يتم تحديث السجل. تأكد من دور admin وسياسات RLS في قاعدة البيانات.");
       }
       const updated = {
         ...editing,
@@ -540,16 +517,12 @@ function LiveTrackingAdminRoute() {
         courierName: editForm.courierName.trim(),
         courierPhone: editForm.courierPhone.trim(),
       };
-      setShipments((prev) =>
-        prev.map((s) => (s.id === editing.id ? updated : s)),
-      );
+      setShipments((prev) => prev.map((s) => (s.id === editing.id ? updated : s)));
       setSelected((prev) => (prev?.id === editing.id ? updated : prev));
       setEditing(null);
       setNotice("تم حفظ تعديلات الشحنة.");
     } catch (e) {
-      setNotice(
-        `تعذّر حفظ التعديل: ${e instanceof Error ? e.message : "خطأ غير معروف"}`,
-      );
+      setNotice(`تعذّر حفظ التعديل: ${e instanceof Error ? e.message : "خطأ غير معروف"}`);
     } finally {
       setSavingEdit(false);
     }
@@ -583,9 +556,7 @@ function LiveTrackingAdminRoute() {
       setSelected((prev) => (prev?.id === shipment.id ? null : prev));
       setNotice(`تم حذف الشحنة ${shipment.trackingCode} نهائيًا.`);
     } catch (e) {
-      setNotice(
-        `تعذّر حذف الشحنة: ${e instanceof Error ? e.message : "خطأ غير معروف"}`,
-      );
+      setNotice(`تعذّر حذف الشحنة: ${e instanceof Error ? e.message : "خطأ غير معروف"}`);
     } finally {
       setDeletingId(null);
     }
@@ -614,13 +585,10 @@ function LiveTrackingAdminRoute() {
       (!activeCourierName || !normalizePhone(activeCourierPhone))
     ) {
       setSelected(shipment);
-      setNotice(
-        "أدخل اسم المندوب ورقمه في تفاصيل الشحنة قبل تفعيل مرحلة التوصيل.",
-      );
+      setNotice("أدخل اسم المندوب ورقمه في تفاصيل الشحنة قبل تفعيل مرحلة التوصيل.");
       return;
     }
-    const popup =
-      channel === "whatsapp" ? window.open("about:blank", "_blank") : null;
+    const popup = channel === "whatsapp" ? window.open("about:blank", "_blank") : null;
     setBusy(true);
     setNotice("");
     try {
@@ -638,56 +606,43 @@ function LiveTrackingAdminRoute() {
         _action: action,
         _channel: channel,
         _message: text,
-        _courier_name:
-          stage.code === "out_for_delivery" ? activeCourierName : null,
+        _courier_name: stage.code === "out_for_delivery" ? activeCourierName : null,
         _courier_phone:
-          stage.code === "out_for_delivery"
-            ? normalizePhone(activeCourierPhone)
-            : null,
+          stage.code === "out_for_delivery" ? normalizePhone(activeCourierPhone) : null,
       });
       if (error) throw error;
       if (action === "advance") {
         const applyStage = (current: Shipment): Shipment => ({
           ...current,
           status: stage.code,
-          courierName:
-            stage.code === "out_for_delivery"
-              ? activeCourierName
-              : current.courierName,
+          courierName: stage.code === "out_for_delivery" ? activeCourierName : current.courierName,
           courierPhone:
             stage.code === "out_for_delivery"
               ? normalizePhone(activeCourierPhone)
               : current.courierPhone,
         });
         setShipments((prev) =>
-          prev.map((current) =>
-            current.id === shipment.id ? applyStage(current) : current,
-          ),
+          prev.map((current) => (current.id === shipment.id ? applyStage(current) : current)),
         );
         // The open modal renders from `selected`, not from the shipments list.
         // Keep it in sync after the database RPC succeeds.
-        setSelected((current) =>
-          current?.id === shipment.id ? applyStage(current) : current,
-        );
+        setSelected((current) => (current?.id === shipment.id ? applyStage(current) : current));
       }
       await loadHistory(shipment);
       let smsNotice = "";
       if (action === "advance") {
         try {
-          const { data: smsResult, error: smsError } =
-            await supabase.functions.invoke("send-shipment-stage-sms", {
+          const { data: smsResult, error: smsError } = await supabase.functions.invoke(
+            "send-shipment-stage-sms",
+            {
               body: { orderId: shipment.id, stageCode: stage.code },
-            });
+            },
+          );
           if (smsError) {
-            smsNotice =
-              "لم يتم تأكيد إرسال SMS. راجع سجل SMS قبل أي إعادة محاولة.";
+            smsNotice = "لم يتم تأكيد إرسال SMS. راجع سجل SMS قبل أي إعادة محاولة.";
           } else if (smsResult?.status === "accepted") {
-            smsNotice =
-              "قبل TextBee طلب SMS، لكن هذا لا يؤكد وصول الرسالة إلى هاتف العميل.";
-          } else if (
-            smsResult?.status === "unknown" ||
-            smsResult?.status === "sending"
-          ) {
+            smsNotice = "قبل TextBee طلب SMS، لكن هذا لا يؤكد وصول الرسالة إلى هاتف العميل.";
+          } else if (smsResult?.status === "unknown" || smsResult?.status === "sending") {
             smsNotice =
               smsResult?.message ||
               "نتيجة SMS غير محسومة؛ تحقق من سجل المزود ولا تعِد الإرسال الآن.";
@@ -698,8 +653,7 @@ function LiveTrackingAdminRoute() {
           }
         } catch {
           // The stage was already saved. Keep SMS transport errors separate from stage success.
-          smsNotice =
-            "لم يتم تأكيد إرسال SMS بسبب تعذر الاتصال؛ راجع سجل SMS قبل أي إعادة محاولة.";
+          smsNotice = "لم يتم تأكيد إرسال SMS بسبب تعذر الاتصال؛ راجع سجل SMS قبل أي إعادة محاولة.";
         }
         await loadHistory(shipment);
       }
@@ -714,9 +668,7 @@ function LiveTrackingAdminRoute() {
           );
         }
         if (popup) {
-          setNotice(
-            "فُتح واتساب برسالة جاهزة. لم تُرسل تلقائياً؛ أكّد الإرسال داخل واتساب.",
-          );
+          setNotice("فُتح واتساب برسالة جاهزة. لم تُرسل تلقائياً؛ أكّد الإرسال داخل واتساب.");
         }
       } else if (action === "advance") {
         const inAppNotice =
@@ -734,9 +686,7 @@ function LiveTrackingAdminRoute() {
       if (action === "advance") await refresh();
     } catch (e) {
       popup?.close();
-      setNotice(
-        `لم تكتمل العملية: ${e instanceof Error ? e.message : "خطأ غير معروف"}`,
-      );
+      setNotice(`لم تكتمل العملية: ${e instanceof Error ? e.message : "خطأ غير معروف"}`);
     } finally {
       setBusy(false);
     }
@@ -761,9 +711,7 @@ function LiveTrackingAdminRoute() {
       (!hasCourierName || !normalizePhone(hasCourierPhone))
     ) {
       setSelected(shipment);
-      setNotice(
-        "أدخل اسم المندوب ورقمه في تفاصيل الشحنة، ثم فعّل مرحلة التوصيل.",
-      );
+      setNotice("أدخل اسم المندوب ورقمه في تفاصيل الشحنة، ثم فعّل مرحلة التوصيل.");
       return;
     }
     void doAction(shipment, stage, "advance", "app");
@@ -774,16 +722,13 @@ function LiveTrackingAdminRoute() {
     setBusy(true);
     setNotice("");
     try {
-      const { data, error } = await supabase.functions.invoke(
-        "send-shipment-stage-sms",
-        {
-          body: {
-            orderId: selected.id,
-            stageCode: row.stage_code,
-            retry: true,
-          },
+      const { data, error } = await supabase.functions.invoke("send-shipment-stage-sms", {
+        body: {
+          orderId: selected.id,
+          stageCode: row.stage_code,
+          retry: true,
         },
-      );
+      });
       if (error) throw error;
       setNotice(
         data?.status === "accepted"
@@ -792,9 +737,7 @@ function LiveTrackingAdminRoute() {
       );
       await loadHistory(selected);
     } catch (e) {
-      setNotice(
-        `تعذرت إعادة محاولة SMS: ${e instanceof Error ? e.message : "خطأ غير معروف"}`,
-      );
+      setNotice(`تعذرت إعادة محاولة SMS: ${e instanceof Error ? e.message : "خطأ غير معروف"}`);
     } finally {
       setBusy(false);
     }
@@ -829,9 +772,7 @@ function LiveTrackingAdminRoute() {
           <div className="mx-auto mb-4 grid size-16 place-items-center rounded-2xl bg-amber-50">
             <ShieldCheck className="size-8 text-amber-500" />
           </div>
-          <h1 className="text-lg font-black text-slate-800">
-            هذه الصفحة للمدير والموظفين
-          </h1>
+          <h1 className="text-lg font-black text-slate-800">هذه الصفحة للمدير والموظفين</h1>
           <p className="my-4 text-sm leading-6 text-slate-500">
             سجّل الدخول بحساب مخوّل لمتابعة الطلبات.
           </p>
@@ -850,7 +791,7 @@ function LiveTrackingAdminRoute() {
     (s) => new Date(s.createdAt).toDateString() === new Date().toDateString(),
   ).length;
   const deliveredCount = shipments.filter(
-    (s) => s.status === "delivered",
+    (s) => stageIndex(s.status) === stageCodes.length - 1,
   ).length;
   const delayedCount = shipments.filter((s) => isDelayed(s)).length;
   const stats = [
@@ -885,11 +826,7 @@ function LiveTrackingAdminRoute() {
   ];
 
   return (
-    <div
-      dir="rtl"
-      style={fontStack}
-      className="min-h-screen bg-[#f7f8fb] pb-16 text-slate-800"
-    >
+    <div dir="rtl" style={fontStack} className="min-h-screen bg-[#f7f8fb] pb-16 text-slate-800">
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
@@ -900,9 +837,7 @@ function LiveTrackingAdminRoute() {
               <ChevronLeft className="size-5" />
             </Link>
             <div>
-              <h1 className="text-lg font-black text-slate-800">
-                لوحة تحكم طلبات
-              </h1>
+              <h1 className="text-lg font-black text-slate-800">لوحة تحكم طلبات</h1>
               <p className="mt-0.5 text-xs text-slate-500">
                 وسيط الطلبات – متابعة وإدارة طلبات Amazon و SHEIN
               </p>
@@ -913,9 +848,7 @@ function LiveTrackingAdminRoute() {
               <button
                 onClick={() => setStoreFilter("all")}
                 className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${
-                  storeFilter === "all"
-                    ? "bg-white text-slate-800 shadow-sm"
-                    : "text-slate-500"
+                  storeFilter === "all" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500"
                 }`}
               >
                 الكل
@@ -923,9 +856,7 @@ function LiveTrackingAdminRoute() {
               <button
                 onClick={() => setStoreFilter("Amazon")}
                 className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${
-                  storeFilter === "Amazon"
-                    ? "bg-[#131921] text-white shadow-sm"
-                    : "text-slate-500"
+                  storeFilter === "Amazon" ? "bg-[#131921] text-white shadow-sm" : "text-slate-500"
                 }`}
               >
                 Amazon
@@ -933,9 +864,7 @@ function LiveTrackingAdminRoute() {
               <button
                 onClick={() => setStoreFilter("SHEIN")}
                 className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${
-                  storeFilter === "SHEIN"
-                    ? "bg-[#F97316] text-white shadow-sm"
-                    : "text-slate-500"
+                  storeFilter === "SHEIN" ? "bg-[#F97316] text-white shadow-sm" : "text-slate-500"
                 }`}
               >
                 SHEIN
@@ -946,10 +875,7 @@ function LiveTrackingAdminRoute() {
               disabled={loading}
               className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-50 disabled:opacity-60"
             >
-              <RefreshCw
-                className={`size-4 ${loading ? "animate-spin" : ""}`}
-              />{" "}
-              تحدي��
+              <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} /> تحدي��
             </button>
           </div>
         </div>
@@ -971,18 +897,33 @@ function LiveTrackingAdminRoute() {
                     <Icon className="size-5" />
                   </span>
                 </div>
-                <p
-                  className="mt-3 text-3xl font-black leading-none"
-                  style={{ color: stat.color }}
-                >
+                <p className="mt-3 text-3xl font-black leading-none" style={{ color: stat.color }}>
                   {stat.value}
                 </p>
-                <p className="mt-1.5 text-xs font-bold text-slate-500">
-                  {stat.label}
-                </p>
+                <p className="mt-1.5 text-xs font-bold text-slate-500">{stat.label}</p>
               </div>
             );
           })}
+        </div>
+        <div className="flex justify-start">
+          <button
+            type="button"
+            aria-pressed={showDelivered}
+            onClick={() => {
+              setShowDelivered((current) => !current);
+              setPage(1);
+            }}
+            className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-black shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 ${
+              showDelivered
+                ? "border-[#0F4C81] bg-[#0F4C81] text-white hover:bg-[#0b3d69]"
+                : "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+            }`}
+          >
+            <CheckCircle2 className="size-4" />
+            {showDelivered
+              ? "العودة إلى الطلبات النشطة"
+              : `الطلبات المسلّمة بنجاح (${deliveredCount})`}
+          </button>
         </div>
         <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
           <h2 className="mb-3 flex items-center gap-2 text-sm font-black text-slate-700">
@@ -995,9 +936,7 @@ function LiveTrackingAdminRoute() {
                 key={stage.code}
                 className="rounded-xl border border-slate-100 bg-slate-50 p-2.5 text-center"
               >
-                <p className="text-xl font-black text-[#0F4C81]">
-                  {stageCounts[i]}
-                </p>
+                <p className="text-xl font-black text-[#0F4C81]">{stageCounts[i]}</p>
                 <p className="mt-1 text-[10px] font-bold leading-tight text-slate-500">
                   {stage.title}
                 </p>
@@ -1107,10 +1046,7 @@ function LiveTrackingAdminRoute() {
                           ? "bg-slate-900 text-white"
                           : "bg-slate-100 text-slate-600";
                     return (
-                      <tr
-                        key={s.id}
-                        className={delayed ? "bg-red-50/60" : "bg-white"}
-                      >
+                      <tr key={s.id} className={delayed ? "bg-red-50/60" : "bg-white"}>
                         <td className="px-3 py-3 text-xs font-bold text-slate-400">
                           {(safePage - 1) * PAGE_SIZE + rowIdx + 1}
                         </td>
@@ -1124,10 +1060,7 @@ function LiveTrackingAdminRoute() {
                           <span className="mt-1 block font-bold text-slate-700">
                             {s.customerName}
                           </span>
-                          <span
-                            dir="ltr"
-                            className="block text-[11px] text-slate-400"
-                          >
+                          <span dir="ltr" className="block text-[11px] text-slate-400">
                             {s.customerPhone}
                           </span>
                           {delayed && (
@@ -1151,11 +1084,7 @@ function LiveTrackingAdminRoute() {
                           {s.productLink && (
                             <button
                               onClick={() =>
-                                window.open(
-                                  s.productLink,
-                                  "_blank",
-                                  "noopener,noreferrer",
-                                )
+                                window.open(s.productLink, "_blank", "noopener,noreferrer")
                               }
                               className="mt-1 text-[11px] font-bold text-[#2196F3] hover:underline"
                             >
@@ -1165,16 +1094,12 @@ function LiveTrackingAdminRoute() {
                         </td>
                         <td className="px-3 py-3">
                           <label className="block min-w-[245px]">
-                            <span className="sr-only">
-                              المرحلة الحالية للطلب {s.trackingCode}
-                            </span>
+                            <span className="sr-only">المرحلة الحالية للطلب {s.trackingCode}</span>
                             <select
                               dir="rtl"
                               value={current?.code || STAGES[0].code}
                               disabled={busy}
-                              onChange={(event) =>
-                                handleStageSelection(s, event.target.value)
-                              }
+                              onChange={(event) => handleStageSelection(s, event.target.value)}
                               aria-label={`تغيير مرحلة الطلب ${s.trackingCode}`}
                               className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-bold text-slate-800 shadow-sm outline-none transition hover:border-blue-300 focus:border-[#2196F3] focus:ring-2 focus:ring-blue-100 disabled:cursor-wait disabled:opacity-60"
                             >
@@ -1244,16 +1169,17 @@ function LiveTrackingAdminRoute() {
               <div className="grid size-14 place-items-center rounded-2xl bg-slate-50">
                 <Package className="size-7 text-slate-300" />
               </div>
-              <span className="text-sm font-bold">لا توجد طلبات مطابقة.</span>
+              <span className="text-sm font-bold">
+                {showDelivered ? "لا توجد طلبات مسلّمة مطابقة." : "لا توجد طلبات نشطة مطابقة."}
+              </span>
             </div>
           )}
         </div>
         {filtered.length > 0 && (
           <div className="flex items-center justify-between gap-3">
             <p className="text-xs text-slate-500">
-              عرض {(safePage - 1) * PAGE_SIZE + 1}–
-              {Math.min(safePage * PAGE_SIZE, filtered.length)} من{" "}
-              {filtered.length}
+              عرض {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)}{" "}
+              من {filtered.length}
             </p>
             <div className="flex items-center gap-1">
               {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
@@ -1283,10 +1209,7 @@ function LiveTrackingAdminRoute() {
           <section className="max-h-[95vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white p-4 shadow-2xl sm:p-6">
             <div className="sticky top-0 z-10 -mx-4 -mt-4 mb-4 flex items-center justify-between border-b border-slate-100 bg-white/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:-mt-6 sm:px-6">
               <div>
-                <h2
-                  id="shipment-modal-title"
-                  className="font-black text-slate-800"
-                >
+                <h2 id="shipment-modal-title" className="font-black text-slate-800">
                   مسار الشحنة {selected.trackingCode}
                 </h2>
                 <p className="text-xs text-slate-500">
@@ -1304,8 +1227,8 @@ function LiveTrackingAdminRoute() {
             <div className="mb-4 flex items-start gap-2 rounded-2xl border border-sky-100 bg-sky-50 p-3 text-xs leading-6 text-sky-950">
               <AlertCircle className="mt-0.5 size-4 shrink-0 text-sky-500" />
               <span>
-                تحديث المرحلة ينشئ إشعاراً داخل التطبيق. زر واتساب يفتح رسالة
-                جاهزة ويسجلها «جاهزة»، ولا يثبت الإرسال حتى تؤكده من واتساب.
+                تحديث المرحلة ينشئ إشعاراً داخل التطبيق. زر واتساب يفتح رسالة جاهزة ويسجلها «جاهزة»،
+                ولا يثبت الإرسال حتى تؤكده من واتساب.
               </span>
             </div>
             {STAGES.some((s) => s.code === "out_for_delivery") && (
@@ -1357,11 +1280,7 @@ function LiveTrackingAdminRoute() {
                               : "bg-slate-100 text-slate-500"
                         }`}
                       >
-                        {done ? (
-                          <Check className="size-4" />
-                        ) : (
-                          <Icon className="size-4" />
-                        )}
+                        {done ? <Check className="size-4" /> : <Icon className="size-4" />}
                       </span>
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
@@ -1377,15 +1296,14 @@ function LiveTrackingAdminRoute() {
                         <p className="mt-1 text-xs text-slate-500">
                           {stage.location} · {stage.detail}
                         </p>
-                        {stage.code === "out_for_delivery" &&
-                          selected.courierName && (
-                            <p className="mt-1 text-xs font-bold text-emerald-800">
-                              المندوب: {selected.courierName}{" "}
-                              {selected.courierPhone && (
-                                <span dir="ltr">· {selected.courierPhone}</span>
-                              )}
-                            </p>
-                          )}
+                        {stage.code === "out_for_delivery" && selected.courierName && (
+                          <p className="mt-1 text-xs font-bold text-emerald-800">
+                            المندوب: {selected.courierName}{" "}
+                            {selected.courierPhone && (
+                              <span dir="ltr">· {selected.courierPhone}</span>
+                            )}
+                          </p>
+                        )}
                         <div className="mt-3 flex flex-wrap gap-2">
                           {(() => {
                             const canAdvance = i > stageIndex(selected.status);
@@ -1416,17 +1334,8 @@ function LiveTrackingAdminRoute() {
                             );
                           })()}
                           <button
-                            disabled={
-                              busy || !normalizePhone(selected.customerPhone)
-                            }
-                            onClick={() =>
-                              void doAction(
-                                selected,
-                                stage,
-                                "notify",
-                                "whatsapp",
-                              )
-                            }
+                            disabled={busy || !normalizePhone(selected.customerPhone)}
+                            onClick={() => void doAction(selected, stage, "notify", "whatsapp")}
                             className="flex items-center gap-1 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-[11px] font-bold text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-50"
                           >
                             <MessageCircle className="size-3.5" />
@@ -1445,27 +1354,18 @@ function LiveTrackingAdminRoute() {
                 سجل الإشعارات
               </h3>
               {historyLoading ? (
-                <p
-                  className="mt-3 flex items-center gap-2 text-xs text-slate-500"
-                  role="status"
-                >
-                  <Loader2 className="size-4 animate-spin" /> جارٍ تحميل سجل
-                  الإشعارات...
+                <p className="mt-3 flex items-center gap-2 text-xs text-slate-500" role="status">
+                  <Loader2 className="size-4 animate-spin" /> جارٍ تحميل سجل الإشعارات...
                 </p>
               ) : historyError ? (
                 <div
                   className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-800"
                   role="alert"
                 >
-                  <p className="font-bold">
-                    تعذّر تحميل سجل الإشعارات من قاعدة البيانات.
-                  </p>
-                  <p className="mt-1 break-words">
-                    تفاصيل الخطأ: {historyError}
-                  </p>
+                  <p className="font-bold">تعذّر تحميل سجل الإشعارات من قاعدة البيانات.</p>
+                  <p className="mt-1 break-words">تفاصيل الخطأ: {historyError}</p>
                   <p className="mt-1">
-                    تحقق من اتصال قاعدة البيانات وصلاحيات الحساب وإعداد الترحيل
-                    الخاص بسجل الشحنات.
+                    تحقق من اتصال قاعدة البيانات وصلاحيات الحساب وإعداد الترحيل الخاص بسجل الشحنات.
                   </p>
                 </div>
               ) : history.length ? (
@@ -1477,8 +1377,8 @@ function LiveTrackingAdminRoute() {
                     >
                       <div className="flex flex-wrap justify-between gap-2 font-bold text-slate-700">
                         <span>
-                          {ev.event_type === "stage" ? "تغيير مرحلة" : "تذكير"}{" "}
-                          · {ev.channel === "app" ? "التطبيق" : "واتساب"} ·{" "}
+                          {ev.event_type === "stage" ? "تغيير مرحلة" : "تذكير"} ·{" "}
+                          {ev.channel === "app" ? "التطبيق" : "واتساب"} ·{" "}
                           {ev.delivery_state === "created"
                             ? "أُنشئ إشعار التطبيق"
                             : ev.delivery_state === "prepared"
@@ -1491,9 +1391,7 @@ function LiveTrackingAdminRoute() {
                           {new Date(ev.created_at).toLocaleString("ar-YE")}
                         </time>
                       </div>
-                      <p className="mt-1 whitespace-pre-line text-slate-600">
-                        {ev.message}
-                      </p>
+                      <p className="mt-1 whitespace-pre-line text-slate-600">{ev.message}</p>
                     </li>
                   ))}
                 </ul>
@@ -1509,12 +1407,8 @@ function LiveTrackingAdminRoute() {
                 رسائل SMS لمراحل الشحنة
               </h3>
               {historyLoading ? (
-                <p
-                  className="mt-3 flex items-center gap-2 text-xs text-slate-500"
-                  role="status"
-                >
-                  <Loader2 className="size-4 animate-spin" /> جارٍ تحميل سجل
-                  SMS...
+                <p className="mt-3 flex items-center gap-2 text-xs text-slate-500" role="status">
+                  <Loader2 className="size-4 animate-spin" /> جارٍ تحميل سجل SMS...
                 </p>
               ) : smsHistoryError ? (
                 <div
@@ -1528,7 +1422,8 @@ function LiveTrackingAdminRoute() {
                 <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
                   <p className="font-bold">سجل SMS غير مفعّل في قاعدة البيانات بعد.</p>
                   <p className="mt-1">
-                    سيحاول النظام إرسال الإشعار إلى TextBee، لكن لن يظهر سجل المحاولة ولن تتوفر حماية منع التكرار حتى تطبيق ترحيل SMS.
+                    سيحاول النظام إرسال الإشعار إلى TextBee، لكن لن يظهر سجل المحاولة ولن تتوفر
+                    حماية منع التكرار حتى تطبيق ترحيل SMS.
                   </p>
                 </div>
               ) : smsAuditUnavailable ? (
@@ -1536,20 +1431,17 @@ function LiveTrackingAdminRoute() {
                   className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900"
                   role="status"
                 >
-                  <p className="font-bold">
-                    سجل SMS غير متاح في قاعدة البيانات.
-                  </p>
+                  <p className="font-bold">سجل SMS غير متاح في قاعدة البيانات.</p>
                   <p className="mt-1">
-                    لم تُرسل رسالة SMS لأن حماية منع التكرار وسجل المحاولات غير
-                    جاهزين. يلزم تطبيق ومراجعة ترحيل قاعدة البيانات أولاً.
+                    لم تُرسل رسالة SMS لأن حماية منع التكرار وسجل المحاولات غير جاهزين. يلزم تطبيق
+                    ومراجعة ترحيل قاعدة البيانات أولاً.
                   </p>
                 </div>
               ) : smsHistory.length ? (
                 <ul className="mt-3 space-y-2">
                   {smsHistory.map((row) => {
                     const stageTitle =
-                      STAGES.find((item) => item.code === row.stage_code)
-                        ?.title || row.stage_code;
+                      STAGES.find((item) => item.code === row.stage_code)?.title || row.stage_code;
                     const stateLabel =
                       row.sms_status === "accepted"
                         ? "قبل TextBee"
@@ -1565,16 +1457,13 @@ function LiveTrackingAdminRoute() {
                       >
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <b className="text-slate-700">
-                            {stageTitle} · {stateLabel} · محاولات:{" "}
-                            {row.sms_attempt_count}
+                            {stageTitle} · {stateLabel} · محاولات: {row.sms_attempt_count}
                           </b>
                           <time className="text-slate-400">
                             {new Date(row.updated_at).toLocaleString("ar-YE")}
                           </time>
                         </div>
-                        {row.sms_error && (
-                          <p className="mt-1 text-[#DC2626]">{row.sms_error}</p>
-                        )}
+                        {row.sms_error && <p className="mt-1 text-[#DC2626]">{row.sms_error}</p>}
                         {row.sms_status === "accepted" && (
                           <p className="mt-1 text-emerald-700">
                             قبول المزود لا يؤكد التسليم النهائي.
@@ -1591,9 +1480,7 @@ function LiveTrackingAdminRoute() {
                             onClick={() => void retryStageSms(row)}
                             className="mt-2 rounded-lg border border-orange-200 bg-white px-3 py-2 font-bold text-[#F97316] transition hover:bg-orange-50 disabled:opacity-50"
                           >
-                            {busy
-                              ? "جا��ٍ التحقق..."
-                              : "إعادة محاولة بعد تصحيح السبب"}
+                            {busy ? "جا��ٍ التحقق..." : "إعادة محاولة بعد تصحيح السبب"}
                           </button>
                         )}
                       </li>
@@ -1673,9 +1560,7 @@ function LiveTrackingAdminRoute() {
                 اسم المنتج
                 <input
                   value={editForm.productName}
-                  onChange={(e) =>
-                    setEditForm((f) => ({ ...f, productName: e.target.value }))
-                  }
+                  onChange={(e) => setEditForm((f) => ({ ...f, productName: e.target.value }))}
                   className="mt-1 w-full rounded-xl border border-slate-200 p-2.5 outline-none focus:border-[#2196F3]"
                   maxLength={300}
                 />
@@ -1684,9 +1569,7 @@ function LiveTrackingAdminRoute() {
                 رابط المنتج *
                 <input
                   value={editForm.productLink}
-                  onChange={(e) =>
-                    setEditForm((f) => ({ ...f, productLink: e.target.value }))
-                  }
+                  onChange={(e) => setEditForm((f) => ({ ...f, productLink: e.target.value }))}
                   className="mt-1 w-full rounded-xl border border-slate-200 p-2.5 outline-none focus:border-[#2196F3]"
                   maxLength={2000}
                   dir="ltr"
@@ -1696,9 +1579,7 @@ function LiveTrackingAdminRoute() {
                 اسم المندوب
                 <input
                   value={editForm.courierName}
-                  onChange={(e) =>
-                    setEditForm((f) => ({ ...f, courierName: e.target.value }))
-                  }
+                  onChange={(e) => setEditForm((f) => ({ ...f, courierName: e.target.value }))}
                   className="mt-1 w-full rounded-xl border border-slate-200 p-2.5 outline-none focus:border-[#2196F3]"
                   maxLength={200}
                 />
@@ -1722,8 +1603,8 @@ function LiveTrackingAdminRoute() {
             <p className="mt-3 flex items-start gap-2 rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-900">
               <AlertCircle className="mt-0.5 size-4 shrink-0 text-amber-500" />
               <span>
-                لا يمكن من هذه النافذة تعديل المالك أو رقم التتبع أو حالة الشحنة
-                أو الملاحظات. الحذف منفصل ونهائي.
+                لا يمكن من هذه النافذة تعديل المالك أو رقم التتبع أو حالة الشحنة أو الملاحظات. الحذف
+                منفصل ونهائي.
               </span>
             </p>
             <div className="mt-4 flex gap-2">
