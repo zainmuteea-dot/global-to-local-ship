@@ -995,7 +995,7 @@ export default function DashboardPage() {
         {/* 🌟 7. خطوات الطلب الـ 5 — بطاقات زجاجية متموّجة */}
         <section className="max-w-5xl mx-auto px-4 mb-10">
           <div
-            className="relative overflow-hidden rounded-3xl bg-white/[0.06] p-5 ring-1 ring-sky-300/40 shadow-2xl shadow-[#04122A]/70 animate-[glass-glow_5s_ease-in-out_infinite]"
+            className="relative overflow-hidden rounded-3xl bg-white/[0.06] p-5 ring-1 ring-sky-300/40 shadow-2xl shadow-[#04122A]/70"
             style={
               {
                 backdropFilter: "blur(18px)",
@@ -1020,10 +1020,9 @@ export default function DashboardPage() {
             <div className="relative z-10 grid grid-cols-1 gap-2.5 sm:gap-3.5 md:grid-cols-2">
               {steps.map((st, i) => {
                 const Icon = st.icon;
-                const cardClass = `group relative flex items-center justify-between gap-3 overflow-hidden rounded-2xl border border-white/25 bg-white/[0.12] p-3 text-right text-inherit no-underline shadow-lg transition hover:bg-white/[0.18] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A2540] animate-[step-wave_3s_ease-in-out_infinite] will-change-transform sm:gap-4 sm:p-4 ${
+                const cardClass = `group relative flex items-center justify-between gap-3 overflow-hidden rounded-2xl border border-white/25 bg-white/[0.12] p-3 text-right text-inherit no-underline shadow-lg transition hover:bg-white/[0.18] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A2540] sm:gap-4 sm:p-4 ${
                   i === 4 ? "md:col-span-2 md:w-2/3 md:mx-auto" : ""
                 }`;
-                const cardStyle = { animationDelay: `${i * 0.25}s` } as React.CSSProperties;
                 const content = (
                   <>
                     {/* حافة الزجاج العلوية */}
@@ -1053,7 +1052,6 @@ export default function DashboardPage() {
                       key={i}
                       href="/new-order?step=link"
                       className={cardClass}
-                      style={cardStyle}
                       aria-label={ariaLabel}
                     >
                       {content}
@@ -1066,7 +1064,6 @@ export default function DashboardPage() {
                       key={i}
                       href="/new-order?step=price"
                       className={cardClass}
-                      style={cardStyle}
                       aria-label={ariaLabel}
                     >
                       {content}
@@ -1079,7 +1076,6 @@ export default function DashboardPage() {
                       key={i}
                       href="/new-order?step=buy"
                       className={cardClass}
-                      style={cardStyle}
                       aria-label={ariaLabel}
                     >
                       {content}
@@ -1092,7 +1088,6 @@ export default function DashboardPage() {
                       key={i}
                       to="/track"
                       className={cardClass}
-                      style={cardStyle}
                       aria-label={ariaLabel}
                     >
                       {content}
@@ -1104,7 +1099,6 @@ export default function DashboardPage() {
                     key={i}
                     to="/account/orders"
                     className={cardClass}
-                    style={cardStyle}
                     aria-label={ariaLabel}
                   >
                     {content}
@@ -1113,14 +1107,6 @@ export default function DashboardPage() {
               })}
             </div>
           </div>
-
-          {/* keyframes حركة التموّج للبطاقات */}
-          <style>{`
-          @keyframes step-wave {
-            0%, 100% { transform: translateY(0); }
-            50%      { transform: translateY(-7px); }
-          }
-        `}</style>
 
           {/* أزرار العمليات السريعة */}
           <div className="flex flex-wrap items-center justify-center gap-3 mt-6">
@@ -1360,7 +1346,6 @@ export default function DashboardPage() {
         @media (prefers-reduced-motion: reduce) {
           .animate-\[store-pulse_2s_ease-in-out_infinite\],
           .animate-\[store-shine_2\.5s_linear_infinite\],
-          .animate-\[step-wave_3s_ease-in-out_infinite\] { animation: none !important; }
         }
       `}</style>
     </div>
