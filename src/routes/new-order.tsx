@@ -1365,89 +1365,10 @@ function NewOrderPage() {
           </div>
         )}
 
-        {/* 1 - سعر السلعة في المتجر الأصلي */}
+        {/* 1 - رابط المنتج */}
         <section className="no-card">
           <div className="no-head">
             <div className="no-num">1</div>
-            <div className="no-ico">
-              <Bag />
-            </div>
-            <div className="no-title">سعر السلعة في المتجر الأصلي</div>
-          </div>
-          <div className="no-price">
-            <div className="no-iw">
-              <input
-                id="new-order-product-price"
-                type="number"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                placeholder="0.00"
-              />
-            </div>
-            <select
-              value={currency}
-              onChange={(e) => setCurrency(e.target.value)}
-            >
-              <option>ر.س سعودي</option>
-              <option>$ دولار</option>
-              <option>ر.ي يمني</option>
-            </select>
-          </div>
-          <p className="no-entry-guidance">
-            يُحفظ السعر الأصلي بعملته، ويُحسب المقابل بالريال اليمني من أسعار
-            الصرف المسجلة في النظام المالي.
-          </p>
-          {price.trim() &&
-            Number.isFinite(Number(price)) &&
-            Number(price) > 0 &&
-            (() => {
-              const currentCurrency = getOrderCurrency(currency);
-              const amountYER = convertOrderPriceToYER(
-                Number(price),
-                currentCurrency,
-                exchangeRates,
-              );
-              const rateToYER = getOrderConversionRateToYER(
-                currentCurrency,
-                exchangeRates,
-              );
-              if (amountYER !== null && rateToYER !== null) {
-                return (
-                  <div className="no-ok" role="status" aria-live="polite">
-                    <Check s={18} />
-                    <span>
-                      يعادل تقريبًا {amountYER.toLocaleString("ar-YE")} ر.ي
-                      {currentCurrency !== "YER" && (
-                        <>
-                          {" "}
-                          · سعر النظام: 1 {currentCurrency} ={" "}
-                          {rateToYER.toLocaleString("ar-YE", {
-                            maximumFractionDigits: 4,
-                          })}{" "}
-                          ر.ي
-                        </>
-                      )}
-                    </span>
-                  </div>
-                );
-              }
-              return (
-                <div className="no-warn" role="status" aria-live="polite">
-                  <Flash />
-                  <span>
-                    {exchangeRatesState === "loading"
-                      ? "جارٍ تحميل أسعار الصرف من النظام…"
-                      : "سعر هذه العملة غير متاح في جدول النظام؛ لن يتم حفظ الطلب بهذا السعر حتى تحديث سعر الصرف."}
-                  </span>
-                </div>
-              );
-            })()}
-        </section>
-
-        {/* 2 - تفاصيل السلة */}
-        <section className="no-card">
-          <div className="no-head">
-            <div className="no-num">2</div>
             <div className="no-ico">
               <Cart />
             </div>
@@ -1481,6 +1402,89 @@ function NewOrderPage() {
           </div>
         </section>
 
+        {/* 2 - سعر السلعة في المتجر الأصلي */}
+        <section className="no-card">
+          <div className="no-head">
+            <div className="no-num">2</div>
+            <div className="no-ico">
+              <Bag />
+            </div>
+            <div className="no-title">سعر السلعة في المتجر الأصلي</div>
+          </div>
+          <div className="no-field">
+            <label className="no-lbl">
+              سعر السلعة في المتجر الأصلي (اختياري)
+            </label>
+            <div className="no-price">
+              <div className="no-iw">
+                <input
+                  id="new-order-product-price"
+                  type="number"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  placeholder="0.00"
+                />
+              </div>
+              <select
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value)}
+              >
+                <option>ر.س سعودي</option>
+                <option>$ دولار</option>
+                <option>ر.ي يمني</option>
+              </select>
+            </div>
+            <p className="no-entry-guidance">
+              يُحفظ السعر الأصلي بعملته، ويُحسب المقابل بالريال اليمني من أسعار
+              الصرف المسجلة في النظام المالي.
+            </p>
+            {price.trim() &&
+              Number.isFinite(Number(price)) &&
+              Number(price) > 0 &&
+              (() => {
+                const currentCurrency = getOrderCurrency(currency);
+                const amountYER = convertOrderPriceToYER(
+                  Number(price),
+                  currentCurrency,
+                  exchangeRates,
+                );
+                const rateToYER = getOrderConversionRateToYER(
+                  currentCurrency,
+                  exchangeRates,
+                );
+                if (amountYER !== null && rateToYER !== null) {
+                  return (
+                    <div className="no-ok" role="status" aria-live="polite">
+                      <Check s={18} />
+                      <span>
+                        يعادل تقريبًا {amountYER.toLocaleString("ar-YE")} ر.ي
+                        {currentCurrency !== "YER" && (
+                          <>
+                            {" "}
+                            · سعر النظام: 1 {currentCurrency} ={" "}
+                            {rateToYER.toLocaleString("ar-YE", {
+                              maximumFractionDigits: 4,
+                            })}{" "}
+                            ر.ي
+                          </>
+                        )}
+                      </span>
+                    </div>
+                  );
+                }
+                return (
+                  <div className="no-warn" role="status" aria-live="polite">
+                    <Flash />
+                    <span>
+                      {exchangeRatesState === "loading"
+                        ? "جارٍ تحميل أسعار الصرف من النظام…"
+                        : "سعر هذه العملة غير متاح في جدول النظام؛ لن يتم حفظ الطلب بهذا السعر حتى تحديث سعر الصرف."}
+                    </span>
+                  </div>
+                );
+              })()}
+          </div>
+        </section>
         {/* 3 - عنوان التوصيل وبيانات المستلم */}
         <section className="no-card">
           <div className="no-head">
