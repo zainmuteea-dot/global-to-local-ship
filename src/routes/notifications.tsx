@@ -1,11 +1,13 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import {
   Bell,
+  AlertTriangle,
   CheckCheck,
   Clock,
   Inbox,
+  MapPinned,
   MessageCircle,
   PackagePlus,
   Phone,
@@ -477,6 +479,7 @@ function CustomerNotificationsPage({
 
 /** شاشة الإدارة: لا تعرض إلا بعد نجاح التحقق من دور admin أو staff. */
 function AdminNotificationsPage({ userId }: { userId: string }) {
+  const navigate = useNavigate();
   const [orders, setOrders] = useState<OrderNotification[]>([]);
   const [notifications, setNotifications] = useState<SystemNotification[]>([]);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
@@ -493,6 +496,9 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
   const [draftTitle, setDraftTitle] = useState("");
   const [draftMessage, setDraftMessage] = useState("");
   const [draftType, setDraftType] = useState("offer");
+  const [expandedMessages, setExpandedMessages] = useState<Set<string>>(
+    new Set(),
+  );
   const soundOnRef = useRef(soundOn);
 
   useEffect(() => {
@@ -835,237 +841,507 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
   const latestFirst = [...notifications].sort(
     (a, b) => Date.parse(b.created_at) - Date.parse(a.created_at),
   );
+  const totalShown = notifications.length;
+  const readCount = Math.max(0, totalShown - unreadSystem);
+  const readPercent = totalShown
+    ? Math.round((readCount / totalShown) * 100)
+    : 0;
+  const unreadPercent = totalShown ? 100 - readPercent : 0;
+  const urgentCount = notifications.filter((item) =>
+    /urgent|critical|عاجل|طارئ/i.test(`${item.type} ${item.title}`),
+  ).length;
+  const notificationTypes = [
+    {
+      label: "عروض",
+      count: notifications.filter((n) => n.type === "offer").length,
+      color: "#00D4FF",
+    },
+    {
+      label: "تحديثات شحن",
+      count: notifications.filter((n) => n.type === "shipment").length,
+      color: "#FF6B00",
+    },
+    {
+      label: "تحديثات شراء",
+      count: notifications.filter((n) => n.type === "purchase").length,
+      color: "#22C55E",
+    },
+    {
+      label: "دعم وإدارة",
+      count: notifications.filter(
+        (n) => !["offer", "shipment", "purchase"].includes(n.type),
+      ).length,
+      color: "#EAB308",
+    },
+  ];
+  const typeMax = Math.max(1, ...notificationTypes.map((item) => item.count));
+  const orderStatusClass = (status: string) => {
+    const normalized = status.trim().toLowerCase();
+    if (["جديد", "new"].includes(normalized))
+      return "border-[#22C55E]/30 bg-[#22C55E]/20 text-[#22C55E]";
+    if (
+      normalized.includes("معالج") ||
+      normalized.includes("transit") ||
+      normalized.includes("تواصل")
+    )
+      return "border-[#00D4FF]/30 bg-[#00D4FF]/20 text-[#00D4FF]";
+    if (normalized.includes("دفع") || normalized.includes("pending"))
+      return "border-[#EAB308]/30 bg-[#EAB308]/20 text-[#EAB308]";
+    if (normalized.includes("تأكيد") || normalized.includes("confirm"))
+      return "border-[#22C55E]/30 bg-[#22C55E]/20 text-[#22C55E]";
+    if (normalized.includes("ملغ") || normalized.includes("cancel"))
+      return "border-white/20 bg-white/10 text-white/60";
+    return "border-white/10 bg-white/5 text-white/70";
+  };
+  const toggleExpandedMessage = (notificationId: string) => {
+    setExpandedMessages((current) => {
+      const next = new Set(current);
+      if (next.has(notificationId)) next.delete(notificationId);
+      else next.add(notificationId);
+      return next;
+    });
+  };
+  const cityStats = [
+    { name: "صنعاء", count: 412, x: 74, y: 31 },
+    { name: "عدن", count: 298, x: 44, y: 73 },
+    { name: "تعز", count: 175, x: 58, y: 56 },
+  ];
 
   return (
-    <AccountShell title="إشعارات الإدارة" back="/admin" wide>
-      <div className="rounded-3xl border border-slate-200 bg-gradient-to-l from-orange-50 via-white to-white p-4 shadow-sm sm:p-5">
-        <div className="flex flex-wrap items-center justify-between gap-4">
+    <div
+      dir="rtl"
+      lang="ar"
+      className="min-h-screen bg-[#050A14] px-3 py-5 text-white sm:px-5 sm:py-7"
+    >
+      <div className="pointer-events-none fixed inset-x-0 top-0 h-[480px] bg-[radial-gradient(ellipse_at_top,rgba(255,107,0,0.15),transparent_68%)]" />
+      <div className="relative mx-auto w-full max-w-[1200px] space-y-6">
+        <header className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#FF6B00]/20 bg-[#0A1931]/80 p-4 shadow-[0_0_30px_rgba(255,107,0,0.1)] backdrop-blur-[16px] sm:px-6">
           <div className="flex items-center gap-3">
-            <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-orange-100 text-orange-700">
-              <Bell className="size-5" />
+            <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-[#FF6B00]/20 text-[#FF6B00] shadow-[inset_0_0_18px_rgba(255,107,0,0.28)]">
+              <Bell className="size-6" />
             </span>
             <div>
-              <h2 className="font-black text-slate-900">
-                مركز إشعارات الإدارة
-              </h2>
-              <p className="mt-1 text-xs text-slate-500">
-                تابع طلبات العملاء وأرسل العروض من مكان واحد.
+              <h1 className="text-xl font-black text-white sm:text-2xl">
+                الشامل للتسوق - مركز الإشعارات
+              </h1>
+              <p className="mt-1 text-xs text-white/50">
+                تابع الطلبات والتنبيهات وتواصل مع العملاء من مكان واحد.
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => void toggleSound()}
-            className={`rounded-xl border px-3 py-2 text-xs font-bold shadow-sm transition ${
-              soundOn
-                ? "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
-                : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-            }`}
-          >
-            {soundOn ? "🔔 الصوت يعمل" : "🔕 الصوت متوقف"}
-          </button>
-        </div>
-        <div className="mt-4 grid grid-cols-2 gap-2.5 sm:max-w-md">
-          <div className="flex items-center gap-2 rounded-2xl border border-orange-200 bg-orange-50 px-3 py-2 text-orange-800">
-            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-white/80">
-              <PackagePlus className="size-4" />
-            </span>
-            <div>
-              <p className="text-base font-black">{unreadOrders}</p>
-              <p className="text-[11px] opacity-75">طلبات جديدة</p>
-            </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void toggleSound()}
+              className={`rounded-lg border px-3 py-2 text-xs font-bold transition ${soundOn ? "border-[#22C55E]/30 bg-[#22C55E]/10 text-[#22C55E]" : "border-white/10 bg-white/5 text-white/60"}`}
+            >
+              {soundOn ? "🔔 الصوت يعمل" : "🔕 الصوت متوقف"}
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate({ to: "/admin" })}
+              className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-white/80 transition hover:border-[#00D4FF]/40 hover:text-[#00D4FF]"
+            >
+              رجوع للوحة القيادة
+            </button>
           </div>
-          <div className="flex items-center gap-2 rounded-2xl border border-sky-200 bg-sky-50 px-3 py-2 text-sky-800">
-            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-white/80">
-              <Bell className="size-4" />
-            </span>
-            <div>
-              <p className="text-base font-black">{unreadSystem}</p>
-              <p className="text-[11px] opacity-75">إشعارات غير مقروءة</p>
-            </div>
-          </div>
-        </div>
-      </div>
+        </header>
 
-      {error && (
-        <p
-          role="status"
-          className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800"
+        {error && (
+          <p
+            role="alert"
+            className="rounded-xl border border-[#EAB308]/30 bg-[#EAB308]/10 p-3 text-sm text-[#EAB308]"
+          >
+            {error}
+          </p>
+        )}
+        {loading && (
+          <p
+            role="status"
+            className="rounded-xl border border-white/10 bg-[#0A1931]/60 p-3 text-center text-sm text-white/60"
+          >
+            جارٍ تحميل الإشعارات والطلبات…
+          </p>
+        )}
+
+        <section
+          aria-label="ملخص الإشعارات"
+          className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
         >
-          {error}
-        </p>
-      )}
-
-      <section className="mt-5 rounded-3xl border border-orange-200 bg-orange-50/60 p-4 sm:p-5">
-        <div className="mb-3 flex items-center gap-3">
-          <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-orange-100 text-orange-700">
-            <Send className="size-5" />
-          </span>
-          <div>
-            <h2 className="font-black text-slate-900">
-              إرسال إشعار أو عرض للعملاء
-            </h2>
-            <p className="mt-0.5 text-xs text-slate-500">
-              يصل الإشعار إلى حسابات العملاء، ويمكن حذفه من الجدول أدناه.
-            </p>
-          </div>
-        </div>
-        <form
-          onSubmit={(event) => void sendCustomerNotification(event)}
-          className="grid gap-2.5 md:grid-cols-2"
-        >
-          <input
-            value={draftTitle}
-            onChange={(event) => setDraftTitle(event.target.value)}
-            required
-            maxLength={120}
-            placeholder="عنوان العرض أو الإشعار"
-            className="rounded-xl border border-orange-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
-          />
-          <select
-            value={draftType}
-            onChange={(event) => setDraftType(event.target.value)}
-            className="rounded-xl border border-orange-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
-          >
-            <option value="offer">عرض</option>
-            <option value="system">إشعار عام</option>
-            <option value="shipment">تحديث شحن</option>
-            <option value="purchase">تحديث شراء</option>
-            <option value="support">دعم</option>
-          </select>
-          <textarea
-            value={draftMessage}
-            onChange={(event) => setDraftMessage(event.target.value)}
-            required
-            maxLength={2000}
-            rows={3}
-            placeholder="اكتب تفاصيل العرض أو الإشعار"
-            className="rounded-xl border border-orange-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-100 md:col-span-2"
-          />
-          <button
-            type="submit"
-            disabled={sending}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50 md:col-span-2"
-          >
-            <Send className="size-4" />{" "}
-            {sending ? "جارٍ الإرسال…" : "إرسال لجميع العملاء"}
-          </button>
-        </form>
-      </section>
-
-      <div className="mt-6 grid grid-cols-1 items-start gap-4 lg:grid-cols-2 lg:gap-5">
-        <section className="mt-0 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm lg:col-start-2 lg:row-start-1">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-white p-4">
-            <div className="flex items-center gap-3">
-              <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-sky-100 text-sky-700">
-                <Tag className="size-5" />
+          <article className="rounded-2xl border border-[#00D4FF]/20 bg-[#0A1931]/60 p-4 shadow-[0_0_20px_rgba(0,212,255,0.1)]">
+            <div className="flex items-start justify-between">
+              <span className="text-3xl font-black text-white">
+                {totalShown}
               </span>
-              <div>
-                <h2 className="font-black text-slate-900">
-                  إشعارات العملاء والإدارة
-                </h2>
-                <p className="mt-0.5 text-xs text-slate-500">
-                  {unreadSystem > 0
-                    ? `${unreadSystem} غير مقروء`
-                    : "لا توجد إشعارات غير مقروءة"}
-                </p>
+              <Bell className="size-5 text-[#00D4FF]" />
+            </div>
+            <p className="mt-2 text-xs text-white/60">
+              إشعار ضمن القائمة المعروضة
+            </p>
+            <span className="mt-3 inline-flex rounded-full bg-[#00D4FF]/20 px-2.5 py-1 text-[11px] font-bold text-[#00D4FF]">
+              {unreadSystem} غير مقروء
+            </span>
+          </article>
+          <article className="rounded-2xl border border-[#FF6B00]/20 bg-[#0A1931]/60 p-4 shadow-[0_0_20px_rgba(255,107,0,0.1)]">
+            <div className="flex items-start justify-between">
+              <span className="text-3xl font-black text-white">
+                {unreadPercent}%
+              </span>
+              <Inbox className="size-5 text-[#FF6B00]" />
+            </div>
+            <p className="mt-2 text-xs text-white/60">
+              لم يتم قراءتها من القائمة
+            </p>
+            <span className="mt-3 inline-flex rounded-full bg-[#FF6B00]/20 px-2.5 py-1 text-[11px] font-bold text-[#FF6B00]">
+              {unreadSystem} إشعار جديد
+            </span>
+          </article>
+          <article className="rounded-2xl border border-[#00D4FF]/20 bg-[#0A1931]/60 p-4 shadow-[0_0_20px_rgba(0,212,255,0.1)]">
+            <div className="flex items-start justify-between">
+              <span className="text-3xl font-black text-white">
+                {readPercent}%
+              </span>
+              <CheckCheck className="size-5 text-[#22C55E]" />
+            </div>
+            <p className="mt-2 text-xs text-white/60">
+              مقروءة من إجمالي المعروض
+            </p>
+            <span className="mt-3 inline-flex rounded-full bg-[#22C55E]/20 px-2.5 py-1 text-[11px] font-bold text-[#22C55E]">
+              {readCount} مقروء
+            </span>
+          </article>
+          <article className="rounded-2xl border border-[#FF6B00]/20 bg-[#0A1931]/60 p-4 shadow-[0_0_20px_rgba(255,107,0,0.1)]">
+            <div className="flex items-start justify-between">
+              <span className="text-3xl font-black text-white">
+                {urgentCount}
+              </span>
+              <AlertTriangle className="size-5 text-[#FF6B00]" />
+            </div>
+            <p className="mt-2 text-xs text-white/60">
+              إشعارات عاجلة حسب النوع أو العنوان
+            </p>
+            <span className="mt-3 inline-flex rounded-full bg-[#FF6B00]/20 px-2.5 py-1 text-[11px] font-bold text-[#FF6B00]">
+              {urgentCount ? "يتطلب إجراء" : "لا يوجد عاجل"}
+            </span>
+          </article>
+        </section>
+
+        <section
+          aria-label="تحليلات الإشعارات"
+          className="grid gap-4 lg:grid-cols-3"
+        >
+          <article className="rounded-2xl border border-white/10 bg-[#0A1931]/60 p-5">
+            <h2 className="font-bold text-white">نسبة القراءة</h2>
+            <p className="mt-1 text-[11px] text-white/50">
+              من الإشعارات المحمّلة حاليًا
+            </p>
+            <div className="mt-5 flex items-center justify-center">
+              <div
+                className="grid size-32 place-items-center rounded-full"
+                style={{
+                  background: `conic-gradient(#FF6B00 0 ${readPercent}%, #00D4FF ${readPercent}% 100%)`,
+                }}
+              >
+                <div className="grid size-[104px] place-items-center rounded-full bg-[#0A1931]">
+                  <span className="text-3xl font-black text-white">
+                    {readPercent}%
+                  </span>
+                </div>
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                disabled={loading || refreshing}
-                onClick={() => void refreshAdminLists()}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-sky-200 bg-white px-3 py-2 text-xs font-bold text-sky-800 shadow-sm transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50"
+            <div className="mt-4 flex justify-center gap-5 text-xs">
+              <span className="flex items-center gap-2 text-white/70">
+                <i className="size-2 rounded-full bg-[#FF6B00]" />
+                مقروء {readPercent}%
+              </span>
+              <span className="flex items-center gap-2 text-white/70">
+                <i className="size-2 rounded-full bg-[#00D4FF]" />
+                غير مقروء {unreadPercent}%
+              </span>
+            </div>
+          </article>
+          <article className="rounded-2xl border border-white/10 bg-[#0A1931]/60 p-5">
+            <h2 className="font-bold text-white">أنواع الإشعارات</h2>
+            <p className="mt-1 text-[11px] text-white/50">
+              توزيع العناصر المعروضة حسب النوع
+            </p>
+            <div className="mt-6 space-y-5">
+              {notificationTypes.map((item) => (
+                <div key={item.label}>
+                  <div className="mb-2 flex justify-between text-xs">
+                    <span className="text-white/80">{item.label}</span>
+                    <span className="font-bold" style={{ color: item.color }}>
+                      {item.count}
+                    </span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${(item.count / typeMax) * 100}%`,
+                        backgroundColor: item.color,
+                        boxShadow: `0 0 10px ${item.color}`,
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </article>
+          <article className="rounded-2xl border border-white/10 bg-[#0A1931]/60 p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="font-bold text-white">
+                  التوزيع الجغرافي - اليمن
+                </h2>
+                <p className="mt-1 text-[11px] text-white/50">
+                  قيم توضيحية حسب نموذج التصميم
+                </p>
+              </div>
+              <MapPinned className="size-5 text-[#00D4FF]" />
+            </div>
+            <div className="mt-3 grid grid-cols-[1fr_auto] items-center gap-3">
+              <svg
+                viewBox="0 0 100 100"
+                role="img"
+                aria-label="رسم توضيحي لخريطة اليمن مع مواقع المدن"
+                className="h-44 w-full"
               >
-                <RefreshCw
-                  className={`size-4 ${refreshing ? "animate-spin" : ""}`}
+                <path
+                  d="M17 23 28 17 39 21 48 15 57 19 65 15 72 21 83 23 78 31 88 37 81 46 86 55 78 63 75 75 66 81 59 89 47 84 40 79 31 78 25 68 18 62 21 52 13 45 19 37 15 30Z"
+                  fill="#0A1931"
+                  stroke="#00D4FF"
+                  strokeWidth="1.5"
+                  style={{ filter: "drop-shadow(0 0 4px #00D4FF)" }}
                 />
-                {refreshing ? "جارٍ التحديث…" : "تحديث القائمة"}
-              </button>
-              {unreadSystem > 0 && (
-                <button
-                  type="button"
-                  disabled={savingRead}
-                  onClick={() => void markAllSystemRead()}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-sky-200 bg-white px-3 py-2 text-xs font-bold text-sky-800 shadow-sm transition hover:bg-sky-50 disabled:opacity-50"
-                >
-                  <CheckCheck className="size-4" /> تحديد الكل كمقروء
-                </button>
-              )}
+                <path
+                  d="M24 37 42 32 56 43 74 29M42 32 48 59 67 71M48 59 31 68M48 59 60 45"
+                  fill="none"
+                  stroke="#00D4FF"
+                  strokeWidth=".7"
+                  opacity=".75"
+                />
+                {cityStats.map((city) => (
+                  <g key={city.name}>
+                    <circle
+                      cx={city.x}
+                      cy={city.y}
+                      r="2.5"
+                      fill="#FF6B00"
+                      style={{ filter: "drop-shadow(0 0 4px #FF6B00)" }}
+                    />
+                    <text
+                      x={city.x}
+                      y={city.y - 5}
+                      fill="#FFFFFF"
+                      textAnchor="middle"
+                      fontSize="5"
+                    >
+                      {city.name}
+                    </text>
+                  </g>
+                ))}
+              </svg>
+              <div className="space-y-4 text-left">
+                {cityStats.map((city) => (
+                  <div key={city.name}>
+                    <p className="text-xs text-white">{city.name}</p>
+                    <p className="text-sm font-bold text-[#FF6B00]">
+                      {city.count}
+                    </p>
+                  </div>
+                ))}
+                <div className="border-t border-white/10 pt-2">
+                  <p className="text-[10px] text-white/50">الإجمالي التوضيحي</p>
+                  <p className="font-bold text-[#FF6B00]">885</p>
+                </div>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section className="rounded-2xl border border-[#00D4FF]/20 bg-[#0A1931]/80 p-4 sm:p-5">
+          <div className="mb-4 flex items-center gap-3">
+            <span className="grid size-10 place-items-center rounded-xl bg-[#FF6B00]/20 text-[#FF6B00]">
+              <Send className="size-5" />
+            </span>
+            <div>
+              <h2 className="font-bold text-white">
+                إرسال عرض أو إشعار للعملاء
+              </h2>
+              <p className="mt-1 text-[11px] text-white/50">
+                ينشر الإشعار للعملاء، ثم يحاول إرسال SMS إلى الأرقام المتاحة.
+              </p>
             </div>
           </div>
-          {loading ? (
-            <p
-              role="status"
-              className="m-4 rounded-2xl border border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-600"
+          <form
+            onSubmit={(event) => void sendCustomerNotification(event)}
+            className="grid gap-3 md:grid-cols-2"
+          >
+            <input
+              value={draftTitle}
+              onChange={(event) => setDraftTitle(event.target.value)}
+              required
+              maxLength={120}
+              placeholder="عنوان العرض أو الإشعار"
+              className="rounded-lg border border-[#00D4FF]/20 bg-black/40 px-3 py-3 text-sm text-white outline-none placeholder:text-white/40 focus:border-[#00D4FF]/60"
+            />
+            <select
+              value={draftType}
+              onChange={(event) => setDraftType(event.target.value)}
+              className="rounded-lg border border-[#00D4FF]/20 bg-[#050A14] px-3 py-3 text-sm text-white outline-none focus:border-[#00D4FF]/60"
             >
-              جارٍ تحميل الإشعارات…
-            </p>
-          ) : notifications.length === 0 ? (
-            <div className="p-4">
-              <EmptyState
-                icon={<Inbox className="size-8" />}
-                title="لا توجد إشعارات إدارية"
-                text="ستظهر هنا إشعارات الدفع والعروض التي ترسلها."
-              />
+              <option value="offer">عرض</option>
+              <option value="system">إشعار عام</option>
+              <option value="shipment">تحديث شحن</option>
+              <option value="purchase">تحديث شراء</option>
+              <option value="support">دعم</option>
+            </select>
+            <textarea
+              value={draftMessage}
+              onChange={(event) => setDraftMessage(event.target.value)}
+              required
+              maxLength={2000}
+              rows={3}
+              placeholder="اكتب تفاصيل العرض أو الإشعار"
+              className="rounded-lg border border-[#00D4FF]/20 bg-black/40 px-3 py-3 text-sm text-white outline-none placeholder:text-white/40 focus:border-[#00D4FF]/60 md:col-span-2"
+            />
+            <button
+              type="submit"
+              disabled={sending}
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[#FF6B00] to-[#FF8C32] px-4 py-3 text-sm font-bold text-white shadow-[0_0_20px_rgba(255,107,0,0.4)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 md:col-span-2"
+            >
+              <Send className="size-4" />
+              {sending ? "جارٍ الإرسال…" : "ارسل لجميع العملاء"}
+            </button>
+          </form>
+        </section>
+
+        <section className="grid items-start gap-4 lg:grid-cols-2">
+          <article className="overflow-hidden rounded-2xl border border-white/10 bg-[#0A1931]/60">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 p-4">
+              <div className="flex items-center gap-3">
+                <span className="grid size-10 place-items-center rounded-xl bg-[#00D4FF]/15 text-[#00D4FF]">
+                  <Tag className="size-5" />
+                </span>
+                <div>
+                  <h2 className="font-bold text-white">
+                    إشعارات العملاء والإدارة
+                  </h2>
+                  <p className="mt-1 text-[11px] text-white/50">
+                    {unreadSystem
+                      ? `${unreadSystem} غير مقروءة`
+                      : "لا توجد إشعارات غير مقروءة"}
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={loading || refreshing}
+                  onClick={() => void refreshAdminLists()}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-[#00D4FF]/20 bg-[#00D4FF]/5 px-3 py-2 text-xs font-bold text-[#00D4FF] hover:bg-[#00D4FF]/10 disabled:opacity-50"
+                >
+                  <RefreshCw
+                    className={`size-4 ${refreshing ? "animate-spin" : ""}`}
+                  />
+                  {refreshing ? "جارٍ التحديث…" : "تحديث القائمة"}
+                </button>
+                {unreadSystem > 0 && (
+                  <button
+                    type="button"
+                    disabled={savingRead}
+                    onClick={() => void markAllSystemRead()}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-[#00D4FF]/20 bg-[#00D4FF]/5 px-3 py-2 text-xs font-bold text-[#00D4FF] hover:bg-[#00D4FF]/10 disabled:opacity-50"
+                  >
+                    <CheckCheck className="size-4" />
+                    تحديد الكل كمقروء
+                  </button>
+                )}
+              </div>
             </div>
-          ) : (
-            <>
-              <div className="hidden overflow-x-auto md:block">
-                <table className="w-full min-w-[600px] text-right text-sm">
-                  <thead className="bg-slate-50 text-xs font-black text-slate-500">
+            {loading ? (
+              <p
+                role="status"
+                className="p-8 text-center text-sm text-white/50"
+              >
+                جارٍ تحميل الإشعارات…
+              </p>
+            ) : notifications.length === 0 ? (
+              <div className="m-4 rounded-xl border border-white/10 bg-white/[0.03] p-8 text-center text-sm text-white/50">
+                <Inbox className="mx-auto mb-3 size-8 text-[#00D4FF]" />
+                <p className="font-bold text-white">لا توجد إشعارات إدارية</p>
+                <p className="mt-1 text-xs text-white/50">
+                  ستظهر هنا إشعارات الدفع والعروض التي ترسلها.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[600px] text-right text-xs">
+                  <thead className="bg-white/5 text-[11px] font-bold text-white/50">
                     <tr>
                       <th className="px-4 py-3">الإشعار</th>
-                      <th className="px-4 py-3">النوع</th>
-                      <th className="px-4 py-3">الحالة</th>
-                      <th className="px-4 py-3">التاريخ</th>
-                      <th className="px-4 py-3">حذف</th>
+                      <th className="px-3 py-3">النوع</th>
+                      <th className="px-3 py-3">الحالة</th>
+                      <th className="px-3 py-3">التاريخ</th>
+                      <th className="px-3 py-3">حذف</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody>
                     {latestFirst.map((notification) => {
                       const isRead = readIds.has(notification.id);
                       const isBroadcast = notification.user_id === null;
+                      const expanded = expandedMessages.has(notification.id);
+                      const longMessage =
+                        (notification.message ?? "").length > 180;
                       return (
                         <tr
                           key={notification.id}
-                          className={
-                            !isRead
-                              ? "bg-orange-50/50"
-                              : "transition hover:bg-slate-50/70"
-                          }
+                          className="border-b border-white/5 align-top hover:bg-white/[0.03]"
                         >
-                          <td className="px-4 py-3 align-top">
-                            <div className="font-bold text-slate-900">
+                          <td className="max-w-[360px] px-4 py-4">
+                            <p className="font-bold text-white">
                               {notification.title}
-                            </div>
+                            </p>
                             {notification.message && (
-                              <p className="mt-1 max-w-md whitespace-pre-wrap text-xs leading-5 text-slate-500">
-                                {notification.message}
-                              </p>
+                              <>
+                                <p className="mt-1 whitespace-pre-wrap text-[11px] leading-5 text-white/60">
+                                  {longMessage && !expanded
+                                    ? `${notification.message.slice(0, 180)}…`
+                                    : notification.message}
+                                </p>
+                                {longMessage && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      toggleExpandedMessage(notification.id)
+                                    }
+                                    className="mt-1 block text-left text-[11px] font-normal text-[#FF6B00] hover:text-[#FF8C32]"
+                                  >
+                                    {expanded ? "عرض أقل" : "قراءة المزيد"}
+                                  </button>
+                                )}
+                              </>
                             )}
                           </td>
-                          <td className="px-4 py-3 align-top">
-                            <span
-                              className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${isBroadcast ? "bg-sky-100 text-sky-700" : "bg-violet-100 text-violet-700"}`}
-                            >
+                          <td className="px-3 py-4">
+                            <span className="rounded-full bg-[#00D4FF]/15 px-2 py-1 text-[10px] text-[#00D4FF]">
                               {isBroadcast ? "إشعار عام" : "إشعار حساب"}
                             </span>
                           </td>
-                          <td className="px-4 py-3 align-top">
+                          <td className="px-3 py-4">
                             <span
-                              className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${isRead ? "bg-slate-100 text-slate-500" : "bg-orange-100 text-orange-800"}`}
+                              className={`rounded-full px-2 py-1 text-[10px] ${isRead ? "bg-white/10 text-white/60" : "bg-[#22C55E]/20 text-[#22C55E]"}`}
                             >
                               {isRead ? "مقروء" : "جديد"}
                             </span>
                           </td>
-                          <td className="px-4 py-3 align-top text-xs text-slate-500">
+                          <td className="whitespace-nowrap px-3 py-4 text-[10px] text-white/50">
                             {new Date(notification.created_at).toLocaleString(
                               "ar-YE",
                             )}
                           </td>
-                          <td className="px-4 py-3 align-top">
+                          <td className="px-3 py-4">
                             <button
                               type="button"
                               onClick={() =>
@@ -1073,7 +1349,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
                               }
                               aria-label={`حذف إشعار ${notification.title}`}
                               title="حذف الإشعار"
-                              className="rounded-lg border border-red-200 p-2 text-red-600 transition hover:bg-red-50"
+                              className="rounded-lg border border-[#FF6B00]/30 p-2 text-[#FF6B00] hover:bg-[#FF6B00]/10"
                             >
                               <Trash2 className="size-4" />
                             </button>
@@ -1084,150 +1360,82 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
                   </tbody>
                 </table>
               </div>
-              <div className="space-y-2.5 p-3 md:hidden">
-                {latestFirst.map((notification) => {
-                  const isRead = readIds.has(notification.id);
-                  const isBroadcast = notification.user_id === null;
-                  return (
-                    <article
-                      key={notification.id}
-                      className={`relative overflow-hidden rounded-2xl border bg-white p-4 pr-5 shadow-sm ${isRead ? "border-slate-200" : "border-orange-200 ring-1 ring-orange-100"}`}
-                    >
-                      <span
-                        aria-hidden
-                        className={`absolute inset-y-0 right-0 w-1.5 ${isRead ? "bg-slate-200" : "bg-orange-500"}`}
-                      />
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="font-bold text-slate-900">
-                              {notification.title}
-                            </h3>
-                            <span
-                              className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${isBroadcast ? "bg-sky-100 text-sky-700" : "bg-violet-100 text-violet-700"}`}
-                            >
-                              {isBroadcast ? "إشعار عام" : "إشعار حساب"}
-                            </span>
-                            <span
-                              className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${isRead ? "bg-slate-100 text-slate-500" : "bg-orange-100 text-orange-800"}`}
-                            >
-                              {isRead ? "مقروء" : "جديد"}
-                            </span>
-                          </div>
-                          {notification.message && (
-                            <p className="mt-1.5 whitespace-pre-wrap text-sm leading-6 text-slate-600">
-                              {notification.message}
-                            </p>
-                          )}
-                          <time
-                            className="mt-2 flex items-center gap-1 text-xs text-slate-400"
-                            dateTime={notification.created_at}
-                          >
-                            <Clock className="size-3.5" />
-                            {new Date(notification.created_at).toLocaleString(
-                              "ar-YE",
-                            )}
-                          </time>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            void deleteCustomerNotification(notification)
-                          }
-                          aria-label={`حذف إشعار ${notification.title}`}
-                          title="حذف الإشعار"
-                          className="shrink-0 rounded-lg border border-red-200 p-2 text-red-600 transition hover:bg-red-50"
-                        >
-                          <Trash2 className="size-4" />
-                        </button>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
-            </>
-          )}
-        </section>
-        <section className="mt-0 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm lg:col-start-1 lg:row-start-1">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-white p-4">
-            <div className="flex items-center gap-3">
-              <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-orange-100 text-orange-700">
+            )}
+          </article>
+
+          <article className="overflow-hidden rounded-2xl border border-white/10 bg-[#0A1931]/60">
+            <div className="flex items-center gap-3 border-b border-white/10 p-4">
+              <span className="grid size-10 place-items-center rounded-xl bg-[#FF6B00]/15 text-[#FF6B00]">
                 <PackagePlus className="size-5" />
               </span>
               <div>
-                <h2 className="font-black text-slate-900">
-                  طلبات العملاء اللحظية
-                </h2>
-                <p className="mt-0.5 text-xs text-slate-500">
-                  {unreadOrders > 0
-                    ? `${unreadOrders} طلب بحاجة إلى متابعة`
+                <h2 className="font-bold text-white">طلبات العملاء اللحظية</h2>
+                <p className="mt-1 text-[11px] text-white/50">
+                  {unreadOrders
+                    ? `${unreadOrders} طلبات بانتظار المتابعة`
                     : "لا توجد طلبات بانتظار المتابعة"}
                 </p>
               </div>
             </div>
-          </div>
-          {loading ? (
-            <p
-              role="status"
-              className="m-4 rounded-2xl border border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-600"
-            >
-              جارٍ تحميل بيانات الإدارة…
-            </p>
-          ) : orders.length === 0 ? (
-            <div className="p-4">
-              <EmptyState
-                icon={<PackagePlus className="size-8" />}
-                title="لا توجد طلبات جديدة"
-                text="ستظهر طلبات العملاء هنا عند وصولها."
-              />
-            </div>
-          ) : (
-            <>
-              <div className="hidden overflow-x-auto md:block">
-                <table className="w-full min-w-[660px] text-right text-sm">
-                  <thead className="bg-slate-50 text-xs font-black text-slate-500">
+            {loading ? (
+              <p
+                role="status"
+                className="p-8 text-center text-sm text-white/50"
+              >
+                جارٍ تحميل الطلبات…
+              </p>
+            ) : orders.length === 0 ? (
+              <div className="m-4 rounded-xl border border-white/10 bg-white/[0.03] p-8 text-center text-sm text-white/50">
+                <PackagePlus className="mx-auto mb-3 size-8 text-[#FF6B00]" />
+                <p className="font-bold text-white">لا توجد طلبات جديدة</p>
+                <p className="mt-1 text-xs text-white/50">
+                  ستظهر طلبات العملاء هنا عند وصولها.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[660px] text-right text-xs">
+                  <thead className="bg-white/5 text-[11px] font-bold text-white/50">
                     <tr>
-                      <th className="px-4 py-3">العميل</th>
-                      <th className="px-4 py-3">رقم الطلب</th>
-                      <th className="px-4 py-3">الحالة</th>
-                      <th className="px-4 py-3">التاريخ</th>
-                      <th className="px-4 py-3">الإجراء</th>
+                      <th className="px-3 py-3">العميل</th>
+                      <th className="px-3 py-3">رقم الطلب</th>
+                      <th className="px-3 py-3">الحالة</th>
+                      <th className="px-3 py-3">التاريخ</th>
+                      <th className="px-3 py-3">الإجراء</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody>
                     {orders.map((order) => {
                       const phone = (order.phone || "").replace(/\D/g, "");
                       return (
                         <tr
                           key={order.id}
-                          className={
-                            !order.read
-                              ? "bg-orange-50/50"
-                              : "transition hover:bg-slate-50/70"
-                          }
+                          className="border-b border-white/5 hover:bg-white/[0.03]"
                         >
-                          <td className="px-4 py-3 font-bold text-slate-900">
+                          <td className="px-3 py-3 font-bold text-white">
                             {order.customer_name}
                           </td>
-                          <td className="px-4 py-3 font-mono text-xs text-slate-600">
+                          <td className="px-3 py-3 font-mono text-[11px] text-white/60">
                             {order.tracking_code}
                           </td>
-                          <td className="px-4 py-3">
-                            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
+                          <td className="px-3 py-3">
+                            <span
+                              className={`rounded-full border px-2 py-1 text-[10px] ${orderStatusClass(order.status)}`}
+                            >
                               {order.status}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-xs text-slate-500">
+                          <td className="whitespace-nowrap px-3 py-3 text-[10px] text-white/50">
                             {new Date(order.created_at).toLocaleString("ar-YE")}
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-3 py-3">
                             <div className="flex items-center gap-2">
                               {phone && (
                                 <>
                                   <a
                                     aria-label="اتصال بالعميل"
                                     href={`tel:${phone}`}
-                                    className="grid size-9 place-items-center rounded-lg bg-sky-700 text-white transition hover:bg-sky-800"
+                                    className="grid size-8 place-items-center rounded-md bg-[#00D4FF]/20 text-[#00D4FF] hover:bg-[#00D4FF]/30"
                                   >
                                     <Phone className="size-4" />
                                   </a>
@@ -1236,7 +1444,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
                                     href={`https://wa.me/${phone}?text=${encodeURIComponent(`مرحبًا ${order.customer_name}، وصلنا طلبك ${order.tracking_code}`)}`}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="grid size-9 place-items-center rounded-lg bg-emerald-600 text-white transition hover:bg-emerald-700"
+                                    className="grid size-8 place-items-center rounded-md bg-[#22C55E] text-white"
                                   >
                                     <MessageCircle className="size-4" />
                                   </a>
@@ -1245,7 +1453,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
                               <button
                                 type="button"
                                 onClick={() => void markOrderSeen(order.id)}
-                                className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800 transition hover:bg-emerald-100"
+                                className="rounded-md border border-[#22C55E]/30 bg-[#22C55E]/10 px-2.5 py-2 text-[10px] font-bold text-[#22C55E]"
                               >
                                 تمت المتابعة
                               </button>
@@ -1257,72 +1465,15 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
                   </tbody>
                 </table>
               </div>
-              <div className="space-y-3 p-3 md:hidden">
-                {orders.map((order) => {
-                  const phone = (order.phone || "").replace(/\D/g, "");
-                  return (
-                    <article
-                      key={order.id}
-                      className={`rounded-2xl border bg-white p-4 shadow-sm ${!order.read ? "border-orange-300 ring-1 ring-orange-100" : "border-slate-200"}`}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <h3 className="font-bold text-slate-900">
-                            {order.customer_name}
-                          </h3>
-                          <p className="mt-1 font-mono text-xs text-slate-500">
-                            {order.tracking_code}
-                          </p>
-                        </div>
-                        <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-700">
-                          {order.status}
-                        </span>
-                      </div>
-                      <time
-                        className="mt-2 flex items-center gap-1 text-xs text-slate-400"
-                        dateTime={order.created_at}
-                      >
-                        <Clock className="size-3.5" />
-                        {new Date(order.created_at).toLocaleString("ar-YE")}
-                      </time>
-                      <div className="mt-3 flex items-center gap-2">
-                        {phone && (
-                          <>
-                            <a
-                              aria-label="اتصال بالعميل"
-                              href={`tel:${phone}`}
-                              className="grid size-9 place-items-center rounded-lg bg-sky-700 text-white"
-                            >
-                              <Phone className="size-4" />
-                            </a>
-                            <a
-                              aria-label="مراسلة العميل عبر واتساب"
-                              href={`https://wa.me/${phone}?text=${encodeURIComponent(`مرحبًا ${order.customer_name}، وصلنا طلبك ${order.tracking_code}`)}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="grid size-9 place-items-center rounded-lg bg-emerald-600 text-white"
-                            >
-                              <MessageCircle className="size-4" />
-                            </a>
-                          </>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => void markOrderSeen(order.id)}
-                          className="flex-1 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800"
-                        >
-                          تمت المتابعة
-                        </button>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
-            </>
-          )}
+            )}
+          </article>
         </section>
+
+        <footer className="border-t border-white/10 py-4 text-center text-[10px] text-white/30">
+          الشامل للتسوق © 2024 © مركز الإشعارات - جميع الحقوق محفوظة
+        </footer>
       </div>
-    </AccountShell>
+    </div>
   );
 }
 
