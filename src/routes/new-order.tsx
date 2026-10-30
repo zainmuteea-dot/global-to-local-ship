@@ -4,15 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 
 type NewOrderEntryStep = "link" | "price" | "buy";
 type OrderCurrency = "USD" | "SAR" | "YER";
-type ExchangeRates = {
-  usdBase: Partial<Record<OrderCurrency, number>>;
-  directToYER: Partial<Record<OrderCurrency, number>>;
-};
-type ExchangeRatesState = "loading" | "ready" | "error";
-type ExchangeRateRow = {
-  from_currency: string;
-  to_currency: string;
-  rate: number | string;
+const FIXED_YER_RATE: Record<OrderCurrency, number> = {
+  USD: 535,
+  SAR: 140,
+  YER: 1,
 };
 
 const NEW_ORDER_ENTRY_STEPS: NewOrderEntryStep[] = ["link", "price", "buy"];
@@ -23,95 +18,15 @@ function getOrderCurrency(value: string): OrderCurrency {
   return "YER";
 }
 
-/** Direct currency-to-YER rows take precedence; USD-base cross-rates are fallback. */
 function convertOrderPriceToYER(
   amount: number,
   currency: OrderCurrency,
-  rates: ExchangeRates,
-): number | null {
-  if (currency === "YER") return Math.round(amount);
-  const directRate = rates.directToYER[currency];
-  if (
-    typeof directRate === "number" &&
-    Number.isFinite(directRate) &&
-    directRate > 0
-  ) {
-    return Math.round(amount * directRate);
-  }
-  const yerPerUsd = rates.usdBase.YER;
-  if (
-    typeof yerPerUsd !== "number" ||
-    !Number.isFinite(yerPerUsd) ||
-    yerPerUsd <= 0
-  )
-    return null;
-  if (currency === "USD") return Math.round(amount * yerPerUsd);
-  const sarPerUsd = rates.usdBase.SAR;
-  if (
-    typeof sarPerUsd !== "number" ||
-    !Number.isFinite(sarPerUsd) ||
-    sarPerUsd <= 0
-  )
-    return null;
-  return Math.round((amount / sarPerUsd) * yerPerUsd);
+): number {
+  return Math.round(amount * FIXED_YER_RATE[currency]);
 }
 
-function getOrderConversionRateToYER(
-  currency: OrderCurrency,
-  rates: ExchangeRates,
-): number | null {
-  if (currency === "YER") return 1;
-  const directRate = rates.directToYER[currency];
-  if (
-    typeof directRate === "number" &&
-    Number.isFinite(directRate) &&
-    directRate > 0
-  ) {
-    return directRate;
-  }
-  const yerPerUsd = rates.usdBase.YER;
-  if (
-    typeof yerPerUsd !== "number" ||
-    !Number.isFinite(yerPerUsd) ||
-    yerPerUsd <= 0
-  )
-    return null;
-  if (currency === "USD") return yerPerUsd;
-  const sarPerUsd = rates.usdBase.SAR;
-  if (
-    typeof sarPerUsd !== "number" ||
-    !Number.isFinite(sarPerUsd) ||
-    sarPerUsd <= 0
-  )
-    return null;
-  return yerPerUsd / sarPerUsd;
-}
-
-function normalizeExchangeRateRows(
-  rows: ExchangeRateRow[] | null | undefined,
-): ExchangeRates {
-  const rates: ExchangeRates = { usdBase: { USD: 1 }, directToYER: { YER: 1 } };
-  for (const row of rows ?? []) {
-    const from = String(row.from_currency ?? "")
-      .trim()
-      .toUpperCase();
-    const to = String(row.to_currency ?? "")
-      .trim()
-      .toUpperCase();
-    const rate = Number(row.rate);
-    if (
-      !(from === "USD" || from === "SAR" || from === "YER") ||
-      !(to === "USD" || to === "SAR" || to === "YER") ||
-      !Number.isFinite(rate) ||
-      rate <= 0
-    )
-      continue;
-
-    if (from === "USD") rates.usdBase[to] = rate;
-    if (to === "YER") rates.directToYER[from] = rate;
-    if (from === "YER" && to !== "YER") rates.directToYER[to] = 1 / rate;
-  }
-  return rates;
+function getOrderConversionRateToYER(currency: OrderCurrency): number {
+  return FIXED_YER_RATE[currency];
 }
 
 export const Route = createFileRoute("/new-order")({
@@ -631,12 +546,6 @@ function NewOrderPage() {
   const [isLocating, setIsLocating] = useState(false);
   const [price, setPrice] = useState("");
   const [currency, setCurrency] = useState("ر.س سعودي");
-  const [exchangeRates, setExchangeRates] = useState<ExchangeRates>({
-    usdBase: { USD: 1 },
-    directToYER: { YER: 1 },
-  });
-  const [exchangeRatesState, setExchangeRatesState] =
-    useState<ExchangeRatesState>("loading");
   const [notes, setNotes] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "done">("idle");
   const [sbError, setSbError] = useState("");
@@ -675,41 +584,6 @@ function NewOrderPage() {
     if (fromSearch) return fromSearch;
     return `طلب ${store?.label || "متجر دولي"}`;
   }, [search.productName, store]);
-
-  // تحميل أسعار الصرف نفسها المحفوظة في النظام المالي (USD أساسًا).
-  useEffect(() => {
-    let active = true;
-    const loadExchangeRates = async () => {
-      setExchangeRatesState("loading");
-      try {
-        // The exchange_rates table is not yet represented in generated types.
-        const db = supabase as any;
-        const { data, error } = await db
-          .from("exchange_rates")
-          .select("from_currency,to_currency,rate");
-        if (error) throw error;
-
-        const rates = normalizeExchangeRateRows(
-          data as ExchangeRateRow[] | null,
-        );
-        if (active) {
-          setExchangeRates(rates);
-          setExchangeRatesState("ready");
-        }
-      } catch (error) {
-        console.error("تعذر تحميل أسعار الصرف للطلب:", error);
-        if (active) {
-          setExchangeRates({ usdBase: { USD: 1 }, directToYER: { YER: 1 } });
-          setExchangeRatesState("error");
-        }
-      }
-    };
-
-    void loadExchangeRates();
-    return () => {
-      active = false;
-    };
-  }, []);
 
   // يتطلب إنشاء الطلب جلسة عميل، ثم يحمّل بيانات الملف الشخصي للحساب نفسه.
   useEffect(() => {
@@ -866,45 +740,11 @@ function NewOrderPage() {
       return;
     }
     const quoteCurrency = getOrderCurrency(currency);
-    let ratesForThisOrder = exchangeRates;
-    if (enteredPrice !== null && enteredPrice > 0) {
-      setStatus("sending");
-      try {
-        // Read the latest saved rates again at submission time. A failed read
-        // must not fall back to cached or sample rates for a new order.
-        const db = supabase as any;
-        const { data, error } = await db
-          .from("exchange_rates")
-          .select("from_currency,to_currency,rate");
-        if (error) throw error;
-        const latestRates = normalizeExchangeRateRows(
-          data as ExchangeRateRow[] | null,
-        );
-        ratesForThisOrder = latestRates;
-        setExchangeRates(latestRates);
-        setExchangeRatesState("ready");
-      } catch (error) {
-        console.error("تعذر تأكيد أحدث أسعار الصرف قبل حفظ الطلب:", error);
-        setExchangeRatesState("error");
-        setStatus("idle");
-        setSbError(
-          "تعذر قراءة أسعار الصرف المحفوظة في النظام. لم يُحفظ الطلب؛ حاول مجددًا بعد استعادة الاتصال.",
-        );
-        return;
-      }
-    }
 
     const totalCostYER =
       enteredPrice !== null && enteredPrice > 0
-        ? convertOrderPriceToYER(enteredPrice, quoteCurrency, ratesForThisOrder)
+        ? convertOrderPriceToYER(enteredPrice, quoteCurrency)
         : null;
-    if (enteredPrice !== null && enteredPrice > 0 && totalCostYER === null) {
-      setStatus("idle");
-      setSbError(
-        `لا يوجد سعر صرف صالح لتحويل ${quoteCurrency} إلى الريال اليمني في جدول النظام. لم يُحفظ الطلب؛ حدّث السعر ثم أعد المحاولة.`,
-      );
-      return;
-    }
 
     setStatus("sending");
 
@@ -1431,12 +1271,11 @@ function NewOrderPage() {
               >
                 <option>ر.س سعودي</option>
                 <option>$ دولار</option>
-                <option>ر.ي يمني</option>
               </select>
             </div>
             <p className="no-entry-guidance">
-              يُحفظ السعر الأصلي بعملته، ويُحسب المقابل بالريال اليمني من أسعار
-              الصرف المسجلة في النظام المالي.
+              أدخل السعر بالريال السعودي أو الدولار؛ يُحوّل تلقائيًا إلى الريال
+              اليمني بسعر ثابت: السعودي 140 والدولار 535.
             </p>
             {price.trim() &&
               Number.isFinite(Number(price)) &&
@@ -1446,12 +1285,8 @@ function NewOrderPage() {
                 const amountYER = convertOrderPriceToYER(
                   Number(price),
                   currentCurrency,
-                  exchangeRates,
                 );
-                const rateToYER = getOrderConversionRateToYER(
-                  currentCurrency,
-                  exchangeRates,
-                );
+                const rateToYER = getOrderConversionRateToYER(currentCurrency);
                 if (amountYER !== null && rateToYER !== null) {
                   return (
                     <div className="no-ok" role="status" aria-live="polite">
@@ -1461,7 +1296,7 @@ function NewOrderPage() {
                         {currentCurrency !== "YER" && (
                           <>
                             {" "}
-                            · سعر النظام: 1 {currentCurrency} ={" "}
+                            · سعر التحويل الثابت: 1 {currentCurrency} ={" "}
                             {rateToYER.toLocaleString("ar-YE", {
                               maximumFractionDigits: 4,
                             })}{" "}
@@ -1475,11 +1310,7 @@ function NewOrderPage() {
                 return (
                   <div className="no-warn" role="status" aria-live="polite">
                     <Flash />
-                    <span>
-                      {exchangeRatesState === "loading"
-                        ? "جارٍ تحميل أسعار الصرف من النظام…"
-                        : "سعر هذه العملة غير متاح في جدول النظام؛ لن يتم حفظ الطلب بهذا السعر حتى تحديث سعر الصرف."}
-                    </span>
+                    <span>تعذر حساب التحويل. تحقق من قيمة السعر المدخلة.</span>
                   </div>
                 );
               })()}
