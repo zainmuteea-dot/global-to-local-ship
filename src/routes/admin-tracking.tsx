@@ -381,14 +381,27 @@ function LiveTrackingAdminRoute() {
       if (historyResult.error) {
         setHistoryError(asErrorMessage(historyResult.error));
       } else {
+        setHistoryError(null);
         setHistory(historyResult.data || []);
       }
 
       if (smsResult.error) {
         const message = asErrorMessage(smsResult.error);
-        const auditMissing = message.includes("shipment_stage_sms") || message.includes("schema cache");
-        setSmsAuditUnavailable(auditMissing);
-        setSmsHistory([]);
+  const errorCode =
+  typeof smsResult.error === "object" &&
+  smsResult.error !== null &&
+  "code" in smsResult.error
+  ? String((smsResult.error as { code: unknown }).code)
+  : "";
+  const auditMissing =
+  errorCode === "PGRST205" ||
+  (message.includes("shipment_stage_sms") &&
+  message.includes("schema cache")) ||
+  message.includes(
+  "Could not find the table 'public.shipment_stage_sms'",
+  );
+  setSmsHistory([]);
+  setSmsAuditUnavailable(auditMissing);
         setSmsHistoryError(auditMissing ? null : message);
       } else {
         setSmsAuditUnavailable(false);
@@ -400,6 +413,7 @@ function LiveTrackingAdminRoute() {
       const message = asErrorMessage(error);
       setHistoryError(message);
       setSmsHistoryError(message);
+      setSmsAuditUnavailable(false);
     } finally {
       if (requestId === historyRequestId.current) setHistoryLoading(false);
     }
@@ -415,6 +429,7 @@ function LiveTrackingAdminRoute() {
       setSmsHistory([]);
       setHistoryError(null);
       setSmsHistoryError(null);
+      setSmsAuditUnavailable(false);
       setHistoryLoading(false);
     }
   }, [selected, loadHistory]);
@@ -1514,6 +1529,19 @@ function LiveTrackingAdminRoute() {
                   <p className="font-bold">سجل SMS غير مفعّل في قاعدة البيانات بعد.</p>
                   <p className="mt-1">
                     سيحاول النظام إرسال الإشعار إلى TextBee، لكن لن يظهر سجل المحاولة ولن تتوفر حماية منع التكرار حتى تطبيق ترحيل SMS.
+                  </p>
+                </div>
+              ) : smsAuditUnavailable ? (
+                <div
+                  className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900"
+                  role="status"
+                >
+                  <p className="font-bold">
+                    سجل SMS غير متاح في قاعدة البيانات.
+                  </p>
+                  <p className="mt-1">
+                    لم تُرسل رسالة SMS لأن حماية منع التكرار وسجل المحاولات غير
+                    جاهزين. يلزم تطبيق ومراجعة ترحيل قاعدة البيانات أولاً.
                   </p>
                 </div>
               ) : smsHistory.length ? (
