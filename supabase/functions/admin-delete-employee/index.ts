@@ -135,9 +135,9 @@ Deno.serve(async (req: Request) => {
     if (count <= 1) {
       return json(409, { error: "لا يمكن حذف آخر مشرف عام في النظام." });
     }
-    // This preflight count is not a cross-request transaction lock. If strict
-    // protection against two concurrent admin deletions is required, enforce
-    // the deletion through a database-side serialized workflow.
+    // This count is only an early, user-friendly check. The database trigger
+    // in migration 20261031234200_prevent_last_admin_deletion.sql serializes
+    // role removal and is the authoritative concurrency-safe protection.
   }
 
   const { error: deleteError } = await adminClient.auth.admin.deleteUser(
@@ -145,8 +145,18 @@ Deno.serve(async (req: Request) => {
     false,
   );
   if (deleteError) {
+    // PostgreSQL may return the trigger marker directly or Auth may wrap it.
+    // Only report a definite last-admin denial when the marker is present;
+    // otherwise ask the operator to verify before retrying.
+    if (/LAST_ADMIN_PROTECTION/.test(deleteError.message)) {
+      return json(409, { error: "لا يمكن حذف آخر مشرف عام في النظام." });
+    }
     console.error("admin-delete-employee: Auth account deletion failed.");
-    return json(500, { error: "فشل حذف حساب المستخدم من نظام الدخول." });
+    return json(500, {
+      error: targetIsAdmin
+        ? "تعذر تأكيد حذف حساب المشرف. حدّث القائمة وافحص سجلات Supabase قبل إعادة المحاولة."
+        : "فشل حذف حساب المستخدم من نظام الدخول. تحقق من الحالة قبل إعادة المحاولة.",
+    });
   }
 
   return json(200, { success: true });
