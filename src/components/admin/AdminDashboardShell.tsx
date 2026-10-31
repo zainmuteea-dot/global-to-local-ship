@@ -203,7 +203,24 @@ export function AdminDashboardShell({
   };
 
   return (
-    <div dir="rtl" className="min-h-screen bg-[#f6f7fb] font-[Tajawal] text-slate-800">
+    <div dir="rtl" className="alshamel-admin-dashboard min-h-screen bg-[#f6f7fb] font-[Tajawal] text-slate-800">
+      <style>{`
+.alshamel-admin-dashboard{--panel:#0a1527;--line:#243349;--ink:#e6edf7;--muted:#93a4ba;min-height:100vh;background:#050b17!important;color:var(--ink)!important;color-scheme:dark}
+.alshamel-admin-dashboard .bg-white,.alshamel-admin-dashboard .bg-slate-50,.alshamel-admin-dashboard .bg-slate-100,.alshamel-admin-dashboard .bg-slate-200,.alshamel-admin-dashboard .bg-\[\#f6f7fb\],.alshamel-admin-dashboard .bg-\[\#f8fafc\]{background-color:var(--panel)!important}
+.alshamel-admin-dashboard .bg-white\/90{background-color:rgba(10,21,39,.96)!important}
+.alshamel-admin-dashboard .border-slate-100,.alshamel-admin-dashboard .border-slate-200,.alshamel-admin-dashboard .border-sky-100,.alshamel-admin-dashboard .border-blue-100,.alshamel-admin-dashboard .border-emerald-100,.alshamel-admin-dashboard .border-orange-100,.alshamel-admin-dashboard .border-amber-200{border-color:var(--line)!important}
+.alshamel-admin-dashboard .text-slate-900,.alshamel-admin-dashboard .text-slate-800,.alshamel-admin-dashboard .text-slate-700,.alshamel-admin-dashboard .text-\[\#172554\],.alshamel-admin-dashboard .text-\[\#0A2540\],.alshamel-admin-dashboard .text-\[\#0F4C81\]{color:var(--ink)!important}
+.alshamel-admin-dashboard .text-slate-600,.alshamel-admin-dashboard .text-slate-500,.alshamel-admin-dashboard .text-slate-400{color:var(--muted)!important}
+.alshamel-admin-dashboard .divide-slate-100>*+*{border-color:var(--line)!important}
+.alshamel-admin-dashboard input,.alshamel-admin-dashboard select,.alshamel-admin-dashboard textarea{background-color:#0b1729!important;color:var(--ink)!important;border-color:var(--line)!important;color-scheme:dark}
+.alshamel-admin-dashboard input::placeholder,.alshamel-admin-dashboard textarea::placeholder{color:#71839a!important}
+.alshamel-admin-dashboard .bg-blue-50{background-color:rgba(59,130,246,.12)!important}.alshamel-admin-dashboard .bg-sky-50{background-color:rgba(14,165,233,.12)!important}.alshamel-admin-dashboard .bg-emerald-50{background-color:rgba(16,185,129,.12)!important}.alshamel-admin-dashboard .bg-orange-50,.alshamel-admin-dashboard .bg-amber-50{background-color:rgba(249,115,22,.12)!important}.alshamel-admin-dashboard .bg-violet-50{background-color:rgba(139,92,246,.12)!important}.alshamel-admin-dashboard .bg-rose-50{background-color:rgba(244,63,94,.12)!important}
+.alshamel-admin-dashboard .text-blue-600,.alshamel-admin-dashboard .text-blue-700,.alshamel-admin-dashboard .text-sky-700{color:#60a5fa!important}.alshamel-admin-dashboard .text-emerald-600,.alshamel-admin-dashboard .text-emerald-700{color:#34d399!important}.alshamel-admin-dashboard .text-orange-600,.alshamel-admin-dashboard .text-orange-700,.alshamel-admin-dashboard .text-amber-700{color:#fb923c!important}.alshamel-admin-dashboard .text-violet-600{color:#c4b5fd!important}.alshamel-admin-dashboard .text-rose-600,.alshamel-admin-dashboard .text-red-600{color:#fb7185!important}
+.alshamel-admin-dashboard .border-blue-200,.alshamel-admin-dashboard .border-emerald-200,.alshamel-admin-dashboard .border-orange-200,.alshamel-admin-dashboard .border-amber-200,.alshamel-admin-dashboard .border-rose-200{border-color:#31435c!important}
+.alshamel-admin-dashboard .bg-\[\#3b82f6\]{background-color:#f97316!important;color:#fff!important}.alshamel-admin-dashboard .bg-\[\#1a2a52\]{background-color:#081225!important}.alshamel-admin-dashboard .bg-orange-600{background-color:#f97316!important}.alshamel-admin-dashboard .bg-orange-600:hover{background-color:#ea580c!important}
+.alshamel-admin-dashboard .shadow-sm,.alshamel-admin-dashboard .shadow-md,.alshamel-admin-dashboard .shadow-lg{box-shadow:0 12px 30px rgba(0,0,0,.22)!important}.alshamel-admin-dashboard hr{border-color:var(--line)!important}.alshamel-admin-dashboard table{color:var(--ink)!important}
+@media(prefers-reduced-motion:reduce){.alshamel-admin-dashboard *{scroll-behavior:auto!important;transition-duration:.01ms!important}}
+`}</style>
       {sidebarOpen && (
         <button
           type="button"
