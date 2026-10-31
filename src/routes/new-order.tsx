@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 type NewOrderEntryStep = "link" | "price" | "buy";
@@ -42,10 +42,9 @@ export const Route = createFileRoute("/new-order")({
     name: typeof search["name"] === "string" ? search["name"] : undefined,
     phone: typeof search["phone"] === "string" ? search["phone"] : undefined,
     store: typeof search["store"] === "string" ? search["store"] : undefined,
-    productName:
-      typeof search["productName"] === "string"
-        ? search["productName"]
-        : undefined,
+    productName: typeof search["productName"] === "string"
+      ? search["productName"]
+      : undefined,
     step: NEW_ORDER_ENTRY_STEPS.includes(search["step"] as NewOrderEntryStep)
       ? (search["step"] as NewOrderEntryStep)
       : undefined,
@@ -129,6 +128,7 @@ const CSS = `
 .no-price{display:flex;gap:10px}
 .no-price .no-iw{flex:1}
 .no-price select{flex:0 0 130px;-webkit-appearance:none;appearance:none;font-weight:700;background:#fff}
+.no-voice-status{margin-top:8px;color:var(--muted);font-size:13px;font-weight:700}
 .no-ta{position:relative}
 .no-ta .mic{position:absolute;inset-inline-end:12px;bottom:12px;width:34px;height:34px;border-radius:10px;
   display:grid;place-items:center;cursor:pointer;border:none;color:#fff;transition:.2s;
@@ -465,8 +465,7 @@ function getInitialClientName(urlName?: string): string {
   if (typeof window === "undefined") return "";
 
   try {
-    const fromStorage =
-      validClientName(localStorage.getItem("sc_name")) ||
+    const fromStorage = validClientName(localStorage.getItem("sc_name")) ||
       validClientName(sessionStorage.getItem("sc_name"));
     if (fromStorage) return fromStorage;
 
@@ -490,8 +489,7 @@ function getInitialClientPhone(urlPhone?: string): string {
   if (typeof window === "undefined") return "";
 
   try {
-    const fromStorage =
-      validClientPhone(localStorage.getItem("sc_phone")) ||
+    const fromStorage = validClientPhone(localStorage.getItem("sc_phone")) ||
       validClientPhone(sessionStorage.getItem("sc_phone"));
     if (fromStorage) return fromStorage;
 
@@ -538,10 +536,10 @@ function NewOrderPage() {
 
   // 🌟 تعبئة الاسم ورقم الهاتف فورياً ومباشرة لحظة فتح الصفحة
   const [name, setName] = useState<string>(() =>
-    getInitialClientName(search.name),
+    getInitialClientName(search.name)
   );
   const [phone, setPhone] = useState<string>(() =>
-    getInitialClientPhone(search.phone),
+    getInitialClientPhone(search.phone)
   );
 
   const [url, setUrl] = useState("");
@@ -563,6 +561,7 @@ function NewOrderPage() {
   const [smsMessage, setSmsMessage] = useState("");
   const [copied, setCopied] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [voiceError, setVoiceError] = useState("");
   const recognitionRef = useRef<any>(null);
 
   const selectedStore = useMemo(() => {
@@ -685,7 +684,9 @@ function NewOrderPage() {
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
         updateAddress(
-          `إحداثيات الموقع: ${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`,
+          `إحداثيات الموقع: ${coords.latitude.toFixed(6)}, ${
+            coords.longitude.toFixed(6)
+          }`,
         );
         setIsLocating(false);
       },
@@ -699,14 +700,14 @@ function NewOrderPage() {
     );
   };
 
-  // تفعيل الميكروفون والتسجيل الصوتي للملاحظات
+  // الإملاء الصوتي للملاحظات عبر ميزة التعرف على الكلام في المتصفح.
   const toggleSpeechRecognition = () => {
-    const SpeechRecognition =
-      (window as any).SpeechRecognition ||
+    const SpeechRecognition = (window as any).SpeechRecognition ||
       (window as any).webkitSpeechRecognition;
+
     if (!SpeechRecognition) {
-      alert(
-        "ميزة التسجيل الصوتي غير مدعومة في متصفحك الحالي، يمكنك كتابة الملاحظات مباشرة.",
+      setVoiceError(
+        "الإملاء الصوتي غير مدعوم في هذا المتصفح. جرّب Chrome أو اكتب ملاحظتك مباشرة.",
       );
       return;
     }
@@ -714,6 +715,7 @@ function NewOrderPage() {
     if (isRecording && recognitionRef.current) {
       recognitionRef.current.stop();
       setIsRecording(false);
+      setVoiceError("");
       return;
     }
 
@@ -723,20 +725,46 @@ function NewOrderPage() {
       recognition.continuous = false;
       recognition.interimResults = false;
 
-      recognition.onstart = () => setIsRecording(true);
+      recognition.onstart = () => {
+        setVoiceError("");
+        setIsRecording(true);
+      };
       recognition.onresult = (event: any) => {
-        const transcript = event.results?.[0]?.[0]?.transcript;
+        const transcript = event.results?.[0]?.[0]?.transcript?.trim();
         if (transcript) {
-          setNotes((prev) => (prev ? `${prev} - ${transcript}` : transcript));
+          setNotes((previous) =>
+            previous ? `${previous} - ${transcript}` : transcript
+          );
+          setVoiceError("");
         }
       };
-      recognition.onerror = () => setIsRecording(false);
+      recognition.onerror = (event: any) => {
+        const messages: Record<string, string> = {
+          "not-allowed":
+            "لم يُسمح باستخدام الميكروفون. اسمح للمتصفح بالوصول إليه ثم حاول مجددًا.",
+          "service-not-allowed":
+            "خدمة الإملاء الصوتي غير متاحة في المتصفح حاليًا.",
+          "no-speech": "لم نسمع كلامًا. اضغط زر الميكروفون وحاول التحدث بوضوح.",
+          "audio-capture":
+            "تعذر الوصول للميكروفون. تحقق من الجهاز وأذونات المتصفح.",
+          network:
+            "تعذر الاتصال بخدمة الإملاء الصوتي. تحقق من الإنترنت وحاول مجددًا.",
+          aborted: "تم إيقاف الإملاء الصوتي.",
+        };
+        setVoiceError(
+          messages[event?.error] ||
+            "تعذر بدء الإملاء الصوتي. تحقق من إذن الميكروفون وحاول مجددًا.",
+        );
+        setIsRecording(false);
+      };
       recognition.onend = () => setIsRecording(false);
 
       recognitionRef.current = recognition;
+      setVoiceError("");
       recognition.start();
     } catch {
       setIsRecording(false);
+      setVoiceError("تعذر بدء التسجيل. تحقق من إذن الميكروفون في المتصفح.");
     }
   };
 
@@ -764,18 +792,20 @@ function NewOrderPage() {
 
     const enteredPrice = price.trim() ? Number(price) : null;
     if (
-      enteredPrice !== null &&
-      (!Number.isFinite(enteredPrice) || enteredPrice < 0)
+      enteredPrice === null ||
+      !Number.isFinite(enteredPrice) ||
+      enteredPrice <= 0
     ) {
-      setSbError("يرجى إدخال سعر صحيح أو ترك حقل السعر فارغًا.");
+      setSbError(
+        "يرجى إدخال سعر السلعة الظاهر في المتجر، ويجب أن يكون أكبر من صفر.",
+      );
       return;
     }
     const quoteCurrency = getOrderCurrency(currency);
 
-    const totalCostYER =
-      enteredPrice !== null && enteredPrice > 0
-        ? convertOrderPriceToYER(enteredPrice, quoteCurrency)
-        : null;
+    const totalCostYER = enteredPrice !== null && enteredPrice > 0
+      ? convertOrderPriceToYER(enteredPrice, quoteCurrency)
+      : null;
 
     setStatus("sending");
 
@@ -794,8 +824,9 @@ function NewOrderPage() {
         data: { user },
         error: authError,
       } = await supabase.auth.getUser();
-      if (authError)
+      if (authError) {
         throw new Error(`تعذر التحقق من تسجيل الدخول: ${authError.message}`);
+      }
       if (!user) {
         const next = window.location.pathname + window.location.search;
         window.location.replace(`/login?next=${encodeURIComponent(next)}`);
@@ -821,10 +852,12 @@ function NewOrderPage() {
               ? enteredPrice
               : null,
           total_cost_yer: totalCostYER,
-          quote_currency:
-            enteredPrice !== null && enteredPrice > 0 ? quoteCurrency : null,
-          original_currency:
-            enteredPrice !== null && enteredPrice > 0 ? quoteCurrency : null,
+          quote_currency: enteredPrice !== null && enteredPrice > 0
+            ? quoteCurrency
+            : null,
+          original_currency: enteredPrice !== null && enteredPrice > 0
+            ? quoteCurrency
+            : null,
           status: "جديد",
           user_id: user.id,
           sms_status: "pending",
@@ -866,10 +899,12 @@ function NewOrderPage() {
               ? enteredPrice
               : null,
           total_cost_yer: totalCostYER,
-          quote_currency:
-            enteredPrice !== null && enteredPrice > 0 ? quoteCurrency : null,
-          original_currency:
-            enteredPrice !== null && enteredPrice > 0 ? quoteCurrency : null,
+          quote_currency: enteredPrice !== null && enteredPrice > 0
+            ? quoteCurrency
+            : null,
+          original_currency: enteredPrice !== null && enteredPrice > 0
+            ? quoteCurrency
+            : null,
           status: "جديد",
           sms_status: "pending",
           created_at: new Date().toISOString(),
@@ -911,8 +946,8 @@ function NewOrderPage() {
         setSmsOutcome("pending");
         setSmsMessage("");
         try {
-          const { data: smsResult, error: smsError } =
-            await supabase.functions.invoke("send-sms", {
+          const { data: smsResult, error: smsError } = await supabase.functions
+            .invoke("send-sms", {
               body: { orderId: savedOrder.id },
             });
           if (smsError) {
@@ -924,8 +959,9 @@ function NewOrderPage() {
               try {
                 const body = await context.clone().json();
                 if (typeof body?.error === "string") detail = body.error;
-                if (typeof body?.status === "string")
+                if (typeof body?.status === "string") {
                   serverStatus = body.status;
+                }
               } catch {
                 // احتفظ برسالة الخطأ العامة إن لم يرجع الخادم JSON.
               }
@@ -1066,46 +1102,111 @@ function NewOrderPage() {
                     (smsOutcome === "accepted"
                       ? "قبل مزود الخدمة طلب SMS. هذا لا يؤكد وصول الرسالة إلى الهاتف."
                       : smsOutcome === "failed"
-                        ? "تعذر إرسال SMS. يمكنك مراجعة الحالة وإعادة المحاولة من «طلباتي»."
-                        : smsOutcome === "unknown"
-                          ? "نتيجة SMS غير مؤكدة. راجع «طلباتي» ولا تعِد الإرسال قبل التأكد لتجنب التكرار."
-                          : "جارٍ تسجيل نتيجة رسالة التأكيد…")}
+                      ? "تعذر إرسال SMS. يمكنك مراجعة الحالة وإعادة المحاولة من «طلباتي»."
+                      : smsOutcome === "unknown"
+                      ? "نتيجة SMS غير مؤكدة. راجع «طلباتي» ولا تعِد الإرسال قبل التأكد لتجنب التكرار."
+                      : "جارٍ تسجيل نتيجة رسالة التأكيد…")}
                 </span>
               </div>
             )}
-            {trackingUnavailable ? (
-              <div className="no-warn" role="status" aria-live="polite">
-                <Flash />
-                <span>{sbError}</span>
-              </div>
-            ) : (
-              <div className="no-codebox">
-                <div className="lab">رقم تتبع طلبك:</div>
-                <div className="code">
-                  <span>{orderCode}</span>
+            {trackingUnavailable
+              ? (
+                <div className="no-warn" role="status" aria-live="polite">
+                  <Flash />
+                  <span>{sbError}</span>
+                </div>
+              )
+              : (
+                <div className="no-codebox">
+                  <div className="lab">رقم تتبع طلبك:</div>
+                  <div className="code">
+                    <span>{orderCode}</span>
+                    <button
+                      className={"no-copy" + (copied ? " ok" : "")}
+                      type="button"
+                      onClick={copyCode}
+                      title="نسخ الكود"
+                    >
+                      {copied
+                        ? (
+                          <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={2.6}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M20 6L9 17l-5-5" />
+                          </svg>
+                        )
+                        : (
+                          <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <rect x="9" y="9" width="13" height="13" rx="2" />
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                          </svg>
+                        )}
+                    </button>
+                  </div>
+                </div>
+              )}
+            <div className="no-sbtns">
+              {trackingUnavailable
+                ? (
                   <button
-                    className={"no-copy" + (copied ? " ok" : "")}
+                    className="no-btn no-primary"
                     type="button"
-                    onClick={copyCode}
-                    title="نسخ الكود"
+                    onClick={() => navigate({ to: "/account/orders" })}
                   >
-                    {copied ? (
+                    <span>فتح طلباتي</span>
+                    <Arrow />
+                  </button>
+                )
+                : (
+                  <>
+                    <button
+                      className="no-btn no-gold"
+                      type="button"
+                      onClick={resetForm}
+                    >
+                      <span>طلب منتج آخر</span>
                       <svg
-                        width="16"
-                        height="16"
+                        width="18"
+                        height="18"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
-                        strokeWidth={2.6}
+                        strokeWidth={2.4}
                         strokeLinecap="round"
                         strokeLinejoin="round"
                       >
-                        <path d="M20 6L9 17l-5-5" />
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
                       </svg>
-                    ) : (
+                    </button>
+                    <button
+                      className="no-btn no-primary"
+                      type="button"
+                      onClick={() =>
+                        navigate({
+                          to: "/pay",
+                          search: { order: orderCode } as any,
+                        })}
+                    >
                       <svg
-                        width="16"
-                        height="16"
+                        width="19"
+                        height="19"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
@@ -1113,73 +1214,13 @@ function NewOrderPage() {
                         strokeLinecap="round"
                         strokeLinejoin="round"
                       >
-                        <rect x="9" y="9" width="13" height="13" rx="2" />
-                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                        <rect x="1" y="4" width="22" height="16" rx="2" />
+                        <line x1="1" y1="10" x2="23" y2="10" />
                       </svg>
-                    )}
-                  </button>
-                </div>
-              </div>
-            )}
-            <div className="no-sbtns">
-              {trackingUnavailable ? (
-                <button
-                  className="no-btn no-primary"
-                  type="button"
-                  onClick={() => navigate({ to: "/account/orders" })}
-                >
-                  <span>فتح طلباتي</span>
-                  <Arrow />
-                </button>
-              ) : (
-                <>
-                  <button
-                    className="no-btn no-gold"
-                    type="button"
-                    onClick={resetForm}
-                  >
-                    <span>طلب منتج آخر</span>
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth={2.4}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <line x1="12" y1="5" x2="12" y2="19" />
-                      <line x1="5" y1="12" x2="19" y2="12" />
-                    </svg>
-                  </button>
-                  <button
-                    className="no-btn no-primary"
-                    type="button"
-                    onClick={() =>
-                      navigate({
-                        to: "/pay",
-                        search: { order: orderCode } as any,
-                      })
-                    }
-                  >
-                    <svg
-                      width="19"
-                      height="19"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <rect x="1" y="4" width="22" height="16" rx="2" />
-                      <line x1="1" y1="10" x2="23" y2="10" />
-                    </svg>
-                    <span>طرق الدفع</span>
-                  </button>
-                </>
-              )}
+                      <span>طرق الدفع</span>
+                    </button>
+                  </>
+                )}
             </div>
           </section>
           <div className="no-foot">
@@ -1222,7 +1263,7 @@ function NewOrderPage() {
               {search.step === "link" &&
                 "الصق رابط المنتج، ثم أضف بيانات الطلب والتوصيل."}
               {search.step === "price" &&
-                "أدخل السعر الذي يظهر في المتجر إن توفر. السعر النهائي يؤكّد بعد مراجعة الطلب، ولا يُحسب فورياً هنا."}
+                "أدخل السعر الظاهر في المتجر بنفسك، واختر العملة المعروضة. السعر النهائي يؤكّد بعد مراجعة الطلب."}
               {search.step === "buy" &&
                 "تحقق من رابط المنتج والسعر وبيانات المستلم، ثم اضغط تقديم الطلب لإرساله للمراجعة والتأكيد."}
             </p>
@@ -1283,14 +1324,18 @@ function NewOrderPage() {
             <div className="no-title">سعر السلعة في المتجر الأصلي</div>
           </div>
           <div className="no-field">
-            <label className="no-lbl">
-              سعر السلعة في المتجر الأصلي (اختياري)
+            <label className="no-lbl" htmlFor="new-order-product-price">
+              سعر السلعة في المتجر الأصلي <span className="no-req">*</span>
             </label>
             <div className="no-price">
               <div className="no-iw">
                 <input
                   id="new-order-product-price"
                   type="number"
+                  min="0.01"
+                  step="0.01"
+                  required
+                  aria-required="true"
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
                   placeholder="0.00"
@@ -1305,8 +1350,8 @@ function NewOrderPage() {
               </select>
             </div>
             <p className="no-entry-guidance">
-              أدخل السعر بالريال السعودي أو الدولار؛ يُحوّل تلقائيًا إلى الريال
-              اليمني بسعر ثابت: السعودي 140 والدولار 535.
+              أدخل السعر الظاهر في المتجر بالريال السعودي أو الدولار؛ يُحوّل
+              تلقائيًا إلى الريال اليمني بسعر ثابت: السعودي 140 والدولار 535.
             </p>
             {price.trim() &&
               Number.isFinite(Number(price)) &&
@@ -1330,8 +1375,7 @@ function NewOrderPage() {
                             · سعر التحويل الثابت: 1 {currentCurrency} ={" "}
                             {rateToYER.toLocaleString("ar-YE", {
                               maximumFractionDigits: 4,
-                            })}{" "}
-                            ر.ي
+                            })} ر.ي
                           </>
                         )}
                       </span>
@@ -1374,12 +1418,10 @@ function NewOrderPage() {
                 type="button"
                 onClick={useCurrentLocation}
                 disabled={isLocating}
-                aria-label={
-                  isLocating ? "جارٍ تحديد الموقع" : "استخدام موقعي الحالي"
-                }
-                title={
-                  isLocating ? "جارٍ تحديد الموقع" : "استخدام موقعي الحالي"
-                }
+                aria-label={isLocating
+                  ? "جارٍ تحديد الموقع"
+                  : "استخدام موقعي الحالي"}
+                title={isLocating ? "جارٍ تحديد الموقع" : "استخدام موقعي الحالي"}
               >
                 <Pin />
               </button>
@@ -1433,20 +1475,30 @@ function NewOrderPage() {
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="اكتب أي ملاحظات خاصة بطلبك هنا (مقاسات، ألوان، تعليمات خاصة)..."
+              aria-label="ملاحظات إضافية على الطلب"
             />
             <button
               className={`mic ${isRecording ? "listening" : ""}`}
               type="button"
-              title={
-                isRecording
-                  ? "جارٍ الاستماع... انقر للإيقاف"
-                  : "تسجيل صوتي للملاحظات"
-              }
+              title={isRecording
+                ? "جارٍ الاستماع... انقر للإيقاف"
+                : "إملاء الملاحظات صوتيًا"}
+              aria-label={isRecording
+                ? "إيقاف الإملاء الصوتي"
+                : "إملاء الملاحظات صوتيًا"}
+              aria-pressed={isRecording}
               onClick={toggleSpeechRecognition}
             >
               <Mic />
             </button>
           </div>
+          {(isRecording || voiceError) && (
+            <p className="no-voice-status" role="status" aria-live="polite">
+              {isRecording
+                ? "جارٍ الاستماع... تحدث الآن، وستُضاف كلماتك إلى الملاحظات."
+                : voiceError}
+            </p>
+          )}
         </section>
 
         {/* زر تقديم الطلب */}
