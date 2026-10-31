@@ -217,15 +217,22 @@ export function AdminDashboardShell({
 .alshamel-admin-dashboard .bg-blue-50{background-color:rgba(59,130,246,.12)!important}.alshamel-admin-dashboard .bg-sky-50{background-color:rgba(14,165,233,.12)!important}.alshamel-admin-dashboard .bg-emerald-50{background-color:rgba(16,185,129,.12)!important}.alshamel-admin-dashboard .bg-orange-50,.alshamel-admin-dashboard .bg-amber-50{background-color:rgba(249,115,22,.12)!important}.alshamel-admin-dashboard .bg-violet-50{background-color:rgba(139,92,246,.12)!important}.alshamel-admin-dashboard .bg-rose-50{background-color:rgba(244,63,94,.12)!important}
 .alshamel-admin-dashboard .text-blue-600,.alshamel-admin-dashboard .text-blue-700,.alshamel-admin-dashboard .text-sky-700{color:#60a5fa!important}.alshamel-admin-dashboard .text-emerald-600,.alshamel-admin-dashboard .text-emerald-700{color:#34d399!important}.alshamel-admin-dashboard .text-orange-600,.alshamel-admin-dashboard .text-orange-700,.alshamel-admin-dashboard .text-amber-700{color:#fb923c!important}.alshamel-admin-dashboard .text-violet-600{color:#c4b5fd!important}.alshamel-admin-dashboard .text-rose-600,.alshamel-admin-dashboard .text-red-600{color:#fb7185!important}
 .alshamel-admin-dashboard .border-blue-200,.alshamel-admin-dashboard .border-emerald-200,.alshamel-admin-dashboard .border-orange-200,.alshamel-admin-dashboard .border-amber-200,.alshamel-admin-dashboard .border-rose-200{border-color:#31435c!important}
-.alshamel-admin-dashboard [class~="bg-[#3b82f6]"]{background-color:#f97316!important;color:#fff!important}.alshamel-admin-dashboard [class~="bg-[#1a2a52]"]{background-color:#070e1c!important}.alshamel-admin-dashboard .bg-orange-600{background-color:#ff8a32!important}.alshamel-admin-dashboard .bg-orange-600:hover{background-color:#f97316!important}
+.alshamel-admin-dashboard [class~="bg-[#3b82f6]"]{background-color:rgba(249,115,22,.16)!important;color:#ffb36f!important;border-inline-start:3px solid #fb923c!important}.alshamel-admin-dashboard [class~="bg-[#1a2a52]"]{background-color:#070e1c!important}.alshamel-admin-dashboard .bg-orange-600{background-color:#ff8a32!important}.alshamel-admin-dashboard .bg-orange-600:hover{background-color:#f97316!important}
 .alshamel-admin-dashboard .shadow-sm,.alshamel-admin-dashboard .shadow-md,.alshamel-admin-dashboard .shadow-lg{box-shadow:0 12px 30px rgba(0,0,0,.25)!important}.alshamel-admin-dashboard hr{border-color:var(--line)!important}.alshamel-admin-dashboard table{color:var(--ink)!important}
 .alshamel-admin-dashboard [class*="to-white"]{background-image:none!important}
+.alshamel-admin-dashboard [class*="from-blue-50"],.alshamel-admin-dashboard [class*="from-orange-50"],.alshamel-admin-dashboard [class*="from-sky-50"],.alshamel-admin-dashboard [class*="from-emerald-50"]{background-color:#101d30!important}
 .alshamel-admin-dashboard [aria-label="إحصائيات اليوم"]>article:nth-child(1)>span:first-child{background-color:#fb923c!important}
 .alshamel-admin-dashboard [aria-label="إحصائيات اليوم"]>article:nth-child(2)>span:first-child{background-color:#facc15!important}
 .alshamel-admin-dashboard [aria-label="إحصائيات اليوم"]>article:nth-child(3)>span:first-child{background-color:#22c55e!important}
 .alshamel-admin-dashboard [aria-label="إحصائيات اليوم"]>article:nth-child(4)>span:first-child{background-color:#38bdf8!important}
 .alshamel-admin-dashboard [aria-label="إحصائيات اليوم"]>article:nth-child(2)>div>div:last-child{background-color:rgba(250,204,21,.12)!important;color:#facc15!important}
 .alshamel-admin-dashboard [aria-label="إحصائيات اليوم"]>article:nth-child(4)>div>div:last-child{background-color:rgba(56,189,248,.12)!important;color:#38bdf8!important}
+
+.alshamel-admin-dashboard .text-amber-900,.alshamel-admin-dashboard .text-amber-800,.alshamel-admin-dashboard .text-yellow-900,.alshamel-admin-dashboard .text-yellow-800{color:#fcd34d!important}
+.alshamel-admin-dashboard .text-orange-900,.alshamel-admin-dashboard .text-orange-800{color:#fdba74!important}
+.alshamel-admin-dashboard .text-red-900,.alshamel-admin-dashboard .text-red-800,.alshamel-admin-dashboard .text-rose-900,.alshamel-admin-dashboard .text-rose-800{color:#fca5a5!important}
+.alshamel-admin-dashboard .text-emerald-900,.alshamel-admin-dashboard .text-emerald-800,.alshamel-admin-dashboard .text-green-900,.alshamel-admin-dashboard .text-green-800{color:#86efac!important}
+.alshamel-admin-dashboard :where(a,button,input,select,textarea,[tabindex]:not([tabindex="-1"])):focus-visible{outline:2px solid #fdba74!important;outline-offset:3px!important;box-shadow:0 0 0 4px rgba(249,115,22,.18)!important}
 @media(prefers-reduced-motion:reduce){.alshamel-admin-dashboard *{scroll-behavior:auto!important;transition-duration:.01ms!important}}
 `}</style>
       {sidebarOpen && (
