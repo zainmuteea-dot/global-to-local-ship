@@ -165,7 +165,7 @@ function mapDatabaseOrder(row: any): OrderItem {
   const totalCost: CurrencyMoney = {};
   for (const { code } of CURRENCIES) {
     if (costs[code] !== null && (costs[code] !== 0 || currency === code)) {
-      totalCost[code] = costs[code];
+      totalCost[code] = costs[code] ?? null;
     } else if (currency === code) {
       totalCost[code] = null;
     }
