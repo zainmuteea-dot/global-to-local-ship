@@ -96,6 +96,7 @@ function formatJoinDate(value: string | null): string {
 function EmployeesPage() {
   const navigate = useNavigate();
   const [employees, setEmployees] = useState<EmployeeItem[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -131,6 +132,7 @@ function EmployeesPage() {
         if (!authData.user) {
           throw new Error("يجب تسجيل الدخول بحساب إداري لعرض الموظفين.");
         }
+        if (active) setCurrentUserId(authData.user.id);
 
         const { data: isAdmin, error: permissionError } = await supabase.rpc("has_role", {
           _user_id: authData.user.id,
@@ -268,8 +270,15 @@ function EmployeesPage() {
   }
 
   async function deleteEmployee(employee: EmployeeItem) {
+    if (employee.id === currentUserId) {
+      setActionError("لا يمكن حذف حساب المدير الذي تستخدمه حاليًا.");
+      return;
+    }
+    const adminWarning = employee.role === "admin"
+      ? " هذا الحساب مشرف عام، وسيُحذف وصوله الإداري نهائيًا. لا يمكن حذف آخر مشرف عام."
+      : "";
     const confirmed = window.confirm(
-      `تحذير: هذا يحذف حساب الدخول نهائيًا للمستخدم ${employee.name} (${employee.id})، وقد يحذف بيانات مرتبطة حسب علاقات قاعدة البيانات. لا يمكن التراجع. هل تريد المتابعة؟`,
+      `تحذير: سيتم حذف حساب الدخول نهائيًا للمستخدم ${employee.name} (${employee.id}).${adminWarning} وقد تُحذف بيانات مرتبطة حسب علاقات قاعدة البيانات. لا يمكن التراجع. هل تريد المتابعة؟`,
     );
     if (!confirmed) return;
     setBusyId(employee.id);
@@ -683,15 +692,15 @@ function EmployeesPage() {
                             <button
                               type="button"
                               onClick={() => void deleteEmployee(employee)}
-                              disabled={busyId === employee.id || employee.role === "admin"}
+                              disabled={busyId === employee.id || employee.id === currentUserId}
                               className="inline-flex items-center gap-1 rounded-lg bg-red-50 px-2.5 py-2 font-bold text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
                             >
                               <Trash2 className="size-3.5" />
                               <span>
                                 {busyId === employee.id
                                   ? "جارٍ…"
-                                  : employee.role === "admin"
-                                    ? "اخفض الدور أولاً"
+                                  : employee.id === currentUserId
+                                    ? "لا تحذف حسابك"
                                     : "حذف نهائي"}
                               </span>
                             </button>
