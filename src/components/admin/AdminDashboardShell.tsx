@@ -112,7 +112,9 @@ const navItems = [
   { label: "الشحنات", href: "/admin-tracking", icon: Truck },
   { label: "الطلبات", href: "/admin-clients", icon: PackageCheck },
   { label: "العملاء", href: "/customers", icon: Users },
+  { label: "إدارة الموظفين", href: "/employees", icon: Users },
   { label: "الفواتير", href: "/sales-invoices", icon: FileText },
+  { label: "طرق الدفع", href: "/payments", icon: CircleDollarSign },
   { label: "التقارير", href: "/client-reports", icon: Activity },
   { label: "المنتجات الفورية", href: "/products/manage", icon: PackageOpen },
 ] as const;
