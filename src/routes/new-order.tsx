@@ -553,6 +553,7 @@ function NewOrderPage() {
   const [notes, setNotes] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "done">("idle");
   const [sbError, setSbError] = useState("");
+  const [priceError, setPriceError] = useState("");
   const [orderCode, setOrderCode] = useState("");
   const [trackingUnavailable, setTrackingUnavailable] = useState(false);
   const [smsOutcome, setSmsOutcome] = useState<
@@ -772,6 +773,31 @@ function NewOrderPage() {
   const submit = async () => {
     if (status === "sending") return;
     setSbError("");
+    setPriceError("");
+
+    const enteredPrice = price.trim() ? Number(price) : null;
+    if (enteredPrice === null) {
+      setPriceError("يرجى تعبئة السعر لإتمام الطلب.");
+      window.requestAnimationFrame(() => {
+        const priceInput = document.getElementById(
+          "new-order-product-price",
+        ) as HTMLInputElement | null;
+        priceInput?.scrollIntoView({ behavior: "smooth", block: "center" });
+        priceInput?.focus({ preventScroll: true });
+      });
+      return;
+    }
+    if (!Number.isFinite(enteredPrice) || enteredPrice <= 0) {
+      setPriceError("يرجى إدخال سعر صحيح أكبر من صفر.");
+      window.requestAnimationFrame(() => {
+        const priceInput = document.getElementById(
+          "new-order-product-price",
+        ) as HTMLInputElement | null;
+        priceInput?.scrollIntoView({ behavior: "smooth", block: "center" });
+        priceInput?.focus({ preventScroll: true });
+      });
+      return;
+    }
 
     if (!url.trim()) {
       setSbError("يرجى وضع رابط المنتج المطلوب من المتجر العالمي.");
@@ -790,17 +816,6 @@ function NewOrderPage() {
       return;
     }
 
-    const enteredPrice = price.trim() ? Number(price) : null;
-    if (
-      enteredPrice === null ||
-      !Number.isFinite(enteredPrice) ||
-      enteredPrice <= 0
-    ) {
-      setSbError(
-        "يرجى إدخال سعر السلعة الظاهر في المتجر، ويجب أن يكون أكبر من صفر.",
-      );
-      return;
-    }
     const quoteCurrency = getOrderCurrency(currency);
 
     const totalCostYER = enteredPrice !== null && enteredPrice > 0
@@ -1336,8 +1351,13 @@ function NewOrderPage() {
                   step="0.01"
                   required
                   aria-required="true"
+                  aria-invalid={Boolean(priceError)}
+                  aria-describedby={priceError ? "new-order-product-price-error" : undefined}
                   value={price}
-                  onChange={(e) => setPrice(e.target.value)}
+                  onChange={(e) => {
+                    setPrice(e.target.value);
+                    if (priceError) setPriceError("");
+                  }}
                   placeholder="0.00"
                 />
               </div>
@@ -1353,6 +1373,17 @@ function NewOrderPage() {
               أدخل السعر الظاهر في المتجر بالريال السعودي أو الدولار؛ يُحوّل
               تلقائيًا إلى الريال اليمني بسعر ثابت: السعودي 140 والدولار 535.
             </p>
+            {priceError && (
+              <div
+                id="new-order-product-price-error"
+                className="no-warn"
+                role="alert"
+                aria-live="assertive"
+              >
+                <Flash />
+                <span>{priceError}</span>
+              </div>
+            )}
             {price.trim() &&
               Number.isFinite(Number(price)) &&
               Number(price) > 0 &&
