@@ -146,7 +146,9 @@ function aggregateMoney(
 function resolveOrderCurrency(row: any, costs: CurrencyMoney): CurrencyCode | null {
   const stated = normalizeCurrency(row.quote_currency) || normalizeCurrency(row.original_currency);
   if (stated) return stated;
-  const known = CURRENCIES.filter(({ code }) => typeof costs[code] === "number");
+  const known = CURRENCIES.filter(
+    ({ code }) => typeof costs[code] === "number" && costs[code] !== 0,
+  );
   return known.length === 1 ? (known[0]?.code ?? null) : null;
 }
 
@@ -162,7 +164,11 @@ function mapDatabaseOrder(row: any): OrderItem {
   // أعمدة إجمالي التكلفة موسومة بعملتها صراحة؛ اجمع كل عملة على حدة.
   const totalCost: CurrencyMoney = {};
   for (const { code } of CURRENCIES) {
-    if (costs[code] !== null || currency === code) totalCost[code] = costs[code] ?? null;
+    if (costs[code] !== null && (costs[code] !== 0 || currency === code)) {
+      totalCost[code] = costs[code];
+    } else if (currency === code) {
+      totalCost[code] = null;
+    }
   }
 
   const paidAmount = toNullableNumber(row.paid_amount);
@@ -888,7 +894,7 @@ export function AdminOperationsDashboard({
                 <AlertCircle className="w-5 h-5 text-white" />
               </div>
             </div>
-            <div className="text-2xl sm:text-3xl font-black text-red-600 font-mono tracking-tight mb-1">
+            <div className="min-h-16 text-base sm:text-lg font-black text-red-600 font-mono tracking-tight leading-relaxed break-words mb-1">
               {formatBreakdown(summaryTotals.sumRemaining)}
             </div>
             <div className="text-xs font-black text-red-950">إجمالي المبالغ المتبقية</div>
@@ -911,7 +917,7 @@ export function AdminOperationsDashboard({
                 <CheckCircle2 className="w-5 h-5 text-white" />
               </div>
             </div>
-            <div className="text-2xl sm:text-3xl font-black text-emerald-600 font-mono tracking-tight mb-1">
+            <div className="min-h-16 text-base sm:text-lg font-black text-emerald-600 font-mono tracking-tight leading-relaxed break-words mb-1">
               {formatBreakdown(summaryTotals.sumPaid)}
             </div>
             <div className="text-xs font-black text-emerald-950">إجمالي المبالغ المدفوعة</div>
@@ -934,7 +940,7 @@ export function AdminOperationsDashboard({
                 <Package className="w-5 h-5 text-orange-400" />
               </div>
             </div>
-            <div className="text-2xl sm:text-3xl font-black text-white font-mono tracking-tight mb-1">
+            <div className="min-h-16 text-base sm:text-lg font-black text-white font-mono tracking-tight leading-relaxed break-words mb-1">
               {formatBreakdown(summaryTotals.sumCost)}
             </div>
             <div className="text-xs font-black text-slate-100">إجمالي التكلفة الشاملة</div>
@@ -957,7 +963,7 @@ export function AdminOperationsDashboard({
                 <TrendingUp className="w-5 h-5 text-white" />
               </div>
             </div>
-            <div className="text-2xl sm:text-3xl font-black text-[#0284C7] font-mono tracking-tight mb-1">
+            <div className="min-h-16 text-base sm:text-lg font-black text-[#0284C7] font-mono tracking-tight leading-relaxed break-words mb-1">
               {formatBreakdown(summaryTotals.sumProfit)}
             </div>
             <div className="text-xs font-black text-sky-950">صافي أرباح الوساطة</div>
