@@ -22,6 +22,13 @@
       "when": 1793492162255,
       "tag": "0002_prevent_last_admin_deletion",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793492192354,
+      "tag": "0003_order_pricing_sms_notification_fields_and_permissions",
+      "breakpoints": true
     }
   ]
 }
