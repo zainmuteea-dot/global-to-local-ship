@@ -8,6 +8,20 @@
       "when": 1793492140063,
       "tag": "0000_admin_notifications",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793492153301,
+      "tag": "0001_lock_notification_permissions",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793492162255,
+      "tag": "0002_prevent_last_admin_deletion",
+      "breakpoints": true
     }
   ]
 }

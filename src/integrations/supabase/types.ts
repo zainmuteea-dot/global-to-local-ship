@@ -47,6 +47,18 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_role_guard: {
+        Row: {
+          id: boolean
+        }
+        Insert: {
+          id?: boolean
+        }
+        Update: {
+          id?: boolean
+        }
+        Relationships: []
+      }
       notification_reads: {
         Row: {
           id: string
