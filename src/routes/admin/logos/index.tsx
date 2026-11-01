@@ -1,14 +1,20 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { supabase } from "@/integrations/supabase/client";
+
+const db = supabase as any;
 import { ArrowLeft, Check, ImagePlus, Pencil, Plus, Trash2, X } from "lucide-react";
 import { AdminRouteGuard } from "@/components/admin/AdminRouteGuard";
 
 type LogoItem = {
+  id?: string;
   slug: string;
   name: string;
   code: string;
   color: string;
   arabicLabel?: string;
+  logoUrl?: string | null;
+  isActive?: boolean;
 };
 
 const INITIAL_LOGOS: LogoItem[] = [
@@ -34,7 +40,8 @@ const INITIAL_LOGOS: LogoItem[] = [
 ];
 
 function LogoManagementPage() {
-  const [logos, setLogos] = useState<LogoItem[]>(INITIAL_LOGOS);
+  const [logos, setLogos] = useState<LogoItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
   const [deleteMode, setDeleteMode] = useState(false);
   const [selectedForDelete, setSelectedForDelete] = useState<string[]>([]);
@@ -47,6 +54,33 @@ function LogoManagementPage() {
     arabicLabel: "",
   });
   const [notice, setNotice] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    void db
+      .from("storefront_sites")
+      .select("id,slug,name,name_ar,logo_url,is_active,sort_order")
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true })
+      .then(async ({ data, error }: any) => {
+        if (!active) return;
+        if (error) {
+          setNotice(`تعذر تحميل المواقع: ${error.message}`);
+        } else {
+          const rows = data ?? [];
+          if (!rows.length) {
+            const { data: seeded } = await db.from("storefront_sites").insert(
+              INITIAL_LOGOS.map((item, index) => ({ slug: item.slug, name: item.name, name_ar: item.arabicLabel ?? null, is_active: true, sort_order: index }))
+            ).select("id,slug,name,name_ar,logo_url,is_active");
+            setLogos((seeded ?? []).map((item: any) => ({ id: item.id, slug: item.slug, name: item.name, code: item.slug.toUpperCase().slice(0, 8), color: "#2563EB", arabicLabel: item.name_ar ?? undefined, logoUrl: item.logo_url, isActive: item.is_active })));
+          } else {
+            setLogos(rows.map((item: any) => ({ id: item.id, slug: item.slug, name: item.name, code: item.slug.toUpperCase().slice(0, 8), color: "#2563EB", arabicLabel: item.name_ar ?? undefined, logoUrl: item.logo_url, isActive: item.is_active })));
+          }
+        }
+        setLoading(false);
+      });
+    return () => { active = false; };
+  }, []);
 
   const selectedCount = selectedForDelete.length;
   const pageTitle = useMemo(
@@ -61,7 +95,7 @@ function LogoManagementPage() {
     setNotice("");
   };
 
-  const startDelete = () => {
+  const startDelete = async () => {
     if (deleteMode) {
       if (!selectedCount) {
         setDeleteMode(false);
@@ -69,8 +103,16 @@ function LogoManagementPage() {
       }
       const confirmed = window.confirm(`حذف ${selectedCount} من الشعارات المحددة؟`);
       if (confirmed) {
-        setLogos((current) => current.filter((logo) => !selectedForDelete.includes(logo.slug)));
-        setNotice("تم حذف الشعارات المحددة من العرض الحالي.");
+        const { error } = await db
+          .from("storefront_sites")
+          .delete()
+          .in("slug", selectedForDelete);
+        if (error) {
+          setNotice(`تعذر الحذف: ${error.message}`);
+        } else {
+          setLogos((current) => current.filter((logo) => !selectedForDelete.includes(logo.slug)));
+          setNotice("تم حذف المواقع المحددة.");
+        }
       }
       setDeleteMode(false);
       setSelectedForDelete([]);
@@ -89,7 +131,7 @@ function LogoManagementPage() {
     );
   };
 
-  const createLogo = (event: FormEvent<HTMLFormElement>) => {
+  const createLogo = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const slug = draft.slug
       .trim()
@@ -106,19 +148,35 @@ function LogoManagementPage() {
       setNotice("الاسم المختصر أو الكود مستخدم بالفعل.");
       return;
     }
-    setLogos((current) => [
-      ...current,
-      {
+    const { data, error } = await db
+      .from("storefront_sites")
+      .insert({
         slug,
         name: draft.name.trim(),
-        code: draft.code.trim(),
-        color: draft.color,
-        ...(draft.arabicLabel.trim() ? { arabicLabel: draft.arabicLabel.trim() } : {}),
-      },
-    ]);
+        name_ar: draft.arabicLabel.trim() || null,
+        logo_url: null,
+        is_active: true,
+        sort_order: logos.length,
+      })
+      .select("id,slug,name,name_ar,logo_url,is_active")
+      .single();
+    if (error) {
+      setNotice(`تعذر حفظ الموقع: ${error.message}`);
+      return;
+    }
+    setLogos((current) => [...current, {
+      id: data.id,
+      slug: data.slug,
+      name: data.name,
+      code: draft.code.trim(),
+      color: draft.color,
+      arabicLabel: data.name_ar ?? undefined,
+      logoUrl: data.logo_url,
+      isActive: data.is_active,
+    }]);
     setDraft({ name: "", code: "", slug: "", color: "#2563EB", arabicLabel: "" });
     setAddOpen(false);
-    setNotice("أُضيف الشعار إلى العرض الحالي.");
+    setNotice("تمت إضافة الموقع وسيظهر للعملاء.");
   };
 
   return (
