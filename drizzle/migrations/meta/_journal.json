@@ -29,6 +29,13 @@
       "when": 1793492192354,
       "tag": "0003_order_pricing_sms_notification_fields_and_permissions",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793492214114,
+      "tag": "0004_avatars_owner_read",
+      "breakpoints": true
     }
   ]
 }
