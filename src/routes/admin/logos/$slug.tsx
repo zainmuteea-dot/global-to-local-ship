@@ -197,6 +197,18 @@ function LogoProductsPage() {
     setNotice("تم تحديث المنتج وسيظهر التغيير للعملاء.");
   };
 
+  if (!ready)
+    return (
+      <AdminRouteGuard>
+        <main dir="rtl" className="grid min-h-screen place-items-center bg-slate-50 p-6">
+          <div className="rounded-3xl border border-slate-200 bg-white px-8 py-7 text-center shadow-xl">
+            <div className="mx-auto size-8 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600" aria-label="جارٍ تحميل المنتجات" />
+            <p className="mt-4 font-bold text-slate-700">جارٍ تحميل منتجات الموقع...</p>
+          </div>
+        </main>
+      </AdminRouteGuard>
+    );
+
   if (!logo)
     return (
       <AdminRouteGuard>
@@ -205,10 +217,10 @@ function LogoProductsPage() {
             <h1 className="text-2xl font-black">المتجر غير موجود</h1>
             <p className="mt-2 text-slate-500">المسار المختصر لا يطابق شعارًا مسجلًا.</p>
             <Link
-              to="/products/manage"
+              to="/admin/logos"
               className="mt-6 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 font-bold text-white"
             >
-              <ArrowRight className="size-4" /> العودة للشعارات
+              <ArrowRight className="size-4" /> العودة للمواقع
             </Link>
           </div>
         </main>
