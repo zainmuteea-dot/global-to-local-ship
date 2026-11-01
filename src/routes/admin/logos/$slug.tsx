@@ -250,10 +250,10 @@ function LogoProductsPage() {
               </p>
             </div>
             <Link
-              to="/products/manage"
+              to="/admin/logos"
               className="inline-flex items-center justify-center gap-2 self-start rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm hover:bg-slate-50 sm:self-auto"
             >
-              <ArrowRight className="size-4" /> العودة للشعارات
+              <ArrowRight className="size-4" /> العودة للمواقع
             </Link>
           </header>
 

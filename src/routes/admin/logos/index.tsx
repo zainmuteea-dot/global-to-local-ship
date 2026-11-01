@@ -317,7 +317,7 @@ function LogoManagementPage() {
                         /logos/{logo.slug}
                       </p>
                       <p className="mt-2 text-xs font-semibold text-slate-400">
-                        صفحة المنتجات: /admin/logos/{logo.slug}
+                        اضغط البطاقة لإضافة منتجات العملاء
                       </p>
                     </div>
                   )}
@@ -329,7 +329,7 @@ function LogoManagementPage() {
                 <Link
                   key={logo.slug}
                   to={`/admin/logos/${logo.slug}` as any}
-                  aria-label={`فتح منتجات ${logo.name}`}
+                  aria-label={`إضافة منتجات ${logo.name} للعملاء`}
                   className="block h-full rounded-2xl focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-300"
                 >
                   {card}
