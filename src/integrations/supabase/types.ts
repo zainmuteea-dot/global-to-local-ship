@@ -47,26 +47,91 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_role_guard: {
+        Row: {
+          id: boolean
+        }
+        Insert: {
+          id?: boolean
+        }
+        Update: {
+          id?: boolean
+        }
+        Relationships: []
+      }
+      notification_reads: {
+        Row: {
+          id: string
+          notification_id: string
+          read_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          notification_id: string
+          read_at?: string
+          user_id?: string
+        }
+        Update: {
+          id?: string
+          notification_id?: string
+          read_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_reads_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           body: string | null
           created_at: string
+          href: string | null
           id: string
+          is_active: boolean
+          kind: string
+          message: string | null
+          payment_id: string | null
+          sent_at: string | null
+          sent_by: string | null
           title: string
+          type: string | null
           user_id: string | null
         }
         Insert: {
           body?: string | null
           created_at?: string
+          href?: string | null
           id?: string
+          is_active?: boolean
+          kind?: string
+          message?: string | null
+          payment_id?: string | null
+          sent_at?: string | null
+          sent_by?: string | null
           title: string
+          type?: string | null
           user_id?: string | null
         }
         Update: {
           body?: string | null
           created_at?: string
+          href?: string | null
           id?: string
+          is_active?: boolean
+          kind?: string
+          message?: string | null
+          payment_id?: string | null
+          sent_at?: string | null
+          sent_by?: string | null
           title?: string
+          type?: string | null
           user_id?: string | null
         }
         Relationships: []
@@ -75,12 +140,25 @@ export type Database = {
         Row: {
           created_at: string
           customer_name: string
+          customer_phone: string | null
           id: string
           notes: string | null
+          original_currency: string | null
           phone: string
           product_link: string
           product_name: string | null
+          quote_currency: string | null
+          sms_accepted_at: string | null
+          sms_attempt_count: number | null
+          sms_error: string | null
+          sms_last_attempt_at: string | null
+          sms_provider_batch_id: string | null
+          sms_provider_response: Json | null
+          sms_status: string | null
           status: string
+          total_cost_sar: number | null
+          total_cost_usd: number | null
+          total_cost_yer: number | null
           tracking_code: string
           updated_at: string
           user_id: string | null
@@ -88,12 +166,25 @@ export type Database = {
         Insert: {
           created_at?: string
           customer_name: string
+          customer_phone?: string | null
           id?: string
           notes?: string | null
+          original_currency?: string | null
           phone: string
           product_link: string
           product_name?: string | null
+          quote_currency?: string | null
+          sms_accepted_at?: string | null
+          sms_attempt_count?: number | null
+          sms_error?: string | null
+          sms_last_attempt_at?: string | null
+          sms_provider_batch_id?: string | null
+          sms_provider_response?: Json | null
+          sms_status?: string | null
           status?: string
+          total_cost_sar?: number | null
+          total_cost_usd?: number | null
+          total_cost_yer?: number | null
           tracking_code?: string
           updated_at?: string
           user_id?: string | null
@@ -101,12 +192,25 @@ export type Database = {
         Update: {
           created_at?: string
           customer_name?: string
+          customer_phone?: string | null
           id?: string
           notes?: string | null
+          original_currency?: string | null
           phone?: string
           product_link?: string
           product_name?: string | null
+          quote_currency?: string | null
+          sms_accepted_at?: string | null
+          sms_attempt_count?: number | null
+          sms_error?: string | null
+          sms_last_attempt_at?: string | null
+          sms_provider_batch_id?: string | null
+          sms_provider_response?: Json | null
+          sms_status?: string | null
           status?: string
+          total_cost_sar?: number | null
+          total_cost_usd?: number | null
+          total_cost_yer?: number | null
           tracking_code?: string
           updated_at?: string
           user_id?: string | null
@@ -238,6 +342,10 @@ export type Database = {
       create_order: {
         Args: { _customer_name: string; _phone: string; _product_link: string }
         Returns: string
+      }
+      current_user_has_permission: {
+        Args: { _action: string; _area: string }
+        Returns: boolean
       }
       has_role: {
         Args: {

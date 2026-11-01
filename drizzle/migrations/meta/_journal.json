@@ -1,0 +1,41 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1793492140063,
+      "tag": "0000_admin_notifications",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793492153301,
+      "tag": "0001_lock_notification_permissions",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793492162255,
+      "tag": "0002_prevent_last_admin_deletion",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793492192354,
+      "tag": "0003_order_pricing_sms_notification_fields_and_permissions",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793492214114,
+      "tag": "0004_avatars_owner_read",
+      "breakpoints": true
+    }
+  ]
+}
