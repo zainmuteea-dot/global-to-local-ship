@@ -1,5 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { supabase } from "@/integrations/supabase/client";
+
+const db = supabase as any;
 import { ArrowRight, Pencil, Plus, Save, Trash2, X } from "lucide-react";
 import { AdminRouteGuard } from "@/components/admin/AdminRouteGuard";
 
@@ -94,7 +97,8 @@ function readLogos(): LogoItem[] {
 function LogoProductsPage() {
   const { slug } = Route.useParams();
   const [logo, setLogo] = useState<LogoItem | null>(null);
-  const [products, setProducts] = useState<Product[]>(DEMO_PRODUCTS[slug] ?? []);
+  const [siteId, setSiteId] = useState<string | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
   const [ready, setReady] = useState(false);
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
@@ -103,37 +107,36 @@ function LogoProductsPage() {
   const [notice, setNotice] = useState("");
 
   useEffect(() => {
-    const current = readLogos().find((item) => item.slug === slug);
-    setLogo(current ?? null);
-    try {
-      const saved = JSON.parse(localStorage.getItem(PRODUCTS_KEY) || "{}") as Record<
-        string,
-        Product[]
-      >;
-      if (Array.isArray(saved[slug])) setProducts(saved[slug]);
-      else setProducts(DEMO_PRODUCTS[slug] ?? []);
-    } catch {
-      setProducts(DEMO_PRODUCTS[slug] ?? []);
-    }
-    setReady(true);
+    let active = true;
+    void (async () => {
+      const { data: site } = await db
+        .from("storefront_sites")
+        .select("id,slug,name,name_ar,logo_url")
+        .eq("slug", slug)
+        .maybeSingle();
+      if (!active) return;
+      if (!site) {
+        setLogo(null);
+        setReady(true);
+        return;
+      }
+      setSiteId(site.id);
+      setLogo({ slug: site.slug, name: site.name, code: site.slug.toUpperCase().slice(0, 8), color: "#2563EB", arabicLabel: site.name_ar });
+      const { data: rows } = await db
+        .from("storefront_products")
+        .select("id,name,price,image_url")
+        .eq("site_id", site.id)
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true });
+      setProducts((rows ?? []).map((row: any) => ({ id: row.id, name: row.name, price: Number(row.price ?? 0), imageUrl: row.image_url })));
+      setReady(true);
+    })();
+    return () => { active = false; };
   }, [slug]);
-
-  useEffect(() => {
-    if (!ready) return;
-    try {
-      const saved = JSON.parse(localStorage.getItem(PRODUCTS_KEY) || "{}") as Record<
-        string,
-        Product[]
-      >;
-      localStorage.setItem(PRODUCTS_KEY, JSON.stringify({ ...saved, [slug]: products }));
-    } catch {
-      /* Keep the in-memory demo usable if local storage is blocked. */
-    }
-  }, [products, ready, slug]);
 
   const countLabel = useMemo(() => `${products.length} منتج`, [products.length]);
 
-  const addProduct = (event: FormEvent<HTMLFormElement>) => {
+  const addProduct = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const parsedPrice = Number(price);
     const trimmedImage = imageUrl.trim();
@@ -143,28 +146,35 @@ function LogoProductsPage() {
     } catch {
       return;
     }
-    setProducts((items) => [
-      {
-        id: `${slug}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-        name: name.trim(),
-        price: parsedPrice,
-        imageUrl: trimmedImage,
-      },
-      ...items,
-    ]);
+    if (!siteId) return;
+    const { data, error } = await db
+      .from("storefront_products")
+      .insert({ site_id: siteId, name: name.trim(), price: parsedPrice, image_url: trimmedImage, is_active: true, sort_order: products.length })
+      .select("id,name,price,image_url")
+      .single();
+    if (error) {
+      setNotice(`تعذر حفظ المنتج: ${error.message}`);
+      return;
+    }
+    setProducts((items) => [{ id: data.id, name: data.name, price: Number(data.price ?? 0), imageUrl: data.image_url }, ...items]);
     setName("");
     setPrice("");
     setImageUrl("");
-    setNotice("تمت إضافة المنتج إلى قائمة العرض التجريبية.");
+    setNotice("تمت إضافة المنتج وسيظهر للعملاء.");
   };
 
-  const deleteProduct = (product: Product) => {
+  const deleteProduct = async (product: Product) => {
     if (!window.confirm(`حذف المنتج «${product.name}»؟`)) return;
+    const { error } = await db.from("storefront_products").delete().eq("id", product.id);
+    if (error) {
+      setNotice(`تعذر حذف المنتج: ${error.message}`);
+      return;
+    }
     setProducts((items) => items.filter((item) => item.id !== product.id));
-    setNotice("تم حذف المنتج من قائمة العرض التجريبية.");
+    setNotice("تم حذف المنتج وسيختفي من واجهة العملاء.");
   };
 
-  const saveEdit = (event: FormEvent<HTMLFormElement>) => {
+  const saveEdit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!editing || !editing.name.trim() || !Number.isFinite(editing.price) || editing.price < 0)
       return;
@@ -174,15 +184,17 @@ function LogoProductsPage() {
     } catch {
       return;
     }
-    setProducts((items) =>
-      items.map((item) =>
-        item.id === editing.id
-          ? { ...editing, name: editing.name.trim(), imageUrl: trimmedImage }
-          : item,
-      ),
-    );
+    const { error } = await db
+      .from("storefront_products")
+      .update({ name: editing.name.trim(), price: editing.price, image_url: trimmedImage })
+      .eq("id", editing.id);
+    if (error) {
+      setNotice(`تعذر تحديث المنتج: ${error.message}`);
+      return;
+    }
+    setProducts((items) => items.map((item) => item.id === editing.id ? { ...editing, name: editing.name.trim(), imageUrl: trimmedImage } : item));
     setEditing(null);
-    setNotice("تم تحديث المنتج في قائمة العرض التجريبية.");
+    setNotice("تم تحديث المنتج وسيظهر التغيير للعملاء.");
   };
 
   if (!logo)

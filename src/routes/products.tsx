@@ -106,6 +106,14 @@ type CatalogProduct = {
   created_at: string | null;
 };
 
+type StorefrontProduct = {
+  id: string;
+  name: string;
+  price: number | null;
+  image_url: string | null;
+  site_name: string;
+};
+
 interface ProductsRouteProps {
   onBack?: () => void;
   onNavigateToOrder?: (storeCode?: string, productName?: string) => void;
@@ -162,21 +170,30 @@ export const ProductsPage: React.FC<ProductsRouteProps> = ({
   };
 
   const [catalogProducts, setCatalogProducts] = useState<CatalogProduct[]>([]);
+  const [storefrontProducts, setStorefrontProducts] = useState<StorefrontProduct[]>([]);
   const [catalogError, setCatalogError] = useState("");
 
   const loadCatalogProducts = useCallback(async () => {
-    const { data, error } = await db
-      .from("products")
-      .select("id,name,sku,store_id,quantity,sell_price,created_at")
-      .order("created_at", { ascending: false });
-
+    const [{ data, error }, { data: managed, error: managedError }] = await Promise.all([
+      db.from("products").select("id,name,sku,store_id,quantity,sell_price,created_at").order("created_at", { ascending: false }),
+      db.from("storefront_products").select("id,name,price,image_url,storefront_sites!inner(name)").eq("is_active", true).order("sort_order", { ascending: true }),
+    ]);
     if (error) {
       setCatalogError(`تعذر تحميل المنتجات المحفوظة: ${error.message}`);
-      return;
+    } else {
+      setCatalogProducts((data ?? []) as CatalogProduct[]);
     }
-
-    setCatalogError("");
-    setCatalogProducts((data ?? []) as CatalogProduct[]);
+    if (managedError) {
+      setCatalogError((current) => current || `تعذر تحميل منتجات المواقع: ${managedError.message}`);
+    } else {
+      setStorefrontProducts((managed ?? []).map((item: any) => ({
+        id: `managed-${item.id}`,
+        name: item.name,
+        price: item.price,
+        image_url: item.image_url,
+        site_name: item.storefront_sites?.name ?? "متجر",
+      })));
+    }
   }, []);
 
   useEffect(() => {
@@ -418,6 +435,19 @@ export const ProductsPage: React.FC<ProductsRouteProps> = ({
 
   // تصفية المنتجات حسب البحث والمتجر والفئة
   const filteredProducts = useMemo(() => {
+    const managedProducts: ProductItem[] = storefrontProducts.map((product) => ({
+      id: product.id,
+      store: "الشامل",
+      title: product.name,
+      category: product.site_name,
+      priceSAR: Number(product.price ?? 0),
+      rating: 5,
+      reviewsCount: 0,
+      image: product.image_url || "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop&q=80",
+      badge: `من ${product.site_name}`,
+      inStock: true,
+    }));
+
     const savedProducts: ProductItem[] = catalogProducts.map((product) => ({
       id: product.id,
       store: "الشامل",
@@ -435,7 +465,7 @@ export const ProductsPage: React.FC<ProductsRouteProps> = ({
       inventoryProduct: true,
     }));
 
-    return [...savedProducts, ...initialProducts].filter((p) => {
+    return [...managedProducts, ...savedProducts, ...initialProducts].filter((p) => {
       const matchSearch =
         searchQuery.trim() === "" ||
         p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -444,7 +474,7 @@ export const ProductsPage: React.FC<ProductsRouteProps> = ({
       const matchCategory = selectedCategory === "all" || p.category === selectedCategory;
       return matchSearch && matchStore && matchCategory;
     });
-  }, [catalogProducts, searchQuery, selectedStoreFilter, selectedCategory]);
+  }, [catalogProducts, storefrontProducts, searchQuery, selectedStoreFilter, selectedCategory]);
 
   const categoriesList = [
     "all",
@@ -761,7 +791,7 @@ export const ProductsPage: React.FC<ProductsRouteProps> = ({
         ))}
       </section>
 
-      {/* 🌟 5. شبكة المنتجات (Products Grid) */}
+      {/* 🌟 5. شبكة المنتج��ت (Products Grid) */}
       <main className="max-w-6xl mx-auto px-3 sm:px-6 pt-3 space-y-4">
         {catalogError && (
           <p role="status" className="rounded-xl bg-amber-50 p-3 text-sm font-bold text-amber-800">
