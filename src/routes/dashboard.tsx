@@ -261,7 +261,9 @@ export default function DashboardPage() {
         console.error("تعذر تحميل إشعارات العميل:", notificationsResult.error);
         setNotificationError("تعذر تحميل الإشعارات. تحقق من الاتصال والصلاحيات.");
       } else {
-        setNotifications(notificationsResult.data ?? []);
+        setNotifications(
+          (notificationsResult.data ?? []).map((n) => ({ ...n, type: n.type ?? "info" })),
+        );
         setNotificationError(null);
       }
 
