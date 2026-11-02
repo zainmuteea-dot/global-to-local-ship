@@ -8,7 +8,7 @@ type OfferProduct = {
   id: string;
   name: string;
   image_url: string | null;
-  price: number;
+  sell_price: number;
   discount_percent: number;
   offer_type: string;
   store_name: string;
@@ -27,7 +27,7 @@ export function OfferListing({ type }: { type: OfferType }) {
       setError("");
       const { data, error: queryError } = await db
         .from("products")
-        .select("id,name,image_url,price,discount_percent,offer_type,store_name")
+        .select("id,name,image_url,sell_price,discount_percent,offer_type,store_name")
         .in("offer_type", isDeals ? ["deals", "both"] : ["exclusive", "both"])
         .order("name", { ascending: true });
       if (!active) return;
@@ -59,7 +59,7 @@ export function OfferListing({ type }: { type: OfferType }) {
         {loading ? <div role="status" className="flex items-center justify-center gap-3 rounded-2xl bg-white p-14 text-gray-500"><LoaderCircle className="size-5 animate-spin" /> جارٍ تحميل المنتجات…</div> : products.length === 0 && !error ? <div className="rounded-2xl bg-white p-14 text-center text-gray-500">لا توجد منتجات في هذه العروض حاليًا.</div> : (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {products.map((product) => {
-              const price = Number(product.price) || 0;
+              const price = Number(product.sell_price) || 0;
               const discount = Math.max(0, Math.min(100, Number(product.discount_percent) || 0));
               const finalPrice = price * (1 - discount / 100);
               return (
