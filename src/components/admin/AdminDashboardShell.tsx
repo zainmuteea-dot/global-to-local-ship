@@ -117,6 +117,7 @@ const navItems = [
   { label: "طرق الدفع", href: "/payments", icon: CircleDollarSign },
   { label: "التقارير", href: "/client-reports", icon: Activity },
   { label: "المنتجات الفورية", href: "/products/manage", icon: PackageOpen },
+  { label: "العروض والتخفيضات", href: "/admin/offers", icon: PackageSearch },
 ] as const;
 
 function metricTone(tone: "blue" | "orange" | "green" | "purple") {
