@@ -9,11 +9,12 @@ type LogoItem = {
   code: string;
   color: string;
   arabicLabel?: string;
+  customerUrl?: string;
 };
 
 const STORAGE_KEY = "your-global-shopper.admin-logos.v1";
 const INITIAL_LOGOS: LogoItem[] = [
-  { slug: "aliexpress", name: "AliExpress", code: "ALX-1024", color: "#FF4747" },
+  { slug: "aliexpress", name: "AliExpress", code: "ALX-1024", color: "#FF4747", customerUrl: "https://www.aliexpress.com" },
   { slug: "amazon", name: "Amazon", code: "AMZ-2048", color: "#000000" },
   { slug: "shein", name: "SHEIN", code: "SHN-3072", color: "#000000" },
   { slug: "trendyol", name: "TrendYol", code: "TRL-4096", color: "#FF6900" },
@@ -82,6 +83,7 @@ function LogoDashboard() {
     slug: "",
     color: "#2563EB",
     arabicLabel: "",
+    customerUrl: "",
   });
 
   useEffect(() => {
@@ -129,7 +131,7 @@ function LogoDashboard() {
     setSelected([]);
   };
 
-  const updateLogo = (slug: string, key: "name" | "code", value: string) => {
+  const updateLogo = (slug: string, key: "name" | "code" | "customerUrl", value: string) => {
     setLogos((items) =>
       items.map((item) => (item.slug === slug ? { ...item, [key]: value } : item)),
     );
@@ -145,6 +147,11 @@ function LogoDashboard() {
       .replace(/^-|-$/g, "");
     const code = draft.code.trim();
     if (!draft.name.trim() || !code || !slug) return;
+    const customerUrl = draft.customerUrl.trim();
+    if (customerUrl && !/^https:\/\//i.test(customerUrl)) {
+      setNotice("يجب أن يبدأ رابط العملاء بـ https://");
+      return;
+    }
     if (
       logos.some((item) => item.slug === slug || item.code.toLowerCase() === code.toLowerCase())
     ) {
@@ -159,9 +166,10 @@ function LogoDashboard() {
         code,
         color: draft.color,
         ...(draft.arabicLabel.trim() ? { arabicLabel: draft.arabicLabel.trim() } : {}),
+        ...(customerUrl ? { customerUrl } : {}),
       },
     ]);
-    setDraft({ name: "", code: "", slug: "", color: "#2563EB", arabicLabel: "" });
+    setDraft({ name: "", code: "", slug: "", color: "#2563EB", arabicLabel: "", customerUrl: "" });
     setAddOpen(false);
     setNotice("تمت إضافة الشعار إلى بيانات العرض التجريبية المحفوظة على هذا الجهاز.");
   };
@@ -185,7 +193,7 @@ function LogoDashboard() {
                 {title}
               </h1>
               <p className="mt-2 text-sm text-slate-500">
-                اختر شعارًا لفتح صفحة منتجاته. هذه بيانات تجريبية محفوظة محليًا في هذا المتصفح.
+                اختر شعارًا لتعديل رابط المتجر الظاهر للعملاء. الإعدادات محفوظة محليًا في هذا المتصفح.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -288,6 +296,16 @@ function LogoDashboard() {
                           value={logo.code}
                           onChange={(event) => updateLogo(logo.slug, "code", event.target.value)}
                           className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500"
+                        />
+                      </label>
+                      <label className="block text-xs font-bold text-slate-500">
+                        رابط المتجر الظاهر للعملاء
+                        <input
+                          value={logo.customerUrl ?? ""}
+                          onChange={(event) => updateLogo(logo.slug, "customerUrl", event.target.value)}
+                          placeholder="https://www.aliexpress.com"
+                          dir="ltr"
+                          className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-left text-sm text-slate-900 outline-none focus:border-blue-500"
                         />
                       </label>
                     </div>
@@ -413,6 +431,16 @@ function LogoDashboard() {
                       {draft.color}
                     </span>
                   </div>
+                </label>
+                <label className="block text-sm font-bold">
+                  رابط المتجر الظاهر للعملاء (اختياري)
+                  <input
+                    value={draft.customerUrl}
+                    onChange={(event) => setDraft({ ...draft, customerUrl: event.target.value })}
+                    placeholder="https://www.aliexpress.com"
+                    dir="ltr"
+                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-left outline-none focus:border-blue-500"
+                  />
                 </label>
                 <label className="block text-sm font-bold">
                   الاسم العربي (اختياري)

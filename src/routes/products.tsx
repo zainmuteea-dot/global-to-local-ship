@@ -170,7 +170,25 @@ export const ProductsPage: React.FC<ProductsRouteProps> = ({
     created_at: string | null;
   };
 
+  const [customerStoreUrls, setCustomerStoreUrls] = useState<Record<string, string>>({});
   const [catalogProducts, setCatalogProducts] = useState<CatalogProduct[]>([]);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("your-global-shopper.admin-logos.v1");
+      const parsed: unknown = saved ? JSON.parse(saved) : null;
+      if (!Array.isArray(parsed)) return;
+      const urls = Object.fromEntries(
+        parsed
+          .filter((item): item is { slug: string; customerUrl?: string } => Boolean(item && typeof item === "object" && "slug" in item && typeof item.slug === "string"))
+          .filter((item) => typeof item.customerUrl === "string" && /^https:\/\//i.test(item.customerUrl))
+          .map((item) => [item.slug, item.customerUrl as string]),
+      );
+      setCustomerStoreUrls(urls);
+    } catch {
+      setCustomerStoreUrls({});
+    }
+  }, []);
   const [storefrontProducts, setStorefrontProducts] = useState<StorefrontProduct[]>([]);
   const [catalogError, setCatalogError] = useState("");
 
@@ -249,7 +267,7 @@ export const ProductsPage: React.FC<ProductsRouteProps> = ({
       image:
         "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=80",
       orderCount: "24,100+ طلب منجز",
-      features: ["تغليف أصلي ضد الكسر", "إلكترونيات وعطور أصلية", "تتبع شحنة مباشر"],
+      features: ["تغليف أصلي ضد الكسر", "إلكترونيات وعطور أصلية", "تتبع شحنة مبا��ر"],
     },
     {
       id: "plat-3-alibaba",
@@ -281,6 +299,7 @@ export const ProductsPage: React.FC<ProductsRouteProps> = ({
     },
     {
       id: "plat-5-aliexpress",
+      externalUrl: "https://www.aliexpress.com",
       code: "AliExpress",
       name: "علي إكسبريس - AliExpress",
       englishName: "Retail Factory Prices",
@@ -700,8 +719,10 @@ export const ProductsPage: React.FC<ProductsRouteProps> = ({
 
         {/* شبكة البطاقات الست */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3">
-          {sixPlatforms.map((plat, idx) => {
-            const isSelected = selectedStoreFilter === plat.code;
+  {sixPlatforms.map((plat, idx) => {
+  const storeSlug = plat.code === "AliExpress" ? "aliexpress" : plat.code.toLowerCase();
+  const customerUrl = customerStoreUrls[storeSlug] ?? plat.externalUrl;
+  const isSelected = selectedStoreFilter === plat.code;
             return (
               <div
                 key={plat.id}
@@ -768,16 +789,16 @@ export const ProductsPage: React.FC<ProductsRouteProps> = ({
                   >
                     اطلب الآن
                   </button>
-                  {plat.externalUrl && (
-                    <button
+  {customerUrl && (
+  <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        window.open(plat.externalUrl, "_blank", "noopener,noreferrer");
+                        window.open(customerUrl, "_blank", "noopener,noreferrer");
                       }}
                       className="w-full rounded-lg border border-slate-200 bg-white px-1 py-1 text-[10px] font-bold text-slate-600 transition hover:border-[#005696] hover:text-[#005696]"
                     >
-                      تصفح SHEIN
+                      تصفح {plat.code}
                     </button>
                   )}
                 </div>
@@ -1111,7 +1132,7 @@ export const ProductsPage: React.FC<ProductsRouteProps> = ({
                 }}
                 className="py-3 px-3.5 rounded-xl bg-[#005696] hover:bg-[#084273] text-white font-black text-xs transition cursor-pointer"
               >
-                صفحة الطلب ➔
+                صف��ة الطلب ➔
               </button>
             </div>
           </div>
