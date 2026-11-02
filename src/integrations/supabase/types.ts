@@ -292,6 +292,27 @@ export type Database = {
         }
         Relationships: []
       }
+      store_links: {
+        Row: {
+          slug: string
+          updated_at: string
+          updated_by: string | null
+          url: string
+        }
+        Insert: {
+          slug: string
+          updated_at?: string
+          updated_by?: string | null
+          url: string
+        }
+        Update: {
+          slug?: string
+          updated_at?: string
+          updated_by?: string | null
+          url?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
