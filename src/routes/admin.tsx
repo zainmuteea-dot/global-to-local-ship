@@ -32,6 +32,7 @@ import {
   ScanLine,
   Search,
   Send,
+  Store,
   Trash2,
   TrendingUp,
   Truck,
@@ -1030,6 +1031,15 @@ export default function AdminOperationsPage() {
           >
             <Truck className="w-4 h-4" />
             <span>إدارة الشحنات والعمليات الميدانية</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => window.location.assign("/products/manage")}
+            className="flex flex-none items-center gap-2 rounded-xl bg-[#161616] px-3 py-3 text-xs font-bold text-white transition hover:bg-[#2c2419]"
+          >
+            <Store className="size-4" />
+            <span>إدارة بوابات المتاجر</span>
           </button>
 
           <button
