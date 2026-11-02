@@ -201,18 +201,16 @@ function LogoManagementPage() {
                 إدارة بوابات المتاجر والشعارات وروابط صفحات المنتجات.
               </p>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={toggleEdit}
-                className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 ${editMode ? "bg-slate-700" : "bg-blue-600 hover:bg-blue-700"}`}
-              >
-                {editMode ? <Check className="size-4" /> : <Pencil className="size-4" />}
-                {editMode ? "تم" : "Edit"}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              to="/admin/shein-sync"
+              className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-bold text-blue-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-blue-100"
+            >
+              استيراد SHEIN
+            </Link>
+            <button
+              type="button"
+              onClick={() => {
                   setAddOpen(true);
                   setEditMode(false);
                   setDeleteMode(false);
