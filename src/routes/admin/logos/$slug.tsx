@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 const db = supabase as any;
 import { ArrowRight, Pencil, Plus, Save, Trash2, X } from "lucide-react";
 import { AdminRouteGuard } from "@/components/admin/AdminRouteGuard";
+import { SheinSyncPanel } from "@/components/admin/SheinSyncPanel";
 
 type Product = { id: string; name: string; price: number; imageUrl: string };
 type LogoItem = { slug: string; name: string; code: string; color: string; arabicLabel?: string };
@@ -256,6 +257,8 @@ function LogoProductsPage() {
               <ArrowRight className="size-4" /> العودة للمواقع
             </Link>
           </header>
+
+          {slug === "shein" && <SheinSyncPanel />}
 
           {notice && (
             <div
