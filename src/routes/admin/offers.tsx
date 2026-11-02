@@ -12,7 +12,7 @@ type OfferProduct = {
   id: string;
   name: string;
   image_url: string | null;
-  price: number;
+  sell_price: number;
   discount_percent: number;
   offer_type: OfferType;
   store_name: StoreName;
@@ -21,7 +21,7 @@ type OfferProduct = {
 type ProductForm = {
   name: string;
   image_url: string;
-  price: string;
+  sell_price: string;
   discount_percent: string;
   offer_type: OfferType | "";
   store_name: StoreName | "";
@@ -30,7 +30,7 @@ type ProductForm = {
 const emptyForm: ProductForm = {
   name: "",
   image_url: "",
-  price: "",
+  sell_price: "",
   discount_percent: "70",
   offer_type: "",
   store_name: "",
@@ -61,7 +61,7 @@ function AdminOffersPage() {
     setError("");
     const { data, error: queryError } = await db
       .from("products")
-      .select("id,name,image_url,price,discount_percent,offer_type,store_name")
+      .select("id,name,image_url,sell_price,discount_percent,offer_type,store_name")
       .in("offer_type", ["exclusive", "deals", "both"])
       .order("name", { ascending: true });
 
@@ -91,7 +91,7 @@ function AdminOffersPage() {
     setForm({
       name: product.name ?? "",
       image_url: product.image_url ?? "",
-      price: String(product.price ?? ""),
+      sell_price: String(product.sell_price ?? ""),
       discount_percent: String(product.discount_percent ?? 0),
       offer_type: product.offer_type,
       store_name: product.store_name,
@@ -115,11 +115,11 @@ function AdminOffersPage() {
 
     const name = form.name.trim();
     const imageUrl = form.image_url.trim();
-    const price = Number(form.price);
+    const sellPrice = Number(form.sell_price);
     const discount = Number(form.discount_percent);
 
     if (!name) return setError("اكتب اسم المنتج.");
-    if (!Number.isFinite(price) || price < 0) return setError("أدخل سعرًا أصليًا صحيحًا.");
+    if (!Number.isFinite(sellPrice) || sellPrice < 0) return setError("أدخل سعرًا قبل الخصم صحيحًا.");
     if (!Number.isInteger(discount) || discount < 0 || discount > 100) {
       return setError("نسبة الخصم يجب أن تكون عددًا صحيحًا بين 0 و100.");
     }
@@ -136,7 +136,7 @@ function AdminOffersPage() {
     const payload = {
       name,
       image_url: imageUrl || null,
-      price,
+      sell_price: sellPrice,
       discount_percent: discount,
       offer_type: form.offer_type,
       store_name: form.store_name,
@@ -247,15 +247,15 @@ function AdminOffersPage() {
               </label>
 
               <label className="text-sm font-bold">
-                السعر الأصلي
+                السعر قبل الخصم
                 <input
                   required
                   min="0"
                   step="0.01"
                   type="number"
                   className={inputClass}
-                  value={form.price}
-                  onChange={(e) => setForm({ ...form, price: e.target.value })}
+                  value={form.sell_price}
+                  onChange={(e) => setForm({ ...form, sell_price: e.target.value })}
                   placeholder="0.00"
                 />
               </label>
@@ -374,7 +374,7 @@ function AdminOffersPage() {
                         )}
                       </td>
                       <td className="max-w-56 px-4 py-3 font-bold">{product.name}</td>
-                      <td className="px-4 py-3">{Number(product.price).toLocaleString("ar")} ر.س</td>
+                      <td className="px-4 py-3">{Number(product.sell_price).toLocaleString("ar")} ر.س</td>
                       <td className="px-4 py-3">
                         <span className="rounded-full bg-pink-100 px-3 py-1 font-bold text-pink-700">
                           خصم %{product.discount_percent}
