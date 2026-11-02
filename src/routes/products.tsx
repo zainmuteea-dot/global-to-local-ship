@@ -84,6 +84,7 @@ export interface ProductItem {
 
 export interface StorePlatform {
   id: string;
+  externalUrl?: string;
   code: string;
   name: string;
   englishName: string;
@@ -221,9 +222,10 @@ export const ProductsPage: React.FC<ProductsRouteProps> = ({
   // 1. شي إن | 2. أمازون | 3. علي بابا | 4. خصومات 50% | 5. علي إكسبريس | 6. ترينديول
   // =========================================================================
   const sixPlatforms: StorePlatform[] = [
-    {
-      id: "plat-1-shein",
-      code: "SHEIN",
+  {
+    id: "plat-1-shein",
+    externalUrl: "https://ar.shein.com",
+    code: "SHEIN",
       name: "شي إن - SHEIN",
       englishName: "Fashion & Style",
       badge: "الوسيط رقم #1 في اليمن 👑",
@@ -766,6 +768,18 @@ export const ProductsPage: React.FC<ProductsRouteProps> = ({
                   >
                     اطلب الآن
                   </button>
+                  {plat.externalUrl && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        window.open(plat.externalUrl, "_blank", "noopener,noreferrer");
+                      }}
+                      className="w-full rounded-lg border border-slate-200 bg-white px-1 py-1 text-[10px] font-bold text-slate-600 transition hover:border-[#005696] hover:text-[#005696]"
+                    >
+                      تصفح SHEIN
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -1203,8 +1217,7 @@ export const ProductsPage: React.FC<ProductsRouteProps> = ({
 };
 
 /**
- * صفحة العملاء لا تعرض كتالوج منتجات أو بطاقات متاجر أو عروض حاليًا.
- * مسار الإدارة الفرعي /products/manage يظل متاحًا عبر Outlet.
+ * شاشة بديلة قديمة محفوظة للتوافق؛ صفحة العملاء تعرض الآن الكتالوج الكامل وبطاقات المتاجر.
  */
 const CustomerProductsHiddenPage: React.FC = () => (
   <main dir="rtl" lang="ar" className="min-h-screen bg-slate-50 px-4 py-16 text-slate-900">
@@ -1224,8 +1237,8 @@ const CustomerProductsHiddenPage: React.FC = () => (
 );
 
 /**
- * يعرض صفحة خالية من المنتجات والعروض على /products، ويُبقي صفحات الإدارة
- * الفرعية مثل /products/manage داخل Outlet.
+ * يعرض الكتالوج للعملاء على /products، ويُبقي صفحات الإدارة الفرعية
+ * مثل /products/manage داخل Outlet.
  */
 const ProductsRouteEntry: React.FC = () => {
   const pathname = useLocation({ select: (location) => location.pathname });
@@ -1234,7 +1247,7 @@ const ProductsRouteEntry: React.FC = () => {
     return <Outlet />;
   }
 
-  return <CustomerProductsHiddenPage />;
+  return <ProductsPage />;
 };
 
 export const Route = createFileRoute("/products")({
