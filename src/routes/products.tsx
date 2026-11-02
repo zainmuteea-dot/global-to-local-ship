@@ -133,16 +133,146 @@ const INTERNATIONAL_STORES = [
   { id: "exclusive", name: "عروضات حصرية", fallback: "#exclusive", tone: "bg-[#17130f]" },
 ] as const;
 
+type StoreGlyph = () => React.ReactElement;
+
+type StoreIconConfig = {
+  id: string;
+  name: string;
+  from: string;
+  to: string;
+  ink?: string;
+  Glyph: StoreGlyph;
+};
+
+function IconShell({
+  id,
+  from,
+  to,
+  ink = "#ffffff",
+  children,
+}: {
+  id: string;
+  from: string;
+  to: string;
+  ink?: string;
+  children: React.ReactNode;
+}) {
+  const gradientId = `${id}-gradient`;
+  const shineId = `${id}-shine`;
+
+  return (
+    <svg viewBox="0 0 120 120" className="sh-icon" aria-hidden="true" focusable="false">
+      <defs>
+        <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor={from} />
+          <stop offset="1" stopColor={to} />
+        </linearGradient>
+        <linearGradient id={shineId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#ffffff" stopOpacity="0.38" />
+          <stop offset="0.55" stopColor="#ffffff" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <rect x="4" y="4" width="112" height="112" rx="16" fill={`url(#${gradientId})`} />
+      <rect x="4" y="4" width="112" height="112" rx="16" fill={`url(#${shineId})`} />
+      <rect x="4" y="4" width="112" height="112" rx="16" fill="none" stroke="rgba(255,255,255,0.30)" strokeWidth="1.5" />
+      <g transform="translate(24 24) scale(0.6)" stroke={ink} fill="none" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round">
+        {children}
+      </g>
+    </svg>
+  );
+}
+
+function GlyphShein() {
+  return <>
+    <path d="M22 34h56l-5 46a8 8 0 0 1-8 7H35a8 8 0 0 1-8-7z" />
+    <path d="M38 34c0-11 6-18 12-18s12 7 12 18M40 56h20M38 69h24" />
+  </>;
+}
+
+function GlyphNoon() {
+  return <>
+    <circle cx="50" cy="44" r="15" />
+    <path d="M50 16v8M50 72v-6M22 44h8M78 44h-8M31 25l6 6M69 25l-6 6M20 84h60" />
+  </>;
+}
+
+function GlyphTemu() {
+  return <>
+    <path d="M20 40l30-14 30 14v40L50 94 20 80z" />
+    <path d="M20 40l30 14 30-14M50 54v40" />
+  </>;
+}
+
+function GlyphAli() {
+  return <>
+    <path d="M18 52L82 24 64 86 50 62z" />
+    <path d="M50 62L82 24" />
+  </>;
+}
+
+function GlyphAmazon() {
+  return <>
+    <path d="M16 24h12l7 42h40l8-28H33" />
+    <circle cx="42" cy="82" r="6" />
+    <circle cx="74" cy="82" r="6" />
+  </>;
+}
+
+function GlyphEbay() {
+  return <>
+    <path d="M52 18H28a8 8 0 0 0-8 8v24a8 8 0 0 0 2.3 5.6l30 30a8 8 0 0 0 11.3 0l22-22a8 8 0 0 0 0-11.3l-30-30A8 8 0 0 0 52 18z" />
+    <circle cx="40" cy="38" r="5" />
+  </>;
+}
+
+const STORE_ICONS: StoreIconConfig[] = [
+  { id: "shein", name: "SHEIN", from: "#2B2B2B", to: "#000000", Glyph: GlyphShein },
+  { id: "noon", name: "Noon", from: "#FEEE00", to: "#E7B400", ink: "#2A2100", Glyph: GlyphNoon },
+  { id: "temu", name: "TEMU", from: "#FF8A1E", to: "#E25C00", Glyph: GlyphTemu },
+  { id: "aliexpress", name: "AliExpress", from: "#FF3A1A", to: "#C21400", Glyph: GlyphAli },
+  { id: "amazon", name: "Amazon", from: "#2B3A4E", to: "#131A22", Glyph: GlyphAmazon },
+  { id: "ebay", name: "eBay", from: "#1E7CE8", to: "#0049A6", Glyph: GlyphEbay },
+];
+
+const CUSTOMER_STOREFRONT_CSS = `
+.pr-page{--cream:#FFFBF5;--gold:#D4AF37;--gold-2:#E8C766;--ink:#1B1408;--muted:#6B5B33;position:relative;isolation:isolate;min-height:100vh;width:100%;overflow:hidden;direction:rtl;text-align:right;background:var(--cream);font-family:'Tajawal','Cairo',system-ui,-apple-system,'Segoe UI',sans-serif;color:var(--ink);padding:0 0 80px}
+.pr-page:before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(620px 300px at 88% -6%,rgba(212,175,55,.16),transparent 62%),radial-gradient(560px 300px at 4% 2%,rgba(248,187,208,.16),transparent 62%),radial-gradient(700px 380px at 50% 108%,rgba(212,175,55,.10),transparent 62%)}
+.pr-page:after{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;opacity:.45;background-image:radial-gradient(1.2px 1.2px at 18% 22%,rgba(212,175,55,.5),transparent),radial-gradient(1.2px 1.2px at 72% 12%,rgba(212,175,55,.35),transparent),radial-gradient(1.2px 1.2px at 42% 62%,rgba(212,175,55,.3),transparent),radial-gradient(1.2px 1.2px at 88% 74%,rgba(212,175,55,.35),transparent);background-size:520px 520px,640px 640px,760px 760px,580px 580px}
+.pr-head{position:relative;z-index:1;text-align:center;max-width:980px;margin:0 auto;padding:64px 22px 12px}
+.pr-brand{display:inline-flex;align-items:center;gap:10px;font-size:13px;font-weight:800;letter-spacing:1px;color:var(--muted);background:rgba(255,255,255,.72);border:1px solid rgba(212,175,55,.45);border-radius:999px;padding:7px 16px;backdrop-filter:blur(6px)}
+.pr-brand .dot{width:8px;height:8px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--gold-2));box-shadow:0 0 12px rgba(212,175,55,.8)}
+.pr-title{font-size:clamp(28px,4.4vw,52px);font-weight:900;line-height:1.25;margin:20px 0 12px;color:var(--ink);letter-spacing:-.3px}
+.pr-title .grad{background:linear-gradient(120deg,#B8912A,#D4AF37 45%,#F1DA8E);-webkit-background-clip:text;background-clip:text;color:transparent}
+.pr-sub{font-size:clamp(14px,1.5vw,18px);font-weight:600;color:var(--muted);max-width:640px;margin:0 auto;line-height:1.9}
+.pr-divider{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:26px}
+.pr-divider i{display:block;height:1px;width:min(180px,26vw);background:linear-gradient(90deg,transparent,var(--gold))}.pr-divider i:last-child{background:linear-gradient(270deg,transparent,var(--gold))}.pr-divider b{width:9px;height:9px;transform:rotate(45deg);background:var(--gold);box-shadow:0 0 14px rgba(212,175,55,.9)}
+.pr-stores{position:relative;z-index:1;max-width:1240px;margin:44px auto 0;padding:0 22px;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:18px}
+.pr-store{width:100%;height:220px;cursor:pointer;position:relative;overflow:hidden;background:#FFFBF5;border:1px solid #D4AF37;border-radius:12px;box-shadow:0 6px 18px rgba(212,175,55,.14),0 2px 6px rgba(27,20,8,.06);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:20px 16px;transition:transform .3s cubic-bezier(.22,.7,.3,1),box-shadow .3s ease,border-color .3s ease;text-decoration:none;font-family:inherit}
+.pr-store:before{content:"";position:absolute;inset:0;border-radius:12px;pointer-events:none;background:radial-gradient(220px 120px at 50% 0%,rgba(212,175,55,.16),transparent 70%);opacity:0;transition:opacity .3s ease}
+.pr-store:hover{transform:translateY(-4px) scale(1.03);box-shadow:0 24px 44px rgba(212,175,55,.3),0 10px 22px rgba(27,20,8,.14);border-color:#E8C766}.pr-store:hover:before{opacity:1}.pr-store:focus-visible,.pr-banner:focus-visible{outline:3px solid #8B671C;outline-offset:4px}
+.pr-store .sh-icon{position:relative;z-index:1;width:96px;height:96px;display:block;filter:drop-shadow(0 8px 18px rgba(27,20,8,.2));transition:transform .3s ease,filter .3s ease}.pr-store:hover .sh-icon{transform:scale(1.06);filter:drop-shadow(0 12px 24px rgba(27,20,8,.28))}
+.pr-store-name{position:relative;z-index:1;color:#6B5B33;font-size:15px;font-weight:900;letter-spacing:.4px}.pr-store-go{position:absolute;top:12px;left:14px;z-index:2;color:#B8912A;font-size:18px;opacity:0;transition:opacity .2s ease}.pr-store:hover .pr-store-go,.pr-store:focus-visible .pr-store-go{opacity:1}
+.pr-banners{position:relative;z-index:1;max-width:1240px;margin:28px auto 0;padding:0 22px;display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.pr-banner{position:relative;min-height:270px;overflow:hidden;border-radius:18px;padding:34px;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:13px;text-align:right;text-decoration:none;transition:transform .25s ease,box-shadow .25s ease}.pr-banner:hover{transform:translateY(-3px)}
+.pr-sale{background:linear-gradient(135deg,#F8BBD0,#F5A6BF);color:#7A2140;box-shadow:0 16px 40px rgba(248,187,208,.48)}.pr-sale:before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(400px 220px at 88% 10%,rgba(255,255,255,.55),transparent 60%),radial-gradient(300px 200px at 10% 100%,rgba(255,255,255,.32),transparent 60%)}
+.pr-exclusive{background:linear-gradient(135deg,#17130F,#050505);color:#D4AF37;box-shadow:0 16px 40px rgba(0,0,0,.32);border:1px solid rgba(212,175,55,.38)}.pr-exclusive:before{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(115deg,rgba(212,175,55,.12) 0 1px,transparent 1px 22px);mask-image:linear-gradient(180deg,rgba(0,0,0,.9),rgba(0,0,0,.15));-webkit-mask-image:linear-gradient(180deg,rgba(0,0,0,.9),rgba(0,0,0,.15))}
+.pr-banner-icon{position:absolute;top:16px;left:22px;z-index:1;font-size:48px;opacity:.65;pointer-events:none}.pr-badge{position:relative;z-index:1;display:inline-flex;align-items:center;border-radius:999px;background:#fff;color:#E0447D;padding:8px 18px;font-size:15px;font-weight:900;box-shadow:0 6px 16px rgba(224,68,125,.18)}
+.pr-banner h2{position:relative;z-index:1;margin:2px 0;font-size:clamp(24px,3vw,36px);font-weight:900}.pr-banner p{position:relative;z-index:1;max-width:430px;margin:0;font-size:15px;font-weight:700;line-height:1.9;opacity:.85}.pr-cta{position:relative;z-index:1;display:inline-flex;align-items:center;gap:10px;margin-top:3px;border-radius:999px;background:#fff;color:#E0447D;padding:12px 24px;font-size:14px;font-weight:900;box-shadow:0 10px 24px rgba(224,68,125,.2)}.pr-exclusive .pr-cta{background:linear-gradient(135deg,#B8912A,#D4AF37 45%,#F1DA8E);color:#1B1408;box-shadow:0 10px 26px rgba(212,175,55,.28)}
+@media(max-width:1080px){.pr-stores{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:720px){.pr-head{padding-top:44px}.pr-stores{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding:0 14px}.pr-store{height:200px}.pr-banners{grid-template-columns:1fr;gap:16px;padding:0 14px}.pr-banner{min-height:250px;padding:28px 22px}}
+@media(prefers-reduced-motion:reduce){.pr-store,.pr-store .sh-icon,.pr-banner{transition:none}}
+`;
+
 function CustomerStorefront() {
   const [links, setLinks] = useState<Record<string, string>>({});
   const [visibility, setVisibility] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     try {
-      const savedLinks = JSON.parse(localStorage.getItem("store_links") || "{}");
-      const savedVisibility = JSON.parse(localStorage.getItem("store_visibility") || "{}");
-      setLinks(savedLinks && typeof savedLinks === "object" ? savedLinks : {});
-      setVisibility(savedVisibility && typeof savedVisibility === "object" ? savedVisibility : {});
+      const savedLinks: unknown = JSON.parse(localStorage.getItem("store_links") || "{}");
+      const savedVisibility: unknown = JSON.parse(localStorage.getItem("store_visibility") || "{}");
+      setLinks(savedLinks && typeof savedLinks === "object" ? savedLinks as Record<string, string> : {});
+      setVisibility(savedVisibility && typeof savedVisibility === "object" ? savedVisibility as Record<string, boolean> : {});
     } catch {
       setLinks({});
       setVisibility({});
@@ -150,18 +280,82 @@ function CustomerStorefront() {
   }, []);
 
   const visibleStores = INTERNATIONAL_STORES.filter((store) => visibility[store.id] !== false);
+  const storeIds = new Set<string>(visibleStores.map((store) => store.id));
+  const visibleIconStores = STORE_ICONS.filter((store) => storeIds.has(store.id));
+  const offerStores = visibleStores.filter((store) => store.id === "discounts" || store.id === "exclusive");
+
+  const getExternalStoreUrl = (storeId: string, fallback: string) => {
+    const candidate = links[storeId]?.trim();
+    return candidate && /^https?:\/\//i.test(candidate) ? candidate : fallback;
+  };
 
   return (
-    <main dir="rtl" lang="ar" className="min-h-screen bg-[#fcfaf7] px-4 py-8 text-[#211b15] sm:px-8">
-      <div className="mx-auto max-w-6xl">
-        <header className="mb-10 text-center"><p className="mb-3 text-xs font-black tracking-[0.3em] text-[#a4772c]">YOUR GLOBAL SHOPPER</p><h1 className="text-3xl font-black sm:text-5xl">السوق الشامل منتجات دولية</h1><p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-[#756a5e]">تصفح بوابات التسوق العالمية والعروض المختارة من مكان واحد.</p></header>
-        <section aria-label="بوابات المتاجر الدولية" className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          {visibleStores.filter((store) => !["discounts", "exclusive"].includes(store.id)).map((store) => <a key={store.id} href={links[store.id] || store.fallback} target="_blank" rel="noreferrer" className={`${store.tone} group rounded-2xl border border-[#d7b56d] p-5 text-center shadow-sm transition hover:-translate-y-1 hover:shadow-lg`}><span className="mx-auto mb-4 grid size-14 place-items-center rounded-full bg-white text-xl font-black text-[#292017] shadow-sm">{store.name.slice(0, 1)}</span><span className="block font-black">{store.name}</span><span className="mt-1 block text-xs text-[#90713d]">تسوق الآن</span></a>)}
+    <main dir="rtl" lang="ar" className="pr-page">
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+      <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+      <style dangerouslySetInnerHTML={{ __html: CUSTOMER_STOREFRONT_CSS }} />
+
+      <header className="pr-head">
+        <span className="pr-brand"><i className="dot" aria-hidden="true" /> YOUR GLOBAL SHOPPER</span>
+        <h1 className="pr-title">السوق الشامل <span className="grad">منتجات دولية</span></h1>
+        <p className="pr-sub">كل منتجاتك العالمية في مكان واحد • تسوق الآن من أشهر المتاجر</p>
+        <div className="pr-divider" aria-hidden="true"><i /><b /><i /></div>
+      </header>
+
+      <section id="store-links" className="pr-stores" aria-label="بوابات المتاجر العالمية">
+        {visibleIconStores.map(({ id, name, from, to, ink, Glyph }) => {
+          const store = INTERNATIONAL_STORES.find((item) => item.id === id);
+          const url = getExternalStoreUrl(id, store?.fallback ?? "https://www.google.com");
+          return (
+            <a
+              key={id}
+              className="pr-store"
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`تسوق من ${name}، يفتح في تبويب جديد`}
+              title={`تسوق من ${name}`}
+            >
+              <span className="pr-store-go" aria-hidden="true">↗</span>
+              <IconShell id={`store-${id}`} from={from} to={to} {...(ink ? { ink } : {})}>
+                <Glyph />
+              </IconShell>
+              <span className="pr-store-name">{name}</span>
+            </a>
+          );
+        })}
+      </section>
+
+      {offerStores.length > 0 && (
+        <section className="pr-banners" aria-label="العروض المميزة">
+          {offerStores.map((store) => {
+            const savedUrl = links[store.id]?.trim();
+            const externalUrl = savedUrl && /^https?:\/\//i.test(savedUrl) ? savedUrl : undefined;
+            const exclusive = store.id === "exclusive";
+            return (
+              <a
+                id={store.id}
+                key={store.id}
+                className={`pr-banner ${exclusive ? "pr-exclusive" : "pr-sale"}`}
+                href={externalUrl ?? "#store-links"}
+                target={externalUrl ? "_blank" : undefined}
+                rel={externalUrl ? "noopener noreferrer" : undefined}
+                aria-label={externalUrl ? `افتح ${store.name} في تبويب جديد` : `تصفح المتاجر ضمن ${store.name}`}
+              >
+                <span className="pr-banner-icon" aria-hidden="true">{exclusive ? "👑" : "🌹"}</span>
+                {exclusive ? <span className="pr-badge">EXCLUSIVE</span> : <span className="pr-badge">حتى 70%</span>}
+                <h2>{exclusive ? store.name : "تخفيضات حتى 70%"}</h2>
+                <p>{exclusive ? "عروض محدودة على المنتجات الفاخرة والمختارة" : "على منتجات مختارة من المتاجر العالمية"}</p>
+                <span className="pr-cta">
+                  {externalUrl ? "اكتشف العروض" : "تصفح المتاجر"}
+                  <span aria-hidden="true">←</span>
+                </span>
+              </a>
+            );
+          })}
         </section>
-        <section aria-label="العروض" className="mt-8 grid gap-5 sm:grid-cols-2">
-          {visibleStores.filter((store) => ["discounts", "exclusive"].includes(store.id)).map((store) => <a id={store.id} key={store.id} href={links[store.id] || store.fallback} target={links[store.id]?.startsWith("http") ? "_blank" : undefined} rel="noreferrer" className={`${store.tone} group min-h-48 rounded-3xl border border-[#d7b56d] p-8 text-center shadow-sm transition hover:-translate-y-1 hover:shadow-xl ${store.id === "exclusive" ? "text-[#f5d58f]" : "text-[#351d24]"}`}><span className="text-4xl">{store.id === "exclusive" ? "♛" : "%"}</span><span className="mt-4 block text-2xl font-black">{store.name}</span><span className="mt-2 block text-sm opacity-75">اكتشف العروض الآن</span></a>)}
-        </section>
-      </div>
+      )}
     </main>
   );
 }
