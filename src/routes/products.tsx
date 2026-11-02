@@ -122,6 +122,50 @@ interface ProductsRouteProps {
   onNavigateToAdmin?: () => void;
 }
 
+const INTERNATIONAL_STORES = [
+  { id: "shein", name: "SHEIN", fallback: "https://www.shein.com", tone: "bg-[#fffaf2]" },
+  { id: "noon", name: "Noon", fallback: "https://www.noon.com", tone: "bg-[#fffaf2]" },
+  { id: "temu", name: "TEMU", fallback: "https://www.temu.com", tone: "bg-[#fffaf2]" },
+  { id: "aliexpress", name: "AliExpress", fallback: "https://www.aliexpress.com", tone: "bg-[#fffaf2]" },
+  { id: "amazon", name: "Amazon", fallback: "https://www.amazon.com", tone: "bg-[#fffaf2]" },
+  { id: "ebay", name: "eBay", fallback: "https://www.ebay.com", tone: "bg-[#fffaf2]" },
+  { id: "discounts", name: "تخفيضات حتى 70%", fallback: "#discounts", tone: "bg-[#f5b8c4]" },
+  { id: "exclusive", name: "عروضات حصرية", fallback: "#exclusive", tone: "bg-[#17130f]" },
+] as const;
+
+function CustomerStorefront() {
+  const [links, setLinks] = useState<Record<string, string>>({});
+  const [visibility, setVisibility] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    try {
+      const savedLinks = JSON.parse(localStorage.getItem("store_links") || "{}");
+      const savedVisibility = JSON.parse(localStorage.getItem("store_visibility") || "{}");
+      setLinks(savedLinks && typeof savedLinks === "object" ? savedLinks : {});
+      setVisibility(savedVisibility && typeof savedVisibility === "object" ? savedVisibility : {});
+    } catch {
+      setLinks({});
+      setVisibility({});
+    }
+  }, []);
+
+  const visibleStores = INTERNATIONAL_STORES.filter((store) => visibility[store.id] !== false);
+
+  return (
+    <main dir="rtl" lang="ar" className="min-h-screen bg-[#fcfaf7] px-4 py-8 text-[#211b15] sm:px-8">
+      <div className="mx-auto max-w-6xl">
+        <header className="mb-10 text-center"><p className="mb-3 text-xs font-black tracking-[0.3em] text-[#a4772c]">YOUR GLOBAL SHOPPER</p><h1 className="text-3xl font-black sm:text-5xl">السوق الشامل منتجات دولية</h1><p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-[#756a5e]">تصفح بوابات التسوق العالمية والعروض المختارة من مكان واحد.</p></header>
+        <section aria-label="بوابات المتاجر الدولية" className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          {visibleStores.filter((store) => !["discounts", "exclusive"].includes(store.id)).map((store) => <a key={store.id} href={links[store.id] || store.fallback} target="_blank" rel="noreferrer" className={`${store.tone} group rounded-2xl border border-[#d7b56d] p-5 text-center shadow-sm transition hover:-translate-y-1 hover:shadow-lg`}><span className="mx-auto mb-4 grid size-14 place-items-center rounded-full bg-white text-xl font-black text-[#292017] shadow-sm">{store.name.slice(0, 1)}</span><span className="block font-black">{store.name}</span><span className="mt-1 block text-xs text-[#90713d]">تسوق الآن</span></a>)}
+        </section>
+        <section aria-label="العروض" className="mt-8 grid gap-5 sm:grid-cols-2">
+          {visibleStores.filter((store) => ["discounts", "exclusive"].includes(store.id)).map((store) => <a id={store.id} key={store.id} href={links[store.id] || store.fallback} target={links[store.id]?.startsWith("http") ? "_blank" : undefined} rel="noreferrer" className={`${store.tone} group min-h-48 rounded-3xl border border-[#d7b56d] p-8 text-center shadow-sm transition hover:-translate-y-1 hover:shadow-xl ${store.id === "exclusive" ? "text-[#f5d58f]" : "text-[#351d24]"}`}><span className="text-4xl">{store.id === "exclusive" ? "♛" : "%"}</span><span className="mt-4 block text-2xl font-black">{store.name}</span><span className="mt-2 block text-sm opacity-75">اكتشف العروض الآن</span></a>)}
+        </section>
+      </div>
+    </main>
+  );
+}
+
 export const ProductsPage: React.FC<ProductsRouteProps> = ({
   onBack,
   onNavigateToOrder,
@@ -1075,7 +1119,7 @@ export const ProductsPage: React.FC<ProductsRouteProps> = ({
                       : m === "ون كاش"
                         ? "📱 ون كاش"
                         : m === "النجم"
-                          ? "💸 النجم"
+                          ? "💸 الن��م"
                           : m === "جيب"
                             ? "🪙 جيب"
                             : m === "استلام"
@@ -1268,7 +1312,7 @@ const ProductsRouteEntry: React.FC = () => {
     return <Outlet />;
   }
 
-  return <ProductsPage />;
+  return <CustomerStorefront />;
 };
 
 export const Route = createFileRoute("/products")({
