@@ -12,6 +12,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  MessageSquare,
   PackageCheck,
   PackageOpen,
   PackageSearch,
@@ -116,8 +117,10 @@ const navItems = [
   { label: "الفواتير", href: "/sales-invoices", icon: FileText },
   { label: "طرق الدفع", href: "/payments", icon: CircleDollarSign },
   { label: "التقارير", href: "/client-reports", icon: Activity },
-  { label: "المنتجات الفورية", href: "/products/manage", icon: PackageOpen },
   { label: "العروض والتخفيضات", href: "/admin/offers", icon: PackageSearch },
+  { label: "الشات", href: "/admin-chat", icon: MessageSquare },
+  { label: "الإشعارات", href: "/notifications", icon: Bell },
+  { label: "المنتجات الفورية", href: "/products/manage", icon: PackageOpen },
 ] as const;
 
 function metricTone(tone: "blue" | "orange" | "green" | "purple") {
