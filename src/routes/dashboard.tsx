@@ -27,6 +27,7 @@ import {
   PhoneCall,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { DEFAULT_STORE_LINKS, normalizeStoreUrl } from "@/lib/store-links";
 import { AlShamelLogo } from "./index";
 
 type DashboardNotification = {
@@ -34,7 +35,7 @@ type DashboardNotification = {
   user_id: string | null;
   title: string;
   message: string | null;
-  type: string;
+  type: string | null;
   created_at: string;
   payment_id: string | null;
 };
@@ -403,6 +404,27 @@ export default function DashboardPage() {
     setReadNotificationIds((current) => new Set(current).add(notificationId));
     setNotificationError(null);
   };
+
+  // روابط المتاجر التي تحددها الإدارة (مثل رابط علي إكسبريس)
+  const [storeLinks, setStoreLinks] = useState<Record<string, string>>(DEFAULT_STORE_LINKS);
+  useEffect(() => {
+    let active = true;
+    supabase
+      .from("store_links")
+      .select("slug,url")
+      .then(({ data }) => {
+        if (!active || !data) return;
+        const next: Record<string, string> = { ...DEFAULT_STORE_LINKS };
+        data.forEach((row) => {
+          const clean = normalizeStoreUrl(row.url);
+          if (clean) next[row.slug] = clean;
+        });
+        setStoreLinks(next);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // المتاجر العالمية — ألوان الهوية ووهج النبض لكل متجر (تظهر على الخلفية الداكنة)
   const platforms = [
@@ -947,35 +969,66 @@ export default function DashboardPage() {
             }
           >
             <div className="relative z-10 grid grid-cols-2 gap-2 place-items-center sm:grid-cols-3 sm:gap-3 lg:grid-cols-5">
-              {platforms.map((p, i) => (
-                <Link
-                  key={p.key}
-                  to="/new-order"
-                  search={{ store: p.key }}
-                  title={p.name}
-                  className="group relative h-14 w-full max-w-none overflow-hidden rounded-2xl border border-white/25 bg-white/[0.12] animate-[store-pulse_2s_ease-in-out_infinite] will-change-transform sm:h-16 sm:max-w-[140px]"
-                  style={{ animationDelay: `${i * 0.3}s`, "--glow": p.glow } as React.CSSProperties}
-                >
-                  {/* حافة الزجاج العلوية */}
-                  <span
-                    aria-hidden
-                    className="pointer-events-none absolute inset-x-0 top-0 z-10 h-1/2 bg-gradient-to-b from-white/25 to-transparent"
-                  />
-                  {/* اسم المتجر بلون هويته */}
-                  <span
-                    className="relative z-20 flex h-full w-full items-center justify-center px-1 text-center text-[13px] font-black leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,.35)]"
-                    style={{ color: p.color, fontStyle: p.italic ? "italic" : "normal" }}
+              {platforms.map((p, i) => {
+                const externalUrl = storeLinks[p.key];
+                const boxClass =
+                  "group relative h-14 w-full max-w-none overflow-hidden rounded-2xl border border-white/25 bg-white/[0.12] animate-[store-pulse_2s_ease-in-out_infinite] will-change-transform sm:h-16 sm:max-w-[140px]";
+                const boxStyle = {
+                  animationDelay: `${i * 0.3}s`,
+                  "--glow": p.glow,
+                } as React.CSSProperties;
+                const inner = (
+                  <>
+                    {/* حافة الزجاج العلوية */}
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute inset-x-0 top-0 z-10 h-1/2 bg-gradient-to-b from-white/25 to-transparent"
+                    />
+                    {/* اسم المتجر بلون هويته */}
+                    <span
+                      className="relative z-20 flex h-full w-full flex-col items-center justify-center px-1 text-center text-[13px] font-black leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,.35)]"
+                      style={{ color: p.color, fontStyle: p.italic ? "italic" : "normal" }}
+                    >
+                      {p.name}
+                      {externalUrl && (
+                        <span className="mt-0.5 inline-flex items-center gap-0.5 text-[10px] font-bold not-italic text-white/90">
+                          <ExternalLink className="size-3" /> تسوّق الآن
+                        </span>
+                      )}
+                    </span>
+                    {/* اللمعة المتحركة */}
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute inset-y-0 left-0 z-30 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/60 to-transparent animate-[store-shine_2.5s_linear_infinite]"
+                      style={{ animationDelay: `${i * 0.3}s` }}
+                    />
+                  </>
+                );
+                return externalUrl ? (
+                  <a
+                    key={p.key}
+                    href={externalUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={`افتح ${p.name}`}
+                    className={boxClass}
+                    style={boxStyle}
                   >
-                    {p.name}
-                  </span>
-                  {/* اللمعة المتحركة */}
-                  <span
-                    aria-hidden
-                    className="pointer-events-none absolute inset-y-0 left-0 z-30 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/60 to-transparent animate-[store-shine_2.5s_linear_infinite]"
-                    style={{ animationDelay: `${i * 0.3}s` }}
-                  />
-                </Link>
-              ))}
+                    {inner}
+                  </a>
+                ) : (
+                  <Link
+                    key={p.key}
+                    to="/new-order"
+                    search={{ store: p.key }}
+                    title={p.name}
+                    className={boxClass}
+                    style={boxStyle}
+                  >
+                    {inner}
+                  </Link>
+                );
+              })}
             </div>
           </div>
 

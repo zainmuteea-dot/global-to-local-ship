@@ -8,3 +8,4 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+- Admin-editable customer-facing store URLs live in the `store_links` table (public read, admin/staff write) and are validated by `normalizeStoreUrl` in src/lib/store-links.ts — one source for every store box.

@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Check, ImagePlus, Pencil, Plus, Trash2, X } from "lucide-react";
 import { AdminRouteGuard } from "@/components/admin/AdminRouteGuard";
+import { StoreLinkEditor } from "@/components/admin/StoreLinkEditor";
 
 type LogoItem = {
   slug: string;
@@ -242,6 +243,8 @@ function LogoDashboard() {
               </button>
             </div>
           )}
+
+          <StoreLinkEditor slug="aliexpress" label="علي إكسبريس" />
 
           <section
             aria-label="الشعارات السبعة"
