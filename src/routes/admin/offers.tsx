@@ -7,36 +7,31 @@ import { supabase } from "@/integrations/supabase/client";
 const db = supabase as any;
 
 type OfferType = "exclusive" | "deals" | "both";
-type StoreName = "SHEIN" | "Noon" | "TEMU" | "AliExpress" | "Amazon" | "eBay";
 type OfferProduct = {
   id: string;
   name: string;
   image_url: string | null;
-  sell_price: number;
+  price: number;
   discount_percent: number;
   offer_type: OfferType;
-  store_name: StoreName;
 };
 
 type ProductForm = {
   name: string;
   image_url: string;
-  sell_price: string;
+  price: string;
   discount_percent: string;
   offer_type: OfferType | "";
-  store_name: StoreName | "";
 };
 
 const emptyForm: ProductForm = {
   name: "",
   image_url: "",
-  sell_price: "",
+  price: "",
   discount_percent: "70",
   offer_type: "",
-  store_name: "",
 };
 
-const storeOptions: StoreName[] = ["SHEIN", "Noon", "TEMU", "AliExpress", "Amazon", "eBay"];
 const offerLabels: Record<OfferType, string> = {
   exclusive: "عروض حصرية",
   deals: "تخفيضات حتى 70%",
@@ -63,7 +58,7 @@ function AdminOffersPage() {
     setError("");
     const { data, error: queryError } = await db
       .from("products")
-      .select("id,name,image_url,sell_price,discount_percent,offer_type,store_name")
+      .select("id,name,image_url,price,discount_percent,offer_type")
       .in("offer_type", ["exclusive", "deals", "both"])
       .order("name", { ascending: true });
 
@@ -93,10 +88,9 @@ function AdminOffersPage() {
     setForm({
       name: product.name ?? "",
       image_url: product.image_url ?? "",
-      sell_price: String(product.sell_price ?? ""),
+      price: String(product.price ?? ""),
       discount_percent: String(product.discount_percent ?? 0),
       offer_type: product.offer_type,
-      store_name: product.store_name,
     });
     setError("");
     setNotice("");
@@ -117,15 +111,15 @@ function AdminOffersPage() {
 
     const name = form.name.trim();
     const imageUrl = form.image_url.trim();
-    const sellPrice = Number(form.sell_price);
+    const price = Number(form.price);
     const discount = Number(form.discount_percent);
 
     if (!name) return setError("اكتب اسم المنتج.");
-    if (!Number.isFinite(sellPrice) || sellPrice < 0) return setError("أدخل سعرًا قبل الخصم صحيحًا.");
+    if (!Number.isFinite(price) || price < 0) return setError("أدخل سعرًا قبل الخصم صحيحًا.");
     if (!Number.isInteger(discount) || discount < 0 || discount > 100) {
       return setError("نسبة الخصم يجب أن تكون عددًا صحيحًا بين 0 و100.");
     }
-    if (!form.offer_type || !form.store_name) return setError("اختر نوع العرض والمتجر.");
+    if (!form.offer_type) return setError("اختر نوع العرض.");
     if (imageUrl) {
       try {
         const parsed = new URL(imageUrl);
@@ -138,10 +132,9 @@ function AdminOffersPage() {
     const payload = {
       name,
       image_url: imageUrl || null,
-      sell_price: sellPrice,
+      price,
       discount_percent: discount,
       offer_type: form.offer_type,
-      store_name: form.store_name,
     };
 
     setSaving(true);
@@ -185,7 +178,7 @@ function AdminOffersPage() {
             <p className="mb-2 text-xs font-bold tracking-[0.22em] text-[#d9b96e]">YOUR GLOBAL SHOPPER · OFFERS</p>
             <h1 className="text-2xl font-black sm:text-3xl">إضافة منتجات للعروض والتخفيضات</h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-white/70">
-              أدر المنتجات التي تظهر للعملاء في صفحات العروض الحصرية والتخفيضات.
+              أضف منتجاتك وحدد سعرها ونسبة خصمها بنفسك، دون ربطها بأي متجر خارجي.
             </p>
           </div>
           <button
@@ -256,8 +249,8 @@ function AdminOffersPage() {
                   step="0.01"
                   type="number"
                   className={inputClass}
-                  value={form.sell_price}
-                  onChange={(e) => setForm({ ...form, sell_price: e.target.value })}
+                  value={form.price}
+                  onChange={(e) => setForm({ ...form, price: e.target.value })}
                   placeholder="0.00"
                 />
               </label>
@@ -294,24 +287,6 @@ function AdminOffersPage() {
                 </select>
               </label>
 
-              <label className="text-sm font-bold">
-                المتجر
-                <select
-                  required
-                  className={inputClass}
-                  value={form.store_name}
-                  onChange={(e) =>
-                    setForm({ ...form, store_name: e.target.value as ProductForm["store_name"] })
-                  }
-                >
-                  <option value="">اختر المتجر</option>
-                  {storeOptions.map((store) => (
-                    <option key={store} value={store}>
-                      {store}
-                    </option>
-                  ))}
-                </select>
-              </label>
             </div>
 
             <div className="mt-6 flex flex-wrap gap-3">
@@ -369,7 +344,7 @@ function AdminOffersPage() {
               <table className="w-full min-w-[900px] text-right text-sm">
                 <thead className="bg-[#faf8f3] text-xs text-gray-500">
                   <tr>
-                    {["الصورة", "الاسم", "السعر الأصلي", "الخصم", "نوع العرض", "المتجر", "إجراء"].map((label) => (
+                    {["الصورة", "الاسم", "السعر قبل الخصم", "السعر بعد الخصم", "الخصم", "نوع العرض", "إجراء"].map((label) => (
                       <th key={label} className="px-4 py-4 font-bold">
                         {label}
                       </th>
@@ -389,14 +364,14 @@ function AdminOffersPage() {
                         )}
                       </td>
                       <td className="max-w-56 px-4 py-3 font-bold">{product.name}</td>
-                      <td className="px-4 py-3">{Number(product.sell_price).toLocaleString("ar")} ر.س</td>
+                      <td className="px-4 py-3">{Number(product.price).toLocaleString("ar")} ر.س</td>
+                      <td className="px-4 py-3 font-bold text-[#8a6424]">{(Number(product.price) * (1 - Number(product.discount_percent) / 100)).toLocaleString("ar", { maximumFractionDigits: 2 })} ر.س</td>
                       <td className="px-4 py-3">
                         <span className="rounded-full bg-pink-100 px-3 py-1 font-bold text-pink-700">
                           خصم %{product.discount_percent}
                         </span>
                       </td>
                       <td className="px-4 py-3">{offerLabels[product.offer_type]}</td>
-                      <td className="px-4 py-3">{product.store_name}</td>
                       <td className="px-4 py-3">
                         <div className="flex gap-2">
                           <button
