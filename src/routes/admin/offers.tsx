@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { ImagePlus, LoaderCircle, Pencil, Plus, Save, Trash2, X } from "lucide-react";
-import { AdminRouteGuard } from "@/components/admin/AdminRouteGuard";
 import { supabase } from "@/integrations/supabase/client";
 
 const db = supabase as any;
@@ -32,6 +31,36 @@ const emptyForm: ProductForm = {
   offer_type: "",
 };
 
+type OfferDraft = { form: ProductForm; editingId: string | null; formOpen: boolean };
+const OFFER_DRAFT_KEY = "admin-offers-form-draft-v1";
+
+function readOfferDraft(): OfferDraft | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(OFFER_DRAFT_KEY);
+    if (!raw) return null;
+    const saved = JSON.parse(raw) as Partial<OfferDraft>;
+    if (!saved.formOpen || !saved.form || typeof saved.form !== "object") return null;
+    const form = saved.form as Partial<ProductForm>;
+    const offerType = form.offer_type;
+    return {
+      form: {
+        name: typeof form.name === "string" ? form.name : "",
+        image_url: typeof form.image_url === "string" ? form.image_url : "",
+        price: typeof form.price === "string" ? form.price : "",
+        discount_percent: typeof form.discount_percent === "string" ? form.discount_percent : "70",
+        offer_type: ["", "exclusive", "deals", "both"].includes(String(offerType))
+          ? (offerType as ProductForm["offer_type"])
+          : "",
+      },
+      editingId: typeof saved.editingId === "string" ? saved.editingId : null,
+      formOpen: true,
+    };
+  } catch {
+    return null;
+  }
+}
+
 const offerLabels: Record<OfferType, string> = {
   exclusive: "عروض حصرية",
   deals: "تخفيضات حتى 70%",
@@ -41,10 +70,11 @@ const inputClass =
   "mt-2 w-full rounded-xl border border-[#C9DCEB] bg-white px-4 py-3 text-sm text-[#0A2540] outline-none transition focus:border-[#0F4C81] focus:ring-2 focus:ring-[#0F4C81]/15";
 
 function AdminOffersPage() {
+  const [initialDraft] = useState<OfferDraft | null>(() => readOfferDraft());
   const [products, setProducts] = useState<OfferProduct[]>([]);
-  const [form, setForm] = useState<ProductForm>(emptyForm);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [formOpen, setFormOpen] = useState(false);
+  const [form, setForm] = useState<ProductForm>(() => initialDraft?.form ?? { ...emptyForm });
+  const [editingId, setEditingId] = useState<string | null>(() => initialDraft?.editingId ?? null);
+  const [formOpen, setFormOpen] = useState(() => initialDraft?.formOpen ?? false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -75,9 +105,25 @@ function AdminOffersPage() {
     void loadProducts();
   }, [loadProducts]);
 
+  // Keep an in-progress product safe if the protected route is remounted or refreshed.
+  useEffect(() => {
+    try {
+      if (!formOpen) {
+        window.sessionStorage.removeItem(OFFER_DRAFT_KEY);
+        return;
+      }
+      window.sessionStorage.setItem(
+        OFFER_DRAFT_KEY,
+        JSON.stringify({ form, editingId, formOpen: true } satisfies OfferDraft),
+      );
+    } catch {
+      // Storage can be unavailable in private/restricted browsing; the live React state remains intact.
+    }
+  }, [form, editingId, formOpen]);
+
   const openNewForm = () => {
     setEditingId(null);
-    setForm(emptyForm);
+    setForm({ ...emptyForm });
     setError("");
     setNotice("");
     setFormOpen(true);
@@ -171,7 +217,7 @@ function AdminOffersPage() {
   };
 
   return (
-    <main dir="rtl" className="min-h-[100dvh] bg-[#F3F8FC] px-4 py-8 text-[#0A2540] sm:px-6 lg:px-10">
+    <main dir="rtl" className="min-h-[100dvh] overflow-y-auto bg-[#F3F8FC] px-4 py-8 text-[#0A2540] sm:px-6 lg:px-10">
       <div className="mx-auto max-w-7xl">
         <div className="grid items-start gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
           <aside className="rounded-3xl border border-[#DCEAF4] bg-white p-5 shadow-sm lg:sticky lg:top-6">
@@ -258,7 +304,7 @@ function AdminOffersPage() {
                   required
                   className={inputClass}
                   value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  onChange={(e) => setForm((current) => ({ ...current, name: e.target.value }))}
                   placeholder="مثال: حقيبة نسائية"
                 />
               </label>
@@ -269,7 +315,7 @@ function AdminOffersPage() {
                   type="url"
                   className={inputClass}
                   value={form.image_url}
-                  onChange={(e) => setForm({ ...form, image_url: e.target.value })}
+                  onChange={(e) => setForm((current) => ({ ...current, image_url: e.target.value }))}
                   placeholder="https://..."
                 />
               </label>
@@ -283,7 +329,7 @@ function AdminOffersPage() {
                   type="number"
                   className={inputClass}
                   value={form.price}
-                  onChange={(e) => setForm({ ...form, price: e.target.value })}
+                  onChange={(e) => setForm((current) => ({ ...current, price: e.target.value }))}
                   placeholder="0.00"
                 />
               </label>
@@ -298,7 +344,7 @@ function AdminOffersPage() {
                   type="number"
                   className={inputClass}
                   value={form.discount_percent}
-                  onChange={(e) => setForm({ ...form, discount_percent: e.target.value })}
+                  onChange={(e) => setForm((current) => ({ ...current, discount_percent: e.target.value }))}
                   placeholder="70"
                 />
               </label>
@@ -310,7 +356,7 @@ function AdminOffersPage() {
                   className={inputClass}
                   value={form.offer_type}
                   onChange={(e) =>
-                    setForm({ ...form, offer_type: e.target.value as ProductForm["offer_type"] })
+                    setForm((current) => ({ ...current, offer_type: e.target.value as ProductForm["offer_type"] }))
                   }
                 >
                   <option value="">اختر نوع العرض</option>
@@ -428,9 +474,6 @@ function AdminOffersPage() {
 }
 
 export const Route = createFileRoute("/admin/offers")({
-  component: () => (
-    <AdminRouteGuard>
-      <AdminOffersPage />
-    </AdminRouteGuard>
-  ),
+  // /admin is the parent route and already applies the shared admin guard.
+  component: AdminOffersPage,
 });
