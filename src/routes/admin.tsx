@@ -1085,17 +1085,21 @@ export default function AdminOperationsPage() {
               {pendingPaymentsCount}
             </span>
           </button>
-          <div className="flex items-center justify-between gap-3 rounded-2xl border border-orange-200 bg-orange-50 p-4 text-right">
+          <button
+            type="button"
+            onClick={() => navigateTo("/admin-tracking")}
+            className="flex items-center justify-between gap-3 rounded-2xl border border-orange-200 bg-orange-50 p-4 text-right hover:bg-orange-100"
+          >
             <span>
-              <b className="block text-sm text-orange-900">شحنات التخليص الجمركي</b>
+              <b className="block text-sm text-orange-900">شحنات التخليص الجمركي والفرز المحلي</b>
               <small className="mt-1 block text-orange-800">
-                راجع حالات الجمارك في قائمة الشحنات أو صفحة التتبع.
+                اضغط لفتح لوحة تتبع الشحنات وتحديث مراحلها.
               </small>
             </span>
             <span className="rounded-xl bg-white px-3 py-2 text-lg font-black text-orange-700">
-              {orders.filter((o) => /جمارك|customs/i.test(String(o.status))).length}
+              {orders.filter((o) => o.status === "shipped").length}
             </span>
-          </div>
+          </button>
         </section>
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
           <div className="bg-white p-4 rounded-2xl border border-sky-100 shadow-xs">
@@ -1645,56 +1649,49 @@ export default function AdminOperationsPage() {
         {/* 2. تبويب النظام المالي والمحاسبي */}
         {activeTab === "finance" && (
           <div className="space-y-6">
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-bold text-amber-900">
-              الأرصدة أدناه قيم ابتدائية واردة في المواصفات وليست قراءة مباشرة من قاعدة البيانات؛ لا
-              تعتمدها للمحاسبة قبل ربط جدول funds.
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-bold text-emerald-800">
+              الأرصدة محسوبة تلقائياً من سندات القبض والصرف المحفوظة بالقاعدة (القبض − الصرف) وتتحدث
+              لحظياً.
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
-              {[
-                {
-                  name: "بنك الكريمي الرئيسي",
-                  amount: "3,450,000",
-                  currency: "YER",
-                  tone: "text-[#0F4C81]",
-                },
-                {
-                  name: "محفظة ون كاش OneCash",
-                  amount: "820,000",
-                  currency: "YER",
-                  tone: "text-[#0284C7]",
-                },
-                {
-                  name: "الخزينة المركزية — صنعاء",
-                  amount: "410,000",
-                  currency: "YER",
-                  tone: "text-emerald-700",
-                },
-                {
-                  name: "صندوق التوزيع — عدن",
-                  amount: "280,000",
-                  currency: "YER",
-                  tone: "text-orange-600",
-                },
-                {
-                  name: "مصرف الراجحي — حوالات",
-                  amount: "4,200",
-                  currency: "SAR",
-                  tone: "text-violet-700",
-                },
-              ].map((fund) => (
-                <div
-                  key={fund.name}
-                  className="bg-white p-5 rounded-2xl border border-sky-100 shadow-xs"
-                >
-                  <span className="text-xs font-bold text-slate-500">{fund.name}</span>
-                  <div className={`text-xl font-black font-mono mt-2 ${fund.tone}`}>
-                    {fund.amount} {fund.currency}
+            {vouchersError && (
+              <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-bold text-red-800">
+                {vouchersError}
+              </p>
+            )}
+            {voucherNotice?.type === "success" && (
+              <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-bold text-emerald-800">
+                {voucherNotice.message}
+              </p>
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+              {FUND_OPTIONS.map((fund) => {
+                const balances = fundBalances[fund.value] ?? {};
+                const entries = Object.entries(balances).filter(([, v]) => v !== 0);
+                return (
+                  <div
+                    key={fund.value}
+                    className="bg-white p-5 rounded-2xl border border-sky-100 shadow-xs"
+                  >
+                    <span className="text-xs font-bold text-slate-500">{fund.label}</span>
+                    <div className="mt-2 space-y-1">
+                      {entries.length === 0 ? (
+                        <div className="text-xl font-black font-mono text-[#0F4C81]">0 YER</div>
+                      ) : (
+                        entries.map(([currency, value]) => (
+                          <div
+                            key={currency}
+                            className={`text-xl font-black font-mono ${value < 0 ? "text-red-600" : "text-[#0F4C81]"}`}
+                            dir="ltr"
+                          >
+                            {value.toLocaleString("en-US")} {currency}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                    <div className="text-[10px] text-emerald-700 mt-2">من سندات القاعدة</div>
                   </div>
-                  <div className="text-[10px] text-amber-700 mt-2">
-                    قيمة توضيحية • غير متصلة بقاعدة البيانات
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <div className="flex gap-3">
@@ -1731,13 +1728,21 @@ export default function AdminOperationsPage() {
         {/* 3. تبويب طاقم العمل والموظفين */}
         {activeTab === "employees" && (
           <div className="space-y-4">
-            <p
+            <div
               role="note"
-              className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-900"
+              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-900"
             >
-              تنبيه: بيانات الموظفين هنا محفوظة محلياً/نموذجية، ولا تثبت وجود حسابات موظفين فعلية أو
-              تعيين أدوار في قاعدة البيانات.
-            </p>
+              <span>
+                هذه بطاقات تواصل سريعة. حسابات الموظفين الفعلية وصلاحياتهم تُدار من صفحة إدارة الموظفين.
+              </span>
+              <button
+                type="button"
+                onClick={() => navigateTo("/employees")}
+                className="rounded-xl bg-[#0F4C81] px-3 py-2 text-xs font-bold text-white"
+              >
+                فتح إدارة الموظفين والصلاحيات
+              </button>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {employees.map((emp) => (
                 <div
@@ -1827,9 +1832,8 @@ export default function AdminOperationsPage() {
                 <X className="size-4" />
               </button>
             </div>
-            <p className="mb-4 rounded-xl bg-amber-50 p-3 text-xs text-amber-900">
-              هذه النسخة تحسب وتطبع إيصالاً محلياً فقط. لا تحفظ مبيعات في قاعدة البيانات لعدم توفر
-              تعريف جدول الفواتير في الأنواع الحالية.
+            <p className="mb-4 rounded-xl bg-sky-50 p-3 text-xs text-sky-900">
+              عند الطباعة يُسجَّل المبلغ تلقائياً كسند قبض في الصندوق النقدي بالريال اليمني.
             </p>
             <div className="space-y-3">
               <label className="block text-xs font-bold">
@@ -1952,22 +1956,27 @@ export default function AdminOperationsPage() {
               </div>
             </div>
 
+            {voucherNotice?.type === "error" && (
+              <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-bold text-red-800">
+                {voucherNotice.message}
+              </p>
+            )}
+
             <div className="pt-2 flex items-center justify-end gap-2">
               <button
+                type="button"
                 onClick={() => setIsVoucherModalOpen(false)}
                 className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs cursor-pointer"
               >
                 إلغاء
               </button>
               <button
-                onClick={() => {
-                  alert(
-                    "لم يُحفظ السند: جدول vouchers غير مربوط في نسخة قاعدة البيانات الحالية. اربط الجدول وسياساته أولاً حتى لا يظهر نجاح غير حقيقي.",
-                  );
-                }}
-                className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#0F4C81] to-[#0284C7] text-white font-bold text-xs cursor-pointer shadow-sm"
+                type="button"
+                onClick={() => void saveVoucher()}
+                disabled={voucherSaving}
+                className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#0F4C81] to-[#0284C7] text-white font-bold text-xs cursor-pointer shadow-sm disabled:opacity-60"
               >
-                حفظ وترحيل
+                {voucherSaving ? "جارٍ الحفظ…" : "حفظ وترحيل"}
               </button>
             </div>
           </div>
