@@ -330,25 +330,22 @@ function CustomerStorefront() {
       {offerStores.length > 0 && (
         <section className="pr-banners" aria-label="العروض المميزة">
           {offerStores.map((store) => {
-            const savedUrl = links[store.id]?.trim();
-            const externalUrl = savedUrl && /^https?:\/\//i.test(savedUrl) ? savedUrl : undefined;
             const exclusive = store.id === "exclusive";
+            const offerPath = exclusive ? "/exclusive" : "/deals";
             return (
               <a
                 id={store.id}
                 key={store.id}
                 className={`pr-banner ${exclusive ? "pr-exclusive" : "pr-sale"}`}
-                href={externalUrl ?? "#store-links"}
-                target={externalUrl ? "_blank" : undefined}
-                rel={externalUrl ? "noopener noreferrer" : undefined}
-                aria-label={externalUrl ? `افتح ${store.name} في تبويب جديد` : `تصفح المتاجر ضمن ${store.name}`}
+                href={offerPath}
+                aria-label={`تصفح ${store.name}`}
               >
                 <span className="pr-banner-icon" aria-hidden="true">{exclusive ? "👑" : "🌹"}</span>
                 {exclusive ? <span className="pr-badge">EXCLUSIVE</span> : <span className="pr-badge">حتى 70%</span>}
                 <h2>{exclusive ? store.name : "تخفيضات حتى 70%"}</h2>
                 <p>{exclusive ? "عروض محدودة على المنتجات الفاخرة والمختارة" : "على منتجات مختارة من المتاجر العالمية"}</p>
                 <span className="pr-cta">
-                  {externalUrl ? "اكتشف العروض" : "تصفح المتاجر"}
+                  تصفح العروض
                   <span aria-hidden="true">←</span>
                 </span>
               </a>
