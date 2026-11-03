@@ -38,7 +38,7 @@ const offerLabels: Record<OfferType, string> = {
   both: "الاثنين معًا",
 };
 const inputClass =
-  "mt-2 w-full rounded-xl border border-[#e7dfd1] bg-white px-4 py-3 text-sm text-[#241d15] outline-none transition focus:border-[#b88938] focus:ring-2 focus:ring-[#b88938]/15";
+  "mt-2 w-full rounded-xl border border-[#C9DCEB] bg-white px-4 py-3 text-sm text-[#0A2540] outline-none transition focus:border-[#0F4C81] focus:ring-2 focus:ring-[#0F4C81]/15";
 
 function AdminOffersPage() {
   const [products, setProducts] = useState<OfferProduct[]>([]);
@@ -171,23 +171,56 @@ function AdminOffersPage() {
   };
 
   return (
-    <main dir="rtl" className="min-h-screen bg-[#f7f4ee] px-4 py-8 text-[#241d15] sm:px-6 lg:px-10">
+    <main dir="rtl" className="min-h-screen bg-[#F3F8FC] px-4 py-8 text-[#0A2540] sm:px-6 lg:px-10">
       <div className="mx-auto max-w-7xl">
-        <header className="mb-8 flex flex-col justify-between gap-5 rounded-3xl bg-[#211b14] p-6 text-white shadow-xl sm:flex-row sm:items-center sm:p-9">
+        <div className="grid items-start gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
+          <aside className="rounded-3xl border border-[#DCEAF4] bg-white p-5 shadow-sm lg:sticky lg:top-6">
+            <div className="mb-5 flex flex-col items-center border-b border-[#E6F0F7] pb-5 text-center">
+              <img src="/al-shameel-shopping-logo.jpeg" alt="شعار AL SHAMEEL SHOPPING" className="mb-3 size-28 rounded-2xl bg-white object-contain" />
+              <h2 className="text-lg font-black text-[#0F4C81]">السوق الشامل</h2>
+              <p className="mt-1 text-xs font-bold tracking-wide text-[#F97316]">AL SHAMEEL SHOPPING</p>
+            </div>
+            <button
+              type="button"
+              onClick={openNewForm}
+              className="mb-5 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-l from-[#0F4C81] to-[#0284C7] px-4 py-3 text-sm font-extrabold text-white shadow-sm transition hover:brightness-105"
+            >
+              <Plus className="size-5" /> إضافة منتج جديد
+            </button>
+            <div className="space-y-2" role="group" aria-label="فلترة أنواع العروض">
+              <p className="px-1 pb-1 text-xs font-black text-[#0A2540]">تصنيف المنتجات</p>
+              {(["exclusive", "deals", "both"] as const).map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setTypeFilter(key)}
+                  aria-pressed={typeFilter === key}
+                  className={`flex min-h-11 w-full items-center justify-between rounded-xl border px-3 text-right text-sm font-bold transition ${typeFilter === key ? "border-[#F97316] bg-orange-50 text-[#0F4C81] shadow-sm" : "border-[#DCEAF4] bg-white text-slate-600 hover:border-[#0284C7] hover:bg-sky-50"}`}
+                >
+                  <span>{offerLabels[key]}</span>
+                  {typeFilter === key && <span className="size-2 rounded-full bg-[#F97316]" aria-hidden="true" />}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setTypeFilter("all")}
+                aria-pressed={typeFilter === "all"}
+                className={`mt-2 flex min-h-11 w-full items-center justify-center rounded-xl border px-3 text-sm font-extrabold transition ${typeFilter === "all" ? "border-[#0F4C81] bg-[#0F4C81] text-white" : "border-[#DCEAF4] bg-[#F7FAFC] text-[#0F4C81] hover:bg-sky-50"}`}
+              >
+                عرض الكل
+              </button>
+            </div>
+          </aside>
+          <div className="min-w-0">
+        <header className="mb-8 flex flex-col justify-between gap-5 rounded-3xl bg-gradient-to-l from-[#0F4C81] to-[#0284C7] p-6 text-white shadow-xl sm:flex-row sm:items-center sm:p-9">
           <div>
-            <p className="mb-2 text-xs font-bold tracking-[0.22em] text-[#d9b96e]">YOUR GLOBAL SHOPPER · OFFERS</p>
+            <p className="mb-2 text-xs font-bold tracking-[0.22em] text-[#FDBA74]">AL SHAMEEL SHOPPING · OFFERS</p>
             <h1 className="text-2xl font-black sm:text-3xl">إضافة منتجات للعروض والتخفيضات</h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-white/70">
               أضف منتجاتك وحدد سعرها ونسبة خصمها بنفسك، دون ربطها بأي متجر خارجي.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={openNewForm}
-            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-[#d7b25e] to-[#f2d994] px-6 py-4 font-extrabold text-[#211b14] shadow-lg transition hover:brightness-105"
-          >
-            <Plus className="size-5" /> إضافة منتج جديد
-          </button>
+
         </header>
 
         {notice && (
@@ -202,10 +235,10 @@ function AdminOffersPage() {
         )}
 
         {formOpen && (
-          <form onSubmit={saveProduct} className="mb-8 rounded-3xl border border-[#eadfc9] bg-white p-5 shadow-sm sm:p-8">
+          <form onSubmit={saveProduct} className="mb-8 rounded-3xl border border-[#DCEAF4] bg-white p-5 shadow-sm sm:p-8">
             <div className="mb-6 flex items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-bold text-[#a47b32]">{editingId ? "تعديل المنتج" : "منتج جديد"}</p>
+                <p className="text-xs font-bold text-[#F97316]">{editingId ? "تعديل المنتج" : "منتج جديد"}</p>
                 <h2 className="mt-1 text-xl font-black">{editingId ? "حدّث تفاصيل العرض" : "أدخل تفاصيل المنتج"}</h2>
               </div>
               <button
@@ -293,7 +326,7 @@ function AdminOffersPage() {
               <button
                 disabled={saving}
                 type="submit"
-                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-l from-[#b88938] to-[#e5c675] px-6 py-3 font-extrabold text-[#211b14] disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-l from-[#0F4C81] to-[#0284C7] px-6 py-3 font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {saving ? <LoaderCircle className="size-4 animate-spin" /> : <Save className="size-4" />}
                 {saving ? "جارٍ الحفظ…" : "حفظ المنتج"}
@@ -309,26 +342,13 @@ function AdminOffersPage() {
           </form>
         )}
 
-        <section className="overflow-hidden rounded-3xl border border-[#eadfc9] bg-white shadow-sm">
-          <div className="flex items-center justify-between border-b border-[#f0eadf] px-5 py-5 sm:px-7">
+        <section className="overflow-hidden rounded-3xl border border-[#DCEAF4] bg-white shadow-sm">
+          <div className="flex items-center justify-between border-b border-[#E6F0F7] px-5 py-5 sm:px-7">
             <div>
               <h2 className="text-lg font-black">منتجات العروض</h2>
               <p className="mt-1 text-sm text-gray-500">{visibleProducts.length} من {products.length} منتج</p>
             </div>
-            <div className="flex flex-wrap gap-2" role="group" aria-label="فلتر نوع العرض">
-              {(["all", "exclusive", "deals", "both"] as const).map((key) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setTypeFilter(key)}
-                  aria-pressed={typeFilter === key}
-                  className={`rounded-full px-4 py-2 text-xs font-bold transition ${typeFilter === key ? "bg-[#b88938] text-white" : "bg-[#faf8f3] text-gray-600 hover:bg-[#fbf4e2]"}`}
-                >
-                  {key === "all" ? "الكل" : key === "both" ? "العروض المشتركة" : offerLabels[key]}
-                </button>
-              ))}
-            </div>
-            <span className="rounded-full bg-[#fbf4e2] p-3 text-[#a47b32]">
+            <span className="rounded-full bg-[#EAF5FC] p-3 text-[#F97316]">
               <ImagePlus className="size-5" />
             </span>
           </div>
@@ -342,7 +362,7 @@ function AdminOffersPage() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[900px] text-right text-sm">
-                <thead className="bg-[#faf8f3] text-xs text-gray-500">
+                <thead className="bg-[#F7FAFC] text-xs text-gray-500">
                   <tr>
                     {["الصورة", "الاسم", "السعر قبل الخصم", "السعر بعد الخصم", "الخصم", "نوع العرض", "إجراء"].map((label) => (
                       <th key={label} className="px-4 py-4 font-bold">
@@ -351,9 +371,9 @@ function AdminOffersPage() {
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#f0eadf]">
+                <tbody className="divide-y divide-[#E6F0F7]">
                   {visibleProducts.map((product) => (
-                    <tr key={product.id} className="hover:bg-[#fffdf8]">
+                    <tr key={product.id} className="hover:bg-[#F8FBFE]">
                       <td className="px-4 py-3">
                         {product.image_url ? (
                           <img src={product.image_url} alt="" className="size-14 rounded-xl object-cover" />
@@ -365,9 +385,9 @@ function AdminOffersPage() {
                       </td>
                       <td className="max-w-56 px-4 py-3 font-bold">{product.name}</td>
                       <td className="px-4 py-3">{Number(product.price).toLocaleString("ar")} ر.س</td>
-                      <td className="px-4 py-3 font-bold text-[#8a6424]">{(Number(product.price) * (1 - Number(product.discount_percent) / 100)).toLocaleString("ar", { maximumFractionDigits: 2 })} ر.س</td>
+                      <td className="px-4 py-3 font-bold text-[#0F4C81]">{(Number(product.price) * (1 - Number(product.discount_percent) / 100)).toLocaleString("ar", { maximumFractionDigits: 2 })} ر.س</td>
                       <td className="px-4 py-3">
-                        <span className="rounded-full bg-pink-100 px-3 py-1 font-bold text-pink-700">
+                        <span className="rounded-full bg-orange-100 px-3 py-1 font-bold text-orange-700">
                           خصم %{product.discount_percent}
                         </span>
                       </td>
@@ -378,7 +398,7 @@ function AdminOffersPage() {
                             type="button"
                             onClick={() => startEdit(product)}
                             aria-label={`تعديل ${product.name}`}
-                            className="rounded-lg border border-[#eadfc9] p-2 text-[#8b682c] hover:bg-[#fbf4e2]"
+                            className="rounded-lg border border-[#DCEAF4] p-2 text-[#0284C7] hover:bg-[#EAF5FC]"
                           >
                             <Pencil className="size-4" />
                           </button>
@@ -400,6 +420,8 @@ function AdminOffersPage() {
             </div>
           )}
         </section>
+          </div>
+        </div>
       </div>
     </main>
   );
