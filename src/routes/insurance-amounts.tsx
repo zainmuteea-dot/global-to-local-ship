@@ -71,7 +71,7 @@ function InsurancePage() {
   };
 
   return (
-    <div dir="rtl" className="min-h-screen bg-[#faf7f2] p-6 font-['Cairo',sans-serif]">
+    <div dir="rtl" className="min-h-[100dvh] bg-[#faf7f2] p-6 font-['Cairo',sans-serif]">
       <h1 className="text-2xl font-extrabold text-[#3d2314] mb-6">مبالغ التأمين</h1>
       {errorMessage && (
         <p

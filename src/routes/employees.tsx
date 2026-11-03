@@ -282,7 +282,7 @@ function EmployeesPage() {
     <div
       dir="rtl"
       lang="ar"
-      className="min-h-screen bg-gradient-to-b from-[#F0F7FF] via-[#F8FAFC] to-[#FFF9F5] pb-16 font-sans text-slate-800"
+      className="min-h-[100dvh] bg-gradient-to-b from-[#F0F7FF] via-[#F8FAFC] to-[#FFF9F5] pb-16 font-sans text-slate-800"
     >
       <header className="sticky top-0 z-30 border-b border-sky-100 bg-white/95 shadow-sm backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">

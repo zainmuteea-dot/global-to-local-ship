@@ -286,7 +286,7 @@ export function MerchantReportsPage() {
 
   return (
     <div
-      className="min-h-screen bg-gradient-to-b from-[#F0F7FF] via-[#FAF9F6] to-[#FFF7ED] text-[#0A2540] font-sans selection:bg-[#0F4C81] selection:text-white pb-20"
+      className="min-h-[100dvh] bg-gradient-to-b from-[#F0F7FF] via-[#FAF9F6] to-[#FFF7ED] text-[#0A2540] font-sans selection:bg-[#0F4C81] selection:text-white pb-20"
       dir="rtl"
     >
       {/* Header */}

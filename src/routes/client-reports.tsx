@@ -293,7 +293,7 @@ function ClientReportsPageContent() {
   return (
     <main
       dir="rtl"
-      className="min-h-screen bg-gradient-to-br from-[#F0F7FF] via-[#F8FAFC] to-[#FFF9F5] p-4 md:p-8"
+      className="min-h-[100dvh] bg-gradient-to-br from-[#F0F7FF] via-[#F8FAFC] to-[#FFF9F5] p-4 md:p-8"
     >
       <div className="mx-auto max-w-6xl space-y-5">
         <header className="flex flex-col justify-between gap-4 rounded-2xl border border-sky-100 bg-white p-5 shadow-sm md:flex-row md:items-center">

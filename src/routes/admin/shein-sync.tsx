@@ -40,7 +40,7 @@ function SheinSyncPage() {
   }
 
   return (
-    <main dir="rtl" className="min-h-screen bg-slate-50 px-4 py-8 text-slate-950 sm:px-8">
+    <main dir="rtl" className="min-h-[100dvh] bg-slate-50 px-4 py-8 text-slate-950 sm:px-8">
       <div className="mx-auto max-w-5xl space-y-6">
         <header className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:flex-row sm:items-center sm:justify-between">
           <div>

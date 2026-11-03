@@ -299,7 +299,7 @@ function AccountsPageContent() {
   return (
     <div
       dir="rtl"
-      className="min-h-screen bg-gradient-to-b from-[#F0F7FF] via-[#F8FAFC] to-[#FFF9F5] text-[#0A2540] font-sans pb-14"
+      className="min-h-[100dvh] bg-gradient-to-b from-[#F0F7FF] via-[#F8FAFC] to-[#FFF9F5] text-[#0A2540] font-sans pb-14"
     >
       {/* شريط علوي كبسولي */}
       <div className="bg-white border-b border-sky-100/80 px-4 py-2">

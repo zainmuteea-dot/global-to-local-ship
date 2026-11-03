@@ -645,7 +645,7 @@ function LiveTrackingAdminRoute() {
           } else if (smsResult?.status === "unknown" || smsResult?.status === "sending") {
             smsNotice =
               smsResult?.message ||
-              "نتيجة SMS غير محسومة؛ تحقق من سجل المزود ولا تعِد الإرسال الآن.";
+              "نتيجة SMS غير محسومة؛ تحقق من سجل المزود ولا ت��ِد الإرسال الآن.";
           } else if (smsResult?.status === "failed") {
             smsNotice = `لم تُرسل SMS: ${smsResult?.message || "رفض مزود الرسائل الطلب."}`;
           } else {
@@ -752,7 +752,7 @@ function LiveTrackingAdminRoute() {
       <div
         dir="rtl"
         style={fontStack}
-        className="grid min-h-screen place-items-center bg-[#f7f8fb] text-slate-600"
+        className="grid min-h-[100dvh] place-items-center bg-[#f7f8fb] text-slate-600"
       >
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="size-8 animate-spin text-[#2196F3]" />
@@ -766,7 +766,7 @@ function LiveTrackingAdminRoute() {
       <div
         dir="rtl"
         style={fontStack}
-        className="grid min-h-screen place-items-center bg-[#f7f8fb] p-6"
+        className="grid min-h-[100dvh] place-items-center bg-[#f7f8fb] p-6"
       >
         <div className="w-full max-w-md rounded-3xl border border-slate-100 bg-white p-8 text-center shadow-xl shadow-slate-200/60">
           <div className="mx-auto mb-4 grid size-16 place-items-center rounded-2xl bg-amber-50">
@@ -826,7 +826,7 @@ function LiveTrackingAdminRoute() {
   ];
 
   return (
-    <div dir="rtl" style={fontStack} className="min-h-screen bg-[#f7f8fb] pb-16 text-slate-800">
+    <div dir="rtl" style={fontStack} className="min-h-[100dvh] bg-[#f7f8fb] pb-16 text-slate-800">
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
@@ -1471,7 +1471,7 @@ function LiveTrackingAdminRoute() {
                         )}
                         {row.sms_status === "unknown" && (
                           <p className="mt-1 text-amber-700">
-                            لا تعاود الإرسال قبل التحقق من سجل TextBee.
+                            لا تعاود الإرسال ق��ل التحقق من سجل TextBee.
                           </p>
                         )}
                         {row.sms_status === "failed" && (

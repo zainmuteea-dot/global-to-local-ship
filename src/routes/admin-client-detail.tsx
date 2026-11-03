@@ -75,7 +75,7 @@ function AdminClientDetail() {
   if (!client) return <div className="p-8">العميل غير موجود</div>;
 
   return (
-    <main className="min-h-screen bg-gray-50 p-6" dir="rtl">
+    <main className="min-h-[100dvh] bg-gray-50 p-6" dir="rtl">
       <header className="mb-6 rounded-lg bg-white p-6 shadow">
         <h1 className="text-2xl font-bold">بيانات العميل: {client.full_name || "عميل"}</h1>
         <p className="mt-2 text-gray-600">{client.phone || "لم يُسجل رقم هاتف"}</p>

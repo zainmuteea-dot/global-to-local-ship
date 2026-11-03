@@ -103,7 +103,7 @@ function SuppliersPage() {
   };
 
   return (
-    <main dir="rtl" className="min-h-screen bg-slate-50 p-4 text-slate-900 sm:p-6">
+    <main dir="rtl" className="min-h-[100dvh] bg-slate-50 p-4 text-slate-900 sm:p-6">
       <div className="mx-auto max-w-4xl">
         <header className="mb-6 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">

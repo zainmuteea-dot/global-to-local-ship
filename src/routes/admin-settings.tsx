@@ -70,7 +70,7 @@ const SECTIONS = [
 
 function AdminSettingsPage() {
   return (
-    <main dir="rtl" className="min-h-screen bg-slate-50 px-4 py-8 font-[Tajawal] text-slate-800">
+    <main dir="rtl" className="min-h-[100dvh] bg-slate-50 px-4 py-8 font-[Tajawal] text-slate-800">
       <div className="mx-auto max-w-4xl space-y-6">
         <header className="flex flex-wrap items-center justify-between gap-3">
           <div>

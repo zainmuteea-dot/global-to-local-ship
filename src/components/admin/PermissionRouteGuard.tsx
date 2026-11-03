@@ -53,7 +53,7 @@ function PermissionRouteContent({
     return (
       <main
         dir="rtl"
-        className="grid min-h-screen place-items-center p-6"
+        className="grid min-h-[100dvh] place-items-center p-6"
         role="status"
         aria-live="polite"
       >
@@ -64,7 +64,7 @@ function PermissionRouteContent({
 
   if (!permission.allowed) {
     return (
-      <main dir="rtl" className="grid min-h-screen place-items-center p-6">
+      <main dir="rtl" className="grid min-h-[100dvh] place-items-center p-6">
         <section
           role="alert"
           className="max-w-lg rounded-2xl border border-amber-200 bg-amber-50 p-6 text-center"

@@ -80,7 +80,7 @@ function StoresPage() {
   };
 
   return (
-    <main dir="rtl" className="min-h-screen bg-slate-50 p-5 text-slate-800 md:p-8">
+    <main dir="rtl" className="min-h-[100dvh] bg-slate-50 p-5 text-slate-800 md:p-8">
       <div className="mx-auto max-w-5xl space-y-6">
         <header className="flex flex-wrap items-center justify-between gap-3">
           <div>

@@ -200,7 +200,7 @@ function LogoProductsPage() {
   if (!ready)
     return (
       <AdminRouteGuard>
-        <main dir="rtl" className="grid min-h-screen place-items-center bg-slate-50 p-6">
+        <main dir="rtl" className="grid min-h-[100dvh] place-items-center bg-slate-50 p-6">
           <div className="rounded-3xl border border-slate-200 bg-white px-8 py-7 text-center shadow-xl">
             <div className="mx-auto size-8 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600" aria-label="جارٍ تحميل المنتجات" />
             <p className="mt-4 font-bold text-slate-700">جارٍ تحميل منتجات الموقع...</p>
@@ -212,7 +212,7 @@ function LogoProductsPage() {
   if (!logo)
     return (
       <AdminRouteGuard>
-        <main dir="rtl" className="grid min-h-screen place-items-center bg-slate-50 p-6">
+        <main dir="rtl" className="grid min-h-[100dvh] place-items-center bg-slate-50 p-6">
           <div className="max-w-md rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-xl">
             <h1 className="text-2xl font-black">المتجر غير موجود</h1>
             <p className="mt-2 text-slate-500">المسار المختصر لا يطابق شعارًا مسجلًا.</p>
@@ -231,7 +231,7 @@ function LogoProductsPage() {
     <AdminRouteGuard>
       <main
         dir="rtl"
-        className="min-h-screen bg-slate-50 px-4 py-6 text-slate-900 sm:px-8 sm:py-10"
+        className="min-h-[100dvh] bg-slate-50 px-4 py-6 text-slate-900 sm:px-8 sm:py-10"
       >
         <div className="mx-auto max-w-7xl">
           <header className="mb-7 flex flex-col gap-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-7">
