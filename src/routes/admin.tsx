@@ -992,8 +992,14 @@ export default function AdminOperationsPage() {
     ["purchased", "warehouse_china", "international_ship"].includes(o.status),
   ).length;
   const deliveredShipments = orders.filter((o) => o.status === "delivered").length;
-  const billedRevenue: number | null = null;
-  const netProfit: number | null = null;
+  const yerReceipts = vouchers
+    .filter((v) => v.voucher_type === "receipt" && v.currency === "YER")
+    .reduce((sum, v) => sum + Number(v.amount), 0);
+  const yerPayments = vouchers
+    .filter((v) => v.voucher_type === "payment" && v.currency === "YER")
+    .reduce((sum, v) => sum + Number(v.amount), 0);
+  const billedRevenue: number | null = vouchersError ? null : yerReceipts;
+  const netProfit: number | null = vouchersError ? null : yerReceipts - yerPayments;
   const dashboardOrders = ordersLoadedFromDatabase
     ? [...orders].sort((a, b) => Date.parse(b.createdAt ?? "") - Date.parse(a.createdAt ?? ""))
     : [];
