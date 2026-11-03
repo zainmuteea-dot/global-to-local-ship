@@ -8,8 +8,8 @@ describe("computeFundBalances", () => {
       { voucher_type: "payment", amount: 12000, currency: "YER", fund: "cash" },
       { voucher_type: "receipt", amount: 300, currency: "SAR", fund: "kuraimi" },
     ]);
-    expect(balances.cash?.YER).toBe(38000);
-    expect(balances.kuraimi?.SAR).toBe(300);
+    expect(balances["cash"]?.["YER"]).toBe(38000);
+    expect(balances["kuraimi"]?.["SAR"]).toBe(300);
   });
 
   it("keeps currencies separate inside the same fund", () => {
@@ -17,6 +17,6 @@ describe("computeFundBalances", () => {
       { voucher_type: "receipt", amount: 100, currency: "USD", fund: "najm" },
       { voucher_type: "receipt", amount: 1000, currency: "YER", fund: "najm" },
     ]);
-    expect(balances.najm).toEqual({ USD: 100, YER: 1000 });
+    expect(balances["najm"]).toEqual({ USD: 100, YER: 1000 });
   });
 });
