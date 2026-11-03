@@ -18,6 +18,8 @@ type OfferProduct = {
   discount_percent: number;
   offer_type: string;
   category: string | null;
+  brand: string | null;
+  description: string | null;
 };
 
 export function OfferListing({ type }: { type: OfferType }) {
@@ -42,13 +44,25 @@ export function OfferListing({ type }: { type: OfferType }) {
         setError(`تعذر تحميل المنتجات: ${queryError.message}`);
         setProducts([]);
       } else {
-        const baseProducts = (data ?? []) as Omit<OfferProduct, "category">[];
+        const baseProducts = (data ?? []) as Omit<OfferProduct, "category" | "brand" | "description">[];
         const { data: categoryRows } = await db
           .from("products")
           .select("id,category")
           .in("id", baseProducts.map((product) => product.id));
         const categories = new Map<string, string | null>((categoryRows ?? []).map((row: { id: string; category: string | null }) => [row.id, row.category] as [string, string | null]));
-        setProducts(baseProducts.map((product) => ({ ...product, category: categories.get(product.id) ?? null })));
+        const { data: detailRows } = await db
+          .from("products")
+          .select("id,brand,description")
+          .in("id", baseProducts.map((product) => product.id));
+        const details = new Map<string, { brand: string | null; description: string | null }>(
+          (detailRows ?? []).map((row: { id: string; brand: string | null; description: string | null }) => [row.id, { brand: row.brand, description: row.description }]),
+        );
+        setProducts(baseProducts.map((product) => ({
+          ...product,
+          category: categories.get(product.id) ?? null,
+          brand: details.get(product.id)?.brand ?? null,
+          description: details.get(product.id)?.description ?? null,
+        })));
       }
       setLoading(false);
     };
@@ -84,6 +98,8 @@ export function OfferListing({ type }: { type: OfferType }) {
                   <div className="p-5">
                     <div className="mb-2 flex flex-wrap items-center justify-end gap-2 text-xs text-gray-500"><span>{product.offer_type === "both" ? "عرض حصري وتخفيض" : isDeals ? "تخفيض" : "عرض حصري"}</span>{product.category && <span className="rounded-full bg-[#f7efe0] px-2.5 py-1 font-bold text-[#8a6424]">{categoryLabels[product.category] ?? product.category}</span>}</div>
                     <h2 className="line-clamp-2 min-h-12 font-extrabold leading-6">{product.name}</h2>
+                    {product.brand && <p className="mt-1 text-sm font-bold text-[#8a6424]">الماركة: {product.brand}</p>}
+                    {product.description && <p className="mt-2 line-clamp-3 text-sm leading-6 text-gray-600">{product.description}</p>}
                     <div className="mt-4 flex flex-wrap items-baseline gap-2">{discount > 0 && <span className="text-sm text-gray-400 line-through">{originalPrice.toLocaleString("ar", { maximumFractionDigits: 2 })} ر.س</span>}<strong className="text-xl text-[#8a6424]">{salePrice.toLocaleString("ar", { maximumFractionDigits: 2 })} ر.س</strong></div>
                     <p className="mt-1 text-xs text-gray-500">{discount > 0 ? "السعر بعد الخصم" : "سعر البيع"}</p>
                   </div>
