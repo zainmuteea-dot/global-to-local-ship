@@ -24,7 +24,9 @@ import { Route as ClientDailyRouteImport } from './routes/client-daily'
 import { Route as ClientReportsRouteImport } from './routes/client-reports'
 import { Route as CustomersRouteImport } from './routes/customers'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as DealsRouteImport } from './routes/deals'
 import { Route as EmployeesRouteImport } from './routes/employees'
+import { Route as ExclusiveRouteImport } from './routes/exclusive'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as InsuranceAmountsRouteImport } from './routes/insurance-amounts'
 import { Route as InventoryRouteImport } from './routes/inventory'
@@ -53,6 +55,7 @@ import { Route as AccountInvoicesRouteImport } from './routes/account/invoices'
 import { Route as AccountOrdersRouteImport } from './routes/account/orders'
 import { Route as AccountProfileRouteImport } from './routes/account/profile'
 import { Route as AccountWalletRouteImport } from './routes/account/wallet'
+import { Route as AdminOffersRouteImport } from './routes/admin/offers'
 import { Route as AdminSheinSyncRouteImport } from './routes/admin/shein-sync'
 import { Route as ApiSheinPriceRouteImport } from './routes/api/shein-price'
 import { Route as ProductsManageRouteImport } from './routes/products/manage'
@@ -137,9 +140,19 @@ const DashboardRoute = DashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DealsRoute = DealsRouteImport.update({
+  id: '/deals',
+  path: '/deals',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EmployeesRoute = EmployeesRouteImport.update({
   id: '/employees',
   path: '/employees',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExclusiveRoute = ExclusiveRouteImport.update({
+  id: '/exclusive',
+  path: '/exclusive',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
@@ -282,6 +295,11 @@ const AccountWalletRoute = AccountWalletRouteImport.update({
   path: '/account/wallet',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminOffersRoute = AdminOffersRouteImport.update({
+  id: '/offers',
+  path: '/offers',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminSheinSyncRoute = AdminSheinSyncRouteImport.update({
   id: '/shein-sync',
   path: '/shein-sync',
@@ -339,7 +357,9 @@ export interface FileRoutesByFullPath {
   '/client-reports': typeof ClientReportsRoute
   '/customers': typeof CustomersRoute
   '/dashboard': typeof DashboardRoute
+  '/deals': typeof DealsRoute
   '/employees': typeof EmployeesRoute
+  '/exclusive': typeof ExclusiveRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/insurance-amounts': typeof InsuranceAmountsRoute
   '/inventory': typeof InventoryRoute
@@ -368,6 +388,7 @@ export interface FileRoutesByFullPath {
   '/account/orders': typeof AccountOrdersRoute
   '/account/profile': typeof AccountProfileRoute
   '/account/wallet': typeof AccountWalletRoute
+  '/admin/offers': typeof AdminOffersRoute
   '/admin/shein-sync': typeof AdminSheinSyncRoute
   '/api/shein-price': typeof ApiSheinPriceRoute
   '/products/manage': typeof ProductsManageRoute
@@ -393,7 +414,9 @@ export interface FileRoutesByTo {
   '/client-reports': typeof ClientReportsRoute
   '/customers': typeof CustomersRoute
   '/dashboard': typeof DashboardRoute
+  '/deals': typeof DealsRoute
   '/employees': typeof EmployeesRoute
+  '/exclusive': typeof ExclusiveRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/insurance-amounts': typeof InsuranceAmountsRoute
   '/inventory': typeof InventoryRoute
@@ -422,6 +445,7 @@ export interface FileRoutesByTo {
   '/account/orders': typeof AccountOrdersRoute
   '/account/profile': typeof AccountProfileRoute
   '/account/wallet': typeof AccountWalletRoute
+  '/admin/offers': typeof AdminOffersRoute
   '/admin/shein-sync': typeof AdminSheinSyncRoute
   '/api/shein-price': typeof ApiSheinPriceRoute
   '/products/manage': typeof ProductsManageRoute
@@ -448,7 +472,9 @@ export interface FileRoutesById {
   '/client-reports': typeof ClientReportsRoute
   '/customers': typeof CustomersRoute
   '/dashboard': typeof DashboardRoute
+  '/deals': typeof DealsRoute
   '/employees': typeof EmployeesRoute
+  '/exclusive': typeof ExclusiveRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/insurance-amounts': typeof InsuranceAmountsRoute
   '/inventory': typeof InventoryRoute
@@ -477,6 +503,7 @@ export interface FileRoutesById {
   '/account/orders': typeof AccountOrdersRoute
   '/account/profile': typeof AccountProfileRoute
   '/account/wallet': typeof AccountWalletRoute
+  '/admin/offers': typeof AdminOffersRoute
   '/admin/shein-sync': typeof AdminSheinSyncRoute
   '/api/shein-price': typeof ApiSheinPriceRoute
   '/products/manage': typeof ProductsManageRoute
@@ -504,7 +531,9 @@ export interface FileRouteTypes {
     | '/client-reports'
     | '/customers'
     | '/dashboard'
+    | '/deals'
     | '/employees'
+    | '/exclusive'
     | '/forgot-password'
     | '/insurance-amounts'
     | '/inventory'
@@ -533,6 +562,7 @@ export interface FileRouteTypes {
     | '/account/orders'
     | '/account/profile'
     | '/account/wallet'
+    | '/admin/offers'
     | '/admin/shein-sync'
     | '/api/shein-price'
     | '/products/manage'
@@ -558,7 +588,9 @@ export interface FileRouteTypes {
     | '/client-reports'
     | '/customers'
     | '/dashboard'
+    | '/deals'
     | '/employees'
+    | '/exclusive'
     | '/forgot-password'
     | '/insurance-amounts'
     | '/inventory'
@@ -587,6 +619,7 @@ export interface FileRouteTypes {
     | '/account/orders'
     | '/account/profile'
     | '/account/wallet'
+    | '/admin/offers'
     | '/admin/shein-sync'
     | '/api/shein-price'
     | '/products/manage'
@@ -612,7 +645,9 @@ export interface FileRouteTypes {
     | '/client-reports'
     | '/customers'
     | '/dashboard'
+    | '/deals'
     | '/employees'
+    | '/exclusive'
     | '/forgot-password'
     | '/insurance-amounts'
     | '/inventory'
@@ -641,6 +676,7 @@ export interface FileRouteTypes {
     | '/account/orders'
     | '/account/profile'
     | '/account/wallet'
+    | '/admin/offers'
     | '/admin/shein-sync'
     | '/api/shein-price'
     | '/products/manage'
@@ -667,7 +703,9 @@ export interface RootRouteChildren {
   ClientReportsRoute: typeof ClientReportsRoute
   CustomersRoute: typeof CustomersRoute
   DashboardRoute: typeof DashboardRoute
+  DealsRoute: typeof DealsRoute
   EmployeesRoute: typeof EmployeesRoute
+  ExclusiveRoute: typeof ExclusiveRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   InsuranceAmountsRoute: typeof InsuranceAmountsRoute
   InventoryRoute: typeof InventoryRoute
@@ -809,11 +847,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/deals': {
+      id: '/deals'
+      path: '/deals'
+      fullPath: '/deals'
+      preLoaderRoute: typeof DealsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/employees': {
       id: '/employees'
       path: '/employees'
       fullPath: '/employees'
       preLoaderRoute: typeof EmployeesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/exclusive': {
+      id: '/exclusive'
+      path: '/exclusive'
+      fullPath: '/exclusive'
+      preLoaderRoute: typeof ExclusiveRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/forgot-password': {
@@ -1012,6 +1064,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccountWalletRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/offers': {
+      id: '/admin/offers'
+      path: '/offers'
+      fullPath: '/admin/offers'
+      preLoaderRoute: typeof AdminOffersRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/shein-sync': {
       id: '/admin/shein-sync'
       path: '/shein-sync'
@@ -1072,12 +1131,14 @@ declare module '@tanstack/react-router' {
 }
 
 interface AdminRouteChildren {
+  AdminOffersRoute: typeof AdminOffersRoute
   AdminSheinSyncRoute: typeof AdminSheinSyncRoute
   AdminLogosSlugRoute: typeof AdminLogosSlugRoute
   AdminLogosIndexRoute: typeof AdminLogosIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminOffersRoute: AdminOffersRoute,
   AdminSheinSyncRoute: AdminSheinSyncRoute,
   AdminLogosSlugRoute: AdminLogosSlugRoute,
   AdminLogosIndexRoute: AdminLogosIndexRoute,
@@ -1113,7 +1174,9 @@ const rootRouteChildren: RootRouteChildren = {
   ClientReportsRoute: ClientReportsRoute,
   CustomersRoute: CustomersRoute,
   DashboardRoute: DashboardRoute,
+  DealsRoute: DealsRoute,
   EmployeesRoute: EmployeesRoute,
+  ExclusiveRoute: ExclusiveRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   InsuranceAmountsRoute: InsuranceAmountsRoute,
   InventoryRoute: InventoryRoute,

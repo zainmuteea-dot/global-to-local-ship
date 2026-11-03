@@ -55,6 +55,8 @@ function AdminOffersPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [typeFilter, setTypeFilter] = useState<OfferType | "all">("all");
+  const visibleProducts = typeFilter === "all" ? products : products.filter((p) => p.offer_type === typeFilter);
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
@@ -336,7 +338,20 @@ function AdminOffersPage() {
           <div className="flex items-center justify-between border-b border-[#f0eadf] px-5 py-5 sm:px-7">
             <div>
               <h2 className="text-lg font-black">منتجات العروض</h2>
-              <p className="mt-1 text-sm text-gray-500">{products.length} منتج</p>
+              <p className="mt-1 text-sm text-gray-500">{visibleProducts.length} من {products.length} منتج</p>
+            </div>
+            <div className="flex flex-wrap gap-2" role="group" aria-label="فلتر نوع العرض">
+              {(["all", "exclusive", "deals", "both"] as const).map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setTypeFilter(key)}
+                  aria-pressed={typeFilter === key}
+                  className={`rounded-full px-4 py-2 text-xs font-bold transition ${typeFilter === key ? "bg-[#b88938] text-white" : "bg-[#faf8f3] text-gray-600 hover:bg-[#fbf4e2]"}`}
+                >
+                  {key === "all" ? "الكل" : key === "both" ? "العروض المشتركة" : offerLabels[key]}
+                </button>
+              ))}
             </div>
             <span className="rounded-full bg-[#fbf4e2] p-3 text-[#a47b32]">
               <ImagePlus className="size-5" />
@@ -347,7 +362,7 @@ function AdminOffersPage() {
             <div className="flex items-center justify-center gap-3 p-12 text-gray-500">
               <LoaderCircle className="size-5 animate-spin" /> جارٍ تحميل المنتجات…
             </div>
-          ) : products.length === 0 ? (
+          ) : visibleProducts.length === 0 ? (
             <p className="p-12 text-center text-sm text-gray-500">لا توجد منتجات عروض حاليًا.</p>
           ) : (
             <div className="overflow-x-auto">
@@ -362,7 +377,7 @@ function AdminOffersPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#f0eadf]">
-                  {products.map((product) => (
+                  {visibleProducts.map((product) => (
                     <tr key={product.id} className="hover:bg-[#fffdf8]">
                       <td className="px-4 py-3">
                         {product.image_url ? (
