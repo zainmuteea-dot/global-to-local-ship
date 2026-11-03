@@ -8,3 +8,6 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+## Architecture rules
+- Fund balances and admin revenue figures are derived from `finance_vouchers` rows (receipts minus payments, per fund and currency) via `src/lib/finance-vouchers.ts`; never hardcode balances, so accounting stays traceable to saved vouchers.

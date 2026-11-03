@@ -59,6 +59,45 @@ export type Database = {
         }
         Relationships: []
       }
+      finance_vouchers: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          currency: string
+          description: string
+          fund: string
+          id: string
+          party: string
+          source: string
+          voucher_type: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          description?: string
+          fund: string
+          id?: string
+          party?: string
+          source?: string
+          voucher_type: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          description?: string
+          fund?: string
+          id?: string
+          party?: string
+          source?: string
+          voucher_type?: string
+        }
+        Relationships: []
+      }
       notification_reads: {
         Row: {
           id: string

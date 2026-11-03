@@ -51,6 +51,10 @@ import { AddShipmentModal } from "@/components/admin/AddShipmentModal";
 import { QuickScanModal } from "@/components/admin/QuickScanModal";
 import { PrintReceiptModal } from "@/components/admin/PrintReceiptModal";
 import type { OrderItem, OrderStatus } from "@/types/orders";
+import type { Tables } from "@/integrations/supabase/types";
+import { computeFundBalances, FUND_OPTIONS, fundLabel } from "@/lib/finance-vouchers";
+
+type VoucherRow = Tables<"finance_vouchers">;
 function AdminRouteError({ error }: { error: unknown }) {
   const message = error instanceof Error ? error.message : String(error);
 
@@ -423,9 +427,115 @@ export default function AdminOperationsPage() {
   const [voucherCurrency, setVoucherCurrency] = useState("SAR");
   const [voucherFund, setVoucherFund] = useState("kuraimi");
   const [voucherParty, setVoucherParty] = useState("");
+  const [voucherSaving, setVoucherSaving] = useState(false);
+  const [voucherNotice, setVoucherNotice] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+  const [vouchers, setVouchers] = useState<VoucherRow[]>([]);
+  const [vouchersError, setVouchersError] = useState("");
+  const [deletingVoucherId, setDeletingVoucherId] = useState<string | null>(null);
 
   const navigateTo = (path: string) => {
     if (typeof window !== "undefined") window.location.href = path;
+  };
+
+  const fetchVouchers = async () => {
+    const { data, error } = await supabase
+      .from("finance_vouchers")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(1000);
+    if (error) {
+      console.error("تعذر تحميل السندات:", error);
+      setVouchersError("تعذّر تحميل السندات المالية. تأكد أن حسابك يملك صلاحية المالية.");
+      return;
+    }
+    setVouchersError("");
+    setVouchers(data ?? []);
+  };
+
+  useEffect(() => {
+    void fetchVouchers();
+    const channel = supabase
+      .channel("admin_finance_vouchers")
+      .on("postgres_changes", { event: "*", schema: "public", table: "finance_vouchers" }, () => {
+        void fetchVouchers();
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const fundBalances = useMemo(() => computeFundBalances(vouchers), [vouchers]);
+
+  const openVoucherModal = (type: "receipt" | "payment") => {
+    setVoucherType(type);
+    setVoucherAmount("");
+    setVoucherParty("");
+    setVoucherNotice(null);
+    setIsVoucherModalOpen(true);
+  };
+
+  const saveVoucher = async () => {
+    const amount = Number(voucherAmount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setVoucherNotice({ type: "error", message: "أدخل مبلغاً صحيحاً أكبر من صفر." });
+      return;
+    }
+    setVoucherSaving(true);
+    setVoucherNotice(null);
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      const userId = authData.user?.id;
+      if (!userId) throw new Error("انتهت الجلسة، سجّل الدخول من جديد.");
+      const { error } = await supabase.from("finance_vouchers").insert({
+        voucher_type: voucherType,
+        amount: Math.round(amount * 100) / 100,
+        currency: voucherCurrency,
+        fund: voucherFund,
+        party: voucherParty.trim().slice(0, 200),
+        source: "manual",
+        created_by: userId,
+      });
+      if (error) throw error;
+      setIsVoucherModalOpen(false);
+      setVoucherNotice({
+        type: "success",
+        message: `تم حفظ ${voucherType === "receipt" ? "سند القبض" : "سند الصرف"} بمبلغ ${amount.toLocaleString("en-US")} ${voucherCurrency} وترحيله إلى ${fundLabel(voucherFund)}.`,
+      });
+      void fetchVouchers();
+    } catch (error) {
+      console.error("تعذر حفظ السند:", error);
+      setVoucherNotice({
+        type: "error",
+        message:
+          error instanceof Error && error.message.includes("الجلسة")
+            ? error.message
+            : "تعذّر حفظ السند. تأكد أن حسابك يملك صلاحية إدارة المالية ثم حاول مجدداً.",
+      });
+    } finally {
+      setVoucherSaving(false);
+    }
+  };
+
+  const deleteVoucher = async (voucher: VoucherRow) => {
+    if (!window.confirm(`حذف السند بمبلغ ${voucher.amount} ${voucher.currency} نهائياً؟`)) return;
+    setDeletingVoucherId(voucher.id);
+    const { data, error } = await supabase
+      .from("finance_vouchers")
+      .delete()
+      .eq("id", voucher.id)
+      .select("id")
+      .maybeSingle();
+    setDeletingVoucherId(null);
+    if (error || !data) {
+      setVoucherNotice({ type: "error", message: "تعذّر حذف السند. الحذف متاح للمشرف العام فقط." });
+      setVouchersError("تعذّر حذف السند. الحذف متاح للمشرف العام فقط.");
+      return;
+    }
+    setVouchers((prev) => prev.filter((v) => v.id !== voucher.id));
   };
 
   useEffect(() => {
@@ -521,7 +631,7 @@ export default function AdminOperationsPage() {
     }
   };
 
-  const printPosReceipt = () => {
+  const printPosReceipt = async () => {
     const qty = Math.max(1, Number(posQuantity) || 1);
     const unit = Math.max(0, Number(posUnitPrice) || 0);
     const total = qty * unit;
@@ -538,7 +648,34 @@ export default function AdminOperationsPage() {
       `<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><title>فاتورة كاشير</title><style>body{font-family:Arial,sans-serif;padding:28px;color:#123}h1{font-size:20px}table{width:100%;border-collapse:collapse;margin-top:24px}td,th{border-bottom:1px solid #ddd;padding:12px;text-align:right}.total{font-size:18px;font-weight:bold;margin-top:24px}</style><h1>السوق الشامل — فاتورة كاشير</h1><p>${new Date().toLocaleString("ar-YE")}</p><table><tr><th>الصنف</th><th>الكمية</th><th>السعر</th></tr><tr><td>${posItemName.replace(/[<>]/g, "")}</td><td>${qty}</td><td>${unit.toLocaleString("en-US")}</td></tr></table><p class="total">الإجمالي: ${total.toLocaleString("en-US")} YER</p><script>window.onload=()=>window.print()<\/script></html>`,
     );
     receiptWindow.document.close();
-    setPosNotice("تم فتح إيصال الطباعة. هذه الفاتورة لا تُحفظ في قاعدة البيانات.");
+
+    setPosNotice("جارٍ تسجيل المبلغ في الصندوق النقدي…");
+    const { data: authData } = await supabase.auth.getUser();
+    const userId = authData.user?.id;
+    if (!userId) {
+      setPosNotice("طُبع الإيصال، لكن لم يُسجَّل المبلغ لأن الجلسة منتهية. سجّل الدخول من جديد.");
+      return;
+    }
+    const { error } = await supabase.from("finance_vouchers").insert({
+      voucher_type: "receipt",
+      amount: total,
+      currency: "YER",
+      fund: "cash",
+      party: "كاشير POS",
+      description: `${posItemName.trim().slice(0, 200)} × ${qty}`,
+      source: "pos",
+      created_by: userId,
+    });
+    if (error) {
+      console.error("تعذر تسجيل بيع POS:", error);
+      setPosNotice("طُبع الإيصال، لكن تعذّر تسجيل المبلغ بالقاعدة. تحقق من صلاحية المالية.");
+      return;
+    }
+    setPosNotice(`تم طباعة الإيصال وتسجيل ${total.toLocaleString("en-US")} YER في الصندوق النقدي.`);
+    setPosItemName("");
+    setPosQuantity("1");
+    setPosUnitPrice("");
+    void fetchVouchers();
   };
 
   useEffect(() => {
@@ -855,8 +992,14 @@ export default function AdminOperationsPage() {
     ["purchased", "warehouse_china", "international_ship"].includes(o.status),
   ).length;
   const deliveredShipments = orders.filter((o) => o.status === "delivered").length;
-  const billedRevenue: number | null = null;
-  const netProfit: number | null = null;
+  const yerReceipts = vouchers
+    .filter((v) => v.voucher_type === "receipt" && v.currency === "YER")
+    .reduce((sum, v) => sum + Number(v.amount), 0);
+  const yerPayments = vouchers
+    .filter((v) => v.voucher_type === "payment" && v.currency === "YER")
+    .reduce((sum, v) => sum + Number(v.amount), 0);
+  const billedRevenue: number | null = vouchersError ? null : yerReceipts;
+  const netProfit: number | null = vouchersError ? null : yerReceipts - yerPayments;
   const dashboardOrders = ordersLoadedFromDatabase
     ? [...orders].sort((a, b) => Date.parse(b.createdAt ?? "") - Date.parse(a.createdAt ?? ""))
     : [];
@@ -1085,17 +1228,21 @@ export default function AdminOperationsPage() {
               {pendingPaymentsCount}
             </span>
           </button>
-          <div className="flex items-center justify-between gap-3 rounded-2xl border border-orange-200 bg-orange-50 p-4 text-right">
+          <button
+            type="button"
+            onClick={() => navigateTo("/admin-tracking")}
+            className="flex items-center justify-between gap-3 rounded-2xl border border-orange-200 bg-orange-50 p-4 text-right hover:bg-orange-100"
+          >
             <span>
-              <b className="block text-sm text-orange-900">شحنات التخليص الجمركي</b>
+              <b className="block text-sm text-orange-900">شحنات التخليص الجمركي والفرز المحلي</b>
               <small className="mt-1 block text-orange-800">
-                راجع حالات الجمارك في قائمة الشحنات أو صفحة التتبع.
+                اضغط لفتح لوحة تتبع الشحنات وتحديث مراحلها.
               </small>
             </span>
             <span className="rounded-xl bg-white px-3 py-2 text-lg font-black text-orange-700">
-              {orders.filter((o) => /جمارك|customs/i.test(String(o.status))).length}
+              {orders.filter((o) => o.status === "shipped").length}
             </span>
-          </div>
+          </button>
         </section>
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
           <div className="bg-white p-4 rounded-2xl border border-sky-100 shadow-xs">
@@ -1645,99 +1792,154 @@ export default function AdminOperationsPage() {
         {/* 2. تبويب النظام المالي والمحاسبي */}
         {activeTab === "finance" && (
           <div className="space-y-6">
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-bold text-amber-900">
-              الأرصدة أدناه قيم ابتدائية واردة في المواصفات وليست قراءة مباشرة من قاعدة البيانات؛ لا
-              تعتمدها للمحاسبة قبل ربط جدول funds.
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-bold text-emerald-800">
+              الأرصدة محسوبة تلقائياً من سندات القبض والصرف المحفوظة بالقاعدة (القبض − الصرف) وتتحدث
+              لحظياً.
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
-              {[
-                {
-                  name: "بنك الكريمي الرئيسي",
-                  amount: "3,450,000",
-                  currency: "YER",
-                  tone: "text-[#0F4C81]",
-                },
-                {
-                  name: "محفظة ون كاش OneCash",
-                  amount: "820,000",
-                  currency: "YER",
-                  tone: "text-[#0284C7]",
-                },
-                {
-                  name: "الخزينة المركزية — صنعاء",
-                  amount: "410,000",
-                  currency: "YER",
-                  tone: "text-emerald-700",
-                },
-                {
-                  name: "صندوق التوزيع — عدن",
-                  amount: "280,000",
-                  currency: "YER",
-                  tone: "text-orange-600",
-                },
-                {
-                  name: "مصرف الراجحي — حوالات",
-                  amount: "4,200",
-                  currency: "SAR",
-                  tone: "text-violet-700",
-                },
-              ].map((fund) => (
-                <div
-                  key={fund.name}
-                  className="bg-white p-5 rounded-2xl border border-sky-100 shadow-xs"
-                >
-                  <span className="text-xs font-bold text-slate-500">{fund.name}</span>
-                  <div className={`text-xl font-black font-mono mt-2 ${fund.tone}`}>
-                    {fund.amount} {fund.currency}
+            {vouchersError && (
+              <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-bold text-red-800">
+                {vouchersError}
+              </p>
+            )}
+            {voucherNotice?.type === "success" && (
+              <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-bold text-emerald-800">
+                {voucherNotice.message}
+              </p>
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+              {FUND_OPTIONS.map((fund) => {
+                const balances = fundBalances[fund.value] ?? {};
+                const entries = Object.entries(balances).filter(([, v]) => v !== 0);
+                return (
+                  <div
+                    key={fund.value}
+                    className="bg-white p-5 rounded-2xl border border-sky-100 shadow-xs"
+                  >
+                    <span className="text-xs font-bold text-slate-500">{fund.label}</span>
+                    <div className="mt-2 space-y-1">
+                      {entries.length === 0 ? (
+                        <div className="text-xl font-black font-mono text-[#0F4C81]">0 YER</div>
+                      ) : (
+                        entries.map(([currency, value]) => (
+                          <div
+                            key={currency}
+                            className={`text-xl font-black font-mono ${value < 0 ? "text-red-600" : "text-[#0F4C81]"}`}
+                            dir="ltr"
+                          >
+                            {value.toLocaleString("en-US")} {currency}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                    <div className="text-[10px] text-emerald-700 mt-2">من سندات القاعدة</div>
                   </div>
-                  <div className="text-[10px] text-amber-700 mt-2">
-                    قيمة توضيحية • غير متصلة بقاعدة البيانات
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
               <button
-                onClick={() => {
-                  setVoucherType("receipt");
-                  setIsVoucherModalOpen(true);
-                }}
+                type="button"
+                onClick={() => openVoucherModal("receipt")}
                 className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#0F4C81] to-[#0284C7] text-white font-bold text-xs shadow-sm hover:brightness-105 cursor-pointer"
               >
                 + تسجيل سند قبض جديد
               </button>
 
               <button
-                onClick={() => {
-                  setVoucherType("payment");
-                  setIsVoucherModalOpen(true);
-                }}
+                type="button"
+                onClick={() => openVoucherModal("payment")}
                 className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs cursor-pointer"
               >
                 - تسجيل سند صرف مصاريف
               </button>
 
               <button
+                type="button"
                 onClick={() => setIsAccountsTreeOpen(true)}
                 className="px-4 py-2.5 rounded-xl border border-sky-200 bg-white text-[#0F4C81] font-bold text-xs hover:bg-sky-50 cursor-pointer"
               >
                 عرض شجرة الحسابات والدليل
               </button>
+
+              <button
+                type="button"
+                onClick={() => navigateTo("/payments")}
+                className="px-4 py-2.5 rounded-xl border border-amber-200 bg-amber-50 text-amber-800 font-bold text-xs hover:bg-amber-100 cursor-pointer"
+              >
+                مراجعة طلبات الدفع ({pendingPaymentsCount})
+              </button>
             </div>
+
+            <section className="rounded-2xl border border-sky-100 bg-white shadow-xs" aria-label="آخر السندات">
+              <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+                <h3 className="text-sm font-black text-[#0A2540]">آخر السندات المالية</h3>
+                <span className="text-xs text-slate-500">{vouchers.length} سند</span>
+              </div>
+              {vouchers.length === 0 ? (
+                <p className="p-6 text-center text-xs text-slate-500">
+                  لا توجد سندات بعد. سجّل أول سند قبض أو صرف من الأزرار أعلاه.
+                </p>
+              ) : (
+                <ul className="divide-y divide-slate-100">
+                  {vouchers.slice(0, 15).map((voucher) => (
+                    <li key={voucher.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-xs">
+                      <div className="min-w-0">
+                        <p className="font-bold text-[#0A2540]">
+                          {voucher.voucher_type === "receipt" ? "سند قبض" : "سند صرف"} •{" "}
+                          {fundLabel(voucher.fund)}
+                          {voucher.source === "pos" ? " • كاشير POS" : ""}
+                        </p>
+                        <p className="mt-0.5 text-slate-500">
+                          {voucher.party || "بدون اسم"}
+                          {voucher.description ? ` — ${voucher.description}` : ""} •{" "}
+                          {new Date(voucher.created_at).toLocaleString("ar-YE")}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span
+                          dir="ltr"
+                          className={`font-mono text-sm font-black ${voucher.voucher_type === "receipt" ? "text-emerald-600" : "text-red-600"}`}
+                        >
+                          {voucher.voucher_type === "receipt" ? "+" : "−"}
+                          {Number(voucher.amount).toLocaleString("en-US")} {voucher.currency}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => void deleteVoucher(voucher)}
+                          disabled={deletingVoucherId === voucher.id}
+                          aria-label="حذف السند"
+                          className="rounded-lg bg-red-50 p-2 text-red-600 hover:bg-red-100 disabled:opacity-50"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
           </div>
         )}
 
         {/* 3. تبويب طاقم العمل والموظفين */}
         {activeTab === "employees" && (
           <div className="space-y-4">
-            <p
+            <div
               role="note"
-              className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-900"
+              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-900"
             >
-              تنبيه: بيانات الموظفين هنا محفوظة محلياً/نموذجية، ولا تثبت وجود حسابات موظفين فعلية أو
-              تعيين أدوار في قاعدة البيانات.
-            </p>
+              <span>
+                هذه بطاقات تواصل سريعة. حسابات الموظفين الفعلية وصلاحياتهم تُدار من صفحة إدارة الموظفين.
+              </span>
+              <button
+                type="button"
+                onClick={() => navigateTo("/employees")}
+                className="rounded-xl bg-[#0F4C81] px-3 py-2 text-xs font-bold text-white"
+              >
+                فتح إدارة الموظفين والصلاحيات
+              </button>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {employees.map((emp) => (
                 <div
@@ -1827,9 +2029,8 @@ export default function AdminOperationsPage() {
                 <X className="size-4" />
               </button>
             </div>
-            <p className="mb-4 rounded-xl bg-amber-50 p-3 text-xs text-amber-900">
-              هذه النسخة تحسب وتطبع إيصالاً محلياً فقط. لا تحفظ مبيعات في قاعدة البيانات لعدم توفر
-              تعريف جدول الفواتير في الأنواع الحالية.
+            <p className="mb-4 rounded-xl bg-sky-50 p-3 text-xs text-sky-900">
+              عند الطباعة يُسجَّل المبلغ تلقائياً كسند قبض في الصندوق النقدي بالريال اليمني.
             </p>
             <div className="space-y-3">
               <label className="block text-xs font-bold">
@@ -1952,22 +2153,27 @@ export default function AdminOperationsPage() {
               </div>
             </div>
 
+            {voucherNotice?.type === "error" && (
+              <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-bold text-red-800">
+                {voucherNotice.message}
+              </p>
+            )}
+
             <div className="pt-2 flex items-center justify-end gap-2">
               <button
+                type="button"
                 onClick={() => setIsVoucherModalOpen(false)}
                 className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs cursor-pointer"
               >
                 إلغاء
               </button>
               <button
-                onClick={() => {
-                  alert(
-                    "لم يُحفظ السند: جدول vouchers غير مربوط في نسخة قاعدة البيانات الحالية. اربط الجدول وسياساته أولاً حتى لا يظهر نجاح غير حقيقي.",
-                  );
-                }}
-                className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#0F4C81] to-[#0284C7] text-white font-bold text-xs cursor-pointer shadow-sm"
+                type="button"
+                onClick={() => void saveVoucher()}
+                disabled={voucherSaving}
+                className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#0F4C81] to-[#0284C7] text-white font-bold text-xs cursor-pointer shadow-sm disabled:opacity-60"
               >
-                حفظ وترحيل
+                {voucherSaving ? "جارٍ الحفظ…" : "حفظ وترحيل"}
               </button>
             </div>
           </div>
