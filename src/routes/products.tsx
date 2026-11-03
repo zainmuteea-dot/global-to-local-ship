@@ -267,8 +267,20 @@ const CUSTOMER_STOREFRONT_CSS = `
 .pr-exclusive{background:linear-gradient(135deg,#17130F,#050505);color:#D4AF37;box-shadow:0 16px 40px rgba(0,0,0,.32);border:1px solid rgba(212,175,55,.4)}.pr-exclusive:before{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(115deg,rgba(212,175,55,.12) 0 1px,transparent 1px 22px);mask-image:linear-gradient(180deg,rgba(0,0,0,.9),rgba(0,0,0,.15));-webkit-mask-image:linear-gradient(180deg,rgba(0,0,0,.9),rgba(0,0,0,.15))}
 .pr-banner-icon{position:absolute;top:16px;left:22px;z-index:1;font-size:48px;opacity:.65;pointer-events:none}.pr-badge{position:relative;z-index:1;display:inline-flex;align-items:center;border-radius:999px;background:#fff;color:#E0447D;padding:8px 18px;font-size:15px;font-weight:900;box-shadow:0 6px 16px rgba(224,68,125,.18)}
 .pr-banner h2{position:relative;z-index:1;margin:2px 0;font-size:clamp(24px,3vw,36px);font-weight:900}.pr-banner p{position:relative;z-index:1;max-width:430px;margin:0;font-size:15px;font-weight:700;line-height:1.9;opacity:.88}.pr-cta{position:relative;z-index:1;display:inline-flex;align-items:center;gap:10px;margin-top:3px;border-radius:999px;background:#fff;color:#E0447D;padding:12px 24px;font-size:14px;font-weight:900;box-shadow:0 10px 24px rgba(224,68,125,.2)}.pr-exclusive .pr-cta{background:linear-gradient(135deg,#B8912A,#D4AF37 45%,#F1DA8E);color:#1B1408;box-shadow:0 10px 26px rgba(212,175,55,.28)}
+/* شريط علوي وسفلي متناسقان مع هوية المتجر */
+.pr-topbar{position:relative;z-index:2;width:100%;background:rgba(255,255,255,.88);border-bottom:1px solid rgba(212,175,55,.34);box-shadow:0 4px 18px rgba(27,20,8,.045);backdrop-filter:blur(12px)}
+.pr-topbar-inner{max-width:1240px;min-height:70px;margin:0 auto;padding:12px 22px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.pr-logo{display:inline-flex;align-items:center;gap:11px;color:var(--ink)}
+.pr-logo-mark{width:40px;height:40px;display:grid;place-items:center;flex:none;border-radius:13px;background:linear-gradient(135deg,#B8912A,#D4AF37 48%,#F1DA8E);color:#1B1408;font-size:17px;font-weight:900;box-shadow:0 5px 14px rgba(184,145,42,.22)}
+.pr-logo-copy{display:flex;flex-direction:column;gap:2px}
+.pr-logo-copy strong{font-size:13px;letter-spacing:.7px;font-weight:900;color:#3B2E12}
+.pr-logo-copy small{font-size:11px;font-weight:700;color:var(--muted)}
+.pr-topbar-note{color:var(--muted);font-size:13px;font-weight:700}
+.pr-footer{position:relative;z-index:1;margin-top:54px;border-top:1px solid rgba(212,175,55,.34);background:rgba(255,255,255,.68)}
+.pr-footer-inner{max-width:1240px;min-height:68px;margin:0 auto;padding:16px 22px;display:flex;align-items:center;justify-content:space-between;gap:12px;color:var(--muted);font-size:12px;font-weight:700}
+.pr-footer-brand{color:#3B2E12;font-weight:900;letter-spacing:.3px}
 @media(max-width:1080px){.pr-stores{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media(max-width:720px){.pr-head{padding-top:44px}.pr-stores{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding:0 14px}.pr-store{height:200px;padding:18px 12px}.pr-store .sh-icon{width:88px;height:88px}.pr-banners{grid-template-columns:1fr;gap:16px;padding:0 14px}.pr-banner{min-height:260px;padding:28px 22px}}
+@media(max-width:720px){.pr-topbar-inner{min-height:62px;padding:10px 14px}.pr-logo-mark{width:36px;height:36px}.pr-logo-copy strong{font-size:11px}.pr-logo-copy small{font-size:10px}.pr-topbar-note{max-width:125px;font-size:11px;text-align:left}.pr-head{padding-top:38px}.pr-stores{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding:0 14px}.pr-store{height:200px;padding:18px 12px}.pr-store .sh-icon{width:88px;height:88px}.pr-banners{grid-template-columns:1fr;gap:16px;padding:0 14px}.pr-banner{min-height:260px;padding:28px 22px}.pr-footer{margin-top:38px}.pr-footer-inner{min-height:60px;padding:14px;flex-direction:column;justify-content:center;gap:5px;text-align:center;font-size:11px}}
 @media(prefers-reduced-motion:reduce){.pr-store,.pr-store .sh-icon,.pr-banner{transition:none}}
 
 `;
@@ -306,8 +318,20 @@ function CustomerStorefront() {
       <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
       <style dangerouslySetInnerHTML={{ __html: CUSTOMER_STOREFRONT_CSS }} />
 
+      <div className="pr-topbar" role="banner">
+        <div className="pr-topbar-inner">
+          <div className="pr-logo" aria-label="الشامل للتسوق">
+            <span className="pr-logo-mark" aria-hidden="true">ش</span>
+            <span className="pr-logo-copy">
+              <strong>YOUR GLOBAL SHOPPER</strong>
+              <small>السوق الشامل</small>
+            </span>
+          </div>
+          <span className="pr-topbar-note">تسوقك العالمي في مكان واحد</span>
+        </div>
+      </div>
+
       <header className="pr-head">
-        <span className="pr-brand"><i className="dot" aria-hidden="true" /> YOUR GLOBAL SHOPPER</span>
         <h1 className="pr-title">السوق الشامل <span className="grad">منتجات دولية</span></h1>
         <p className="pr-sub">كل منتجاتك العالمية في مكان واحد • تسوق الآن من أشهر المتاجر</p>
         <div className="pr-divider" aria-hidden="true"><i /><b /><i /></div>
@@ -363,6 +387,13 @@ function CustomerStorefront() {
           })}
         </section>
       )}
+
+      <footer className="pr-footer">
+        <div className="pr-footer-inner">
+          <span className="pr-footer-brand">YOUR GLOBAL SHOPPER · السوق الشامل</span>
+          <span>تسوق عالمي أسهل، من مكان واحد</span>
+        </div>
+      </footer>
     </main>
   );
 }
