@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { ImagePlus, LoaderCircle, Pencil, Plus, Save, Trash2, X } from "lucide-react";
+import { Camera, ImagePlus, LoaderCircle, Pencil, Plus, Save, Trash2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 const db = supabase as any;
@@ -13,6 +13,7 @@ type OfferProduct = {
   price: number;
   discount_percent: number;
   offer_type: OfferType;
+  category: string | null;
 };
 
 type ProductForm = {
@@ -21,6 +22,7 @@ type ProductForm = {
   price: string;
   discount_percent: string;
   offer_type: OfferType | "";
+  category: string;
 };
 
 const emptyForm: ProductForm = {
@@ -29,6 +31,7 @@ const emptyForm: ProductForm = {
   price: "",
   discount_percent: "70",
   offer_type: "",
+  category: "",
 };
 
 type OfferDraft = { form: ProductForm; editingId: string | null; formOpen: boolean };
@@ -52,6 +55,7 @@ function readOfferDraft(): OfferDraft | null {
         offer_type: ["", "exclusive", "deals", "both"].includes(String(offerType))
           ? (offerType as ProductForm["offer_type"])
           : "",
+        category: typeof form.category === "string" ? form.category : "",
       },
       editingId: typeof saved.editingId === "string" ? saved.editingId : null,
       formOpen: true,
@@ -77,6 +81,7 @@ function AdminOffersPage() {
   const [formOpen, setFormOpen] = useState(() => initialDraft?.formOpen ?? false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -88,7 +93,7 @@ function AdminOffersPage() {
     setError("");
     const { data, error: queryError } = await db
       .from("products")
-      .select("id,name,image_url,price,discount_percent,offer_type")
+      .select("id,name,image_url,price,discount_percent,offer_type,category")
       .in("offer_type", ["exclusive", "deals", "both"])
       .order("name", { ascending: true });
 
@@ -137,6 +142,7 @@ function AdminOffersPage() {
       price: String(product.price ?? ""),
       discount_percent: String(product.discount_percent ?? 0),
       offer_type: product.offer_type,
+      category: product.category ?? "",
     });
     setError("");
     setNotice("");
@@ -148,6 +154,40 @@ function AdminOffersPage() {
     setFormOpen(false);
     setEditingId(null);
     setForm(emptyForm);
+  };
+
+  const uploadProductImage = async (file?: File) => {
+    if (!file) return;
+    setError("");
+    setNotice("");
+    if (!file.type.startsWith("image/")) {
+      setError("اختر ملف صورة صالحًا.");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setError("حجم الصورة يجب ألا يتجاوز 8 ميغابايت.");
+      return;
+    }
+
+    setUploadingImage(true);
+    try {
+      const extension = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+      const filePath = `offers/${crypto.randomUUID()}.${extension}`;
+      const { data, error: uploadError } = await supabase.storage
+        .from("product-images")
+        .upload(filePath, file, { contentType: file.type, upsert: false });
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage.from("product-images").getPublicUrl(data.path);
+      if (!urlData.publicUrl) throw new Error("تعذر إنشاء رابط عام للصورة.");
+      setForm((current) => ({ ...current, image_url: urlData.publicUrl }));
+      setNotice("تم رفع الصورة وإنشاء رابطها. احفظ المنتج لتثبيت التغييرات.");
+    } catch (uploadError) {
+      const message = uploadError instanceof Error ? uploadError.message : "خطأ غير معروف";
+      setError(`تعذر رفع الصورة. تأكد من إعداد bucket product-images وسياساته: ${message}`);
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   const saveProduct = async (event: FormEvent<HTMLFormElement>) => {
@@ -181,6 +221,7 @@ function AdminOffersPage() {
       price,
       discount_percent: discount,
       offer_type: form.offer_type,
+      category: form.category || null,
     };
 
     setSaving(true);
@@ -309,15 +350,55 @@ function AdminOffersPage() {
                 />
               </label>
 
+              <div className="text-sm font-bold">
+                صورة المنتج
+                <label className="mt-2 flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-[#8BB9D6] bg-[#F4FAFE] px-4 py-3 text-sm font-bold text-[#0F4C81] hover:bg-sky-50">
+                  <Camera className="size-5" />
+                  {uploadingImage ? "جارٍ رفع الصورة…" : "التقط صورة أو اختر من الهاتف"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="sr-only"
+                    disabled={uploadingImage}
+                    onChange={(event) => {
+                      const file = event.currentTarget.files?.[0];
+                      event.currentTarget.value = "";
+                      void uploadProductImage(file);
+                    }}
+                  />
+                </label>
+                <label className="mt-3 block text-xs font-semibold text-slate-600">
+                  أو أدخل رابط الصورة يدويًا
+                  <input
+                    type="url"
+                    className={inputClass}
+                    value={form.image_url}
+                    onChange={(e) => setForm((current) => ({ ...current, image_url: e.target.value }))}
+                    placeholder="https://..."
+                  />
+                </label>
+                {form.image_url && (
+                  <div className="mt-3 flex items-center gap-3 rounded-xl border border-[#DCEAF4] p-2">
+                    <img src={form.image_url} alt="معاينة صورة المنتج" className="size-16 rounded-lg object-cover" />
+                    <span className="min-w-0 break-all text-xs font-normal text-slate-600">تم إنشاء/إدخال رابط الصورة</span>
+                  </div>
+                )}
+              </div>
+
               <label className="text-sm font-bold">
-                رابط صورة المنتج
-                <input
-                  type="url"
+                قسم المنتج
+                <select
                   className={inputClass}
-                  value={form.image_url}
-                  onChange={(e) => setForm((current) => ({ ...current, image_url: e.target.value }))}
-                  placeholder="https://..."
-                />
+                  value={form.category}
+                  onChange={(e) => setForm((current) => ({ ...current, category: e.target.value }))}
+                >
+                  <option value="">اختر القسم</option>
+                  <option value="electronics">إلكترونيات</option>
+                  <option value="office_supplies">أدوات مكتبية</option>
+                  <option value="hookah_supplies">معسلات الشيشة</option>
+                  <option value="other">أخرى</option>
+                </select>
               </label>
 
               <label className="text-sm font-bold">
@@ -410,7 +491,7 @@ function AdminOffersPage() {
               <table className="w-full min-w-[900px] text-right text-sm">
                 <thead className="bg-[#F7FAFC] text-xs text-gray-500">
                   <tr>
-                    {["الصورة", "الاسم", "السعر قبل الخصم", "السعر بعد الخصم", "الخصم", "نوع العرض", "إجراء"].map((label) => (
+                    {["الصورة", "الاسم", "القسم", "السعر قبل الخصم", "السعر بعد الخصم", "الخصم", "نوع العرض", "إجراء"].map((label) => (
                       <th key={label} className="px-4 py-4 font-bold">
                         {label}
                       </th>
@@ -430,6 +511,7 @@ function AdminOffersPage() {
                         )}
                       </td>
                       <td className="max-w-56 px-4 py-3 font-bold">{product.name}</td>
+                      <td className="px-4 py-3">{product.category ? ({ electronics: "إلكترونيات", office_supplies: "أدوات مكتبية", hookah_supplies: "معسلات الشيشة", other: "أخرى" } as Record<string, string>)[product.category] ?? product.category : "—"}</td>
                       <td className="px-4 py-3">{Number(product.price).toLocaleString("ar")} ر.س</td>
                       <td className="px-4 py-3 font-bold text-[#0F4C81]">{(Number(product.price) * (1 - Number(product.discount_percent) / 100)).toLocaleString("ar", { maximumFractionDigits: 2 })} ر.س</td>
                       <td className="px-4 py-3">
