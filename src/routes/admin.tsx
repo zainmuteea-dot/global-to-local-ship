@@ -51,6 +51,10 @@ import { AddShipmentModal } from "@/components/admin/AddShipmentModal";
 import { QuickScanModal } from "@/components/admin/QuickScanModal";
 import { PrintReceiptModal } from "@/components/admin/PrintReceiptModal";
 import type { OrderItem, OrderStatus } from "@/types/orders";
+import type { Tables } from "@/integrations/supabase/types";
+import { computeFundBalances, FUND_OPTIONS, fundLabel } from "@/lib/finance-vouchers";
+
+type VoucherRow = Tables<"finance_vouchers">;
 function AdminRouteError({ error }: { error: unknown }) {
   const message = error instanceof Error ? error.message : String(error);
 
@@ -1827,34 +1831,88 @@ export default function AdminOperationsPage() {
               })}
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
               <button
-                onClick={() => {
-                  setVoucherType("receipt");
-                  setIsVoucherModalOpen(true);
-                }}
+                type="button"
+                onClick={() => openVoucherModal("receipt")}
                 className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#0F4C81] to-[#0284C7] text-white font-bold text-xs shadow-sm hover:brightness-105 cursor-pointer"
               >
                 + تسجيل سند قبض جديد
               </button>
 
               <button
-                onClick={() => {
-                  setVoucherType("payment");
-                  setIsVoucherModalOpen(true);
-                }}
+                type="button"
+                onClick={() => openVoucherModal("payment")}
                 className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs cursor-pointer"
               >
                 - تسجيل سند صرف مصاريف
               </button>
 
               <button
+                type="button"
                 onClick={() => setIsAccountsTreeOpen(true)}
                 className="px-4 py-2.5 rounded-xl border border-sky-200 bg-white text-[#0F4C81] font-bold text-xs hover:bg-sky-50 cursor-pointer"
               >
                 عرض شجرة الحسابات والدليل
               </button>
+
+              <button
+                type="button"
+                onClick={() => navigateTo("/payments")}
+                className="px-4 py-2.5 rounded-xl border border-amber-200 bg-amber-50 text-amber-800 font-bold text-xs hover:bg-amber-100 cursor-pointer"
+              >
+                مراجعة طلبات الدفع ({pendingPaymentsCount})
+              </button>
             </div>
+
+            <section className="rounded-2xl border border-sky-100 bg-white shadow-xs" aria-label="آخر السندات">
+              <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+                <h3 className="text-sm font-black text-[#0A2540]">آخر السندات المالية</h3>
+                <span className="text-xs text-slate-500">{vouchers.length} سند</span>
+              </div>
+              {vouchers.length === 0 ? (
+                <p className="p-6 text-center text-xs text-slate-500">
+                  لا توجد سندات بعد. سجّل أول سند قبض أو صرف من الأزرار أعلاه.
+                </p>
+              ) : (
+                <ul className="divide-y divide-slate-100">
+                  {vouchers.slice(0, 15).map((voucher) => (
+                    <li key={voucher.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-xs">
+                      <div className="min-w-0">
+                        <p className="font-bold text-[#0A2540]">
+                          {voucher.voucher_type === "receipt" ? "سند قبض" : "سند صرف"} •{" "}
+                          {fundLabel(voucher.fund)}
+                          {voucher.source === "pos" ? " • كاشير POS" : ""}
+                        </p>
+                        <p className="mt-0.5 text-slate-500">
+                          {voucher.party || "بدون اسم"}
+                          {voucher.description ? ` — ${voucher.description}` : ""} •{" "}
+                          {new Date(voucher.created_at).toLocaleString("ar-YE")}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span
+                          dir="ltr"
+                          className={`font-mono text-sm font-black ${voucher.voucher_type === "receipt" ? "text-emerald-600" : "text-red-600"}`}
+                        >
+                          {voucher.voucher_type === "receipt" ? "+" : "−"}
+                          {Number(voucher.amount).toLocaleString("en-US")} {voucher.currency}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => void deleteVoucher(voucher)}
+                          disabled={deletingVoucherId === voucher.id}
+                          aria-label="حذف السند"
+                          className="rounded-lg bg-red-50 p-2 text-red-600 hover:bg-red-100 disabled:opacity-50"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
           </div>
         )}
 
