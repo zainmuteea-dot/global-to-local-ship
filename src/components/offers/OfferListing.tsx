@@ -8,10 +8,9 @@ type OfferProduct = {
   id: string;
   name: string;
   image_url: string | null;
-  sell_price: number;
+  price: number;
   discount_percent: number;
   offer_type: string;
-  store_name: string;
 };
 
 export function OfferListing({ type }: { type: OfferType }) {
@@ -27,7 +26,7 @@ export function OfferListing({ type }: { type: OfferType }) {
       setError("");
       const { data, error: queryError } = await db
         .from("products")
-        .select("id,name,image_url,sell_price,discount_percent,offer_type,store_name")
+        .select("id,name,image_url,price,discount_percent,offer_type")
         .in("offer_type", isDeals ? ["deals", "both"] : ["exclusive", "both"])
         .order("name", { ascending: true });
       if (!active) return;
@@ -59,8 +58,9 @@ export function OfferListing({ type }: { type: OfferType }) {
         {loading ? <div role="status" className="flex items-center justify-center gap-3 rounded-2xl bg-white p-14 text-gray-500"><LoaderCircle className="size-5 animate-spin" /> جارٍ تحميل المنتجات…</div> : products.length === 0 && !error ? <div className="rounded-2xl bg-white p-14 text-center text-gray-500">لا توجد منتجات في هذه العروض حاليًا.</div> : (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {products.map((product) => {
-              const sellPrice = Number(product.sell_price) || 0;
+              const originalPrice = Math.max(0, Number(product.price) || 0);
               const discount = Math.max(0, Math.min(100, Number(product.discount_percent) || 0));
+              const salePrice = originalPrice * (1 - discount / 100);
               return (
                 <article key={product.id} className="group overflow-hidden rounded-3xl border border-[#eadfc9] bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
                   <div className="relative aspect-[4/3] overflow-hidden bg-[#f2eee5]">
@@ -68,10 +68,10 @@ export function OfferListing({ type }: { type: OfferType }) {
                     <span className="absolute right-4 top-4 rounded-full bg-pink-600 px-3 py-2 text-xs font-black text-white shadow-lg">خصم %{discount}</span>
                   </div>
                   <div className="p-5">
-                    <div className="mb-2 flex items-center justify-between gap-3 text-xs text-gray-500"><span>{product.store_name || "متجر"}</span><span>{product.offer_type === "both" ? "عرض حصري وتخفيض" : isDeals ? "تخفيض" : "عرض حصري"}</span></div>
+                    <div className="mb-2 flex items-center justify-end gap-3 text-xs text-gray-500"><span>{product.offer_type === "both" ? "عرض حصري وتخفيض" : isDeals ? "تخفيض" : "عرض حصري"}</span></div>
                     <h2 className="line-clamp-2 min-h-12 font-extrabold leading-6">{product.name}</h2>
-                    <div className="mt-4 flex flex-wrap items-baseline gap-2"><strong className="text-xl text-[#8a6424]">{sellPrice.toLocaleString("ar", { maximumFractionDigits: 2 })} ر.س</strong></div>
-                    <p className="mt-1 text-xs text-gray-500">سعر البيع</p>
+                    <div className="mt-4 flex flex-wrap items-baseline gap-2">{discount > 0 && <span className="text-sm text-gray-400 line-through">{originalPrice.toLocaleString("ar", { maximumFractionDigits: 2 })} ر.س</span>}<strong className="text-xl text-[#8a6424]">{salePrice.toLocaleString("ar", { maximumFractionDigits: 2 })} ر.س</strong></div>
+                    <p className="mt-1 text-xs text-gray-500">{discount > 0 ? "السعر بعد الخصم" : "سعر البيع"}</p>
                   </div>
                 </article>
               );
