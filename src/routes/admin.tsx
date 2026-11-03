@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useLocation } from "@tanstack/react-router";
 import { AdminAlerts } from "@/components/admin/AdminAlerts";
 import {
   AdminDashboardShell,
@@ -117,9 +117,11 @@ function AdminRouteError({ error }: { error: unknown }) {
 }
 
 function ProtectedAdminRoute() {
+  const { pathname } = useLocation();
+
   return (
     <AdminRouteGuard>
-      <AdminOperationsPage />
+      {pathname === "/admin" ? <AdminOperationsPage /> : <Outlet />}
     </AdminRouteGuard>
   );
 }
@@ -1922,7 +1924,7 @@ export default function AdminOperationsPage() {
           </div>
         )}
 
-        {/* 3. تبويب طاقم العمل والموظفين */}
+        {/* 3. تبويب طاقم العمل والمو��فين */}
         {activeTab === "employees" && (
           <div className="space-y-4">
             <div
