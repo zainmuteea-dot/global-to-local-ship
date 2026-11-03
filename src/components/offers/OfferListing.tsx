@@ -3,6 +3,12 @@ import { LoaderCircle, ShoppingBag, Tag } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 const db = supabase as any;
+const categoryLabels: Record<string, string> = {
+  electronics: "إلكترونيات",
+  office_supplies: "أدوات مكتبية",
+  hookah_supplies: "معسلات الشيشة",
+  other: "أخرى",
+};
 type OfferType = "exclusive" | "deals";
 type OfferProduct = {
   id: string;
@@ -11,6 +17,7 @@ type OfferProduct = {
   price: number;
   discount_percent: number;
   offer_type: string;
+  category: string | null;
 };
 
 export function OfferListing({ type }: { type: OfferType }) {
@@ -24,17 +31,24 @@ export function OfferListing({ type }: { type: OfferType }) {
     const load = async () => {
       setLoading(true);
       setError("");
+      const filters = isDeals ? ["deals", "both"] : ["exclusive", "both"];
       const { data, error: queryError } = await db
         .from("products")
         .select("id,name,image_url,price,discount_percent,offer_type")
-        .in("offer_type", isDeals ? ["deals", "both"] : ["exclusive", "both"])
+        .in("offer_type", filters)
         .order("name", { ascending: true });
       if (!active) return;
       if (queryError) {
         setError(`تعذر تحميل المنتجات: ${queryError.message}`);
         setProducts([]);
       } else {
-        setProducts((data ?? []) as OfferProduct[]);
+        const baseProducts = (data ?? []) as Omit<OfferProduct, "category">[];
+        const { data: categoryRows } = await db
+          .from("products")
+          .select("id,category")
+          .in("id", baseProducts.map((product) => product.id));
+        const categories = new Map<string, string | null>((categoryRows ?? []).map((row: { id: string; category: string | null }) => [row.id, row.category] as [string, string | null]));
+        setProducts(baseProducts.map((product) => ({ ...product, category: categories.get(product.id) ?? null })));
       }
       setLoading(false);
     };
@@ -43,7 +57,7 @@ export function OfferListing({ type }: { type: OfferType }) {
   }, [isDeals]);
 
   return (
-    <main dir="rtl" className="min-h-screen bg-[#f7f4ee] px-4 py-10 text-[#241d15] sm:px-6 lg:px-10">
+    <main dir="rtl" className="min-h-[100dvh] bg-[#f7f4ee] px-4 py-10 text-[#241d15] sm:px-6 lg:px-10">
       <div className="mx-auto max-w-7xl">
         <header className={`relative mb-8 overflow-hidden rounded-[2rem] p-8 text-white shadow-xl sm:p-12 ${isDeals ? "bg-gradient-to-l from-[#562339] to-[#a34766]" : "bg-gradient-to-l from-[#211b14] to-[#5b4526]"}`}>
           <div className="relative z-10 max-w-2xl">
@@ -68,7 +82,7 @@ export function OfferListing({ type }: { type: OfferType }) {
                     <span className="absolute right-4 top-4 rounded-full bg-pink-600 px-3 py-2 text-xs font-black text-white shadow-lg">خصم %{discount}</span>
                   </div>
                   <div className="p-5">
-                    <div className="mb-2 flex items-center justify-end gap-3 text-xs text-gray-500"><span>{product.offer_type === "both" ? "عرض حصري وتخفيض" : isDeals ? "تخفيض" : "عرض حصري"}</span></div>
+                    <div className="mb-2 flex flex-wrap items-center justify-end gap-2 text-xs text-gray-500"><span>{product.offer_type === "both" ? "عرض حصري وتخفيض" : isDeals ? "تخفيض" : "عرض حصري"}</span>{product.category && <span className="rounded-full bg-[#f7efe0] px-2.5 py-1 font-bold text-[#8a6424]">{categoryLabels[product.category] ?? product.category}</span>}</div>
                     <h2 className="line-clamp-2 min-h-12 font-extrabold leading-6">{product.name}</h2>
                     <div className="mt-4 flex flex-wrap items-baseline gap-2">{discount > 0 && <span className="text-sm text-gray-400 line-through">{originalPrice.toLocaleString("ar", { maximumFractionDigits: 2 })} ر.س</span>}<strong className="text-xl text-[#8a6424]">{salePrice.toLocaleString("ar", { maximumFractionDigits: 2 })} ر.س</strong></div>
                     <p className="mt-1 text-xs text-gray-500">{discount > 0 ? "السعر بعد الخصم" : "سعر البيع"}</p>
