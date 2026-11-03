@@ -289,14 +289,15 @@ export function AdminDashboardShell({
               </a>
             );
           })}
-          <button
-            type="button"
-            onClick={() => setNotice("قسم الإعدادات غير متاح في صفحة النظام الحالية.")}
+          <a
+            href="/admin-settings"
+            aria-current={pathname.startsWith("/admin-settings") ? "page" : undefined}
+            onClick={() => setSidebarOpen(false)}
             className="flex min-h-12 w-full items-center gap-3 rounded-xl px-4 text-right text-sm font-bold text-blue-100/85 transition-colors hover:bg-white/10 hover:text-white"
           >
             <Settings className="size-[18px] shrink-0" aria-hidden="true" />
             <span>الإعدادات</span>
-          </button>
+          </a>
         </nav>
 
         <div className="space-y-1 border-t border-white/10 p-4">

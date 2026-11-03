@@ -18,6 +18,7 @@ import { Route as AdminChatRouteImport } from './routes/admin-chat'
 import { Route as AdminClientDetailRouteImport } from './routes/admin-client-detail'
 import { Route as AdminClientsRouteImport } from './routes/admin-clients'
 import { Route as AdminLoginRouteImport } from './routes/admin-login'
+import { Route as AdminSettingsRouteImport } from './routes/admin-settings'
 import { Route as AdminStepsRouteImport } from './routes/admin-steps'
 import { Route as AdminTrackingRouteImport } from './routes/admin-tracking'
 import { Route as ClientDailyRouteImport } from './routes/client-daily'
@@ -108,6 +109,11 @@ const AdminClientsRoute = AdminClientsRouteImport.update({
 const AdminLoginRoute = AdminLoginRouteImport.update({
   id: '/admin-login',
   path: '/admin-login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminSettingsRoute = AdminSettingsRouteImport.update({
+  id: '/admin-settings',
+  path: '/admin-settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminStepsRoute = AdminStepsRouteImport.update({
@@ -351,6 +357,7 @@ export interface FileRoutesByFullPath {
   '/admin-client-detail': typeof AdminClientDetailRoute
   '/admin-clients': typeof AdminClientsRoute
   '/admin-login': typeof AdminLoginRoute
+  '/admin-settings': typeof AdminSettingsRoute
   '/admin-steps': typeof AdminStepsRoute
   '/admin-tracking': typeof AdminTrackingRoute
   '/client-daily': typeof ClientDailyRoute
@@ -408,6 +415,7 @@ export interface FileRoutesByTo {
   '/admin-client-detail': typeof AdminClientDetailRoute
   '/admin-clients': typeof AdminClientsRoute
   '/admin-login': typeof AdminLoginRoute
+  '/admin-settings': typeof AdminSettingsRoute
   '/admin-steps': typeof AdminStepsRoute
   '/admin-tracking': typeof AdminTrackingRoute
   '/client-daily': typeof ClientDailyRoute
@@ -466,6 +474,7 @@ export interface FileRoutesById {
   '/admin-client-detail': typeof AdminClientDetailRoute
   '/admin-clients': typeof AdminClientsRoute
   '/admin-login': typeof AdminLoginRoute
+  '/admin-settings': typeof AdminSettingsRoute
   '/admin-steps': typeof AdminStepsRoute
   '/admin-tracking': typeof AdminTrackingRoute
   '/client-daily': typeof ClientDailyRoute
@@ -525,6 +534,7 @@ export interface FileRouteTypes {
     | '/admin-client-detail'
     | '/admin-clients'
     | '/admin-login'
+    | '/admin-settings'
     | '/admin-steps'
     | '/admin-tracking'
     | '/client-daily'
@@ -582,6 +592,7 @@ export interface FileRouteTypes {
     | '/admin-client-detail'
     | '/admin-clients'
     | '/admin-login'
+    | '/admin-settings'
     | '/admin-steps'
     | '/admin-tracking'
     | '/client-daily'
@@ -639,6 +650,7 @@ export interface FileRouteTypes {
     | '/admin-client-detail'
     | '/admin-clients'
     | '/admin-login'
+    | '/admin-settings'
     | '/admin-steps'
     | '/admin-tracking'
     | '/client-daily'
@@ -697,6 +709,7 @@ export interface RootRouteChildren {
   AdminClientDetailRoute: typeof AdminClientDetailRoute
   AdminClientsRoute: typeof AdminClientsRoute
   AdminLoginRoute: typeof AdminLoginRoute
+  AdminSettingsRoute: typeof AdminSettingsRoute
   AdminStepsRoute: typeof AdminStepsRoute
   AdminTrackingRoute: typeof AdminTrackingRoute
   ClientDailyRoute: typeof ClientDailyRoute
@@ -803,6 +816,13 @@ declare module '@tanstack/react-router' {
       path: '/admin-login'
       fullPath: '/admin-login'
       preLoaderRoute: typeof AdminLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin-settings': {
+      id: '/admin-settings'
+      path: '/admin-settings'
+      fullPath: '/admin-settings'
+      preLoaderRoute: typeof AdminSettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin-steps': {
@@ -1168,6 +1188,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminClientDetailRoute: AdminClientDetailRoute,
   AdminClientsRoute: AdminClientsRoute,
   AdminLoginRoute: AdminLoginRoute,
+  AdminSettingsRoute: AdminSettingsRoute,
   AdminStepsRoute: AdminStepsRoute,
   AdminTrackingRoute: AdminTrackingRoute,
   ClientDailyRoute: ClientDailyRoute,
