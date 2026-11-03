@@ -423,9 +423,115 @@ export default function AdminOperationsPage() {
   const [voucherCurrency, setVoucherCurrency] = useState("SAR");
   const [voucherFund, setVoucherFund] = useState("kuraimi");
   const [voucherParty, setVoucherParty] = useState("");
+  const [voucherSaving, setVoucherSaving] = useState(false);
+  const [voucherNotice, setVoucherNotice] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+  const [vouchers, setVouchers] = useState<VoucherRow[]>([]);
+  const [vouchersError, setVouchersError] = useState("");
+  const [deletingVoucherId, setDeletingVoucherId] = useState<string | null>(null);
 
   const navigateTo = (path: string) => {
     if (typeof window !== "undefined") window.location.href = path;
+  };
+
+  const fetchVouchers = async () => {
+    const { data, error } = await supabase
+      .from("finance_vouchers")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(1000);
+    if (error) {
+      console.error("تعذر تحميل السندات:", error);
+      setVouchersError("تعذّر تحميل السندات المالية. تأكد أن حسابك يملك صلاحية المالية.");
+      return;
+    }
+    setVouchersError("");
+    setVouchers(data ?? []);
+  };
+
+  useEffect(() => {
+    void fetchVouchers();
+    const channel = supabase
+      .channel("admin_finance_vouchers")
+      .on("postgres_changes", { event: "*", schema: "public", table: "finance_vouchers" }, () => {
+        void fetchVouchers();
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const fundBalances = useMemo(() => computeFundBalances(vouchers), [vouchers]);
+
+  const openVoucherModal = (type: "receipt" | "payment") => {
+    setVoucherType(type);
+    setVoucherAmount("");
+    setVoucherParty("");
+    setVoucherNotice(null);
+    setIsVoucherModalOpen(true);
+  };
+
+  const saveVoucher = async () => {
+    const amount = Number(voucherAmount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setVoucherNotice({ type: "error", message: "أدخل مبلغاً صحيحاً أكبر من صفر." });
+      return;
+    }
+    setVoucherSaving(true);
+    setVoucherNotice(null);
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      const userId = authData.user?.id;
+      if (!userId) throw new Error("انتهت الجلسة، سجّل الدخول من جديد.");
+      const { error } = await supabase.from("finance_vouchers").insert({
+        voucher_type: voucherType,
+        amount: Math.round(amount * 100) / 100,
+        currency: voucherCurrency,
+        fund: voucherFund,
+        party: voucherParty.trim().slice(0, 200),
+        source: "manual",
+        created_by: userId,
+      });
+      if (error) throw error;
+      setIsVoucherModalOpen(false);
+      setVoucherNotice({
+        type: "success",
+        message: `تم حفظ ${voucherType === "receipt" ? "سند القبض" : "سند الصرف"} بمبلغ ${amount.toLocaleString("en-US")} ${voucherCurrency} وترحيله إلى ${fundLabel(voucherFund)}.`,
+      });
+      void fetchVouchers();
+    } catch (error) {
+      console.error("تعذر حفظ السند:", error);
+      setVoucherNotice({
+        type: "error",
+        message:
+          error instanceof Error && error.message.includes("الجلسة")
+            ? error.message
+            : "تعذّر حفظ السند. تأكد أن حسابك يملك صلاحية إدارة المالية ثم حاول مجدداً.",
+      });
+    } finally {
+      setVoucherSaving(false);
+    }
+  };
+
+  const deleteVoucher = async (voucher: VoucherRow) => {
+    if (!window.confirm(`حذف السند بمبلغ ${voucher.amount} ${voucher.currency} نهائياً؟`)) return;
+    setDeletingVoucherId(voucher.id);
+    const { data, error } = await supabase
+      .from("finance_vouchers")
+      .delete()
+      .eq("id", voucher.id)
+      .select("id")
+      .maybeSingle();
+    setDeletingVoucherId(null);
+    if (error || !data) {
+      setVoucherNotice({ type: "error", message: "تعذّر حذف السند. الحذف متاح للمشرف العام فقط." });
+      setVouchersError("تعذّر حذف السند. الحذف متاح للمشرف العام فقط.");
+      return;
+    }
+    setVouchers((prev) => prev.filter((v) => v.id !== voucher.id));
   };
 
   useEffect(() => {
@@ -521,7 +627,7 @@ export default function AdminOperationsPage() {
     }
   };
 
-  const printPosReceipt = () => {
+  const printPosReceipt = async () => {
     const qty = Math.max(1, Number(posQuantity) || 1);
     const unit = Math.max(0, Number(posUnitPrice) || 0);
     const total = qty * unit;
@@ -538,7 +644,34 @@ export default function AdminOperationsPage() {
       `<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><title>فاتورة كاشير</title><style>body{font-family:Arial,sans-serif;padding:28px;color:#123}h1{font-size:20px}table{width:100%;border-collapse:collapse;margin-top:24px}td,th{border-bottom:1px solid #ddd;padding:12px;text-align:right}.total{font-size:18px;font-weight:bold;margin-top:24px}</style><h1>السوق الشامل — فاتورة كاشير</h1><p>${new Date().toLocaleString("ar-YE")}</p><table><tr><th>الصنف</th><th>الكمية</th><th>السعر</th></tr><tr><td>${posItemName.replace(/[<>]/g, "")}</td><td>${qty}</td><td>${unit.toLocaleString("en-US")}</td></tr></table><p class="total">الإجمالي: ${total.toLocaleString("en-US")} YER</p><script>window.onload=()=>window.print()<\/script></html>`,
     );
     receiptWindow.document.close();
-    setPosNotice("تم فتح إيصال الطباعة. هذه الفاتورة لا تُحفظ في قاعدة البيانات.");
+
+    setPosNotice("جارٍ تسجيل المبلغ في الصندوق النقدي…");
+    const { data: authData } = await supabase.auth.getUser();
+    const userId = authData.user?.id;
+    if (!userId) {
+      setPosNotice("طُبع الإيصال، لكن لم يُسجَّل المبلغ لأن الجلسة منتهية. سجّل الدخول من جديد.");
+      return;
+    }
+    const { error } = await supabase.from("finance_vouchers").insert({
+      voucher_type: "receipt",
+      amount: total,
+      currency: "YER",
+      fund: "cash",
+      party: "كاشير POS",
+      description: `${posItemName.trim().slice(0, 200)} × ${qty}`,
+      source: "pos",
+      created_by: userId,
+    });
+    if (error) {
+      console.error("تعذر تسجيل بيع POS:", error);
+      setPosNotice("طُبع الإيصال، لكن تعذّر تسجيل المبلغ بالقاعدة. تحقق من صلاحية المالية.");
+      return;
+    }
+    setPosNotice(`تم طباعة الإيصال وتسجيل ${total.toLocaleString("en-US")} YER في الصندوق النقدي.`);
+    setPosItemName("");
+    setPosQuantity("1");
+    setPosUnitPrice("");
+    void fetchVouchers();
   };
 
   useEffect(() => {
