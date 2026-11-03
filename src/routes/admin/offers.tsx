@@ -14,6 +14,8 @@ type OfferProduct = {
   discount_percent: number;
   offer_type: OfferType;
   category: string | null;
+  brand: string | null;
+  description: string | null;
 };
 
 type ProductForm = {
@@ -23,6 +25,8 @@ type ProductForm = {
   discount_percent: string;
   offer_type: OfferType | "";
   category: string;
+  brand: string;
+  description: string;
 };
 
 const emptyForm: ProductForm = {
@@ -32,6 +36,8 @@ const emptyForm: ProductForm = {
   discount_percent: "70",
   offer_type: "",
   category: "",
+  brand: "",
+  description: "",
 };
 
 type OfferDraft = { form: ProductForm; editingId: string | null; formOpen: boolean };
@@ -56,6 +62,8 @@ function readOfferDraft(): OfferDraft | null {
           ? (offerType as ProductForm["offer_type"])
           : "",
         category: typeof form.category === "string" ? form.category : "",
+        brand: typeof form.brand === "string" ? form.brand : "",
+        description: typeof form.description === "string" ? form.description : "",
       },
       editingId: typeof saved.editingId === "string" ? saved.editingId : null,
       formOpen: true,
@@ -93,7 +101,7 @@ function AdminOffersPage() {
     setError("");
     const { data, error: queryError } = await db
       .from("products")
-      .select("id,name,image_url,price,discount_percent,offer_type,category")
+      .select("id,name,image_url,price,discount_percent,offer_type,category,brand,description")
       .in("offer_type", ["exclusive", "deals", "both"])
       .order("name", { ascending: true });
 
@@ -143,6 +151,8 @@ function AdminOffersPage() {
       discount_percent: String(product.discount_percent ?? 0),
       offer_type: product.offer_type,
       category: product.category ?? "",
+      brand: product.brand ?? "",
+      description: product.description ?? "",
     });
     setError("");
     setNotice("");
@@ -222,6 +232,8 @@ function AdminOffersPage() {
       discount_percent: discount,
       offer_type: form.offer_type,
       category: form.category || null,
+      brand: form.brand.trim() || null,
+      description: form.description.trim() || null,
     };
 
     setSaving(true);
@@ -347,6 +359,27 @@ function AdminOffersPage() {
                   value={form.name}
                   onChange={(e) => setForm((current) => ({ ...current, name: e.target.value }))}
                   placeholder="مثال: حقيبة نسائية"
+                />
+              </label>
+
+              <label className="text-sm font-bold">
+                الماركة
+                <input
+                  className={inputClass}
+                  value={form.brand}
+                  onChange={(e) => setForm((current) => ({ ...current, brand: e.target.value }))}
+                  placeholder="مثال: Nike"
+                />
+              </label>
+
+              <label className="text-sm font-bold lg:col-span-3">
+                وصف المنتج
+                <textarea
+                  className={inputClass}
+                  rows={3}
+                  value={form.description}
+                  onChange={(e) => setForm((current) => ({ ...current, description: e.target.value }))}
+                  placeholder="اكتب وصفًا مختصرًا للمنتج"
                 />
               </label>
 
@@ -488,10 +521,10 @@ function AdminOffersPage() {
             <p className="p-12 text-center text-sm text-gray-500">لا توجد منتجات عروض حاليًا.</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[900px] text-right text-sm">
+              <table className="w-full min-w-[1100px] text-right text-sm">
                 <thead className="bg-[#F7FAFC] text-xs text-gray-500">
                   <tr>
-                    {["الصورة", "الاسم", "القسم", "السعر قبل الخصم", "السعر بعد الخصم", "الخصم", "نوع العرض", "إجراء"].map((label) => (
+                    {["الصورة", "الاسم", "الماركة", "الوصف", "القسم", "السعر قبل الخصم", "السعر بعد الخصم", "الخصم", "نوع العرض", "إجراء"].map((label) => (
                       <th key={label} className="px-4 py-4 font-bold">
                         {label}
                       </th>
@@ -511,6 +544,8 @@ function AdminOffersPage() {
                         )}
                       </td>
                       <td className="max-w-56 px-4 py-3 font-bold">{product.name}</td>
+                      <td className="px-4 py-3">{product.brand || "—"}</td>
+                      <td className="max-w-64 px-4 py-3">{product.description ? <span className="line-clamp-2">{product.description}</span> : "—"}</td>
                       <td className="px-4 py-3">{product.category ? ({ electronics: "إلكترونيات", office_supplies: "أدوات مكتبية", hookah_supplies: "معسلات الشيشة", other: "أخرى" } as Record<string, string>)[product.category] ?? product.category : "—"}</td>
                       <td className="px-4 py-3">{Number(product.price).toLocaleString("ar")} ر.س</td>
                       <td className="px-4 py-3 font-bold text-[#0F4C81]">{(Number(product.price) * (1 - Number(product.discount_percent) / 100)).toLocaleString("ar", { maximumFractionDigits: 2 })} ر.س</td>
