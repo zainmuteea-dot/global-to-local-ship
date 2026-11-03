@@ -244,7 +244,7 @@ export function AdminDashboardShell({
       )}
 
       <aside
-        className={`fixed inset-y-0 right-0 z-50 flex w-[288px] max-w-[88vw] flex-col border-l border-sky-100 bg-white text-[#0A2540] shadow-xl transition-transform duration-300 lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "translate-x-full"}`}
+        className={`fixed inset-y-0 right-0 z-50 h-[100dvh] overflow-y-auto overscroll-contain flex w-[288px] max-w-[88vw] flex-col border-l border-sky-100 bg-white text-[#0A2540] shadow-xl transition-transform duration-300 lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "translate-x-full"}`}
         aria-label="القائمة الرئيسية"
       >
         <div className="flex min-h-[112px] items-center justify-between border-b border-sky-100 px-4 py-4">
@@ -278,7 +278,7 @@ export function AdminDashboardShell({
           </div>
         </div>
 
-        <nav className="mt-4 flex-1 overflow-y-auto px-4 pb-4" aria-label="التنقل">
+        <nav className="mt-4 flex-none px-4 pb-4" aria-label="التنقل">
           <div className="mb-4 rounded-2xl border border-orange-100 bg-orange-50/70 p-3">
             <p className="mb-2 px-1 text-[11px] font-black text-[#0F4C81]">اختصارات الإدارة</p>
             <div className="flex flex-col gap-2">
