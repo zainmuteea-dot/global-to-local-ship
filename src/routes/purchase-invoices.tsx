@@ -201,7 +201,7 @@ function PurchaseInvoicesPage() {
   return (
     <div
       dir="rtl"
-      className="min-h-screen bg-gradient-to-br from-[#F0F7FF] via-[#F8FAFC] to-[#FFF9F5] p-4 md:p-8 font-['Cairo',sans-serif]"
+      className="min-h-[100dvh] bg-gradient-to-br from-[#F0F7FF] via-[#F8FAFC] to-[#FFF9F5] p-4 md:p-8 font-['Cairo',sans-serif]"
     >
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl shadow-sm border border-sky-100">

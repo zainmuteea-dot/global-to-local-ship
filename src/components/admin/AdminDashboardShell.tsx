@@ -214,7 +214,7 @@ export function AdminDashboardShell({
   };
 
   return (
-    <div dir="rtl" className="alshamel-admin-dashboard min-h-screen bg-[#f6f7fb] font-[Tajawal] text-slate-800">
+    <div dir="rtl" className="alshamel-admin-dashboard min-h-[100dvh] overflow-y-auto bg-[#f6f7fb] font-[Tajawal] text-slate-800">
       <style>{`
 .alshamel-admin-dashboard{--as-blue:#0F4C81;--as-blue-deep:#0284C7;--as-orange:#F97316;--as-orange-bright:#FB923C;--as-bg:#F3F8FC;--as-surface:#FFFFFF;--as-surface-soft:#F8FBFE;--as-line:#DCEAF4;--as-text:#0A2540;--as-muted:#60758A;min-height:100vh;color:var(--as-text)!important;background:radial-gradient(900px 500px at 92% -10%,rgba(249,115,22,.08),transparent 62%),radial-gradient(900px 560px at 2% 8%,rgba(2,132,199,.09),transparent 62%),var(--as-bg)!important;color-scheme:light}
 .alshamel-admin-dashboard .bg-white,.alshamel-admin-dashboard [class~="bg-white/90"]{background:#fff!important;backdrop-filter:blur(12px)}
@@ -352,7 +352,7 @@ export function AdminDashboardShell({
         </div>
       </aside>
 
-      <div className="min-h-screen lg:mr-[288px]">
+      <div className="min-h-[100dvh] lg:mr-[288px]">
         <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl">
           <div className="mx-auto flex min-h-[76px] max-w-[1600px] items-center justify-between gap-4 px-4 sm:px-7 lg:px-9">
             <div className="flex min-w-0 items-center gap-3">

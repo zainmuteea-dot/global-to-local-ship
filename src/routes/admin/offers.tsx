@@ -171,7 +171,7 @@ function AdminOffersPage() {
   };
 
   return (
-    <main dir="rtl" className="min-h-screen bg-[#F3F8FC] px-4 py-8 text-[#0A2540] sm:px-6 lg:px-10">
+    <main dir="rtl" className="min-h-[100dvh] bg-[#F3F8FC] px-4 py-8 text-[#0A2540] sm:px-6 lg:px-10">
       <div className="mx-auto max-w-7xl">
         <div className="grid items-start gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
           <aside className="rounded-3xl border border-[#DCEAF4] bg-white p-5 shadow-sm lg:sticky lg:top-6">

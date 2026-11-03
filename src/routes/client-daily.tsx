@@ -57,7 +57,7 @@ function ClientDailyPage() {
   const totalOut = entries.filter((e) => e.type === "صرف").reduce((s, e) => s + e.amount, 0);
 
   return (
-    <div dir="rtl" className="min-h-screen bg-[#faf7f2] p-6 font-['Cairo',sans-serif]">
+    <div dir="rtl" className="min-h-[100dvh] bg-[#faf7f2] p-6 font-['Cairo',sans-serif]">
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <div>

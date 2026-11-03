@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 type Session = Awaited<ReturnType<typeof supabase.auth.getSession>>["data"]["session"];
@@ -47,6 +47,11 @@ export function AdminRouteGuard({
   redirectTo = "/admin",
 }: AdminRouteGuardProps) {
   const [checking, setChecking] = useState(true);
+  const [checkError, setCheckError] = useState<string | null>(null);
+
+  const retry = useCallback(() => {
+    window.location.reload();
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -71,63 +76,70 @@ export function AdminRouteGuard({
     };
 
     const verifyAccess = async (knownSession?: Session) => {
-      if (active) setChecking(true);
-
-      const sessionResult =
-        knownSession === undefined
-          ? await supabase.auth.getSession()
-          : { data: { session: knownSession }, error: null };
-      const session = sessionResult.data.session;
-
-      if (!active) return;
-      if (sessionResult.error || !session) {
-        goToLogin();
-        return;
+      if (active) {
+        setChecking(true);
+        setCheckError(null);
       }
 
-      const { data: isAdmin, error: adminError } = await supabase.rpc("has_role", {
-        _user_id: session.user.id,
-        _role: "admin",
-      });
-
-      if (!active) return;
-      if (adminError) {
-        goToLogin("role-check-failed");
-        return;
-      }
-
-      let isStaff = false;
-      if (allowStaff) {
-        const { data: staffRole, error: staffError } = await supabase.rpc("has_role", {
-          _user_id: session.user.id,
-          _role: "staff",
-        });
+      const timeout = new Promise<never>((_, reject) =>
+        window.setTimeout(() => reject(new Error("انتهت مهلة التحقق من صلاحية الإدارة.")), 10000),
+      );
+      try {
+        const sessionResult = await Promise.race([
+          knownSession === undefined
+            ? supabase.auth.getSession()
+            : Promise.resolve({ data: { session: knownSession }, error: null }),
+          timeout,
+        ]);
+        const session = sessionResult.data.session;
 
         if (!active) return;
-        if (staffError) {
-          goToLogin("role-check-failed");
+        if (sessionResult.error || !session) {
+          goToLogin();
           return;
         }
-        isStaff = staffRole === true;
-      }
 
-      if (isAdmin !== true && !isStaff) {
-        goToLogin("not-admin");
-        return;
-      }
+        const { data: isAdmin, error: adminError } = await Promise.race([
+          supabase.rpc("has_role", { _user_id: session.user.id, _role: "admin" }),
+          timeout,
+        ]);
 
-      setChecking(false);
+        if (!active) return;
+        if (adminError) {
+          throw adminError;
+        }
+        let isStaff = false;
+        if (allowStaff) {
+          const { data: staffRole, error: staffError } = await Promise.race([
+            supabase.rpc("has_role", { _user_id: session.user.id, _role: "staff" }),
+            timeout,
+          ]);
+          if (!active) return;
+          if (staffError) throw staffError;
+          isStaff = staffRole === true;
+        }
+
+        if (isAdmin !== true && !isStaff) {
+          goToLogin("not-admin");
+          return;
+        }
+        setChecking(false);
+      } catch (error) {
+        if (!active) return;
+        setChecking(false);
+        setCheckError(error instanceof Error ? error.message : "تعذر التحقق من صلاحية الإدارة.");
+      }
     };
 
     void verifyAccess();
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) {
-        goToLogin();
-      } else {
-        void verifyAccess(session);
-      }
+    } =     supabase.auth.onAuthStateChange((_event, session) => {
+      window.setTimeout(() => {
+        if (!active) return;
+        if (!session) goToLogin();
+        else void verifyAccess(session);
+      }, 0);
     });
 
     return () => {
@@ -135,6 +147,17 @@ export function AdminRouteGuard({
       subscription.unsubscribe();
     };
   }, [allowStaff, onUnauthorized, redirectTo]);
+
+  if (checkError) {
+    return (
+      <main dir="rtl" className="grid min-h-[100dvh] place-items-center bg-[#F7E8D1] p-6 text-[#201A17]">
+        <div role="alert" className="max-w-md rounded-2xl bg-white p-6 text-center shadow-sm">
+          <p className="font-bold">{checkError}</p>
+          <button type="button" onClick={retry} className="mt-4 rounded-xl bg-[#873512] px-5 py-2 text-sm font-bold text-white">إعادة المحاولة</button>
+        </div>
+      </main>
+    );
+  }
 
   if (checking) {
     return (

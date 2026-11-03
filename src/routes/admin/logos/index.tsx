@@ -183,7 +183,7 @@ function LogoManagementPage() {
     <AdminRouteGuard>
       <main
         dir="rtl"
-        className="min-h-screen bg-slate-50 px-4 py-6 text-slate-900 sm:px-8 sm:py-10"
+        className="min-h-[100dvh] bg-slate-50 px-4 py-6 text-slate-900 sm:px-8 sm:py-10"
       >
         <div className="mx-auto max-w-7xl">
           <header className="mb-8 flex flex-col gap-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-7">

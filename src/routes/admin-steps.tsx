@@ -78,7 +78,7 @@ function StepsAdmin() {
   };
 
   return (
-    <div dir="rtl" className="min-h-screen bg-[#faf8f2] p-6">
+    <div dir="rtl" className="min-h-[100dvh] bg-[#faf8f2] p-6">
       <div className="mx-auto max-w-4xl">
         <Link to="/admin" className="text-sm text-cocoa font-bold">
           ← رجوع للوحة الإدارة

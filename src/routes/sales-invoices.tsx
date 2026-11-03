@@ -224,7 +224,7 @@ function SalesInvoicesPage() {
   const deleteInvoice = async (row: InvoiceRow) => {
     if (
       !window.confirm(
-        `هل أنت متأكد من حذف الفاتورة ${row.invoice_number}؟ لا يمكن التراجع عن الحذف.`,
+        `هل أنت متأكد من حذف الف��تورة ${row.invoice_number}؟ لا يمكن التراجع عن الحذف.`,
       )
     )
       return;
@@ -259,7 +259,7 @@ function SalesInvoicesPage() {
   return (
     <div
       dir="rtl"
-      className="min-h-screen bg-gradient-to-br from-[#F0F7FF] via-[#F8FAFC] to-[#FFF9F5] p-4 font-['Cairo',sans-serif] md:p-8"
+      className="min-h-[100dvh] bg-gradient-to-br from-[#F0F7FF] via-[#F8FAFC] to-[#FFF9F5] p-4 font-['Cairo',sans-serif] md:p-8"
     >
       <div className="mx-auto max-w-7xl space-y-6">
         <header className="flex flex-col justify-between gap-4 rounded-2xl border border-sky-100 bg-white p-5 shadow-sm md:flex-row md:items-center">

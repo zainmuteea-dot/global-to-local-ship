@@ -145,7 +145,7 @@ function AdminChatRoute() {
 
   return (
     <AdminRouteGuard allowStaff redirectTo="/admin-chat">
-      <main dir="rtl" className="min-h-screen bg-slate-50 p-3 sm:p-6">
+      <main dir="rtl" className="min-h-[100dvh] bg-slate-50 p-3 sm:p-6">
         <section className="mx-auto flex max-w-7xl flex-col gap-4">
           <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-white p-4 shadow-sm">
             <div>

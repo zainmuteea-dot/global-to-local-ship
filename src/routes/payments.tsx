@@ -786,7 +786,7 @@ function PaymentsPage() {
     .reduce((sum, payment) => sum + Number(payment.requestedAmount ?? payment.amount), 0);
 
   return (
-    <main dir="rtl" className="min-h-screen bg-slate-50 p-3 font-[Cairo] sm:p-6">
+    <main dir="rtl" className="min-h-[100dvh] bg-slate-50 p-3 font-[Cairo] sm:p-6">
       <div className="mx-auto max-w-7xl space-y-5">
         <header className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-gradient-to-l from-[#0A2540] to-[#0F4C81] p-5 text-white shadow-md">
           <div>

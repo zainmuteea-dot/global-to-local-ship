@@ -45,7 +45,7 @@ function StoreManagementPage() {
 
   return (
     <AdminRouteGuard>
-      <main dir="rtl" className="min-h-screen bg-[#f8f3ec] px-4 py-8 text-slate-950 sm:px-8">
+      <main dir="rtl" className="min-h-[100dvh] bg-[#f8f3ec] px-4 py-8 text-slate-950 sm:px-8">
         <div className="mx-auto max-w-5xl">
           <header className="mb-7 flex flex-col gap-5 rounded-3xl border border-[#d7b56d]/60 bg-[#fffdf9] p-6 shadow-[0_16px_50px_rgba(106,76,28,0.09)] sm:flex-row sm:items-center sm:justify-between">
             <div>

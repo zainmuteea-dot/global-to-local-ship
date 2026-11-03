@@ -651,7 +651,7 @@ function CustomersPageContent() {
     {
       label: "مسجلون هذا الشهر",
       value: newThisMonth,
-      hint: "من تاريخ إنشاء الحساب",
+      hint: "من تاريخ إ��شاء الحساب",
       icon: CalendarDays,
       color: "#F97316",
       soft: "bg-orange-50",
@@ -667,7 +667,7 @@ function CustomersPageContent() {
   ];
 
   return (
-    <div dir="rtl" style={fontStack} className="min-h-screen bg-[#F4F6FB] pb-16 text-slate-800">
+    <div dir="rtl" style={fontStack} className="min-h-[100dvh] bg-[#F4F6FB] pb-16 text-slate-800">
       <div className="mx-auto max-w-6xl space-y-5 px-4 py-6">
         <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -821,7 +821,7 @@ function CustomersPageContent() {
                 ) : pageRows.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-4 py-12 text-center text-slate-500">
-                      {error ? "تعذر عرض ا��نتائج حتى نجاح الاتصال" : "لا توجد سجلات مطابقة"}
+                      {error ? "تعذر عرض ����نتائج حتى نجاح الاتصال" : "لا توجد سجلات مطابقة"}
                     </td>
                   </tr>
                 ) : (
@@ -977,7 +977,7 @@ function CustomersPageContent() {
               <button
                 type="button"
                 onClick={() => setInfo(null)}
-                aria-label="إغلاق"
+                aria-label="��غلاق"
                 className="rounded-lg p-1 text-slate-500 hover:bg-slate-100"
               >
                 <X className="size-4" />
