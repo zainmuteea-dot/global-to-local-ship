@@ -123,6 +123,13 @@ const navItems = [
   { label: "المنتجات الفورية", href: "/products/manage", icon: PackageOpen },
 ] as const;
 
+const quickActionHrefs = ["/admin/offers", "/admin-chat", "/notifications"] as const;
+const quickActionLabels: Record<(typeof quickActionHrefs)[number], string> = {
+  "/admin/offers": "العروض والتخفيضات",
+  "/admin-chat": "الشات",
+  "/notifications": "الإشعارات",
+};
+
 function metricTone(tone: "blue" | "orange" | "green" | "purple") {
   return {
     blue: {
@@ -209,22 +216,22 @@ export function AdminDashboardShell({
   return (
     <div dir="rtl" className="alshamel-admin-dashboard min-h-screen bg-[#f6f7fb] font-[Tajawal] text-slate-800">
       <style>{`
-.alshamel-admin-dashboard{--as-blue:#2e8fd6;--as-blue-deep:#1d5a92;--as-orange:#f3842c;--as-orange-bright:#ff9d4d;--as-bg:#050a14;--as-surface:rgba(10,25,49,.78);--as-surface-soft:rgba(255,255,255,.045);--as-line:rgba(255,255,255,.11);--as-text:#f4f7fb;--as-muted:#b2bfd0;min-height:100vh;color:var(--as-text)!important;background:radial-gradient(1000px 560px at 88% -8%,rgba(243,132,44,.13),transparent 60%),radial-gradient(900px 560px at 3% 8%,rgba(46,143,214,.12),transparent 60%),radial-gradient(700px 440px at 55% 115%,rgba(29,90,146,.1),transparent 60%),var(--as-bg)!important;color-scheme:dark}
-.alshamel-admin-dashboard .bg-white{background:var(--as-surface)!important;backdrop-filter:blur(12px)}
-.alshamel-admin-dashboard [class~="bg-white/90"]{background:rgba(5,10,20,.94)!important;backdrop-filter:blur(14px)}
-.alshamel-admin-dashboard .bg-slate-50{background:rgba(255,255,255,.045)!important}.alshamel-admin-dashboard .bg-slate-100{background:rgba(255,255,255,.075)!important}.alshamel-admin-dashboard .bg-slate-200{background:rgba(255,255,255,.1)!important}
-.alshamel-admin-dashboard .bg-sky-50,.alshamel-admin-dashboard .bg-blue-50{background:rgba(46,143,214,.13)!important}.alshamel-admin-dashboard .bg-amber-50{background:rgba(234,179,8,.14)!important}.alshamel-admin-dashboard .bg-orange-50{background:rgba(243,132,44,.14)!important}.alshamel-admin-dashboard .bg-orange-100{background:rgba(243,132,44,.2)!important}.alshamel-admin-dashboard .bg-emerald-50{background:rgba(34,197,94,.13)!important}.alshamel-admin-dashboard .bg-red-50,.alshamel-admin-dashboard .bg-rose-50{background:rgba(239,68,68,.13)!important}.alshamel-admin-dashboard .bg-violet-50{background:rgba(168,85,247,.13)!important}
-.alshamel-admin-dashboard [class*="from-blue-50"],.alshamel-admin-dashboard [class*="from-orange-50"],.alshamel-admin-dashboard [class*="from-sky-50"],.alshamel-admin-dashboard [class*="from-emerald-50"],.alshamel-admin-dashboard [class*="from-white"]{background-image:none!important;background-color:var(--as-surface)!important;backdrop-filter:blur(12px)}
-.alshamel-admin-dashboard .border-sky-100,.alshamel-admin-dashboard .border-sky-200,.alshamel-admin-dashboard .border-slate-100,.alshamel-admin-dashboard .border-slate-200,.alshamel-admin-dashboard .border-blue-100,.alshamel-admin-dashboard .border-orange-100,.alshamel-admin-dashboard .border-emerald-100{border-color:var(--as-line)!important}.alshamel-admin-dashboard .border-amber-200{border-color:rgba(234,179,8,.38)!important}.alshamel-admin-dashboard .border-orange-200{border-color:rgba(243,132,44,.42)!important}.alshamel-admin-dashboard .border-emerald-200{border-color:rgba(34,197,94,.38)!important}.alshamel-admin-dashboard .border-red-200,.alshamel-admin-dashboard .border-rose-200{border-color:rgba(239,68,68,.42)!important}
-.alshamel-admin-dashboard .text-slate-900,.alshamel-admin-dashboard .text-slate-800,.alshamel-admin-dashboard .text-slate-700,.alshamel-admin-dashboard .text-\[\#172554\],.alshamel-admin-dashboard .text-\[\#0A2540\],.alshamel-admin-dashboard .text-\[\#0F4C81\]{color:var(--as-text)!important}.alshamel-admin-dashboard .text-slate-600{color:#c4cfde!important}.alshamel-admin-dashboard .text-slate-500{color:var(--as-muted)!important}.alshamel-admin-dashboard .text-slate-400{color:#a5b4c7!important}
-.alshamel-admin-dashboard .text-amber-700,.alshamel-admin-dashboard .text-amber-800,.alshamel-admin-dashboard .text-amber-900,.alshamel-admin-dashboard .text-yellow-900{color:#facc15!important}.alshamel-admin-dashboard .text-orange-600,.alshamel-admin-dashboard .text-orange-700,.alshamel-admin-dashboard .text-orange-800,.alshamel-admin-dashboard .text-orange-900{color:var(--as-orange-bright)!important}.alshamel-admin-dashboard .text-emerald-600,.alshamel-admin-dashboard .text-emerald-700,.alshamel-admin-dashboard .text-emerald-800,.alshamel-admin-dashboard .text-green-800{color:#4ade80!important}.alshamel-admin-dashboard .text-red-600,.alshamel-admin-dashboard .text-red-700,.alshamel-admin-dashboard .text-red-800,.alshamel-admin-dashboard .text-rose-600,.alshamel-admin-dashboard .text-rose-700,.alshamel-admin-dashboard .text-rose-800{color:#fca5a5!important}.alshamel-admin-dashboard .text-blue-600,.alshamel-admin-dashboard .text-blue-700,.alshamel-admin-dashboard .text-sky-700{color:#60c5ff!important}.alshamel-admin-dashboard .text-violet-600,.alshamel-admin-dashboard .text-violet-700{color:#c4b5fd!important}
-.alshamel-admin-dashboard .divide-slate-100>*+*{border-color:rgba(255,255,255,.09)!important}.alshamel-admin-dashboard hr{border-color:var(--as-line)!important}
-.alshamel-admin-dashboard input,.alshamel-admin-dashboard select,.alshamel-admin-dashboard textarea{background:rgba(255,255,255,.055)!important;border-color:rgba(255,255,255,.16)!important;color:var(--as-text)!important;color-scheme:dark}.alshamel-admin-dashboard input::placeholder,.alshamel-admin-dashboard textarea::placeholder{color:#a7b6c9!important}.alshamel-admin-dashboard option{background:#0a1931;color:#fff}.alshamel-admin-dashboard input:focus,.alshamel-admin-dashboard select:focus,.alshamel-admin-dashboard textarea:focus{border-color:var(--as-blue)!important;box-shadow:0 0 0 1px var(--as-blue),0 0 18px rgba(46,143,214,.25)!important}
-.alshamel-admin-dashboard [class~="bg-[#3b82f6]"]{background:rgba(243,132,44,.16)!important;color:#ffb36f!important;border-inline-start:3px solid var(--as-orange)!important}.alshamel-admin-dashboard [class~="bg-[#1a2a52]"]{background:rgba(29,90,146,.88)!important}.alshamel-admin-dashboard .bg-orange-600{background:linear-gradient(135deg,var(--as-orange),var(--as-orange-bright))!important;box-shadow:0 0 18px rgba(243,132,44,.25)}.alshamel-admin-dashboard .bg-orange-600:hover{filter:brightness(1.08)}
-.alshamel-admin-dashboard [class*="from-[#F97316]"],.alshamel-admin-dashboard [class*="from-[#0F4C81]"]{background-image:none!important;background:linear-gradient(135deg,var(--as-orange),var(--as-orange-bright))!important}.alshamel-admin-dashboard [class*="bg-[#0F4C81]"]{background:linear-gradient(135deg,var(--as-blue),var(--as-blue-deep))!important}.alshamel-admin-dashboard [class*="text-[#0284C7]"]{color:#60c5ff!important}.alshamel-admin-dashboard [class*="text-[#F97316]"],.alshamel-admin-dashboard [class*="text-[#EA580C]"]{color:var(--as-orange-bright)!important}
-.alshamel-admin-dashboard .bg-blue-500{background:var(--as-blue)!important;box-shadow:0 0 10px rgba(46,143,214,.3)}.alshamel-admin-dashboard .bg-rose-400{background:var(--as-orange)!important}.alshamel-admin-dashboard .bg-amber-500{background:#eab308!important}.alshamel-admin-dashboard .bg-emerald-500{background:#22c55e!important}
-.alshamel-admin-dashboard .shadow-sm,.alshamel-admin-dashboard .shadow-md,.alshamel-admin-dashboard .shadow-lg{box-shadow:0 12px 34px rgba(0,0,0,.24)!important}.alshamel-admin-dashboard [role="dialog"] .bg-white{background:#0a1931!important}.alshamel-admin-dashboard table{color:var(--as-text)!important}
-.alshamel-admin-dashboard :where(a,button,input,select,textarea,[tabindex]:not([tabindex="-1"])):focus-visible{outline:2px solid #ffb36f!important;outline-offset:3px!important;box-shadow:0 0 0 4px rgba(243,132,44,.2)!important}
+.alshamel-admin-dashboard{--as-blue:#0F4C81;--as-blue-deep:#0284C7;--as-orange:#F97316;--as-orange-bright:#FB923C;--as-bg:#F3F8FC;--as-surface:#FFFFFF;--as-surface-soft:#F8FBFE;--as-line:#DCEAF4;--as-text:#0A2540;--as-muted:#60758A;min-height:100vh;color:var(--as-text)!important;background:radial-gradient(900px 500px at 92% -10%,rgba(249,115,22,.08),transparent 62%),radial-gradient(900px 560px at 2% 8%,rgba(2,132,199,.09),transparent 62%),var(--as-bg)!important;color-scheme:light}
+.alshamel-admin-dashboard .bg-white,.alshamel-admin-dashboard [class~="bg-white/90"]{background:#fff!important;backdrop-filter:blur(12px)}
+.alshamel-admin-dashboard .bg-slate-50{background:#f7fafc!important}.alshamel-admin-dashboard .bg-slate-100{background:#eef5fa!important}.alshamel-admin-dashboard .bg-slate-200{background:#e2edf5!important}
+.alshamel-admin-dashboard .bg-sky-50,.alshamel-admin-dashboard .bg-blue-50{background:#eaf5fc!important}.alshamel-admin-dashboard .bg-amber-50{background:#fff7e9!important}.alshamel-admin-dashboard .bg-orange-50{background:#fff3e9!important}.alshamel-admin-dashboard .bg-orange-100{background:#ffe7d2!important}.alshamel-admin-dashboard .bg-emerald-50{background:#ecfdf3!important}.alshamel-admin-dashboard .bg-red-50,.alshamel-admin-dashboard .bg-rose-50{background:#fff1f2!important}.alshamel-admin-dashboard .bg-violet-50{background:#f5f3ff!important}
+.alshamel-admin-dashboard [class*="from-blue-50"],.alshamel-admin-dashboard [class*="from-orange-50"],.alshamel-admin-dashboard [class*="from-sky-50"],.alshamel-admin-dashboard [class*="from-emerald-50"],.alshamel-admin-dashboard [class*="from-white"]{background-image:none!important;background-color:#fff!important}
+.alshamel-admin-dashboard .border-sky-100,.alshamel-admin-dashboard .border-sky-200,.alshamel-admin-dashboard .border-slate-100,.alshamel-admin-dashboard .border-slate-200,.alshamel-admin-dashboard .border-blue-100,.alshamel-admin-dashboard .border-orange-100,.alshamel-admin-dashboard .border-emerald-100{border-color:#dceaf4!important}.alshamel-admin-dashboard .border-amber-200{border-color:#f4d59a!important}.alshamel-admin-dashboard .border-orange-200{border-color:#fed7aa!important}.alshamel-admin-dashboard .border-emerald-200{border-color:#a7f3d0!important}.alshamel-admin-dashboard .border-red-200,.alshamel-admin-dashboard .border-rose-200{border-color:#fecdd3!important}
+.alshamel-admin-dashboard .text-slate-900,.alshamel-admin-dashboard .text-slate-800,.alshamel-admin-dashboard .text-slate-700,.alshamel-admin-dashboard .text-\[\#172554\],.alshamel-admin-dashboard .text-\[\#0A2540\],.alshamel-admin-dashboard .text-\[\#0F4C81\]{color:#0A2540!important}.alshamel-admin-dashboard .text-slate-600{color:#405c73!important}.alshamel-admin-dashboard .text-slate-500{color:#60758a!important}.alshamel-admin-dashboard .text-slate-400{color:#7e94a8!important}
+.alshamel-admin-dashboard .text-amber-700,.alshamel-admin-dashboard .text-amber-800,.alshamel-admin-dashboard .text-amber-900,.alshamel-admin-dashboard .text-yellow-900{color:#9a5b00!important}.alshamel-admin-dashboard .text-orange-600,.alshamel-admin-dashboard .text-orange-700,.alshamel-admin-dashboard .text-orange-800,.alshamel-admin-dashboard .text-orange-900{color:#c4560b!important}.alshamel-admin-dashboard .text-emerald-600,.alshamel-admin-dashboard .text-emerald-700,.alshamel-admin-dashboard .text-emerald-800,.alshamel-admin-dashboard .text-green-800{color:#047857!important}.alshamel-admin-dashboard .text-red-600,.alshamel-admin-dashboard .text-red-700,.alshamel-admin-dashboard .text-red-800,.alshamel-admin-dashboard .text-rose-600,.alshamel-admin-dashboard .text-rose-700,.alshamel-admin-dashboard .text-rose-800{color:#be123c!important}.alshamel-admin-dashboard .text-blue-600,.alshamel-admin-dashboard .text-blue-700,.alshamel-admin-dashboard .text-sky-700{color:#0F4C81!important}.alshamel-admin-dashboard .text-violet-600,.alshamel-admin-dashboard .text-violet-700{color:#6d28d9!important}
+.alshamel-admin-dashboard .divide-slate-100>*+*{border-color:#e5eef5!important}.alshamel-admin-dashboard hr{border-color:#dceaf4!important}
+.alshamel-admin-dashboard input,.alshamel-admin-dashboard select,.alshamel-admin-dashboard textarea{background:#fff!important;border-color:#cbdce9!important;color:#0A2540!important;color-scheme:light}.alshamel-admin-dashboard input::placeholder,.alshamel-admin-dashboard textarea::placeholder{color:#8093a5!important}.alshamel-admin-dashboard option{background:#fff;color:#0A2540}.alshamel-admin-dashboard input:focus,.alshamel-admin-dashboard select:focus,.alshamel-admin-dashboard textarea:focus{border-color:#0284C7!important;box-shadow:0 0 0 1px #0284C7,0 0 12px rgba(2,132,199,.16)!important}
+.alshamel-admin-dashboard [class~="bg-[#3b82f6]"]{background:linear-gradient(135deg,#0F4C81,#0284C7)!important;color:#fff!important;border-inline-start:3px solid #F97316!important}.alshamel-admin-dashboard [class~="bg-[#1a2a52]"]{background:#fff!important}.alshamel-admin-dashboard .bg-orange-600{background:linear-gradient(135deg,#F97316,#FB923C)!important;box-shadow:0 6px 16px rgba(249,115,22,.2)}.alshamel-admin-dashboard .bg-orange-600:hover{filter:brightness(1.04)}
+.alshamel-admin-dashboard [class*="from-[#F97316]"],.alshamel-admin-dashboard [class*="from-[#0F4C81]"]{background-image:linear-gradient(135deg,#0F4C81,#0284C7)!important}.alshamel-admin-dashboard [class*="bg-[#0F4C81]"]{background:linear-gradient(135deg,#0F4C81,#0284C7)!important}.alshamel-admin-dashboard [class*="text-[#0284C7]"]{color:#0284C7!important}.alshamel-admin-dashboard [class*="text-[#F97316]"],.alshamel-admin-dashboard [class*="text-[#EA580C]"]{color:#F97316!important}
+.alshamel-admin-dashboard aside{background:#fff!important;color:#0A2540!important;border-left:1px solid #dceaf4}.alshamel-admin-dashboard aside .text-blue-100\/85,.alshamel-admin-dashboard aside .text-blue-100\/75{color:#35566f!important}.alshamel-admin-dashboard aside .hover\:bg-white\/10:hover{background:#eaf5fc!important;color:#0F4C81!important}.alshamel-admin-dashboard aside .bg-blue-500{background:#0F4C81!important}.alshamel-admin-dashboard aside .border-white\/10{border-color:#dceaf4!important}
+.alshamel-admin-dashboard .bg-blue-500{background:#0284C7!important}.alshamel-admin-dashboard .bg-rose-400{background:#F97316!important}.alshamel-admin-dashboard .bg-amber-500{background:#f59e0b!important}.alshamel-admin-dashboard .bg-emerald-500{background:#10b981!important}
+.alshamel-admin-dashboard .shadow-sm,.alshamel-admin-dashboard .shadow-md,.alshamel-admin-dashboard .shadow-lg{box-shadow:0 8px 24px rgba(15,76,129,.09)!important}.alshamel-admin-dashboard [role="dialog"] .bg-white{background:#fff!important}.alshamel-admin-dashboard table{color:#0A2540!important}
+.alshamel-admin-dashboard :where(a,button,input,select,textarea,[tabindex]:not([tabindex="-1"])):focus-visible{outline:2px solid #F97316!important;outline-offset:3px!important;box-shadow:0 0 0 4px rgba(249,115,22,.16)!important}
 @media(prefers-reduced-motion:reduce){.alshamel-admin-dashboard *{scroll-behavior:auto!important;transition-duration:.01ms!important}}
 `}</style>
       {sidebarOpen && (
@@ -232,22 +239,24 @@ export function AdminDashboardShell({
           type="button"
           aria-label="إغلاق القائمة"
           onClick={() => setSidebarOpen(false)}
-          className="fixed inset-0 z-40 bg-slate-950/45 backdrop-blur-[2px] lg:hidden"
+          className="fixed inset-0 z-40 bg-[#0A2540]/35 backdrop-blur-[2px] lg:hidden"
         />
       )}
 
       <aside
-        className={`fixed inset-y-0 right-0 z-50 flex w-[288px] max-w-[88vw] flex-col bg-[#1a2a52] text-white shadow-xl transition-transform duration-300 lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "translate-x-full"}`}
+        className={`fixed inset-y-0 right-0 z-50 flex w-[288px] max-w-[88vw] flex-col border-l border-sky-100 bg-white text-[#0A2540] shadow-xl transition-transform duration-300 lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "translate-x-full"}`}
         aria-label="القائمة الرئيسية"
       >
-        <div className="flex min-h-[100px] items-center justify-between border-b border-white/10 px-6 py-5">
-          <div className="flex items-center gap-3">
-            <div className="grid size-11 place-items-center rounded-2xl bg-blue-500 text-white shadow-lg shadow-blue-950/20">
-              <Truck className="size-6" aria-hidden="true" />
-            </div>
-            <div>
-              <div className="text-lg font-extrabold tracking-tight">السوق الشامل</div>
-              <div className="mt-0.5 text-xs font-medium text-blue-100/75">نظام إدارة الأعمال</div>
+        <div className="flex min-h-[112px] items-center justify-between border-b border-sky-100 px-4 py-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <img
+              src="/al-shameel-shopping-logo.jpeg"
+              alt="AL SHAMEEL SHOPPING — السوق الشامل"
+              className="size-[68px] shrink-0 rounded-2xl bg-white object-contain p-1 shadow-sm"
+            />
+            <div className="min-w-0">
+              <div className="text-base font-extrabold tracking-tight text-[#0F4C81]">السوق الشامل</div>
+              <div className="mt-1 text-xs font-semibold text-[#F97316]">نظام إدارة الأعمال</div>
             </div>
           </div>
           <button
@@ -269,26 +278,48 @@ export function AdminDashboardShell({
           </div>
         </div>
 
-        <nav className="mt-6 flex-1 space-y-1.5 overflow-y-auto px-4" aria-label="التنقل">
-          {navItems.map(({ label, href, icon: Icon }) => {
-            const active = href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
-            return (
-              <a
-                key={label}
-                href={href}
-                aria-current={active ? "page" : undefined}
-                onClick={() => setSidebarOpen(false)}
-                className={`flex min-h-12 items-center gap-3 rounded-xl px-4 text-sm font-bold transition-colors ${
-                  active
-                    ? "bg-[#3b82f6] text-white shadow-md shadow-blue-950/20"
-                    : "text-blue-100/85 hover:bg-white/10 hover:text-white"
-                }`}
-              >
-                <Icon className="size-[18px] shrink-0" aria-hidden="true" />
-                <span>{label}</span>
-              </a>
-            );
-          })}
+        <nav className="mt-4 flex-1 overflow-y-auto px-4 pb-4" aria-label="التنقل">
+          <div className="mb-4 rounded-2xl border border-orange-100 bg-orange-50/70 p-3">
+            <p className="mb-2 px-1 text-[11px] font-black text-[#0F4C81]">اختصارات الإدارة</p>
+            <div className="flex flex-col gap-2">
+              {navItems.filter(({ href }) => (quickActionHrefs as readonly string[]).includes(href)).map(({ label, href, icon: Icon }) => {
+                const active = pathname.startsWith(href);
+                return (
+                  <a
+                    key={label}
+                    href={href}
+                    aria-current={active ? "page" : undefined}
+                    onClick={() => setSidebarOpen(false)}
+                    className={`flex min-h-11 items-center gap-3 rounded-xl border px-3 text-sm font-extrabold transition-colors ${
+                      active ? "border-[#F97316] bg-[#F97316] text-white shadow-sm" : "border-sky-100 bg-white text-[#0F4C81] hover:border-[#F97316]/50 hover:bg-orange-50"
+                    }`}
+                  >
+                    <Icon className="size-[18px] shrink-0" aria-hidden="true" />
+                    <span>{quickActionLabels[href as (typeof quickActionHrefs)[number]] || label}</span>
+                  </a>
+                );
+              })}
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            {navItems.filter(({ href }) => !(quickActionHrefs as readonly string[]).includes(href)).map(({ label, href, icon: Icon }) => {
+              const active = href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
+              return (
+                <a
+                  key={label}
+                  href={href}
+                  aria-current={active ? "page" : undefined}
+                  onClick={() => setSidebarOpen(false)}
+                  className={`flex min-h-12 items-center gap-3 rounded-xl px-4 text-sm font-bold transition-colors ${
+                    active ? "bg-[#0F4C81] text-white shadow-md" : "text-slate-700 hover:bg-sky-50 hover:text-[#0F4C81]"
+                  }`}
+                >
+                  <Icon className="size-[18px] shrink-0" aria-hidden="true" />
+                  <span>{label}</span>
+                </a>
+              );
+            })}
+          </div>
           <a
             href="/admin-settings"
             aria-current={pathname.startsWith("/admin-settings") ? "page" : undefined}
@@ -300,10 +331,10 @@ export function AdminDashboardShell({
           </a>
         </nav>
 
-        <div className="space-y-1 border-t border-white/10 p-4">
+        <div className="space-y-1 border-t border-sky-100 p-4">
           <a
             href="/admin-chat"
-            className="flex min-h-11 items-center gap-3 rounded-xl px-4 text-sm font-semibold text-blue-100/85 hover:bg-white/10 hover:text-white"
+            className="flex min-h-11 items-center gap-3 rounded-xl px-4 text-sm font-semibold text-[#35566f] hover:bg-sky-50 hover:text-[#0F4C81]"
           >
             <Headphones className="size-[18px]" aria-hidden="true" />
             الدعم
@@ -312,12 +343,12 @@ export function AdminDashboardShell({
             type="button"
             onClick={handleLogout}
             disabled={logoutLoading}
-            className="flex min-h-11 w-full items-center gap-3 rounded-xl px-4 text-right text-sm font-semibold text-blue-100/85 hover:bg-white/10 hover:text-white disabled:opacity-60"
+            className="flex min-h-11 w-full items-center gap-3 rounded-xl px-4 text-right text-sm font-semibold text-[#35566f] hover:bg-orange-50 hover:text-[#C4560B] disabled:opacity-60"
           >
             <LogOut className="size-[18px]" aria-hidden="true" />
             {logoutLoading ? "جارٍ تسجيل الخروج…" : "تسجيل الخروج"}
           </button>
-          <div className="px-4 pt-3 text-[11px] text-blue-100/50">السوق الشامل © 2026</div>
+          <div className="px-4 pt-3 text-[11px] text-slate-400">السوق الشامل © 2026</div>
         </div>
       </aside>
 
