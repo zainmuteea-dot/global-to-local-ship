@@ -18,13 +18,16 @@ import { Route as AdminChatRouteImport } from './routes/admin-chat'
 import { Route as AdminClientDetailRouteImport } from './routes/admin-client-detail'
 import { Route as AdminClientsRouteImport } from './routes/admin-clients'
 import { Route as AdminLoginRouteImport } from './routes/admin-login'
+import { Route as AdminSettingsRouteImport } from './routes/admin-settings'
 import { Route as AdminStepsRouteImport } from './routes/admin-steps'
 import { Route as AdminTrackingRouteImport } from './routes/admin-tracking'
 import { Route as ClientDailyRouteImport } from './routes/client-daily'
 import { Route as ClientReportsRouteImport } from './routes/client-reports'
 import { Route as CustomersRouteImport } from './routes/customers'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as DealsRouteImport } from './routes/deals'
 import { Route as EmployeesRouteImport } from './routes/employees'
+import { Route as ExclusiveRouteImport } from './routes/exclusive'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as InsuranceAmountsRouteImport } from './routes/insurance-amounts'
 import { Route as InventoryRouteImport } from './routes/inventory'
@@ -108,6 +111,11 @@ const AdminLoginRoute = AdminLoginRouteImport.update({
   path: '/admin-login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminSettingsRoute = AdminSettingsRouteImport.update({
+  id: '/admin-settings',
+  path: '/admin-settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminStepsRoute = AdminStepsRouteImport.update({
   id: '/admin-steps',
   path: '/admin-steps',
@@ -138,9 +146,19 @@ const DashboardRoute = DashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DealsRoute = DealsRouteImport.update({
+  id: '/deals',
+  path: '/deals',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EmployeesRoute = EmployeesRouteImport.update({
   id: '/employees',
   path: '/employees',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExclusiveRoute = ExclusiveRouteImport.update({
+  id: '/exclusive',
+  path: '/exclusive',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
@@ -339,13 +357,16 @@ export interface FileRoutesByFullPath {
   '/admin-client-detail': typeof AdminClientDetailRoute
   '/admin-clients': typeof AdminClientsRoute
   '/admin-login': typeof AdminLoginRoute
+  '/admin-settings': typeof AdminSettingsRoute
   '/admin-steps': typeof AdminStepsRoute
   '/admin-tracking': typeof AdminTrackingRoute
   '/client-daily': typeof ClientDailyRoute
   '/client-reports': typeof ClientReportsRoute
   '/customers': typeof CustomersRoute
   '/dashboard': typeof DashboardRoute
+  '/deals': typeof DealsRoute
   '/employees': typeof EmployeesRoute
+  '/exclusive': typeof ExclusiveRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/insurance-amounts': typeof InsuranceAmountsRoute
   '/inventory': typeof InventoryRoute
@@ -394,13 +415,16 @@ export interface FileRoutesByTo {
   '/admin-client-detail': typeof AdminClientDetailRoute
   '/admin-clients': typeof AdminClientsRoute
   '/admin-login': typeof AdminLoginRoute
+  '/admin-settings': typeof AdminSettingsRoute
   '/admin-steps': typeof AdminStepsRoute
   '/admin-tracking': typeof AdminTrackingRoute
   '/client-daily': typeof ClientDailyRoute
   '/client-reports': typeof ClientReportsRoute
   '/customers': typeof CustomersRoute
   '/dashboard': typeof DashboardRoute
+  '/deals': typeof DealsRoute
   '/employees': typeof EmployeesRoute
+  '/exclusive': typeof ExclusiveRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/insurance-amounts': typeof InsuranceAmountsRoute
   '/inventory': typeof InventoryRoute
@@ -450,13 +474,16 @@ export interface FileRoutesById {
   '/admin-client-detail': typeof AdminClientDetailRoute
   '/admin-clients': typeof AdminClientsRoute
   '/admin-login': typeof AdminLoginRoute
+  '/admin-settings': typeof AdminSettingsRoute
   '/admin-steps': typeof AdminStepsRoute
   '/admin-tracking': typeof AdminTrackingRoute
   '/client-daily': typeof ClientDailyRoute
   '/client-reports': typeof ClientReportsRoute
   '/customers': typeof CustomersRoute
   '/dashboard': typeof DashboardRoute
+  '/deals': typeof DealsRoute
   '/employees': typeof EmployeesRoute
+  '/exclusive': typeof ExclusiveRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/insurance-amounts': typeof InsuranceAmountsRoute
   '/inventory': typeof InventoryRoute
@@ -507,13 +534,16 @@ export interface FileRouteTypes {
     | '/admin-client-detail'
     | '/admin-clients'
     | '/admin-login'
+    | '/admin-settings'
     | '/admin-steps'
     | '/admin-tracking'
     | '/client-daily'
     | '/client-reports'
     | '/customers'
     | '/dashboard'
+    | '/deals'
     | '/employees'
+    | '/exclusive'
     | '/forgot-password'
     | '/insurance-amounts'
     | '/inventory'
@@ -562,13 +592,16 @@ export interface FileRouteTypes {
     | '/admin-client-detail'
     | '/admin-clients'
     | '/admin-login'
+    | '/admin-settings'
     | '/admin-steps'
     | '/admin-tracking'
     | '/client-daily'
     | '/client-reports'
     | '/customers'
     | '/dashboard'
+    | '/deals'
     | '/employees'
+    | '/exclusive'
     | '/forgot-password'
     | '/insurance-amounts'
     | '/inventory'
@@ -617,13 +650,16 @@ export interface FileRouteTypes {
     | '/admin-client-detail'
     | '/admin-clients'
     | '/admin-login'
+    | '/admin-settings'
     | '/admin-steps'
     | '/admin-tracking'
     | '/client-daily'
     | '/client-reports'
     | '/customers'
     | '/dashboard'
+    | '/deals'
     | '/employees'
+    | '/exclusive'
     | '/forgot-password'
     | '/insurance-amounts'
     | '/inventory'
@@ -673,13 +709,16 @@ export interface RootRouteChildren {
   AdminClientDetailRoute: typeof AdminClientDetailRoute
   AdminClientsRoute: typeof AdminClientsRoute
   AdminLoginRoute: typeof AdminLoginRoute
+  AdminSettingsRoute: typeof AdminSettingsRoute
   AdminStepsRoute: typeof AdminStepsRoute
   AdminTrackingRoute: typeof AdminTrackingRoute
   ClientDailyRoute: typeof ClientDailyRoute
   ClientReportsRoute: typeof ClientReportsRoute
   CustomersRoute: typeof CustomersRoute
   DashboardRoute: typeof DashboardRoute
+  DealsRoute: typeof DealsRoute
   EmployeesRoute: typeof EmployeesRoute
+  ExclusiveRoute: typeof ExclusiveRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   InsuranceAmountsRoute: typeof InsuranceAmountsRoute
   InventoryRoute: typeof InventoryRoute
@@ -779,6 +818,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin-settings': {
+      id: '/admin-settings'
+      path: '/admin-settings'
+      fullPath: '/admin-settings'
+      preLoaderRoute: typeof AdminSettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin-steps': {
       id: '/admin-steps'
       path: '/admin-steps'
@@ -821,11 +867,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/deals': {
+      id: '/deals'
+      path: '/deals'
+      fullPath: '/deals'
+      preLoaderRoute: typeof DealsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/employees': {
       id: '/employees'
       path: '/employees'
       fullPath: '/employees'
       preLoaderRoute: typeof EmployeesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/exclusive': {
+      id: '/exclusive'
+      path: '/exclusive'
+      fullPath: '/exclusive'
+      preLoaderRoute: typeof ExclusiveRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/forgot-password': {
@@ -1128,13 +1188,16 @@ const rootRouteChildren: RootRouteChildren = {
   AdminClientDetailRoute: AdminClientDetailRoute,
   AdminClientsRoute: AdminClientsRoute,
   AdminLoginRoute: AdminLoginRoute,
+  AdminSettingsRoute: AdminSettingsRoute,
   AdminStepsRoute: AdminStepsRoute,
   AdminTrackingRoute: AdminTrackingRoute,
   ClientDailyRoute: ClientDailyRoute,
   ClientReportsRoute: ClientReportsRoute,
   CustomersRoute: CustomersRoute,
   DashboardRoute: DashboardRoute,
+  DealsRoute: DealsRoute,
   EmployeesRoute: EmployeesRoute,
+  ExclusiveRoute: ExclusiveRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   InsuranceAmountsRoute: InsuranceAmountsRoute,
   InventoryRoute: InventoryRoute,
