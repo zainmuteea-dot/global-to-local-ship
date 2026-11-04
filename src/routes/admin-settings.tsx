@@ -15,9 +15,16 @@ export const Route = createFileRoute("/admin-settings")({
   head: () => ({
     meta: [
       { title: "إعدادات الإدارة | السوق الشامل" },
-      { name: "description", content: "إعدادات لوحة إدارة السوق الشامل: الموظفون، المتاجر، طرق الدفع والإشعارات." },
+      {
+        name: "description",
+        content:
+          "إعدادات لوحة إدارة السوق الشامل: الموظفون، المتاجر، طرق الدفع والإشعارات.",
+      },
       { property: "og:title", content: "إعدادات الإدارة | السوق الشامل" },
-      { property: "og:description", content: "إدارة إعدادات الموظفين والمتاجر وطرق الدفع والإشعارات." },
+      {
+        property: "og:description",
+        content: "إدارة إعدادات الموظفين والمتاجر وطرق الدفع والإشعارات.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -49,6 +56,12 @@ const SECTIONS = [
     text: "إضافة العروض الحصرية والتخفيضات وتعديلها.",
   },
   {
+    href: "/admin/offer-cards",
+    icon: PackageSearch,
+    title: "إدارة بطاقات العروض",
+    text: "إضافة بطاقات العروض وتعديل أسمائها وأيقوناتها أو حذفها.",
+  },
+  {
     href: "/payments",
     icon: CircleDollarSign,
     title: "طرق الدفع والمدفوعات",
@@ -70,12 +83,19 @@ const SECTIONS = [
 
 function AdminSettingsPage() {
   return (
-    <main dir="rtl" className="min-h-[100dvh] bg-slate-50 px-4 py-8 font-[Tajawal] text-slate-800">
+    <main
+      dir="rtl"
+      className="min-h-[100dvh] bg-slate-50 px-4 py-8 font-[Tajawal] text-slate-800"
+    >
       <div className="mx-auto max-w-4xl space-y-6">
         <header className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-black text-[#0A2540]">إعدادات الإدارة</h1>
-            <p className="mt-1 text-sm text-slate-500">كل إعدادات النظام في مكان واحد.</p>
+            <h1 className="text-2xl font-black text-[#0A2540]">
+              إعدادات الإدارة
+            </h1>
+            <p className="mt-1 text-sm text-slate-500">
+              كل إعدادات النظام في مكان واحد.
+            </p>
           </div>
           <a
             href="/admin"
@@ -99,9 +119,14 @@ function AdminSettingsPage() {
               <span className="min-w-0 flex-1">
                 <span className="flex items-center justify-between gap-2">
                   <b className="text-base text-[#0A2540]">{title}</b>
-                  <ExternalLink className="size-4 text-slate-400 group-hover:text-[#EA580C]" aria-hidden="true" />
+                  <ExternalLink
+                    className="size-4 text-slate-400 group-hover:text-[#EA580C]"
+                    aria-hidden="true"
+                  />
                 </span>
-                <span className="mt-1 block text-sm text-slate-500">{text}</span>
+                <span className="mt-1 block text-sm text-slate-500">
+                  {text}
+                </span>
               </span>
             </a>
           ))}
