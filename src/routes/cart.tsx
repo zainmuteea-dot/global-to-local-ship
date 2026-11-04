@@ -116,7 +116,7 @@ function CartPage() {
           <div className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
             <CheckCircle2 className="h-6 w-6 shrink-0 text-primary" />
             <p className="text-sm font-bold">
-              تمت إضافة «{justAdded.title}» من {CART_STORE_LABELS[justAdded.store]} إلى سلتك.
+              تمت إضافة «{justAdded.title}» من {CART_STORE_LABELS[justAdded.store]} إلى سلة السوق الشامل بنجاح.
             </p>
           </div>
         )}

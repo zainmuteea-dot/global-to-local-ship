@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
-import { createFileRoute, Outlet, useLocation } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useLocation, Link } from "@tanstack/react-router";
+import { readCart } from "@/lib/extension-cart";
 import { supabase } from "@/integrations/supabase/client";
 
 const db = supabase as any;
@@ -275,7 +276,9 @@ const CUSTOMER_STOREFRONT_CSS = `
 .pr-logo-copy{display:flex;flex-direction:column;gap:2px}
 .pr-logo-copy strong{font-size:13px;letter-spacing:.7px;font-weight:900;color:#3B2E12}
 .pr-logo-copy small{font-size:11px;font-weight:700;color:var(--muted)}
-.pr-topbar-note{color:var(--muted);font-size:13px;font-weight:700}
+  .pr-topbar-note{color:var(--muted);font-size:13px;font-weight:700}
+  .pr-topbar-actions{display:flex;align-items:center;gap:14px}.pr-cart-link{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border:1px solid rgba(212,175,55,.45);border-radius:999px;background:#fff;color:#3B2E12;text-decoration:none;font-size:12px;font-weight:900;white-space:nowrap;box-shadow:0 4px 12px rgba(27,20,8,.06)}.pr-cart-link:hover{border-color:#D4AF37;background:#FFFBF5}.pr-cart-count{display:grid;min-width:22px;height:22px;place-items:center;border-radius:999px;background:#D4AF37;color:#1B1408;font-size:11px;font-weight:900}
+  @media(max-width:720px){.pr-topbar-actions{gap:8px}.pr-topbar-note{display:none}.pr-cart-link{padding:9px 11px;font-size:11px}}
 .pr-footer{position:relative;z-index:1;margin-top:54px;border-top:1px solid rgba(212,175,55,.34);background:rgba(255,255,255,.68)}
 .pr-footer-inner{max-width:1240px;min-height:68px;margin:0 auto;padding:16px 22px;display:flex;align-items:center;justify-content:space-between;gap:12px;color:var(--muted);font-size:12px;font-weight:700}
 .pr-footer-brand{color:#3B2E12;font-weight:900;letter-spacing:.3px}
@@ -288,6 +291,18 @@ const CUSTOMER_STOREFRONT_CSS = `
 function CustomerStorefront() {
   const [links, setLinks] = useState<Record<string, string>>({});
   const [visibility, setVisibility] = useState<Record<string, boolean>>({});
+  const [cartCount, setCartCount] = useState(0);
+
+  useEffect(() => {
+    const syncCartCount = () => setCartCount(readCart().length);
+    syncCartCount();
+    window.addEventListener("storage", syncCartCount);
+    window.addEventListener("focus", syncCartCount);
+    return () => {
+      window.removeEventListener("storage", syncCartCount);
+      window.removeEventListener("focus", syncCartCount);
+    };
+  }, []);
 
   useEffect(() => {
     try {
@@ -327,7 +342,14 @@ function CustomerStorefront() {
               <small>السوق الشامل</small>
             </span>
           </div>
-          <span className="pr-topbar-note">تسوقك العالمي في مكان واحد</span>
+          <div className="pr-topbar-actions">
+            <span className="pr-topbar-note">تسوقك العالمي في مكان واحد</span>
+            <Link to="/cart" className="pr-cart-link" aria-label="فتح سلة السوق الشامل">
+              <ShoppingCart size={18} aria-hidden="true" />
+              <span>سلة السوق الشامل</span>
+              {cartCount > 0 && <span className="pr-cart-count">{cartCount}</span>}
+            </Link>
+          </div>
         </div>
       </div>
 
