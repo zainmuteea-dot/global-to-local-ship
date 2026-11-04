@@ -1,6 +1,6 @@
 // زر «أضف للسوق الشامل» داخل صفحات منتجات SHEIN وNoon وAmazon.
 (() => {
-  const DEFAULT_SITE = "https://global-to-local-ship.lovable.app";
+  const DEFAULT_SITE = "https://alsouq-alshamel-dwuv0hkpo-zain-muteea.vercel.app";
   const BTN_ID = "alshamel-add-btn";
   const host = location.hostname;
   const store = /shein\./.test(host) ? "shein" : /noon\.com$/.test(host) ? "noon" : /amazon\./.test(host) ? "amazon" : null;
@@ -124,7 +124,12 @@
   const getSite = () =>
     new Promise((resolve) => {
       try {
-        chrome.storage.sync.get({ siteUrl: DEFAULT_SITE }, (v) => resolve((v && v.siteUrl) || DEFAULT_SITE));
+        chrome.storage.sync.get({ siteUrl: DEFAULT_SITE }, (v) => {
+        const savedSite = (v && v.siteUrl) || DEFAULT_SITE;
+        const site = savedSite.includes("global-to-local-ship.lovable.app") ? DEFAULT_SITE : savedSite;
+        if (site !== savedSite) chrome.storage.sync.set({ siteUrl: site });
+        resolve(site);
+      });
       } catch (_) {
         resolve(DEFAULT_SITE);
       }

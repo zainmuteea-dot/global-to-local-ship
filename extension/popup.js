@@ -1,4 +1,4 @@
-const DEFAULT_SITE = "https://global-to-local-ship.lovable.app";
+const DEFAULT_SITE = "https://alsouq-alshamel-dwuv0hkpo-zain-muteea.vercel.app";
 const input = document.getElementById("site");
 const msg = document.getElementById("msg");
 const openCart = document.getElementById("open-cart");
@@ -8,7 +8,9 @@ const setCartLink = (site) => {
 };
 
 chrome.storage.sync.get({ siteUrl: DEFAULT_SITE }, (v) => {
-  input.value = v.siteUrl || DEFAULT_SITE;
+  const savedSite = v.siteUrl || DEFAULT_SITE;
+  input.value = savedSite.includes("global-to-local-ship.lovable.app") ? DEFAULT_SITE : savedSite;
+  if (input.value !== savedSite) chrome.storage.sync.set({ siteUrl: input.value });
   setCartLink(input.value);
 });
 
