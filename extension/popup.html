@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <title>السوق الشامل</title>
+    <style>
+      body { width: 300px; margin: 0; font-family: "Cairo", "Segoe UI", Tahoma, sans-serif; color: #0a2540; background: #f4f8fc; }
+      header { background: linear-gradient(135deg, #0f4c81, #0a2540); color: #fff; padding: 14px 16px; }
+      header h1 { margin: 0; font-size: 15px; font-weight: 800; }
+      header p { margin: 4px 0 0; font-size: 11px; opacity: 0.8; }
+      main { padding: 14px 16px; }
+      label { display: block; font-size: 12px; font-weight: 700; margin-bottom: 6px; }
+      input { width: 100%; box-sizing: border-box; padding: 9px 10px; border: 1px solid #cfdcea; border-radius: 10px; font-size: 12px; direction: ltr; }
+      button, a.btn { display: block; width: 100%; box-sizing: border-box; margin-top: 10px; padding: 10px; border: 0; border-radius: 10px; font-weight: 800; font-size: 13px; cursor: pointer; text-align: center; text-decoration: none; }
+      button { background: #f97316; color: #fff; }
+      a.btn { background: #0f4c81; color: #fff; }
+      .msg { font-size: 11px; margin-top: 8px; min-height: 14px; color: #0284c7; }
+      .hint { font-size: 11px; color: #5b6b80; margin-top: 12px; line-height: 1.6; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>أضف للسوق الشامل</h1>
+      <p>SHEIN • Noon • Amazon</p>
+    </header>
+    <main>
+      <label for="site">عنوان موقع السوق الشامل</label>
+      <input id="site" type="url" placeholder="https://global-to-local-ship.lovable.app" />
+      <button id="save" type="button">حفظ العنوان</button>
+      <div class="msg" id="msg"></div>
+      <a class="btn" id="open-cart" href="#" target="_blank">فتح سلتي</a>
+      <p class="hint">افتح صفحة أي منتج في المتاجر الثلاثة، وستجد زر «أضف للسوق الشامل» أسفل الصفحة.</p>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>

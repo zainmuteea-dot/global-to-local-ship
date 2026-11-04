@@ -38,6 +38,9 @@ export const Route = createFileRoute("/new-order")({
     store?: string | undefined;
     productName?: string | undefined;
     step?: NewOrderEntryStep | undefined;
+    url?: string | undefined;
+    price?: string | undefined;
+    currency?: "USD" | "SAR" | undefined;
   } => ({
     name: typeof search["name"] === "string" ? search["name"] : undefined,
     phone: typeof search["phone"] === "string" ? search["phone"] : undefined,
@@ -48,6 +51,18 @@ export const Route = createFileRoute("/new-order")({
     step: NEW_ORDER_ENTRY_STEPS.includes(search["step"] as NewOrderEntryStep)
       ? (search["step"] as NewOrderEntryStep)
       : undefined,
+    url:
+      typeof search["url"] === "string" && search["url"].startsWith("https://")
+        ? search["url"]
+        : undefined,
+    price:
+      typeof search["price"] === "string" || typeof search["price"] === "number"
+        ? String(search["price"])
+        : undefined,
+    currency:
+      search["currency"] === "USD" || search["currency"] === "SAR"
+        ? search["currency"]
+        : undefined,
   }),
   component: NewOrderPage,
 });
@@ -542,14 +557,16 @@ function NewOrderPage() {
     getInitialClientPhone(search.phone)
   );
 
-  const [url, setUrl] = useState("");
+  const [url, setUrl] = useState(() => search.url ?? "");
   // اسم المنتج لم يعد حقلاً مرئيًا؛ يُشتق تلقائيًا من المتجر أو من رابط الدخول.
   const [address, setAddress] = useState("");
   const [clientUserId, setClientUserId] = useState<string | null>(null);
   const addressEditedDuringLoad = useRef(false);
   const [isLocating, setIsLocating] = useState(false);
-  const [price, setPrice] = useState("");
-  const [currency, setCurrency] = useState("ر.س سعودي");
+  const [price, setPrice] = useState(() => search.price ?? "");
+  const [currency, setCurrency] = useState(() =>
+    search.currency === "USD" ? "$ دولار" : "ر.س سعودي",
+  );
   const [notes, setNotes] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "done">("idle");
   const [sbError, setSbError] = useState("");
