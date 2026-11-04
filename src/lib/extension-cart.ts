@@ -17,10 +17,11 @@ export type CartItem = {
 export const CART_STORAGE_KEY = "alshamel_cart_v1";
 export const CART_MAX_ITEMS = 50;
 
+// نطاقات المتاجر الرسمية فقط، حتى لا تُقبل نطاقات مقلدة مثل amazon.com.evil.io.
 const STORE_HOSTS: Record<CartStore, RegExp> = {
-  shein: /(^|\.)shein\.[a-z.]+$/i,
+  shein: /(^|\.)shein\.(com|com\.mx|co\.uk)$/i,
   noon: /(^|\.)noon\.com$/i,
-  amazon: /(^|\.)amazon\.[a-z.]+$/i,
+  amazon: /(^|\.)amazon\.(com|sa|ae|eg|co\.uk|de|com\.tr)$/i,
 };
 
 export const CART_STORE_LABELS: Record<CartStore, string> = {
