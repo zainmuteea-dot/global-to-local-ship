@@ -298,9 +298,13 @@ function CustomerStorefront() {
     syncCartCount();
     window.addEventListener("storage", syncCartCount);
     window.addEventListener("focus", syncCartCount);
+    window.addEventListener("alshamel-cart-updated", syncCartCount);
+    document.addEventListener("visibilitychange", syncCartCount);
     return () => {
       window.removeEventListener("storage", syncCartCount);
       window.removeEventListener("focus", syncCartCount);
+      window.removeEventListener("alshamel-cart-updated", syncCartCount);
+      document.removeEventListener("visibilitychange", syncCartCount);
     };
   }, []);
 
@@ -617,7 +621,7 @@ export const ProductsPage: React.FC<ProductsRouteProps> = ({
       englishName: "Global Brands & Turkish Fashion",
       badge: "أي موقع بالعالم نشتري منه 🌍",
       badgeColor: "bg-indigo-600 text-white",
-      discountTag: "ماركات تركية وعالمية",
+      discountTag: "ماركات تركية وع��لمية",
       couponCode: "GLOBAL-SHIP",
       image:
         "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&auto=format&fit=crop&q=80",

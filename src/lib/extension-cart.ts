@@ -117,6 +117,7 @@ export function readCart(): CartItem[] {
 export function writeCart(items: CartItem[]): void {
   try {
     localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
+    window.dispatchEvent(new CustomEvent("alshamel-cart-updated", { detail: { count: items.length } }));
   } catch {
     // التخزين غير متاح؛ تبقى السلة في الصفحة الحالية فقط.
   }
