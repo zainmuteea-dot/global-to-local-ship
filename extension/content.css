@@ -1,0 +1,32 @@
+#alshamel-add-btn {
+  position: fixed;
+  bottom: 22px;
+  left: 22px;
+  z-index: 2147483647;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #f97316, #ea580c);
+  color: #fff;
+  font: 800 15px/1.2 "Cairo", "Segoe UI", Tahoma, sans-serif;
+  direction: rtl;
+  cursor: pointer;
+  box-shadow: 0 10px 28px -8px rgba(10, 37, 64, 0.55);
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+#alshamel-add-btn:hover { transform: translateY(-2px); }
+#alshamel-add-btn[data-state="done"] { background: linear-gradient(135deg, #0f4c81, #0284c7); }
+#alshamel-add-btn .alshamel-logo {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  background: #fff;
+  color: #0f4c81;
+  font-size: 13px;
+  font-weight: 900;
+}

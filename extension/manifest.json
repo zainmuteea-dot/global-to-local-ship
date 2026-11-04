@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "أضف للسوق الشامل - AL SHAMEL SHOPPING",
+  "short_name": "السوق الشامل",
+  "version": "1.0.0",
+  "description": "زر «أضف للسوق الشامل» داخل صفحات منتجات SHEIN وNoon وAmazon لإضافة المنتج لسلتك بضغطة.",
+  "permissions": ["storage"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": { "16": "icon16.png", "48": "icon48.png", "128": "icon128.png" }
+  },
+  "icons": { "16": "icon16.png", "48": "icon48.png", "128": "icon128.png" },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.shein.com/*",
+        "https://*.shein.com.mx/*",
+        "https://*.shein.co.uk/*",
+        "https://*.noon.com/*",
+        "https://*.amazon.com/*",
+        "https://*.amazon.sa/*",
+        "https://*.amazon.ae/*",
+        "https://*.amazon.eg/*",
+        "https://*.amazon.co.uk/*",
+        "https://*.amazon.de/*",
+        "https://*.amazon.com.tr/*"
+      ],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}
