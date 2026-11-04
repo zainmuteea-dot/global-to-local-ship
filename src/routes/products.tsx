@@ -116,6 +116,46 @@ type StorefrontProduct = {
   site_name: string;
 };
 
+type StorefrontOfferCard = {
+  id: string;
+  title: string;
+  icon: string;
+  badge: string;
+  description: string;
+  button_label: string;
+  target_path: "/exclusive" | "/deals";
+  theme: "exclusive" | "deals";
+  is_active: boolean;
+  sort_order: number;
+};
+
+const DEFAULT_OFFER_CARDS: StorefrontOfferCard[] = [
+  {
+    id: "default-exclusive",
+    title: "عروضات حصرية",
+    icon: "👑",
+    badge: "EXCLUSIVE",
+    description: "عروض محدودة على المنتجات الفاخرة والمختارة",
+    button_label: "تصفح العروض",
+    target_path: "/exclusive",
+    theme: "exclusive",
+    is_active: true,
+    sort_order: 0,
+  },
+  {
+    id: "default-deals",
+    title: "تخفيضات حتى 70%",
+    icon: "🌹",
+    badge: "حتى 70%",
+    description: "على منتجات مختارة من المتاجر العالمية",
+    button_label: "تصفح العروض",
+    target_path: "/deals",
+    theme: "deals",
+    is_active: true,
+    sort_order: 1,
+  },
+];
+
 interface ProductsRouteProps {
   onBack?: () => void;
   onNavigateToOrder?: (storeCode?: string, productName?: string) => void;
@@ -291,6 +331,7 @@ const CUSTOMER_STOREFRONT_CSS = `
 function CustomerStorefront() {
   const [links, setLinks] = useState<Record<string, string>>({});
   const [visibility, setVisibility] = useState<Record<string, boolean>>({});
+  const [offerCards, setOfferCards] = useState<StorefrontOfferCard[]>(DEFAULT_OFFER_CARDS);
   const [cartCount, setCartCount] = useState(0);
 
   useEffect(() => {
@@ -320,10 +361,42 @@ function CustomerStorefront() {
     }
   }, []);
 
+  useEffect(() => {
+    let isCurrent = true;
+
+    const loadOfferCards = async () => {
+      const { data, error } = await db
+        .from("storefront_offer_cards")
+        .select("id,title,icon,badge,description,button_label,target_path,theme,is_active,sort_order")
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: true });
+
+      if (!isCurrent) return;
+      if (error) {
+        setOfferCards(DEFAULT_OFFER_CARDS);
+        return;
+      }
+
+      setOfferCards((data ?? []).map((card: StorefrontOfferCard) => ({
+        ...card,
+        target_path: card.target_path === "/exclusive" ? "/exclusive" : "/deals",
+        theme: card.theme === "exclusive" ? "exclusive" : "deals",
+      })));
+    };
+
+    void loadOfferCards();
+    return () => {
+      isCurrent = false;
+    };
+  }, []);
+
   const visibleStores = INTERNATIONAL_STORES.filter((store) => visibility[store.id] !== false);
   const storeIds = new Set<string>(visibleStores.map((store) => store.id));
   const visibleIconStores = STORE_ICONS.filter((store) => storeIds.has(store.id));
-  const offerStores = visibleStores.filter((store) => store.id === "discounts" || store.id === "exclusive");
+  const visibleOfferCards = offerCards.filter((card) =>
+    visibility[card.theme === "exclusive" ? "exclusive" : "discounts"] !== false
+  );
 
   const getExternalStoreUrl = (storeId: string, fallback: string) => {
     const candidate = links[storeId]?.trim();
@@ -387,25 +460,25 @@ function CustomerStorefront() {
         })}
       </section>
 
-      {offerStores.length > 0 && (
+      {visibleOfferCards.length > 0 && (
         <section className="pr-banners" aria-label="العروض المميزة">
-          {offerStores.map((store) => {
-            const exclusive = store.id === "exclusive";
-            const offerPath = exclusive ? "/exclusive" : "/deals";
+          {visibleOfferCards.map((card) => {
+            const exclusive = card.theme === "exclusive";
+            const targetPath = card.target_path === "/exclusive" ? "/exclusive" : "/deals";
             return (
               <a
-                id={store.id}
-                key={store.id}
+                id={card.id}
+                key={card.id}
                 className={`pr-banner ${exclusive ? "pr-exclusive" : "pr-sale"}`}
-                href={offerPath}
-                aria-label={`تصفح ${store.name}`}
+                href={targetPath}
+                aria-label={`تصفح ${card.title}`}
               >
-                <span className="pr-banner-icon" aria-hidden="true">{exclusive ? "👑" : "🌹"}</span>
-                {exclusive ? <span className="pr-badge">EXCLUSIVE</span> : <span className="pr-badge">حتى 70%</span>}
-                <h2>{exclusive ? store.name : "تخفيضات حتى 70%"}</h2>
-                <p>{exclusive ? "عروض محدودة على المنتجات الفاخرة والمختارة" : "على منتجات مختارة من المتاجر العالمية"}</p>
+                <span className="pr-banner-icon" aria-hidden="true">{card.icon || (exclusive ? "👑" : "🌹")}</span>
+                {card.badge && <span className="pr-badge">{card.badge}</span>}
+                <h2>{card.title}</h2>
+                {card.description && <p>{card.description}</p>}
                 <span className="pr-cta">
-                  تصفح العروض
+                  {card.button_label || "تصفح العروض"}
                   <span aria-hidden="true">←</span>
                 </span>
               </a>
