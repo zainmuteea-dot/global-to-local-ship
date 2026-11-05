@@ -477,7 +477,7 @@ function CustomerNotificationsPage({
   );
 }
 
-/** شاشة الإدارة: لا تعرض إلا بعد نجاح التحقق من دور admin أو staff. */
+/** شاشة الإدارة: لا تعر�� إلا بعد نجاح التحقق من دور admin أو staff. */
 function AdminNotificationsPage({ userId }: { userId: string }) {
   const navigate = useNavigate();
   const [orders, setOrders] = useState<OrderNotification[]>([]);
@@ -911,20 +911,18 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
     <div
       dir="rtl"
       lang="ar"
-      className="min-h-screen bg-[#050A14] px-3 py-5 text-white sm:px-5 sm:py-7"
+      className="min-h-[100dvh] bg-[#050A14] px-3 py-5 text-white sm:px-5 sm:py-7"
     >
-      <div className="pointer-events-none fixed inset-x-0 top-0 h-[480px] bg-[radial-gradient(ellipse_at_top,rgba(255,107,0,0.15),transparent_68%)]" />
+      <div className="pointer-events-none fixed inset-x-0 top-0 h-[480px] bg-[radial-gradient(ellipse_at_top,rgba(35,119,171,0.12),transparent_68%)]" />
       <div className="relative mx-auto w-full max-w-[1200px] space-y-6">
-        <header className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#FF6B00]/20 bg-[#0A1931]/80 p-4 shadow-[0_0_30px_rgba(255,107,0,0.1)] backdrop-blur-[16px] sm:px-6">
+        <header className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-[#FF6B00]/20 bg-[#0A1931]/90 p-4 shadow-[0_0_30px_rgba(255,107,0,0.1)] backdrop-blur-[16px] sm:px-6">
           <div className="flex items-center gap-3">
-            <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-[#FF6B00]/20 text-[#FF6B00] shadow-[inset_0_0_18px_rgba(255,107,0,0.28)]">
-              <Bell className="size-6" />
-            </span>
+            <img src="/alshamel-logo.png" alt="شعار الشامل للتسوق" className="size-14 shrink-0 rounded-2xl border border-[#E8A43A]/30 bg-[#FFF9F1] object-cover shadow-[0_8px_20px_rgba(18,59,99,0.12)]" />
             <div>
               <h1 className="text-xl font-black text-white sm:text-2xl">
                 الشامل للتسوق - مركز الإشعارات
               </h1>
-              <p className="mt-1 text-xs text-white/50">
+              <p className="mt-1 text-xs text-[#5D7183]">
                 تابع الطلبات والتنبيهات وتواصل مع العملاء من مكان واحد.
               </p>
             </div>
@@ -933,14 +931,14 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
             <button
               type="button"
               onClick={() => void toggleSound()}
-              className={`rounded-lg border px-3 py-2 text-xs font-bold transition ${soundOn ? "border-[#22C55E]/30 bg-[#22C55E]/10 text-[#22C55E]" : "border-white/10 bg-white/5 text-white/60"}`}
+              className={`rounded-xl border px-3 py-2 text-xs font-bold transition ${soundOn ? "border-[#22C55E]/30 bg-[#22C55E]/10 text-[#22C55E]" : "border-white/10 bg-white/5 text-white/60"}`}
             >
               {soundOn ? "🔔 الصوت يعمل" : "🔕 الصوت متوقف"}
             </button>
             <button
               type="button"
               onClick={() => navigate({ to: "/admin" })}
-              className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-white/80 transition hover:border-[#00D4FF]/40 hover:text-[#00D4FF]"
+              className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-white/80 transition hover:border-[#00D4FF]/40 hover:text-[#00D4FF]"
             >
               رجوع للوحة القيادة
             </button>
@@ -1032,7 +1030,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
         >
           <article className="rounded-2xl border border-white/10 bg-[#0A1931]/60 p-5">
             <h2 className="font-bold text-white">نسبة القراءة</h2>
-            <p className="mt-1 text-[11px] text-white/50">
+            <p className="mt-1 text-[11px] text-[#5D7183]">
               من الإشعارات المحمّلة حاليًا
             </p>
             <div className="mt-5 flex items-center justify-center">
@@ -1062,7 +1060,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
           </article>
           <article className="rounded-2xl border border-white/10 bg-[#0A1931]/60 p-5">
             <h2 className="font-bold text-white">أنواع الإشعارات</h2>
-            <p className="mt-1 text-[11px] text-white/50">
+            <p className="mt-1 text-[11px] text-[#5D7183]">
               توزيع العناصر المعروضة حسب النوع
             </p>
             <div className="mt-6 space-y-5">
@@ -1094,7 +1092,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
                 <h2 className="font-bold text-white">
                   التوزيع الجغرافي - اليمن
                 </h2>
-                <p className="mt-1 text-[11px] text-white/50">
+                <p className="mt-1 text-[11px] text-[#5D7183]">
                   قيم توضيحية حسب نموذج التصميم
                 </p>
               </div>
@@ -1152,7 +1150,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
                   </div>
                 ))}
                 <div className="border-t border-white/10 pt-2">
-                  <p className="text-[10px] text-white/50">الإجمالي التوضيحي</p>
+                  <p className="text-[10px] text-[#5D7183]">الإجمالي التوضيحي</p>
                   <p className="font-bold text-[#FF6B00]">885</p>
                 </div>
               </div>
@@ -1169,7 +1167,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
               <h2 className="font-bold text-white">
                 إرسال عرض أو إشعار للعملاء
               </h2>
-              <p className="mt-1 text-[11px] text-white/50">
+              <p className="mt-1 text-[11px] text-[#5D7183]">
                 ينشر الإشعار للعملاء، ثم يحاول إرسال SMS إلى الأرقام المتاحة.
               </p>
             </div>
@@ -1228,7 +1226,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
                   <h2 className="font-bold text-white">
                     إشعارات العملاء والإدارة
                   </h2>
-                  <p className="mt-1 text-[11px] text-white/50">
+                  <p className="mt-1 text-[11px] text-[#5D7183]">
                     {unreadSystem
                       ? `${unreadSystem} غير مقروءة`
                       : "لا توجد إشعارات غير مقروءة"}
@@ -1263,22 +1261,22 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
             {loading ? (
               <p
                 role="status"
-                className="p-8 text-center text-sm text-white/50"
+                className="p-8 text-center text-sm text-[#5D7183]"
               >
                 جارٍ تحميل الإشعارات…
               </p>
             ) : notifications.length === 0 ? (
-              <div className="m-4 rounded-xl border border-white/10 bg-white/[0.03] p-8 text-center text-sm text-white/50">
+              <div className="m-4 rounded-xl border border-white/10 bg-white/[0.03] p-8 text-center text-sm text-[#5D7183]">
                 <Inbox className="mx-auto mb-3 size-8 text-[#00D4FF]" />
                 <p className="font-bold text-white">لا توجد إشعارات إدارية</p>
-                <p className="mt-1 text-xs text-white/50">
+                <p className="mt-1 text-xs text-[#5D7183]">
                   ستظهر هنا إشعارات الدفع والعروض التي ترسلها.
                 </p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[600px] text-right text-xs">
-                  <thead className="bg-white/5 text-[11px] font-bold text-white/50">
+                  <thead className="bg-white/5 text-[11px] font-bold text-[#5D7183]">
                     <tr>
                       <th className="px-4 py-3">الإشعار</th>
                       <th className="px-3 py-3">النوع</th>
@@ -1336,7 +1334,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
                               {isRead ? "مقروء" : "جديد"}
                             </span>
                           </td>
-                          <td className="whitespace-nowrap px-3 py-4 text-[10px] text-white/50">
+                          <td className="whitespace-nowrap px-3 py-4 text-[10px] text-[#5D7183]">
                             {new Date(notification.created_at).toLocaleString(
                               "ar-YE",
                             )}
@@ -1370,7 +1368,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
               </span>
               <div>
                 <h2 className="font-bold text-white">طلبات العملاء اللحظية</h2>
-                <p className="mt-1 text-[11px] text-white/50">
+                <p className="mt-1 text-[11px] text-[#5D7183]">
                   {unreadOrders
                     ? `${unreadOrders} طلبات بانتظار المتابعة`
                     : "لا توجد طلبات بانتظار المتابعة"}
@@ -1380,22 +1378,22 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
             {loading ? (
               <p
                 role="status"
-                className="p-8 text-center text-sm text-white/50"
+                className="p-8 text-center text-sm text-[#5D7183]"
               >
                 جارٍ تحميل الطلبات…
               </p>
             ) : orders.length === 0 ? (
-              <div className="m-4 rounded-xl border border-white/10 bg-white/[0.03] p-8 text-center text-sm text-white/50">
+              <div className="m-4 rounded-xl border border-white/10 bg-white/[0.03] p-8 text-center text-sm text-[#5D7183]">
                 <PackagePlus className="mx-auto mb-3 size-8 text-[#FF6B00]" />
                 <p className="font-bold text-white">لا توجد طلبات جديدة</p>
-                <p className="mt-1 text-xs text-white/50">
+                <p className="mt-1 text-xs text-[#5D7183]">
                   ستظهر طلبات العملاء هنا عند وصولها.
                 </p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[660px] text-right text-xs">
-                  <thead className="bg-white/5 text-[11px] font-bold text-white/50">
+                  <thead className="bg-white/5 text-[11px] font-bold text-[#5D7183]">
                     <tr>
                       <th className="px-3 py-3">العميل</th>
                       <th className="px-3 py-3">رقم الطلب</th>
@@ -1425,7 +1423,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
                               {order.status}
                             </span>
                           </td>
-                          <td className="whitespace-nowrap px-3 py-3 text-[10px] text-white/50">
+                          <td className="whitespace-nowrap px-3 py-3 text-[10px] text-[#5D7183]">
                             {new Date(order.created_at).toLocaleString("ar-YE")}
                           </td>
                           <td className="px-3 py-3">
