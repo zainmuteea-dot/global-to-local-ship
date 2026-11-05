@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Camera, ImagePlus, LoaderCircle, Pencil, Plus, Save, Trash2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { EmbeddedLogo } from "@/components/admin/Logo";
 
 const db = supabase as any;
 
@@ -270,52 +271,56 @@ function AdminOffersPage() {
   };
 
   return (
-    <main dir="rtl" className="min-h-[100dvh] overflow-y-auto bg-[#F3F8FC] px-4 py-8 text-[#0A2540] sm:px-6 lg:px-10">
+    <main dir="rtl" className="min-h-[100dvh] overflow-x-hidden overflow-y-auto bg-[#F3F8FC] px-3 py-4 text-[#0A2540] sm:px-6 sm:py-8 lg:px-10">
       <div className="mx-auto max-w-7xl">
-        <div className="grid items-start gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
-          <aside className="rounded-3xl border border-[#DCEAF4] bg-white p-5 shadow-sm lg:sticky lg:top-6">
-            <div className="mb-5 flex flex-col items-center border-b border-[#E6F0F7] pb-5 text-center">
-              <img src="/al-shameel-shopping-logo.jpeg" alt="شعار AL SHAMEEL SHOPPING" className="mb-3 size-28 rounded-2xl bg-white object-contain" />
-              <h2 className="text-lg font-black text-[#0F4C81]">السوق الشامل</h2>
-              <p className="mt-1 text-xs font-bold tracking-wide text-[#F97316]">AL SHAMEEL SHOPPING</p>
+        <div className="grid items-start gap-4 sm:gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
+          <aside className="min-w-0 rounded-3xl border border-[#DCEAF4] bg-white p-4 shadow-sm sm:p-5 lg:sticky lg:top-6">
+            <div className="mb-4 flex items-center justify-center border-b border-[#E6F0F7] pb-4 lg:mb-5 lg:pb-5">
+              <EmbeddedLogo size="lg" />
             </div>
             <button
               type="button"
               onClick={openNewForm}
-              className="mb-5 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-l from-[#0F4C81] to-[#0284C7] px-4 py-3 text-sm font-extrabold text-white shadow-sm transition hover:brightness-105"
+              className="mb-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-l from-[#0F4C81] to-[#0284C7] px-4 py-3 text-sm font-extrabold text-white shadow-sm transition hover:brightness-105 lg:mb-5"
             >
               <Plus className="size-5" /> إضافة منتج جديد
             </button>
-            <div className="space-y-2" role="group" aria-label="فلترة أنواع العروض">
-              <p className="px-1 pb-1 text-xs font-black text-[#0A2540]">تصنيف المنتجات</p>
-              {(["exclusive", "deals", "both"] as const).map((key) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setTypeFilter(key)}
-                  aria-pressed={typeFilter === key}
-                  className={`flex min-h-11 w-full items-center justify-between rounded-xl border px-3 text-right text-sm font-bold transition ${typeFilter === key ? "border-[#F97316] bg-orange-50 text-[#0F4C81] shadow-sm" : "border-[#DCEAF4] bg-white text-slate-600 hover:border-[#0284C7] hover:bg-sky-50"}`}
-                >
-                  <span>{offerLabels[key]}</span>
-                  {typeFilter === key && <span className="size-2 rounded-full bg-[#F97316]" aria-hidden="true" />}
-                </button>
-              ))}
-              <button
-                type="button"
-                onClick={() => setTypeFilter("all")}
-                aria-pressed={typeFilter === "all"}
-                className={`mt-2 flex min-h-11 w-full items-center justify-center rounded-xl border px-3 text-sm font-extrabold transition ${typeFilter === "all" ? "border-[#0F4C81] bg-[#0F4C81] text-white" : "border-[#DCEAF4] bg-[#F7FAFC] text-[#0F4C81] hover:bg-sky-50"}`}
-              >
-                عرض الكل
-              </button>
+            <p className="px-1 pb-2 text-xs font-black text-[#0A2540]">تصنيف المنتجات</p>
+            <div
+              className="grid grid-cols-2 gap-2 lg:flex lg:flex-col"
+              role="group"
+              aria-label="فلترة أنواع العروض"
+            >
+              {(["all", "exclusive", "deals", "both"] as const).map((key) => {
+                const active = typeFilter === key;
+                const label = key === "all" ? "عرض الكل" : offerLabels[key];
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setTypeFilter(key)}
+                    aria-pressed={active}
+                    className={`flex min-h-11 shrink-0 items-center justify-between gap-2 whitespace-nowrap rounded-xl border px-4 text-sm font-bold transition lg:w-full lg:px-3 ${key === "all" ? "lg:order-last lg:mt-2 lg:justify-center" : ""} ${
+                      active
+                        ? key === "all"
+                          ? "border-[#0F4C81] bg-[#0F4C81] text-white"
+                          : "border-[#F97316] bg-orange-50 text-[#0F4C81] shadow-sm"
+                        : "border-[#DCEAF4] bg-white text-slate-600 hover:border-[#0284C7] hover:bg-sky-50"
+                    }`}
+                  >
+                    <span>{label}</span>
+                    {active && key !== "all" && <span className="size-2 rounded-full bg-[#F97316]" aria-hidden="true" />}
+                  </button>
+                );
+              })}
             </div>
           </aside>
           <div className="min-w-0">
-        <header className="mb-8 flex flex-col justify-between gap-5 rounded-3xl bg-gradient-to-l from-[#0F4C81] to-[#0284C7] p-6 text-white shadow-xl sm:flex-row sm:items-center sm:p-9">
-          <div>
-            <p className="mb-2 text-xs font-bold tracking-[0.22em] text-[#FDBA74]">AL SHAMEEL SHOPPING · OFFERS</p>
-            <h1 className="text-2xl font-black sm:text-3xl">إضافة منتجات للعروض والتخفيضات</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-white/70">
+        <header className="mb-5 flex flex-col justify-between gap-5 rounded-3xl bg-gradient-to-l from-[#0F4C81] to-[#0284C7] p-5 text-white shadow-xl sm:mb-8 sm:flex-row sm:items-center sm:p-9">
+          <div className="min-w-0">
+            <p className="mb-2 text-[10px] font-bold tracking-[0.15em] text-[#FDBA74] sm:text-xs sm:tracking-[0.22em]">AL SHAMEEL SHOPPING · OFFERS</p>
+            <h1 className="text-xl font-black leading-snug sm:text-3xl">إضافة منتجات للعروض والتخفيضات</h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-white/70 sm:mt-3">
               أضف منتجاتك وحدد سعرها ونسبة خصمها بنفسك، دون ربطها بأي متجر خارجي.
             </p>
           </div>
@@ -334,7 +339,7 @@ function AdminOffersPage() {
         )}
 
         {formOpen && (
-          <form onSubmit={saveProduct} className="mb-8 rounded-3xl border border-[#DCEAF4] bg-white p-5 shadow-sm sm:p-8">
+          <form onSubmit={saveProduct} className="mb-5 rounded-3xl border border-[#DCEAF4] bg-white p-4 shadow-sm sm:mb-8 sm:p-8">
             <div className="mb-6 flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-bold text-[#F97316]">{editingId ? "تعديل المنتج" : "منتج جديد"}</p>
@@ -482,11 +487,11 @@ function AdminOffersPage() {
 
             </div>
 
-            <div className="mt-6 flex flex-wrap gap-3">
+            <div className="mt-6 grid grid-cols-[minmax(0,1fr)_auto] gap-3 sm:flex sm:flex-wrap">
               <button
                 disabled={saving}
                 type="submit"
-                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-l from-[#0F4C81] to-[#0284C7] px-6 py-3 font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-l from-[#0F4C81] to-[#0284C7] px-6 py-3 font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {saving ? <LoaderCircle className="size-4 animate-spin" /> : <Save className="size-4" />}
                 {saving ? "جارٍ الحفظ…" : "حفظ المنتج"}
@@ -503,7 +508,7 @@ function AdminOffersPage() {
         )}
 
         <section className="overflow-hidden rounded-3xl border border-[#DCEAF4] bg-white shadow-sm">
-          <div className="flex items-center justify-between border-b border-[#E6F0F7] px-5 py-5 sm:px-7">
+          <div className="flex items-center justify-between border-b border-[#E6F0F7] px-4 py-4 sm:px-7 sm:py-5">
             <div>
               <h2 className="text-lg font-black">منتجات العروض</h2>
               <p className="mt-1 text-sm text-gray-500">{visibleProducts.length} من {products.length} منتج</p>
@@ -520,7 +525,62 @@ function AdminOffersPage() {
           ) : visibleProducts.length === 0 ? (
             <p className="p-12 text-center text-sm text-gray-500">لا توجد منتجات عروض حاليًا.</p>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            <ul className="divide-y divide-[#E6F0F7] md:hidden">
+              {visibleProducts.map((product) => {
+                const finalPrice = Number(product.price) * (1 - Number(product.discount_percent) / 100);
+                const categoryLabel = product.category
+                  ? ({ electronics: "إلكترونيات", office_supplies: "أدوات مكتبية", hookah_supplies: "معسلات الشيشة", other: "أخرى" } as Record<string, string>)[product.category] ?? product.category
+                  : null;
+                return (
+                  <li key={product.id} className="p-4">
+                    <div className="flex gap-3">
+                      {product.image_url ? (
+                        <img src={product.image_url} alt="" className="size-20 shrink-0 rounded-xl object-cover" />
+                      ) : (
+                        <span className="grid size-20 shrink-0 place-items-center rounded-xl bg-gray-100 text-xs text-gray-400">لا صورة</span>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <h3 className="min-w-0 truncate font-black">{product.name}</h3>
+                          <span className="shrink-0 rounded-full bg-orange-100 px-2 py-0.5 text-xs font-bold text-orange-700">
+                            خصم %{product.discount_percent}
+                          </span>
+                        </div>
+                        <p className="mt-1 truncate text-xs text-gray-500">
+                          {[product.brand, categoryLabel, offerLabels[product.offer_type]].filter(Boolean).join(" · ")}
+                        </p>
+                        <div className="mt-2 flex flex-wrap items-baseline gap-x-2">
+                          <span className="text-base font-black text-[#0F4C81]">
+                            {finalPrice.toLocaleString("ar", { maximumFractionDigits: 2 })} ر.س
+                          </span>
+                          <span className="text-xs text-gray-400 line-through">{Number(product.price).toLocaleString("ar")} ر.س</span>
+                        </div>
+                      </div>
+                    </div>
+                    {product.description && <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-600">{product.description}</p>}
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => startEdit(product)}
+                        className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-[#DCEAF4] text-sm font-bold text-[#0284C7] hover:bg-[#EAF5FC]"
+                      >
+                        <Pencil className="size-4" /> تعديل
+                      </button>
+                      <button
+                        type="button"
+                        disabled={deletingId === product.id}
+                        onClick={() => void deleteProduct(product)}
+                        className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-rose-100 text-sm font-bold text-rose-600 hover:bg-rose-50 disabled:opacity-50"
+                      >
+                        <Trash2 className="size-4" /> حذف
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+            <div className="hidden overflow-x-auto md:block">
               <table className="w-full min-w-[1100px] text-right text-sm">
                 <thead className="bg-[#F7FAFC] text-xs text-gray-500">
                   <tr>
@@ -581,6 +641,7 @@ function AdminOffersPage() {
                 </tbody>
               </table>
             </div>
+            </>
           )}
         </section>
           </div>
