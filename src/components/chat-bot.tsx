@@ -331,6 +331,8 @@ export function ChatBot() {
   };
 
   useEffect(() => {
+    if (!open) return;
+
     let cancelled = false;
 
     const initializeChat = async () => {
@@ -382,7 +384,7 @@ export function ChatBot() {
     return () => {
       cancelled = true;
     };
-  }, [initAttempt]);
+  }, [initAttempt, open]);
 
   useEffect(() => {
     listRef.current?.scrollTo({
