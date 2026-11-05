@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Camera, ImagePlus, LoaderCircle, Pencil, Plus, Save, Trash2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { EmbeddedLogo } from "@/components/admin/Logo";
 
 const db = supabase as any;
 
@@ -507,7 +508,7 @@ function AdminOffersPage() {
         )}
 
         <section className="overflow-hidden rounded-3xl border border-[#DCEAF4] bg-white shadow-sm">
-          <div className="flex items-center justify-between border-b border-[#E6F0F7] px-5 py-5 sm:px-7">
+          <div className="flex items-center justify-between border-b border-[#E6F0F7] px-4 py-4 sm:px-7 sm:py-5">
             <div>
               <h2 className="text-lg font-black">منتجات العروض</h2>
               <p className="mt-1 text-sm text-gray-500">{visibleProducts.length} من {products.length} منتج</p>
@@ -640,6 +641,7 @@ function AdminOffersPage() {
                 </tbody>
               </table>
             </div>
+            </>
           )}
         </section>
           </div>
