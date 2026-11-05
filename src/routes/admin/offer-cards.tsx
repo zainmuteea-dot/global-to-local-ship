@@ -1,11 +1,29 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { ArrowRight, Check, Pencil, Plus, Save, Trash2, X } from "lucide-react";
+import { ArrowRight, Check, ImagePlus, Pencil, Plus, Save, Trash2, X } from "lucide-react";
 import { AdminRouteGuard } from "@/components/admin/AdminRouteGuard";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  QUICK_SWATCHES,
+  THEME_COLORS,
+  normalizeHex,
+  readableTextOn,
+  resolveCardColors,
+  safeImageUrl,
+  type OfferCardColors,
+} from "@/lib/offer-card-style";
 
 const db = supabase as any;
 const TABLE = "storefront_offer_cards";
+const BASE_COLUMNS = "id,title,icon,badge,description,button_label,target_path,theme,is_active,sort_order";
+const STYLE_COLUMNS = "image_url,bg_color,bg_color_2,text_color,accent_color";
+const MISSING_STYLE_COLUMNS_MESSAGE =
+  "قاعدة البيانات لا تحتوي بعد على أعمدة الصورة والألوان. شغّل تحديث offer_card_image_colors على قاعدة الموقع ثم أعد المحاولة.";
+
+function isMissingColumnError(error: { code?: string; message?: string } | null) {
+  if (!error) return false;
+  return error.code === "42703" || error.code === "PGRST204" || /column/i.test(error.message ?? "");
+}
 
 type OfferCard = {
   id: string;
@@ -18,6 +36,11 @@ type OfferCard = {
   theme: "exclusive" | "deals";
   is_active: boolean;
   sort_order: number;
+  image_url: string | null;
+  bg_color: string | null;
+  bg_color_2: string | null;
+  text_color: string | null;
+  accent_color: string | null;
 };
 
 type CardForm = Omit<OfferCard, "id">;
@@ -32,7 +55,16 @@ const emptyForm: CardForm = {
   theme: "deals",
   is_active: true,
   sort_order: 0,
+  image_url: null,
+  ...THEME_COLORS.deals,
 };
+
+const COLOR_FIELDS: { key: keyof OfferCardColors; label: string }[] = [
+  { key: "bg_color", label: "لون الخلفية" },
+  { key: "bg_color_2", label: "لون التدرّج الثاني" },
+  { key: "text_color", label: "لون الكتابة" },
+  { key: "accent_color", label: "لون الزر والشارة" },
+];
 
 const inputClass =
   "mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100";
@@ -46,21 +78,34 @@ function OfferCardsAdminPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [styleColumnsReady, setStyleColumnsReady] = useState(true);
 
   const loadCards = useCallback(async () => {
     setLoading(true);
     setError("");
-    const { data, error: queryError } = await db
-      .from(TABLE)
-      .select("id,title,icon,badge,description,button_label,target_path,theme,is_active,sort_order")
-      .order("sort_order", { ascending: true })
-      .order("created_at", { ascending: true });
+    const query = (columns: string) =>
+      db.from(TABLE).select(columns).order("sort_order", { ascending: true }).order("created_at", { ascending: true });
+    let { data, error: queryError } = await query(`${BASE_COLUMNS},${STYLE_COLUMNS}`);
+    if (isMissingColumnError(queryError)) {
+      setStyleColumnsReady(false);
+      ({ data, error: queryError } = await query(BASE_COLUMNS));
+    } else {
+      setStyleColumnsReady(true);
+    }
 
     if (queryError) {
       setError(`تعذر تحميل بطاقات العروض: ${queryError.message}`);
       setCards([]);
     } else {
-      setCards((data ?? []) as OfferCard[]);
+      setCards(((data ?? []) as Partial<OfferCard>[]).map((card) => ({
+        image_url: null,
+        bg_color: null,
+        bg_color_2: null,
+        text_color: null,
+        accent_color: null,
+        ...card,
+      })) as OfferCard[]);
     }
     setLoading(false);
   }, []);
@@ -89,6 +134,8 @@ function OfferCardsAdminPage() {
       theme: card.theme,
       is_active: card.is_active,
       sort_order: card.sort_order,
+      image_url: card.image_url,
+      ...resolveCardColors(card.theme, card),
     });
     setFormOpen(true);
     setError("");
@@ -100,6 +147,46 @@ function OfferCardsAdminPage() {
     setFormOpen(false);
     setEditingId(null);
     setForm({ ...emptyForm });
+  }
+
+  function applyTemplate(theme: CardForm["theme"]) {
+    setForm((current) => ({ ...current, theme, ...THEME_COLORS[theme] }));
+  }
+
+  function setColor(key: keyof OfferCardColors, value: string) {
+    setForm((current) => ({ ...current, [key]: value }));
+  }
+
+  async function uploadCardImage(file?: File) {
+    if (!file) return;
+    setError("");
+    setNotice("");
+    if (!file.type.startsWith("image/")) {
+      setError("اختر ملف صورة صالحًا.");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setError("حجم الصورة يجب ألا يتجاوز 8 ميغابايت.");
+      return;
+    }
+    setUploadingImage(true);
+    try {
+      const extension = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+      const filePath = `offer-cards/${crypto.randomUUID()}.${extension}`;
+      const { data, error: uploadError } = await supabase.storage
+        .from("product-images")
+        .upload(filePath, file, { contentType: file.type, upsert: false });
+      if (uploadError) throw uploadError;
+      const { data: urlData } = supabase.storage.from("product-images").getPublicUrl(data.path);
+      if (!urlData.publicUrl) throw new Error("تعذر إنشاء رابط للصورة.");
+      setForm((current) => ({ ...current, image_url: urlData.publicUrl }));
+      setNotice("تم رفع الصورة. اضغط «حفظ البطاقة» لتثبيتها.");
+    } catch (uploadError) {
+      const message = uploadError instanceof Error ? uploadError.message : "خطأ غير معروف";
+      setError(`تعذر رفع الصورة: ${message}`);
+    } finally {
+      setUploadingImage(false);
+    }
   }
 
   async function saveCard(event: FormEvent<HTMLFormElement>) {
@@ -115,10 +202,23 @@ function OfferCardsAdminPage() {
       description: form.description.trim(),
       button_label: form.button_label.trim() || "تصفح العروض",
       sort_order: Number(form.sort_order),
+      image_url: form.image_url ? safeImageUrl(form.image_url) : null,
+      bg_color: normalizeHex(form.bg_color),
+      bg_color_2: normalizeHex(form.bg_color_2),
+      text_color: normalizeHex(form.text_color),
+      accent_color: normalizeHex(form.accent_color),
     };
 
     if (!payload.title) {
       setError("اكتب اسم البطاقة.");
+      return;
+    }
+    if (form.image_url && !payload.image_url) {
+      setError("رابط الصورة يجب أن يبدأ بـ https://");
+      return;
+    }
+    if (!payload.bg_color || !payload.bg_color_2 || !payload.text_color || !payload.accent_color) {
+      setError("أحد الألوان غير صالح. اختر اللون من المنتقي أو اكتبه بصيغة ‎#RRGGBB.");
       return;
     }
     if (!Number.isInteger(payload.sort_order)) {
@@ -133,7 +233,7 @@ function OfferCardsAdminPage() {
     setSaving(false);
 
     if (result.error) {
-      setError(`تعذر حفظ البطاقة: ${result.error.message}`);
+      setError(isMissingColumnError(result.error) ? MISSING_STYLE_COLUMNS_MESSAGE : `تعذر حفظ البطاقة: ${result.error.message}`);
       return;
     }
 
@@ -205,8 +305,8 @@ function OfferCardsAdminPage() {
                     <option value="/deals">التخفيضات (/deals)</option>
                   </select>
                 </label>
-                <label className="text-sm font-bold">شكل البطاقة
-                  <select className={inputClass} value={form.theme} onChange={(event) => setForm((current) => ({ ...current, theme: event.target.value as CardForm["theme"] }))}>
+                <label className="text-sm font-bold">قالب ألوان جاهز (تقدر تغيّره تحت)
+                  <select className={inputClass} value={form.theme} onChange={(event) => applyTemplate(event.target.value as CardForm["theme"])}>
                     <option value="exclusive">أسود وذهبي</option>
                     <option value="deals">وردي</option>
                   </select>
@@ -218,6 +318,89 @@ function OfferCardsAdminPage() {
                   <input type="checkbox" checked={form.is_active} onChange={(event) => setForm((current) => ({ ...current, is_active: event.target.checked }))} /> ظاهرة للعملاء
                 </label>
               </div>
+              {!styleColumnsReady && (
+                <p role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-bold text-amber-800">{MISSING_STYLE_COLUMNS_MESSAGE}</p>
+              )}
+
+              <fieldset className="space-y-3 rounded-xl border border-slate-200 p-4">
+                <legend className="px-1 text-sm font-black">صورة البطاقة</legend>
+                <div className="flex flex-wrap items-center gap-3">
+                  {form.image_url ? (
+                    <img src={form.image_url} alt="صورة البطاقة" className="size-20 rounded-xl border object-cover" />
+                  ) : (
+                    <span className="grid size-20 place-items-center rounded-xl border border-dashed text-xs text-slate-400">بدون صورة</span>
+                  )}
+                  <label className={`inline-flex cursor-pointer items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-bold hover:bg-slate-50 ${uploadingImage ? "pointer-events-none opacity-50" : ""}`}>
+                    <ImagePlus className="size-4" /> {uploadingImage ? "جارٍ رفع الصورة…" : "اختيار صورة من الجهاز"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="sr-only"
+                      disabled={uploadingImage}
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        event.target.value = "";
+                        void uploadCardImage(file);
+                      }}
+                    />
+                  </label>
+                  {form.image_url && (
+                    <button type="button" onClick={() => setForm((current) => ({ ...current, image_url: null }))} className="rounded-xl border border-red-200 px-3 py-2.5 text-sm font-bold text-red-700 hover:bg-red-50">
+                      إزالة الصورة
+                    </button>
+                  )}
+                </div>
+                <label className="block text-sm font-bold">أو الصق رابط صورة (https://)
+                  <input dir="ltr" className={inputClass} value={form.image_url ?? ""} onChange={(event) => setForm((current) => ({ ...current, image_url: event.target.value || null }))} placeholder="https://..." />
+                </label>
+              </fieldset>
+
+              <fieldset className="space-y-4 rounded-xl border border-slate-200 p-4">
+                <legend className="px-1 text-sm font-black">الألوان — اختر أي لون</legend>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {COLOR_FIELDS.map(({ key, label }) => (
+                    <div key={key} className="space-y-2">
+                      <span className="block text-sm font-bold">{label}</span>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          aria-label={label}
+                          value={normalizeHex(form[key]) ?? "#000000"}
+                          onChange={(event) => setColor(key, event.target.value.toUpperCase())}
+                          className="h-11 w-14 shrink-0 cursor-pointer rounded-lg border border-slate-300 bg-white p-1"
+                        />
+                        <input
+                          dir="ltr"
+                          maxLength={7}
+                          aria-label={`${label} بصيغة hex`}
+                          className={`${inputClass} mt-0 font-mono uppercase`}
+                          value={form[key] ?? ""}
+                          onChange={(event) => setColor(key, event.target.value)}
+                        />
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {QUICK_SWATCHES.map((swatch) => (
+                          <button
+                            key={swatch}
+                            type="button"
+                            title={swatch}
+                            aria-label={`${label}: ${swatch}`}
+                            onClick={() => setColor(key, swatch)}
+                            className={`size-6 rounded-full border border-slate-300 ${normalizeHex(form[key]) === swatch ? "ring-2 ring-amber-500 ring-offset-1" : ""}`}
+                            style={{ background: swatch }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </fieldset>
+
+              <div>
+                <p className="mb-2 text-sm font-black">معاينة البطاقة كما يراها العميل</p>
+                <OfferCardPreview form={form} />
+              </div>
+
               <label className="block text-sm font-bold">الوصف
                 <textarea rows={3} maxLength={300} className={inputClass} value={form.description} onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} />
               </label>
@@ -236,7 +419,11 @@ function OfferCardsAdminPage() {
             {cards.map((card) => (
               <article key={card.id} className="flex flex-col gap-4 rounded-2xl border bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex min-w-0 items-center gap-3">
-                  <span aria-hidden="true" className="grid size-12 shrink-0 place-items-center rounded-xl bg-amber-50 text-2xl">{card.icon}</span>
+                  {card.image_url ? (
+                    <img src={card.image_url} alt="" className="size-12 shrink-0 rounded-xl object-cover" />
+                  ) : (
+                    <span aria-hidden="true" className="grid size-12 shrink-0 place-items-center rounded-xl text-2xl" style={{ background: resolveCardColors(card.theme, card).bg_color }}>{card.icon}</span>
+                  )}
                   <div className="min-w-0">
                     <h2 className="font-black">{card.title}</h2>
                     <p className="mt-1 truncate text-sm text-slate-500">{card.description || "دون وصف"} · {card.target_path}</p>
@@ -253,6 +440,35 @@ function OfferCardsAdminPage() {
         </div>
       </main>
     </AdminRouteGuard>
+  );
+}
+
+function OfferCardPreview({ form }: { form: CardForm }) {
+  const colors = resolveCardColors(form.theme, form);
+  const image = safeImageUrl(form.image_url);
+  return (
+    <div
+      className="relative flex min-h-[200px] flex-col items-start justify-center gap-3 overflow-hidden rounded-2xl p-6 text-right"
+      style={{ background: `linear-gradient(135deg, ${colors.bg_color}, ${colors.bg_color_2})`, color: colors.text_color }}
+    >
+      {image && (
+        <img
+          src={image}
+          alt=""
+          className="absolute inset-y-0 left-0 h-full w-[45%] object-cover"
+          style={{ maskImage: "linear-gradient(to left, transparent, #000 45%)", WebkitMaskImage: "linear-gradient(to left, transparent, #000 45%)" }}
+        />
+      )}
+      {!image && <span aria-hidden="true" className="absolute left-5 top-4 text-4xl opacity-60">{form.icon || "✨"}</span>}
+      {form.badge && (
+        <span className="relative rounded-full px-4 py-1.5 text-sm font-black" style={{ background: colors.accent_color, color: readableTextOn(colors.accent_color) }}>{form.badge}</span>
+      )}
+      <h3 className="relative max-w-[55%] text-2xl font-black">{form.title || "اسم البطاقة"}</h3>
+      {form.description && <p className="relative max-w-[55%] text-sm font-bold opacity-90">{form.description}</p>}
+      <span className="relative rounded-full px-5 py-2.5 text-sm font-black" style={{ background: colors.accent_color, color: readableTextOn(colors.accent_color) }}>
+        {form.button_label || "تصفح العروض"} ←
+      </span>
+    </div>
   );
 }
 
