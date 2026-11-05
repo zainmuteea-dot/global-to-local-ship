@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { LoaderCircle, ShoppingBag, Tag } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { readableTextOn, resolveCardColors } from "@/lib/offer-card-style";
 
 const db = supabase as any;
 const categoryLabels: Record<string, string> = {
@@ -20,6 +21,10 @@ type OfferProduct = {
   category: string | null;
   brand: string | null;
   description: string | null;
+  bg_color: string | null;
+  bg_color_2: string | null;
+  text_color: string | null;
+  accent_color: string | null;
 };
 
 export function OfferListing({ type }: { type: OfferType }) {
@@ -34,17 +39,27 @@ export function OfferListing({ type }: { type: OfferType }) {
       setLoading(true);
       setError("");
       const filters = isDeals ? ["deals", "both"] : ["exclusive", "both"];
-      const { data, error: queryError } = await db
+      const baseQuery = (columns: string) => db
         .from("products")
-        .select("id,name,image_url,price,discount_percent,offer_type")
+        .select(columns)
         .in("offer_type", filters)
         .order("name", { ascending: true });
+      let { data, error: queryError } = await baseQuery("id,name,image_url,price,discount_percent,offer_type,bg_color,bg_color_2,text_color,accent_color");
+      if (queryError && (queryError.code === "42703" || queryError.code === "PGRST204" || /column/i.test(queryError.message ?? ""))) {
+        ({ data, error: queryError } = await baseQuery("id,name,image_url,price,discount_percent,offer_type"));
+      }
       if (!active) return;
       if (queryError) {
         setError(`تعذر تحميل المنتجات: ${queryError.message}`);
         setProducts([]);
       } else {
-        const baseProducts = (data ?? []) as Omit<OfferProduct, "category" | "brand" | "description">[];
+        const baseProducts = ((data ?? []) as Partial<OfferProduct>[]).map((product) => ({
+          ...product,
+          bg_color: product.bg_color ?? null,
+          bg_color_2: product.bg_color_2 ?? null,
+          text_color: product.text_color ?? null,
+          accent_color: product.accent_color ?? null,
+        })) as Omit<OfferProduct, "category" | "brand" | "description">[];
         const { data: categoryRows } = await db
           .from("products")
           .select("id,category")
@@ -89,19 +104,24 @@ export function OfferListing({ type }: { type: OfferType }) {
               const originalPrice = Math.max(0, Number(product.price) || 0);
               const discount = Math.max(0, Math.min(100, Number(product.discount_percent) || 0));
               const salePrice = originalPrice * (1 - discount / 100);
+              const colors = resolveCardColors(product.offer_type === "exclusive" ? "exclusive" : "deals", product);
               return (
-                <article key={product.id} className="group overflow-hidden rounded-3xl border border-[#eadfc9] bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
-                  <div className="relative aspect-[4/3] overflow-hidden bg-[#f2eee5]">
-                    {product.image_url ? <img src={product.image_url} alt={product.name} loading="lazy" className="size-full object-cover transition duration-500 group-hover:scale-105" /> : <div className="grid size-full place-items-center text-[#a99c85]"><ShoppingBag className="size-12" /></div>}
-                    <span className="absolute right-4 top-4 rounded-full bg-pink-600 px-3 py-2 text-xs font-black text-white shadow-lg">خصم %{discount}</span>
+                <article
+                  key={product.id}
+                  className="group overflow-hidden rounded-3xl border shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+                  style={{ background: `linear-gradient(135deg, ${colors.bg_color}, ${colors.bg_color_2})`, color: colors.text_color, borderColor: colors.bg_color_2 }}
+                >
+                  <div className="relative aspect-[4/3] overflow-hidden bg-black/5">
+                    {product.image_url ? <img src={product.image_url} alt={product.name} loading="lazy" className="size-full object-cover transition duration-500 group-hover:scale-105" /> : <div className="grid size-full place-items-center opacity-70"><ShoppingBag className="size-12" /></div>}
+                    <span className="absolute right-4 top-4 rounded-full px-3 py-2 text-xs font-black shadow-lg" style={{ background: colors.accent_color, color: readableTextOn(colors.accent_color) }}>خصم %{discount}</span>
                   </div>
                   <div className="p-5">
-                    <div className="mb-2 flex flex-wrap items-center justify-end gap-2 text-xs text-gray-500"><span>{product.offer_type === "both" ? "عرض حصري وتخفيض" : isDeals ? "تخفيض" : "عرض حصري"}</span>{product.category && <span className="rounded-full bg-[#f7efe0] px-2.5 py-1 font-bold text-[#8a6424]">{categoryLabels[product.category] ?? product.category}</span>}</div>
+                    <div className="mb-2 flex flex-wrap items-center justify-end gap-2 text-xs opacity-80"><span>{product.offer_type === "both" ? "عرض حصري وتخفيض" : isDeals ? "تخفيض" : "عرض حصري"}</span>{product.category && <span className="rounded-full px-2.5 py-1 font-bold" style={{ background: colors.accent_color, color: readableTextOn(colors.accent_color) }}>{categoryLabels[product.category] ?? product.category}</span>}</div>
                     <h2 className="line-clamp-2 min-h-12 font-extrabold leading-6">{product.name}</h2>
-                    {product.brand && <p className="mt-1 text-sm font-bold text-[#8a6424]">الماركة: {product.brand}</p>}
-                    {product.description && <p className="mt-2 line-clamp-3 text-sm leading-6 text-gray-600">{product.description}</p>}
-                    <div className="mt-4 flex flex-wrap items-baseline gap-2">{discount > 0 && <span className="text-sm text-gray-400 line-through">{originalPrice.toLocaleString("ar", { maximumFractionDigits: 2 })} ر.س</span>}<strong className="text-xl text-[#8a6424]">{salePrice.toLocaleString("ar", { maximumFractionDigits: 2 })} ر.س</strong></div>
-                    <p className="mt-1 text-xs text-gray-500">{discount > 0 ? "السعر بعد الخصم" : "سعر البيع"}</p>
+                    {product.brand && <p className="mt-1 text-sm font-bold opacity-85">الماركة: {product.brand}</p>}
+                    {product.description && <p className="mt-2 line-clamp-3 text-sm leading-6 opacity-80">{product.description}</p>}
+                    <div className="mt-4 flex flex-wrap items-baseline gap-2">{discount > 0 && <span className="text-sm line-through opacity-60">{originalPrice.toLocaleString("ar", { maximumFractionDigits: 2 })} ر.س</span>}<strong className="text-xl font-black">{salePrice.toLocaleString("ar", { maximumFractionDigits: 2 })} ر.س</strong></div>
+                    <p className="mt-1 text-xs opacity-70">{discount > 0 ? "السعر بعد الخصم" : "سعر البيع"}</p>
                   </div>
                 </article>
               );
