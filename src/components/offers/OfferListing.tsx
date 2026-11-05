@@ -37,6 +37,34 @@ type OfferPageCard = {
   accent_color: string | null;
 };
 
+function isMissingColumnError(error: { code?: string; message?: string } | null) {
+  return Boolean(error && (error.code === "42703" || error.code === "PGRST204" || /column/i.test(error.message ?? "")));
+}
+
+async function loadPageCard(targetPath: string) {
+  const styledResult = await db
+    .from("storefront_offer_cards")
+    .select("title,badge,description,theme,bg_color,bg_color_2,text_color,accent_color")
+    .eq("target_path", targetPath)
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  // Keep editable text available if this Supabase database has the base card
+  // table but the optional custom-color migration has not been applied yet.
+  if (!isMissingColumnError(styledResult.error)) return styledResult;
+
+  return db
+    .from("storefront_offer_cards")
+    .select("title,badge,description,theme")
+    .eq("target_path", targetPath)
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+}
+
 export function OfferListing({ type }: { type: OfferType }) {
   const [products, setProducts] = useState<OfferProduct[]>([]);
   const [pageCard, setPageCard] = useState<OfferPageCard | null>(null);
@@ -52,15 +80,6 @@ export function OfferListing({ type }: { type: OfferType }) {
       setPageCard(null);
 
       const targetPath = isDeals ? "/deals" : "/exclusive";
-      const cardQuery = db
-        .from("storefront_offer_cards")
-        .select("title,badge,description,theme,bg_color,bg_color_2,text_color,accent_color")
-        .eq("target_path", targetPath)
-        .eq("is_active", true)
-        .order("sort_order", { ascending: true })
-        .limit(1)
-        .maybeSingle();
-
       const filters = isDeals ? ["deals", "both"] : ["exclusive", "both"];
       const baseQuery = (columns: string) => db
         .from("products")
@@ -69,7 +88,7 @@ export function OfferListing({ type }: { type: OfferType }) {
         .order("name", { ascending: true });
 
       const [cardResult, firstProductsResult] = await Promise.all([
-        cardQuery,
+        loadPageCard(targetPath),
         baseQuery("id,name,image_url,price,discount_percent,offer_type,bg_color,bg_color_2,text_color,accent_color"),
       ]);
 
@@ -133,9 +152,9 @@ export function OfferListing({ type }: { type: OfferType }) {
   const fallbackTheme: OfferCardTheme = isDeals ? "deals" : "exclusive";
   const theme: OfferCardTheme = pageCard?.theme === "exclusive" ? "exclusive" : fallbackTheme;
   const colors = resolveCardColors(theme, pageCard ?? {});
-  const badge = pageCard?.badge || (isDeals ? "تخفيضات مختارة" : "اختيارات خاصة");
-  const title = pageCard?.title || (isDeals ? "تخفيضات حتى 70%" : "عروض حصرية");
-  const description = pageCard?.description || (isDeals
+  const badge = pageCard?.badge ?? (isDeals ? "تخفيضات مختارة" : "اختيارات خاصة");
+  const title = pageCard?.title ?? (isDeals ? "تخفيضات حتى 70%" : "عروض حصرية");
+  const description = pageCard?.description ?? (isDeals
     ? "اكتشف المنتجات المتاحة ضمن التخفيضات الحالية."
     : "منتجات مختارة ضمن العروض الحصرية لمتجرنا.");
 
@@ -150,14 +169,16 @@ export function OfferListing({ type }: { type: OfferType }) {
           }}
         >
           <div className="relative z-10 max-w-2xl">
-            <span
-              className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold"
-              style={{ background: colors.accent_color, color: readableTextOn(colors.accent_color) }}
-            >
-              <Tag className="size-4" /> {badge}
-            </span>
+            {badge.trim() && (
+              <span
+                className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold"
+                style={{ background: colors.accent_color, color: readableTextOn(colors.accent_color) }}
+              >
+                <Tag className="size-4" /> {badge}
+              </span>
+            )}
             <h1 className="mt-5 text-3xl font-black sm:text-5xl">{title}</h1>
-            <p className="mt-4 text-sm leading-7 opacity-80 sm:text-base">{description}</p>
+            {description.trim() && <p className="mt-4 text-sm leading-7 opacity-80 sm:text-base">{description}</p>}
           </div>
           <div
             aria-hidden="true"
