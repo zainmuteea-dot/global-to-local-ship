@@ -16,9 +16,9 @@ import {
 const db = supabase as any;
 const TABLE = "storefront_offer_cards";
 const BASE_COLUMNS = "id,title,icon,badge,description,button_label,target_path,theme,is_active,sort_order";
-const STYLE_COLUMNS = "image_url,bg_color,bg_color_2,text_color,accent_color";
+const STYLE_COLUMNS = "image_url,bg_color,bg_color_2,text_color,accent_color,card_width_px,card_height_px";
 const MISSING_STYLE_COLUMNS_MESSAGE =
-  "قاعدة البيانات لا تحتوي بعد على أعمدة الصورة والألوان. شغّل تحديث offer_card_image_colors على قاعدة الموقع ثم أعد المحاولة.";
+  "قاعدة البيانات تحتاج أعمدة الصورة والألوان والمقاس. طبّق الترحيل 20261105201000_offer_card_dimensions على قاعدة الموقع ثم أعد المحاولة.";
 
 function isMissingColumnError(error: { code?: string; message?: string } | null) {
   if (!error) return false;
@@ -41,6 +41,8 @@ type OfferCard = {
   bg_color_2: string | null;
   text_color: string | null;
   accent_color: string | null;
+  card_width_px: number;
+  card_height_px: number;
 };
 
 type CardForm = Omit<OfferCard, "id" | "target_path"> & {
@@ -48,6 +50,17 @@ type CardForm = Omit<OfferCard, "id" | "target_path"> & {
 };
 type CardPayload = Omit<CardForm, "target_path"> & { target_path: string };
 const CUSTOM_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const CARD_DRAFT_KEY = "admin-offer-card-draft-v1";
+type LocalCardDraft = { editingId: string | null; form: CardForm; pageSlug: string };
+function readLocalCardDraft(): LocalCardDraft | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(CARD_DRAFT_KEY);
+    return raw ? JSON.parse(raw) as LocalCardDraft : null;
+  } catch {
+    return null;
+  }
+}
 
 const emptyForm: CardForm = {
   title: "",
@@ -57,9 +70,11 @@ const emptyForm: CardForm = {
   button_label: "تصفح العروض",
   target_path: "/deals",
   theme: "deals",
-  is_active: true,
+  is_active: false,
   sort_order: 0,
   image_url: null,
+  card_width_px: 520,
+  card_height_px: 300,
   ...THEME_COLORS.deals,
 };
 
@@ -85,6 +100,7 @@ function OfferCardsAdminPage() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [styleColumnsReady, setStyleColumnsReady] = useState(true);
   const [pageSlug, setPageSlug] = useState("");
+  const [previewViewport, setPreviewViewport] = useState<"desktop" | "mobile">("desktop");
 
   const loadCards = useCallback(async () => {
     setLoading(true);
@@ -120,15 +136,33 @@ function OfferCardsAdminPage() {
   }, [loadCards]);
 
   function startNew() {
-    setEditingId(null);
-    setPageSlug("");
-    setForm({ ...emptyForm, sort_order: cards.length });
+    const draft = readLocalCardDraft();
+    if (draft && !draft.editingId) {
+      setEditingId(null);
+      setPageSlug(draft.pageSlug || "");
+      setForm(draft.form);
+    } else {
+      setEditingId(null);
+      setPageSlug("");
+      setForm({ ...emptyForm, sort_order: cards.length });
+    }
     setFormOpen(true);
     setError("");
     setNotice("");
   }
 
   function startEdit(card: OfferCard) {
+    const savedDraft = readLocalCardDraft();
+    if (savedDraft?.editingId === card.id) {
+      setEditingId(card.id);
+      setPageSlug(savedDraft.pageSlug || "");
+      setForm(savedDraft.form);
+      setFormOpen(true);
+      setError("");
+      setNotice("");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
     setEditingId(card.id);
     const isCustomPage = /^\/offers\/[a-z0-9]+(?:-[a-z0-9]+)*$/.test(card.target_path);
     setPageSlug(isCustomPage ? card.target_path.slice("/offers/".length) : "");
@@ -147,6 +181,8 @@ function OfferCardsAdminPage() {
       is_active: card.is_active,
       sort_order: card.sort_order,
       image_url: card.image_url,
+      card_width_px: Number(card.card_width_px) || 520,
+      card_height_px: Number(card.card_height_px) || 300,
       ...resolveCardColors(card.theme, card),
     });
     setFormOpen(true);
@@ -157,6 +193,7 @@ function OfferCardsAdminPage() {
 
   function cancelForm() {
     setFormOpen(false);
+    try { window.sessionStorage.removeItem(CARD_DRAFT_KEY); } catch { /* ignore storage errors */ }
     setPageSlug("");
     setEditingId(null);
     setForm({ ...emptyForm });
@@ -223,8 +260,11 @@ function OfferCardsAdminPage() {
       return;
     }
 
+    const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
+    const publishToCustomers = submitter?.value === "publish";
     const payload: CardPayload = {
       ...form,
+      is_active: publishToCustomers,
       target_path: targetPath,
       title: form.title.trim(),
       icon: form.icon.trim() || "✨",
@@ -233,6 +273,8 @@ function OfferCardsAdminPage() {
       button_label: form.button_label.trim() || "تصفح العروض",
       sort_order: Number(form.sort_order),
       image_url: form.image_url ? safeImageUrl(form.image_url) : null,
+      card_width_px: Math.round(Number(form.card_width_px)),
+      card_height_px: Math.round(Number(form.card_height_px)),
       bg_color: normalizeHex(form.bg_color),
       bg_color_2: normalizeHex(form.bg_color_2),
       text_color: normalizeHex(form.text_color),
@@ -255,7 +297,30 @@ function OfferCardsAdminPage() {
       setError("ترتيب البطاقة يجب أن يكون عددًا صحيحًا.");
       return;
     }
+    if (!Number.isInteger(payload.card_width_px) || payload.card_width_px < 240 || payload.card_width_px > 1600) {
+      setError("عرض البطاقة يجب أن يكون بين 240 و1600 بكسل.");
+      return;
+    }
+    if (!Number.isInteger(payload.card_height_px) || payload.card_height_px < 220 || payload.card_height_px > 900) {
+      setError("ارتفاع البطاقة يجب أن يكون بين 220 و900 بكسل.");
+      return;
+    }
 
+    const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
+    const publishToCustomers = submitter?.value === "publish";
+    if (!publishToCustomers) {
+      const draftPayload = { ...payload, is_active: false } as CardForm;
+      try {
+        window.sessionStorage.setItem(CARD_DRAFT_KEY, JSON.stringify({ editingId, form: draftPayload, pageSlug } satisfies LocalCardDraft));
+      } catch {
+        setError("تعذر حفظ المسودة على هذا الجهاز. يمكنك إبقاء النموذج مفتوحًا ومراجعة المعاينة.");
+        return;
+      }
+      setNotice("حُفظت المسودة على هذا الجهاز فقط. لم تتغير البطاقة المنشورة ولم تُرسل أي تغييرات للعملاء.");
+      return;
+    }
+
+    payload.is_active = true;
     setSaving(true);
     const result = editingId
       ? await db.from(TABLE).update(payload).eq("id", editingId)
@@ -267,7 +332,7 @@ function OfferCardsAdminPage() {
       return;
     }
 
-    setNotice(editingId ? "تم تحديث البطاقة." : "تمت إضافة البطاقة.");
+    setNotice(publishToCustomers ? "تم نشر البطاقة للعملاء." : "تم حفظ البطاقة كمسودة، ولن تظهر للعملاء.");
     cancelForm();
     await loadCards();
   }
@@ -373,9 +438,9 @@ function OfferCardsAdminPage() {
                 <label className="text-sm font-bold">ترتيب العرض
                   <input type="number" step="1" className={inputClass} value={form.sort_order} onChange={(event) => setForm((current) => ({ ...current, sort_order: Number(event.target.value) }))} />
                 </label>
-                <label className="flex items-center gap-2 self-end pb-2 text-sm font-bold">
-                  <input type="checkbox" checked={form.is_active} onChange={(event) => setForm((current) => ({ ...current, is_active: event.target.checked }))} /> ظاهرة للعملاء
-                </label>
+                <div className="self-end rounded-xl bg-slate-50 p-3 text-sm font-bold text-slate-700">
+                  الحالة الحالية: {form.is_active ? "منشورة للعملاء" : "مسودة غير ظاهرة للعملاء"}. استخدم زر النشر بعد مراجعة المعاينة.
+                </div>
               </div>
               {form.target_path === "/offers/new" && (
                 <p className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm font-bold text-blue-800">
@@ -420,6 +485,21 @@ function OfferCardsAdminPage() {
               </fieldset>
 
               <fieldset className="space-y-4 rounded-xl border border-slate-200 p-4">
+                <legend className="px-1 text-sm font-black">أبعاد البطاقة للعملاء</legend>
+                <p className="text-xs leading-6 text-slate-500">غيّر العرض والارتفاع بالبكسل، وشاهد النتيجة مباشرة في المعاينة أدناه. على الجوال يتقلص العرض تلقائيًا ليلائم الشاشة.</p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="text-sm font-bold">العرض (px)
+                    <input type="number" min={240} max={1600} step={10} required className={inputClass} value={form.card_width_px} onChange={(event) => setForm((current) => ({ ...current, card_width_px: Number(event.target.value) }))} />
+                    <span className="mt-1 block text-xs font-normal text-slate-500">من 240 إلى 1600 بكسل</span>
+                  </label>
+                  <label className="text-sm font-bold">الارتفاع (px)
+                    <input type="number" min={220} max={900} step={10} required className={inputClass} value={form.card_height_px} onChange={(event) => setForm((current) => ({ ...current, card_height_px: Number(event.target.value) }))} />
+                    <span className="mt-1 block text-xs font-normal text-slate-500">من 220 إلى 900 بكسل</span>
+                  </label>
+                </div>
+              </fieldset>
+
+              <fieldset className="space-y-4 rounded-xl border border-slate-200 p-4">
                 <legend className="px-1 text-sm font-black">الألوان — اختر أي لون</legend>
                 <div className="grid gap-4 sm:grid-cols-2">
                   {COLOR_FIELDS.map(({ key, label }) => (
@@ -460,17 +540,37 @@ function OfferCardsAdminPage() {
                 </div>
               </fieldset>
 
-              <div>
-                <p className="mb-2 text-sm font-black">معاينة البطاقة كما يراها العميل</p>
-                <OfferCardPreview form={form} />
-              </div>
+              <section aria-label="معاينة البطاقة للعملاء" className="space-y-3 rounded-2xl border border-sky-200 bg-sky-50/60 p-4 sm:p-5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-black">معاينة قبل النشر</h3>
+                    <p className="mt-1 text-xs leading-5 text-slate-600">شاهد شكل البطاقة ضمن صفحة المتجر. «حفظ كمسودة» يحفظها على هذا الجهاز فقط ولا يغيّر ما يراه العملاء؛ لن تُحفظ في قاعدة البيانات أو تظهر لهم إلا عند اختيار «نشر للعملاء».</p>
+                  </div>
+                  <div className="flex gap-2" role="group" aria-label="حجم معاينة الشاشة">
+                    <button type="button" aria-pressed={previewViewport === "desktop"} onClick={() => setPreviewViewport("desktop")} className={`rounded-lg border px-3 py-2 text-xs font-bold ${previewViewport === "desktop" ? "border-sky-800 bg-sky-800 text-white" : "border-slate-300 bg-white text-slate-700"}`}>كمبيوتر</button>
+                    <button type="button" aria-pressed={previewViewport === "mobile"} onClick={() => setPreviewViewport("mobile")} className={`rounded-lg border px-3 py-2 text-xs font-bold ${previewViewport === "mobile" ? "border-sky-800 bg-sky-800 text-white" : "border-slate-300 bg-white text-slate-700"}`}>جوال</button>
+                  </div>
+                </div>
+                <div className="mx-auto overflow-hidden rounded-2xl border border-slate-200 bg-[#FFFBF5] p-3 shadow-inner sm:p-5" style={{ width: previewViewport === "mobile" ? 390 : "100%", maxWidth: "100%" }}>
+                  <div className="mb-4 flex items-center justify-between border-b border-amber-200 pb-3 text-[10px] font-black text-slate-500 sm:text-xs">
+                    <span>YOUR GLOBAL SHOPPER · السوق الشامل</span>
+                    <span>معاينة {previewViewport === "mobile" ? "الجوال" : "الكمبيوتر"}</span>
+                  </div>
+                  <h4 className="mb-3 text-sm font-black text-[#1B1408]">العروض المميزة</h4>
+                  <OfferCardPreview form={form} mobile={previewViewport === "mobile"} />
+                </div>
+                <p className="text-xs leading-5 text-slate-500">العرض المدخل {form.card_width_px}px والارتفاع {form.card_height_px}px. على الجوال يُحدّ العرض تلقائيًا ليتناسب مع عرض الشاشة.</p>
+              </section>
 
               <label className="block text-sm font-bold">الوصف
                 <textarea rows={3} maxLength={300} className={inputClass} value={form.description} onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} />
               </label>
               <div className="flex flex-wrap gap-2">
-                <button disabled={saving} type="submit" className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">
-                  {saving ? <Save className="size-4 animate-pulse" /> : <Check className="size-4" />}{saving ? "جارٍ الحفظ" : "حفظ البطاقة"}
+                <button disabled={saving} name="intent" value="draft" type="submit" className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-800 disabled:opacity-50">
+                  {saving ? <Save className="size-4 animate-pulse" /> : <Save className="size-4" />}{saving ? "جارٍ الحفظ…" : "حفظ كمسودة"}
+                </button>
+                <button disabled={saving} name="intent" value="publish" type="submit" className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">
+                  {saving ? <Save className="size-4 animate-pulse" /> : <Check className="size-4" />}{saving ? "جارٍ الحفظ…" : "نشر للعملاء"}
                 </button>
                 <button type="button" onClick={cancelForm} className="rounded-xl border px-4 py-2.5 text-sm font-bold">إلغاء</button>
               </div>
@@ -507,28 +607,30 @@ function OfferCardsAdminPage() {
   );
 }
 
-function OfferCardPreview({ form }: { form: CardForm }) {
+function OfferCardPreview({ form, mobile = false }: { form: CardForm; mobile?: boolean }) {
   const colors = resolveCardColors(form.theme, form);
   const image = safeImageUrl(form.image_url);
   return (
     <div
-      className="relative flex min-h-[200px] flex-col items-start justify-center gap-3 overflow-hidden rounded-2xl p-6 text-right"
-      style={{ background: `linear-gradient(135deg, ${colors.bg_color}, ${colors.bg_color_2})`, color: colors.text_color }}
+      className="relative mx-auto flex flex-col items-start justify-center gap-3 overflow-hidden rounded-2xl p-6 text-right"
+      style={{ boxSizing: "border-box", width: `min(100%, ${Math.max(240, Number(form.card_width_px) || 520)}px)`, height: `${Math.max(220, Number(form.card_height_px) || 300)}px`, minHeight: 220, paddingTop: mobile && image ? 190 : 24, background: `linear-gradient(135deg, ${colors.bg_color}, ${colors.bg_color_2})`, color: colors.text_color }}
     >
       {image && (
         <img
           src={image}
           alt=""
-          className="absolute inset-y-0 left-0 h-full w-[45%] object-cover"
-          style={{ maskImage: "linear-gradient(to left, transparent, #000 45%)", WebkitMaskImage: "linear-gradient(to left, transparent, #000 45%)" }}
+          className="absolute object-cover"
+          style={mobile
+            ? { top: 0, left: 0, width: "100%", height: 170, maskImage: "linear-gradient(to top, transparent, #000 40%)", WebkitMaskImage: "linear-gradient(to top, transparent, #000 40%)" }
+            : { insetBlock: 0, left: 0, width: "45%", height: "100%", maskImage: "linear-gradient(to left, transparent, #000 45%)", WebkitMaskImage: "linear-gradient(to left, transparent, #000 45%)" }}
         />
       )}
       {!image && <span aria-hidden="true" className="absolute left-5 top-4 text-4xl opacity-60">{form.icon || "✨"}</span>}
       {form.badge && (
         <span className="relative rounded-full px-4 py-1.5 text-sm font-black" style={{ background: colors.accent_color, color: readableTextOn(colors.accent_color) }}>{form.badge}</span>
       )}
-      <h3 className="relative max-w-[55%] text-2xl font-black">{form.title || "اسم البطاقة"}</h3>
-      {form.description && <p className="relative max-w-[55%] text-sm font-bold opacity-90">{form.description}</p>}
+      <h3 className={`relative ${mobile ? "max-w-full" : "max-w-[55%]"} text-2xl font-black`}>{form.title || "اسم البطاقة"}</h3>
+      {form.description && <p className={`relative ${mobile ? "max-w-full" : "max-w-[55%]"} text-sm font-bold opacity-90`}>{form.description}</p>}
       <span className="relative rounded-full px-5 py-2.5 text-sm font-black" style={{ background: colors.accent_color, color: readableTextOn(colors.accent_color) }}>
         {form.button_label || "تصفح العروض"} ←
       </span>
