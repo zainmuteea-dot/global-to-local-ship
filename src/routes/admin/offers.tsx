@@ -3,6 +3,15 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Camera, ImagePlus, LoaderCircle, Pencil, Plus, Save, Trash2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { EmbeddedLogo } from "@/components/admin/Logo";
+import {
+  QUICK_SWATCHES,
+  THEME_COLORS,
+  normalizeHex,
+  readableTextOn,
+  resolveCardColors,
+  safeImageUrl,
+  type OfferCardColors,
+} from "@/lib/offer-card-style";
 
 const db = supabase as any;
 
@@ -17,6 +26,10 @@ type OfferProduct = {
   category: string | null;
   brand: string | null;
   description: string | null;
+  bg_color: string | null;
+  bg_color_2: string | null;
+  text_color: string | null;
+  accent_color: string | null;
 };
 
 type ProductForm = {
@@ -28,7 +41,17 @@ type ProductForm = {
   category: string;
   brand: string;
   description: string;
-};
+} & OfferCardColors;
+
+const productStyleDefaults = (offerType: OfferType | "") =>
+  offerType === "exclusive" ? THEME_COLORS.exclusive : THEME_COLORS.deals;
+
+const PRODUCT_COLOR_FIELDS: { key: keyof OfferCardColors; label: string }[] = [
+  { key: "bg_color", label: "لون الخلفية" },
+  { key: "bg_color_2", label: "لون التدرّج الثاني" },
+  { key: "text_color", label: "لون الكتابة" },
+  { key: "accent_color", label: "لون شارة الخصم" },
+];
 
 const emptyForm: ProductForm = {
   name: "",
@@ -39,6 +62,7 @@ const emptyForm: ProductForm = {
   category: "",
   brand: "",
   description: "",
+  ...THEME_COLORS.deals,
 };
 
 type OfferDraft = { form: ProductForm; editingId: string | null; formOpen: boolean };
@@ -53,18 +77,24 @@ function readOfferDraft(): OfferDraft | null {
     if (!saved.formOpen || !saved.form || typeof saved.form !== "object") return null;
     const form = saved.form as Partial<ProductForm>;
     const offerType = form.offer_type;
+    const validOfferType = ["", "exclusive", "deals", "both"].includes(String(offerType))
+      ? (offerType as ProductForm["offer_type"])
+      : "";
+    const styleDefaults = productStyleDefaults(validOfferType);
     return {
       form: {
         name: typeof form.name === "string" ? form.name : "",
         image_url: typeof form.image_url === "string" ? form.image_url : "",
         price: typeof form.price === "string" ? form.price : "",
         discount_percent: typeof form.discount_percent === "string" ? form.discount_percent : "70",
-        offer_type: ["", "exclusive", "deals", "both"].includes(String(offerType))
-          ? (offerType as ProductForm["offer_type"])
-          : "",
+        offer_type: validOfferType,
         category: typeof form.category === "string" ? form.category : "",
         brand: typeof form.brand === "string" ? form.brand : "",
         description: typeof form.description === "string" ? form.description : "",
+        bg_color: typeof form.bg_color === "string" ? form.bg_color : styleDefaults.bg_color,
+        bg_color_2: typeof form.bg_color_2 === "string" ? form.bg_color_2 : styleDefaults.bg_color_2,
+        text_color: typeof form.text_color === "string" ? form.text_color : styleDefaults.text_color,
+        accent_color: typeof form.accent_color === "string" ? form.accent_color : styleDefaults.accent_color,
       },
       editingId: typeof saved.editingId === "string" ? saved.editingId : null,
       formOpen: true,
@@ -91,6 +121,7 @@ function AdminOffersPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [styleColumnsReady, setStyleColumnsReady] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -100,17 +131,30 @@ function AdminOffersPage() {
   const loadProducts = useCallback(async () => {
     setLoading(true);
     setError("");
-    const { data, error: queryError } = await db
+    const query = (columns: string) => db
       .from("products")
-      .select("id,name,image_url,price,discount_percent,offer_type,category,brand,description")
+      .select(columns)
       .in("offer_type", ["exclusive", "deals", "both"])
       .order("name", { ascending: true });
+    let { data, error: queryError } = await query("id,name,image_url,price,discount_percent,offer_type,category,brand,description,bg_color,bg_color_2,text_color,accent_color");
+    if (queryError && (queryError.code === "42703" || queryError.code === "PGRST204" || /column/i.test(queryError.message ?? ""))) {
+      setStyleColumnsReady(false);
+      ({ data, error: queryError } = await query("id,name,image_url,price,discount_percent,offer_type,category,brand,description"));
+    } else {
+      setStyleColumnsReady(true);
+    }
 
     if (queryError) {
       setError(`تعذر تحميل المنتجات: ${queryError.message}`);
       setProducts([]);
     } else {
-      setProducts((data ?? []) as OfferProduct[]);
+      setProducts(((data ?? []) as Partial<OfferProduct>[]).map((product) => ({
+        bg_color: null,
+        bg_color_2: null,
+        text_color: null,
+        accent_color: null,
+        ...product,
+      })) as OfferProduct[]);
     }
     setLoading(false);
   }, []);
@@ -154,6 +198,7 @@ function AdminOffersPage() {
       category: product.category ?? "",
       brand: product.brand ?? "",
       description: product.description ?? "",
+      ...resolveCardColors(product.offer_type === "exclusive" ? "exclusive" : "deals", product),
     });
     setError("");
     setNotice("");
@@ -235,7 +280,14 @@ function AdminOffersPage() {
       category: form.category || null,
       brand: form.brand.trim() || null,
       description: form.description.trim() || null,
+      bg_color: normalizeHex(form.bg_color),
+      bg_color_2: normalizeHex(form.bg_color_2),
+      text_color: normalizeHex(form.text_color),
+      accent_color: normalizeHex(form.accent_color),
     };
+    if (!payload.bg_color || !payload.bg_color_2 || !payload.text_color || !payload.accent_color) {
+      return setError("أحد الألوان غير صالح. اختر لونًا أو اكتبه بصيغة #RRGGBB.");
+    }
 
     setSaving(true);
     const result = editingId
@@ -244,7 +296,11 @@ function AdminOffersPage() {
     setSaving(false);
 
     if (result.error) {
-      setError(`لم يُحفظ المنتج: ${result.error.message}`);
+      const missingStyleColumn = result.error.code === "42703" || result.error.code === "PGRST204" || /column/i.test(result.error.message ?? "");
+      if (missingStyleColumn) setStyleColumnsReady(false);
+      setError(missingStyleColumn
+        ? "لم تُحفظ الألوان لأن أعمدتها غير موجودة في قاعدة البيانات. طبّق ترحيل product_card_colors على قاعدة الموقع الصحيحة ثم أعد المحاولة."
+        : `لم يُحفظ المنتج: ${result.error.message}`);
       return;
     }
 
@@ -355,6 +411,12 @@ function AdminOffersPage() {
               </button>
             </div>
 
+            {!styleColumnsReady && (
+              <p role="alert" className="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-bold text-amber-900">
+                قاعدة البيانات لا تحتوي أعمدة ألوان المنتجات بعد. أضف الأعمدة الأربعة بترحيل `product_card_colors` قبل حفظ الألوان؛ سيظل تحميل المنتجات القديمة متاحًا.
+              </p>
+            )}
+
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               <label className="text-sm font-bold">
                 اسم المنتج
@@ -424,6 +486,53 @@ function AdminOffersPage() {
                 )}
               </div>
 
+              <fieldset className="space-y-4 rounded-2xl border border-[#DCEAF4] p-4 sm:col-span-2 lg:col-span-3">
+                <legend className="px-2 text-sm font-black">ألوان بطاقة المنتج</legend>
+                <p className="text-xs font-medium text-slate-500">اختر أي لون من المنتقي أو أدخل قيمة HEX، وشاهد المعاينة قبل الحفظ.</p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {PRODUCT_COLOR_FIELDS.map(({ key, label }) => (
+                    <div key={key} className="space-y-2">
+                      <span className="block text-sm font-bold">{label}</span>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          aria-label={label}
+                          value={normalizeHex(form[key]) ?? "#000000"}
+                          onChange={(event) => setForm((current) => ({ ...current, [key]: event.target.value.toUpperCase() }))}
+                          className="h-11 w-14 shrink-0 cursor-pointer rounded-lg border border-slate-300 bg-white p-1"
+                        />
+                        <input
+                          dir="ltr"
+                          maxLength={7}
+                          aria-label={`${label} بصيغة HEX`}
+                          className={`${inputClass} mt-0 font-mono uppercase`}
+                          value={form[key]}
+                          onChange={(event) => setForm((current) => ({ ...current, [key]: event.target.value }))}
+                          placeholder="#RRGGBB"
+                        />
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {QUICK_SWATCHES.map((swatch) => (
+                          <button
+                            key={swatch}
+                            type="button"
+                            title={swatch}
+                            aria-label={`${label}: ${swatch}`}
+                            onClick={() => setForm((current) => ({ ...current, [key]: swatch }))}
+                            className={`size-6 rounded-full border border-slate-300 ${normalizeHex(form[key]) === swatch ? "ring-2 ring-[#0F4C81] ring-offset-1" : ""}`}
+                            style={{ background: swatch }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <p className="mb-2 text-sm font-black">معاينة بطاقة المنتج كما تظهر للعميل</p>
+                  <OfferProductPreview form={form} />
+                </div>
+              </fieldset>
+
               <label className="text-sm font-bold">
                 قسم المنتج
                 <select
@@ -474,9 +583,14 @@ function AdminOffersPage() {
                   required
                   className={inputClass}
                   value={form.offer_type}
-                  onChange={(e) =>
-                    setForm((current) => ({ ...current, offer_type: e.target.value as ProductForm["offer_type"] }))
-                  }
+                  onChange={(e) => {
+                    const nextType = e.target.value as ProductForm["offer_type"];
+                    setForm((current) => ({
+                      ...current,
+                      offer_type: nextType,
+                      ...(nextType ? productStyleDefaults(nextType) : {}),
+                    }));
+                  }}
                 >
                   <option value="">اختر نوع العرض</option>
                   <option value="exclusive">عروضات حصرية</option>
@@ -648,6 +762,37 @@ function AdminOffersPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+function OfferProductPreview({ form }: { form: ProductForm }) {
+  const styleType = form.offer_type === "exclusive" ? "exclusive" : "deals";
+  const colors = resolveCardColors(styleType, form);
+  const image = safeImageUrl(form.image_url);
+  const price = Math.max(0, Number(form.price) || 0);
+  const discount = Math.max(0, Math.min(100, Number(form.discount_percent) || 0));
+  const salePrice = price * (1 - discount / 100);
+
+  return (
+    <article
+      className="overflow-hidden rounded-2xl border shadow-sm"
+      style={{ background: `linear-gradient(135deg, ${colors.bg_color}, ${colors.bg_color_2})`, color: colors.text_color, borderColor: colors.bg_color_2 }}
+    >
+      <div className="relative aspect-[4/3] overflow-hidden bg-black/5">
+        {image ? <img src={image} alt="معاينة المنتج" className="size-full object-cover" /> : <div className="grid size-full place-items-center text-sm opacity-70">صورة المنتج</div>}
+        <span className="absolute right-3 top-3 rounded-full px-3 py-2 text-xs font-black shadow" style={{ background: colors.accent_color, color: readableTextOn(colors.accent_color) }}>خصم %{discount}</span>
+      </div>
+      <div className="space-y-2 p-4">
+        <p className="text-xs font-bold opacity-75">{form.offer_type ? offerLabels[form.offer_type] : "نوع العرض"}</p>
+        <h3 className="font-black">{form.name || "اسم المنتج"}</h3>
+        {form.brand && <p className="text-sm font-bold opacity-85">الماركة: {form.brand}</p>}
+        {form.description && <p className="line-clamp-2 text-sm leading-6 opacity-85">{form.description}</p>}
+        <div className="flex items-baseline gap-2">
+          {discount > 0 && <span className="text-sm line-through opacity-60">{price.toLocaleString("ar", { maximumFractionDigits: 2 })} ر.س</span>}
+          <strong className="text-xl">{salePrice.toLocaleString("ar", { maximumFractionDigits: 2 })} ر.س</strong>
+        </div>
+      </div>
+    </article>
   );
 }
 
