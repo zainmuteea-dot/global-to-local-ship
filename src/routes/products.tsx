@@ -141,6 +141,8 @@ type StorefrontOfferCard = {
   bg_color_2?: string | null;
   text_color?: string | null;
   accent_color?: string | null;
+  card_width_px?: number | null;
+  card_height_px?: number | null;
 };
 
 const DEFAULT_OFFER_CARDS: StorefrontOfferCard[] = [
@@ -316,8 +318,8 @@ const CUSTOMER_STOREFRONT_CSS = `
 .pr-store .sh-icon{position:relative;z-index:1;width:96px;height:96px;display:block;padding:8px;box-sizing:border-box;background:#fff;border:1px solid #EFE3C2;border-radius:18px;box-shadow:0 7px 18px rgba(27,20,8,.08);filter:drop-shadow(0 5px 10px rgba(27,20,8,.12));transition:transform .3s ease,box-shadow .3s ease}
 .pr-store:hover .sh-icon{transform:scale(1.05);box-shadow:0 12px 25px rgba(27,20,8,.13)}
 .pr-store-name{position:relative;z-index:1;color:#6B5B33;font-size:15px;font-weight:900;letter-spacing:.4px}.pr-store-go{position:absolute;top:12px;left:14px;z-index:2;color:#B8912A;font-size:18px;opacity:0;transition:opacity .2s ease}.pr-store:hover .pr-store-go,.pr-store:focus-visible .pr-store-go{opacity:1}
-.pr-banners{position:relative;z-index:1;max-width:1240px;margin:34px auto 0;padding:0 22px;display:grid;grid-template-columns:1fr 1fr;gap:22px}
-.pr-banner{position:relative;min-height:300px;overflow:hidden;border-radius:18px;padding:36px;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:14px;text-align:right;text-decoration:none;transition:transform .25s ease,box-shadow .25s ease}.pr-banner:hover{transform:translateY(-3px)}
+.pr-banners{position:relative;z-index:1;max-width:1240px;margin:34px auto 0;padding:0 22px;display:flex;flex-wrap:wrap;align-items:stretch;justify-content:center;gap:22px}
+.pr-banner{position:relative;min-height:220px;overflow:hidden;border-radius:18px;padding:36px;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:14px;text-align:right;text-decoration:none;transition:transform .25s ease,box-shadow .25s ease}.pr-banner:hover{transform:translateY(-3px)}
 .pr-sale{background:linear-gradient(135deg,#F8BBD0,#F5A6BF);color:#7A2140;box-shadow:0 16px 40px rgba(248,187,208,.48)}.pr-sale:before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(400px 220px at 88% 10%,rgba(255,255,255,.6),transparent 60%),radial-gradient(300px 200px at 10% 100%,rgba(255,255,255,.35),transparent 60%)}
 .pr-exclusive{background:linear-gradient(135deg,#17130F,#050505);color:#D4AF37;box-shadow:0 16px 40px rgba(0,0,0,.32);border:1px solid rgba(212,175,55,.4)}.pr-exclusive:before{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(115deg,rgba(212,175,55,.12) 0 1px,transparent 1px 22px);mask-image:linear-gradient(180deg,rgba(0,0,0,.9),rgba(0,0,0,.15));-webkit-mask-image:linear-gradient(180deg,rgba(0,0,0,.9),rgba(0,0,0,.15))}
 .pr-banner-img{position:absolute;top:0;bottom:0;left:0;width:45%;height:100%;object-fit:cover;pointer-events:none;-webkit-mask-image:linear-gradient(to left,transparent,#000 45%);mask-image:linear-gradient(to left,transparent,#000 45%)}.pr-has-img h2,.pr-has-img p{max-width:56%}@media(max-width:720px){.pr-banner.pr-has-img{padding-top:190px}.pr-banner-img{width:100%;height:170px;bottom:auto;-webkit-mask-image:linear-gradient(to top,transparent,#000 40%);mask-image:linear-gradient(to top,transparent,#000 40%)}.pr-has-img h2,.pr-has-img p{max-width:none}}.pr-banner-icon{position:absolute;top:16px;left:22px;z-index:1;font-size:48px;opacity:.65;pointer-events:none}.pr-badge{position:relative;z-index:1;display:inline-flex;align-items:center;border-radius:999px;background:#fff;color:#E0447D;padding:8px 18px;font-size:15px;font-weight:900;box-shadow:0 6px 16px rgba(224,68,125,.18)}
@@ -337,7 +339,7 @@ const CUSTOMER_STOREFRONT_CSS = `
 .pr-footer-inner{max-width:1240px;min-height:68px;margin:0 auto;padding:16px 22px;display:flex;align-items:center;justify-content:space-between;gap:12px;color:var(--muted);font-size:12px;font-weight:700}
 .pr-footer-brand{color:#3B2E12;font-weight:900;letter-spacing:.3px}
 @media(max-width:1080px){.pr-stores{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media(max-width:720px){.pr-topbar-inner{min-height:62px;padding:10px 14px}.pr-logo-mark{width:36px;height:36px}.pr-logo-copy strong{font-size:11px}.pr-logo-copy small{font-size:10px}.pr-topbar-note{max-width:125px;font-size:11px;text-align:left}.pr-head{padding-top:38px}.pr-stores{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding:0 14px}.pr-store{height:200px;padding:18px 12px}.pr-store .sh-icon{width:88px;height:88px}.pr-banners{grid-template-columns:1fr;gap:16px;padding:0 14px}.pr-banner{min-height:260px;padding:28px 22px}.pr-footer{margin-top:38px}.pr-footer-inner{min-height:60px;padding:14px;flex-direction:column;justify-content:center;gap:5px;text-align:center;font-size:11px}}
+@media(max-width:720px){.pr-topbar-inner{min-height:62px;padding:10px 14px}.pr-logo-mark{width:36px;height:36px}.pr-logo-copy strong{font-size:11px}.pr-logo-copy small{font-size:10px}.pr-topbar-note{max-width:125px;font-size:11px;text-align:left}.pr-head{padding-top:38px}.pr-stores{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding:0 14px}.pr-store{height:200px;padding:18px 12px}.pr-store .sh-icon{width:88px;height:88px}.pr-banners{gap:16px;padding:0 14px}.pr-banner{min-height:220px;padding:28px 22px}.pr-footer{margin-top:38px}.pr-footer-inner{min-height:60px;padding:14px;flex-direction:column;justify-content:center;gap:5px;text-align:center;font-size:11px}}
 @media(prefers-reduced-motion:reduce){.pr-store,.pr-store .sh-icon,.pr-banner{transition:none}}
 
 `;
@@ -387,7 +389,7 @@ function CustomerStorefront() {
           .eq("is_active", true)
           .order("sort_order", { ascending: true })
           .order("created_at", { ascending: true });
-      let { data, error } = await query(`${baseColumns},image_url,bg_color,bg_color_2,text_color,accent_color`);
+      let { data, error } = await query(`${baseColumns},image_url,bg_color,bg_color_2,text_color,accent_color,card_width_px,card_height_px`);
       // قاعدة لم تُحدَّث بعد بأعمدة الصورة والألوان: اعرض البطاقات بالألوان الافتراضية.
       if (error && (error.code === "42703" || /column/i.test(error.message ?? ""))) {
         ({ data, error } = await query(baseColumns));
@@ -493,7 +495,16 @@ function CustomerStorefront() {
                 className={`pr-banner ${exclusive ? "pr-exclusive" : "pr-sale"}${image ? " pr-has-img" : ""}`}
                 href={targetPath}
                 aria-label={`تصفح ${card.title}`}
-                style={{ background: `linear-gradient(135deg, ${colors.bg_color}, ${colors.bg_color_2})`, color: colors.text_color }}
+                style={{
+                  background: `linear-gradient(135deg, ${colors.bg_color}, ${colors.bg_color_2})`,
+                  color: colors.text_color,
+                  boxSizing: "border-box",
+                  width: `${Math.max(240, Math.min(1600, Number(card.card_width_px) || 520))}px`,
+                  maxWidth: "100%",
+                  flex: "0 0 auto",
+                  height: `${Math.max(220, Math.min(900, Number(card.card_height_px) || 300))}px`,
+                  minHeight: 220,
+                }}
               >
                 {image ? (
                   <img className="pr-banner-img" src={image} alt="" loading="lazy" />
