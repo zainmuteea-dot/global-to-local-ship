@@ -7,11 +7,13 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import { ChatBot } from "../components/chat-bot"; // <-- غيرناه هنا
+const ChatBot = lazy(() =>
+  import("../components/chat-bot").then(({ ChatBot: component }) => ({ default: component })),
+);
 
 function NotFoundComponent() {
   return (
@@ -135,7 +137,9 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <Outlet />
-      <ChatBot />
+      <Suspense fallback={null}>
+        <ChatBot />
+      </Suspense>
     </QueryClientProvider>
   );
 }

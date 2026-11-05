@@ -419,9 +419,6 @@ function CustomerStorefront() {
 
   return (
     <main dir="rtl" lang="ar" className="pr-page">
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-      <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
       <style dangerouslySetInnerHTML={{ __html: CUSTOMER_STOREFRONT_CSS }} />
 
       <div className="pr-topbar" role="banner">
@@ -1504,7 +1501,7 @@ export const ProductsPage: React.FC<ProductsRouteProps> = ({
                   }
                   className="px-2.5 py-1 rounded-xl bg-white text-slate-800 text-xs font-bold border border-slate-200 flex items-center gap-1 shadow-2xs"
                 >
-                  {copiedAccount ? "تم النسخ ✓" : "نسخ"}
+                  {copiedAccount ? "تم النسخ ✓" : "ن��خ"}
                 </button>
               </div>
             </div>
