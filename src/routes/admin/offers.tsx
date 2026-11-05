@@ -287,7 +287,7 @@ function AdminOffersPage() {
             </button>
             <p className="px-1 pb-2 text-xs font-black text-[#0A2540]">تصنيف المنتجات</p>
             <div
-              className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0 lg:pb-0"
+              className="grid grid-cols-2 gap-2 lg:flex lg:flex-col"
               role="group"
               aria-label="فلترة أنواع العروض"
             >
