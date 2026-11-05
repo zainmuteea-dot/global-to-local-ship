@@ -32,7 +32,7 @@ type OfferCard = {
   badge: string;
   description: string;
   button_label: string;
-  target_path: "/exclusive" | "/deals";
+  target_path: string;
   theme: "exclusive" | "deals";
   is_active: boolean;
   sort_order: number;
@@ -43,7 +43,11 @@ type OfferCard = {
   accent_color: string | null;
 };
 
-type CardForm = Omit<OfferCard, "id">;
+type CardForm = Omit<OfferCard, "id" | "target_path"> & {
+  target_path: "/exclusive" | "/deals" | "/offers/new";
+};
+type CardPayload = Omit<CardForm, "target_path"> & { target_path: string };
+const CUSTOM_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 const emptyForm: CardForm = {
   title: "",
@@ -80,6 +84,7 @@ function OfferCardsAdminPage() {
   const [notice, setNotice] = useState("");
   const [uploadingImage, setUploadingImage] = useState(false);
   const [styleColumnsReady, setStyleColumnsReady] = useState(true);
+  const [pageSlug, setPageSlug] = useState("");
 
   const loadCards = useCallback(async () => {
     setLoading(true);
@@ -116,6 +121,7 @@ function OfferCardsAdminPage() {
 
   function startNew() {
     setEditingId(null);
+    setPageSlug("");
     setForm({ ...emptyForm, sort_order: cards.length });
     setFormOpen(true);
     setError("");
@@ -124,13 +130,19 @@ function OfferCardsAdminPage() {
 
   function startEdit(card: OfferCard) {
     setEditingId(card.id);
+    const isCustomPage = /^\/offers\/[a-z0-9]+(?:-[a-z0-9]+)*$/.test(card.target_path);
+    setPageSlug(isCustomPage ? card.target_path.slice("/offers/".length) : "");
     setForm({
       title: card.title,
       icon: card.icon,
       badge: card.badge,
       description: card.description,
       button_label: card.button_label,
-      target_path: card.target_path,
+      target_path: card.target_path === "/exclusive"
+        ? "/exclusive"
+        : card.target_path === "/deals"
+          ? "/deals"
+          : "/offers/new",
       theme: card.theme,
       is_active: card.is_active,
       sort_order: card.sort_order,
@@ -145,6 +157,7 @@ function OfferCardsAdminPage() {
 
   function cancelForm() {
     setFormOpen(false);
+    setPageSlug("");
     setEditingId(null);
     setForm({ ...emptyForm });
   }
@@ -194,8 +207,25 @@ function OfferCardsAdminPage() {
     setError("");
     setNotice("");
 
-    const payload: CardForm = {
+    const isCustomPage = form.target_path === "/offers/new";
+    const slug = pageSlug.trim().toLowerCase();
+    if (isCustomPage && !CUSTOM_SLUG_PATTERN.test(slug)) {
+      setError("اكتب معرّفًا إنجليزيًا صالحًا مثل ramadan-offers.");
+      return;
+    }
+
+    const targetPath = isCustomPage ? `/offers/${slug}` : form.target_path;
+    if (
+      isCustomPage &&
+      cards.some((card) => card.target_path === targetPath && card.id !== editingId)
+    ) {
+      setError("هذا المسار مستخدم بالفعل. اختر معرّفًا آخر.");
+      return;
+    }
+
+    const payload: CardPayload = {
       ...form,
+      target_path: targetPath,
       title: form.title.trim(),
       icon: form.icon.trim() || "✨",
       badge: form.badge.trim(),
@@ -300,11 +330,40 @@ function OfferCardsAdminPage() {
                   <input maxLength={60} className={inputClass} value={form.button_label} onChange={(event) => setForm((current) => ({ ...current, button_label: event.target.value }))} />
                 </label>
                 <label className="text-sm font-bold">صفحة الوجهة
-                  <select className={inputClass} value={form.target_path} onChange={(event) => setForm((current) => ({ ...current, target_path: event.target.value as CardForm["target_path"] }))}>
+                  <select className={inputClass} value={form.target_path} onChange={(event) => {
+                    const nextTarget = event.target.value as CardForm["target_path"];
+                    setForm((current) => ({ ...current, target_path: nextTarget }));
+                    if (nextTarget !== "/offers/new") setPageSlug("");
+                  }}>
                     <option value="/exclusive">العروض الحصرية (/exclusive)</option>
                     <option value="/deals">التخفيضات (/deals)</option>
+                    <option value="/offers/new">إنشاء صفحة مستقلة</option>
                   </select>
                 </label>
+                {form.target_path === "/offers/new" && (
+                  <label className="text-sm font-bold">
+                    معرّف الصفحة بالإنجليزية (slug)
+                    <input
+                      required
+                      maxLength={60}
+                      dir="ltr"
+                      className={inputClass}
+                      value={pageSlug}
+                      onChange={(event) => setPageSlug(
+                        event.target.value
+                          .toLowerCase()
+                          .replace(/[^a-z0-9-]/g, "")
+                          .replace(/-{2,}/g, "-")
+                          .replace(/^-+|-+$/g, ""),
+                      )}
+                      placeholder="ramadan-offers"
+                      aria-describedby="offer-page-slug-hint"
+                    />
+                    <span id="offer-page-slug-hint" className="mt-1 block text-xs font-normal text-slate-500">
+                      رابط الصفحة سيكون: <b dir="ltr">/offers/{pageSlug || "your-slug"}</b>
+                    </span>
+                  </label>
+                )}
                 <label className="text-sm font-bold">قالب ألوان جاهز (تقدر تغيّره تحت)
                   <select className={inputClass} value={form.theme} onChange={(event) => applyTemplate(event.target.value as CardForm["theme"])}>
                     <option value="exclusive">أسود وذهبي</option>
@@ -318,6 +377,11 @@ function OfferCardsAdminPage() {
                   <input type="checkbox" checked={form.is_active} onChange={(event) => setForm((current) => ({ ...current, is_active: event.target.checked }))} /> ظاهرة للعملاء
                 </label>
               </div>
+              {form.target_path === "/offers/new" && (
+                <p className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm font-bold text-blue-800">
+                  إنشاء الصفحات المستقلة يحتاج تطبيق ترحيل قاعدة البيانات وإضافة مسار العرض الديناميكي أولًا. إذا لم تُطبّق هذه التغييرات، قد يرفض حفظ المسار الجديد.
+                </p>
+              )}
               {!styleColumnsReady && (
                 <p role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-bold text-amber-800">{MISSING_STYLE_COLUMNS_MESSAGE}</p>
               )}
