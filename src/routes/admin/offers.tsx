@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { Camera, ImagePlus, LoaderCircle, Pencil, Plus, Save, Trash2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { EmbeddedLogo } from "@/components/admin/Logo";
@@ -32,6 +32,8 @@ type OfferProduct = {
   accent_color: string | null;
 };
 
+type OfferPage = { id: string; title: string; target_path: string; is_active: boolean };
+
 type ProductForm = {
   name: string;
   image_url: string;
@@ -41,6 +43,7 @@ type ProductForm = {
   category: string;
   brand: string;
   description: string;
+  page_ids: string[];
 } & OfferCardColors;
 
 const productStyleDefaults = (offerType: OfferType | "") =>
@@ -62,6 +65,7 @@ const emptyForm: ProductForm = {
   category: "",
   brand: "",
   description: "",
+  page_ids: [],
   ...THEME_COLORS.deals,
 };
 
@@ -91,6 +95,7 @@ function readOfferDraft(): OfferDraft | null {
         category: typeof form.category === "string" ? form.category : "",
         brand: typeof form.brand === "string" ? form.brand : "",
         description: typeof form.description === "string" ? form.description : "",
+        page_ids: Array.isArray(form.page_ids) ? form.page_ids.filter((id): id is string => typeof id === "string") : [],
         bg_color: typeof form.bg_color === "string" ? form.bg_color : styleDefaults.bg_color,
         bg_color_2: typeof form.bg_color_2 === "string" ? form.bg_color_2 : styleDefaults.bg_color_2,
         text_color: typeof form.text_color === "string" ? form.text_color : styleDefaults.text_color,
@@ -115,6 +120,12 @@ const inputClass =
 function AdminOffersPage() {
   const [initialDraft] = useState<OfferDraft | null>(() => readOfferDraft());
   const [products, setProducts] = useState<OfferProduct[]>([]);
+  const [offerPages, setOfferPages] = useState<OfferPage[]>([]);
+  const [pagesLoading, setPagesLoading] = useState(false);
+  const [pagesError, setPagesError] = useState("");
+  const [pageLinksLoading, setPageLinksLoading] = useState(Boolean(initialDraft?.editingId));
+  const [pageLinksError, setPageLinksError] = useState("");
+  const previousPageIdsRef = useRef<string[]>(initialDraft?.form.page_ids ?? []);
   const [form, setForm] = useState<ProductForm>(() => initialDraft?.form ?? { ...emptyForm });
   const [editingId, setEditingId] = useState<string | null>(() => initialDraft?.editingId ?? null);
   const [formOpen, setFormOpen] = useState(() => initialDraft?.formOpen ?? false);
@@ -127,6 +138,27 @@ function AdminOffersPage() {
   const [notice, setNotice] = useState("");
   const [typeFilter, setTypeFilter] = useState<OfferType | "all">("all");
   const visibleProducts = typeFilter === "all" ? products : products.filter((p) => p.offer_type === typeFilter);
+
+  const loadOfferPages = useCallback(async () => {
+    setPagesLoading(true);
+    setPagesError("");
+    const { data, error: queryError } = await db
+      .from("storefront_offer_cards")
+      .select("id,title,target_path,is_active")
+      .like("target_path", "/offers/%")
+      .order("title", { ascending: true });
+
+    if (queryError) {
+      setOfferPages([]);
+      setPagesError(`تعذر تحميل الصفحات المستقلة: ${queryError.message}`);
+    } else {
+      const validPages = ((data ?? []) as OfferPage[]).filter((page) =>
+        /^\/offers\/[a-z0-9]+(?:-[a-z0-9]+)*$/.test(page.target_path),
+      );
+      setOfferPages(validPages);
+    }
+    setPagesLoading(false);
+  }, []);
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
@@ -163,6 +195,45 @@ function AdminOffersPage() {
     void loadProducts();
   }, [loadProducts]);
 
+  useEffect(() => {
+    void loadOfferPages();
+  }, [loadOfferPages]);
+
+  useEffect(() => {
+    if (!editingId) {
+      setPageLinksLoading(false);
+      setPageLinksError("");
+      return;
+    }
+
+    let active = true;
+    setPageLinksLoading(true);
+    setPageLinksError("");
+    db.from("offer_page_products")
+      .select("page_id")
+      .eq("product_id", editingId)
+      .then(({ data, error: queryError }: { data: { page_id: string }[] | null; error: { message: string } | null }) => {
+        if (!active) return;
+        if (queryError) {
+          setPageLinksError(`تعذر تحميل صفحات هذا المنتج: ${queryError.message}`);
+          return;
+        }
+        const pageIds = (data ?? []).map((row) => String(row.page_id));
+        previousPageIdsRef.current = pageIds;
+        setForm((current) => ({ ...current, page_ids: pageIds }));
+      })
+      .catch((queryError: unknown) => {
+        if (!active) return;
+        const message = queryError instanceof Error ? queryError.message : "خطأ غير معروف";
+        setPageLinksError(`تعذر تحميل صفحات هذا المنتج: ${message}`);
+      })
+      .finally(() => {
+        if (active) setPageLinksLoading(false);
+      });
+
+    return () => { active = false; };
+  }, [editingId]);
+
   // Keep an in-progress product safe if the protected route is remounted or refreshed.
   useEffect(() => {
     try {
@@ -181,7 +252,9 @@ function AdminOffersPage() {
 
   const openNewForm = () => {
     setEditingId(null);
-    setForm({ ...emptyForm });
+    setForm({ ...emptyForm, page_ids: [] });
+    previousPageIdsRef.current = [];
+    setPageLinksError("");
     setError("");
     setNotice("");
     setFormOpen(true);
@@ -198,8 +271,10 @@ function AdminOffersPage() {
       category: product.category ?? "",
       brand: product.brand ?? "",
       description: product.description ?? "",
+      page_ids: [],
       ...resolveCardColors(product.offer_type === "exclusive" ? "exclusive" : "deals", product),
     });
+    setPageLinksError("");
     setError("");
     setNotice("");
     setFormOpen(true);
@@ -209,7 +284,9 @@ function AdminOffersPage() {
   const closeForm = () => {
     setFormOpen(false);
     setEditingId(null);
-    setForm(emptyForm);
+    previousPageIdsRef.current = [];
+    setPageLinksError("");
+    setForm({ ...emptyForm, page_ids: [] });
   };
 
   const uploadProductImage = async (file?: File) => {
@@ -262,6 +339,11 @@ function AdminOffersPage() {
       return setError("نسبة الخصم يجب أن تكون عددًا صحيحًا بين 0 و100.");
     }
     if (!form.offer_type) return setError("اختر نوع العرض.");
+    if (form.page_ids.length && (pagesLoading || pagesError)) {
+      return setError(pagesError || "انتظر تحميل الصفحات المستقلة قبل اختيارها.");
+    }
+    if (editingId && pageLinksLoading) return setError("انتظر تحميل ربط صفحات المنتج.");
+    if (editingId && pageLinksError) return setError(pageLinksError);
     if (imageUrl) {
       try {
         const parsed = new URL(imageUrl);
@@ -290,12 +372,17 @@ function AdminOffersPage() {
     }
 
     setSaving(true);
-    const result = editingId
-      ? await db.from("products").update(payload).eq("id", editingId)
-      : await db.from("products").insert(payload);
-    setSaving(false);
+    let result: any;
+    let savedProductId: string | null = editingId;
+    if (editingId) {
+      result = await db.from("products").update(payload).eq("id", editingId);
+    } else {
+      result = await db.from("products").insert(payload).select("id").single();
+      if (result.data?.id != null) savedProductId = String(result.data.id);
+    }
 
     if (result.error) {
+      setSaving(false);
       const missingStyleColumn = result.error.code === "42703" || result.error.code === "PGRST204" || /column/i.test(result.error.message ?? "");
       if (missingStyleColumn) setStyleColumnsReady(false);
       setError(missingStyleColumn
@@ -303,6 +390,48 @@ function AdminOffersPage() {
         : `لم يُحفظ المنتج: ${result.error.message}`);
       return;
     }
+
+    if (!savedProductId) {
+      setSaving(false);
+      setError("حُفظ المنتج لكن لم أستطع قراءة معرّفه لربطه بالصفحة.");
+      await loadProducts();
+      return;
+    }
+
+    const selectedPageIds = [...new Set(form.page_ids)];
+    const previousPageIds = [...new Set(previousPageIdsRef.current)];
+    const samePageLinks = selectedPageIds.length === previousPageIds.length &&
+      selectedPageIds.every((pageId) => previousPageIds.includes(pageId));
+    const shouldSyncPageLinks = !samePageLinks && (Boolean(editingId) || selectedPageIds.length > 0);
+
+    if (shouldSyncPageLinks) {
+      const { error: clearLinksError } = await db
+        .from("offer_page_products")
+        .delete()
+        .eq("product_id", savedProductId);
+      if (clearLinksError) {
+        setSaving(false);
+        setError(`حُفظ المنتج، لكن تعذر تحديث صفحات عرضه: ${clearLinksError.message}`);
+        await loadProducts();
+        return;
+      }
+
+      if (selectedPageIds.length) {
+        const { error: insertLinksError } = await db.from("offer_page_products").insert(
+          selectedPageIds.map((pageId) => ({ page_id: pageId, product_id: savedProductId })),
+        );
+        if (insertLinksError) {
+          const restoreRows = previousPageIds.map((pageId) => ({ page_id: pageId, product_id: savedProductId }));
+          if (restoreRows.length) await db.from("offer_page_products").insert(restoreRows);
+          setSaving(false);
+          setError(`حُفظ المنتج، لكن تعذر ربطه بالصفحات المختارة: ${insertLinksError.message}`);
+          await loadProducts();
+          return;
+        }
+      }
+    }
+    previousPageIdsRef.current = selectedPageIds;
+    setSaving(false);
 
     closeForm();
     setNotice(editingId ? "تم تحديث المنتج بنجاح." : "تمت إضافة المنتج بنجاح.");
@@ -599,11 +728,48 @@ function AdminOffersPage() {
                 </select>
               </label>
 
+              <fieldset className="rounded-2xl border border-[#DCEAF4] p-4 sm:col-span-2 lg:col-span-3">
+                <legend className="px-2 text-sm font-black">إظهار المنتج في صفحة مستقلة</legend>
+                <p className="mb-3 text-xs leading-6 text-slate-500">
+                  اختر صفحة أو أكثر من الصفحات المستقلة. هذا الربط إضافي ولا يغيّر نوع العرض الحالي.
+                </p>
+                {pagesLoading || pageLinksLoading ? (
+                  <p className="flex items-center gap-2 py-2 text-sm text-slate-500"><LoaderCircle className="size-4 animate-spin" /> جارٍ تحميل الصفحات…</p>
+                ) : pagesError || pageLinksError ? (
+                  <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm font-semibold text-rose-700">{pagesError || pageLinksError}</p>
+                ) : offerPages.length === 0 ? (
+                  <p className="rounded-xl bg-slate-50 p-3 text-sm text-slate-600">لا توجد صفحات مستقلة بعد. أنشئ صفحة من إدارة بطاقات العروض أولًا.</p>
+                ) : (
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {offerPages.map((page) => (
+                      <label key={page.id} className="flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border border-[#DCEAF4] px-3 py-2 hover:bg-sky-50">
+                        <input
+                          type="checkbox"
+                          checked={form.page_ids.includes(String(page.id))}
+                          onChange={(event) => setForm((current) => ({
+                            ...current,
+                            page_ids: event.target.checked
+                              ? [...new Set([...current.page_ids, String(page.id)])]
+                              : current.page_ids.filter((id) => id !== String(page.id)),
+                          }))}
+                          className="size-4 accent-[#0F4C81]"
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-bold">{page.title}</span>
+                          <span dir="ltr" className="block truncate text-xs text-slate-500">{page.target_path}</span>
+                        </span>
+                        {!page.is_active && <span className="text-[10px] font-bold text-amber-700">غير منشورة</span>}
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </fieldset>
+
             </div>
 
             <div className="mt-6 grid grid-cols-[minmax(0,1fr)_auto] gap-3 sm:flex sm:flex-wrap">
               <button
-                disabled={saving}
+                disabled={saving || (Boolean(editingId) && (pageLinksLoading || Boolean(pageLinksError)))}
                 type="submit"
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-l from-[#0F4C81] to-[#0284C7] px-6 py-3 font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-60"
               >
