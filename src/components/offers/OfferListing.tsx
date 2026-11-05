@@ -41,6 +41,11 @@ function isMissingColumnError(error: { code?: string; message?: string } | null)
   return Boolean(error && (error.code === "42703" || error.code === "PGRST204" || /column/i.test(error.message ?? "")));
 }
 
+function isMissingRelationError(error: { code?: string; message?: string } | null) {
+  if (!error) return false;
+  return error.code === "42P01" || error.code === "PGRST205" || /relation .* does not exist|table .* not found|could not find the table/i.test(error.message ?? "");
+}
+
 async function loadPageCard(targetPath: string) {
   const styledResult = await db
     .from("storefront_offer_cards")
@@ -124,23 +129,53 @@ export function OfferListing({ type }: { type: OfferType }) {
         return;
       }
 
+      // Products assigned to a new independent /offers/:slug page must not
+      // leak into the legacy /deals or /exclusive listings.
+      const baseProductIds = baseProducts.map((product) => product.id);
+      const { data: pageLinks, error: pageLinksError } = await db
+        .from("offer_page_products")
+        .select("product_id")
+        .in("product_id", baseProductIds);
+      if (!active) return;
+
+      let legacyProducts = baseProducts;
+      if (pageLinksError && !isMissingRelationError(pageLinksError)) {
+        setError(`تعذر التحقق من استقلال صفحات العروض: ${pageLinksError.message}`);
+        setProducts([]);
+        setLoading(false);
+        return;
+      }
+      if (!pageLinksError) {
+        const assignedProductIds = new Set(
+          (pageLinks ?? []).map((row: { product_id: string | number }) => String(row.product_id)),
+        );
+        legacyProducts = baseProducts.filter((product) => !assignedProductIds.has(String(product.id)));
+      }
+
+      if (legacyProducts.length === 0) {
+        setProducts([]);
+        setLoading(false);
+        return;
+      }
+
+      const legacyProductIds = legacyProducts.map((product) => product.id);
       const [{ data: categoryRows }, { data: detailRows }] = await Promise.all([
-        db.from("products").select("id,category").in("id", baseProducts.map((product) => product.id)),
-        db.from("products").select("id,brand,description").in("id", baseProducts.map((product) => product.id)),
+        db.from("products").select("id,category").in("id", legacyProductIds),
+        db.from("products").select("id,brand,description").in("id", legacyProductIds),
       ]);
       if (!active) return;
 
       const categories = new Map<string, string | null>(
-        (categoryRows ?? []).map((row: { id: string; category: string | null }) => [row.id, row.category] as [string, string | null]),
+        (categoryRows ?? []).map((row: { id: string; category: string | null }) => [String(row.id), row.category] as [string, string | null]),
       );
       const details = new Map<string, { brand: string | null; description: string | null }>(
-        (detailRows ?? []).map((row: { id: string; brand: string | null; description: string | null }) => [row.id, { brand: row.brand, description: row.description }]),
+        (detailRows ?? []).map((row: { id: string | number; brand: string | null; description: string | null }) => [String(row.id), { brand: row.brand, description: row.description }]),
       );
-      setProducts(baseProducts.map((product) => ({
+      setProducts(legacyProducts.map((product) => ({
         ...product,
-        category: categories.get(product.id) ?? null,
-        brand: details.get(product.id)?.brand ?? null,
-        description: details.get(product.id)?.description ?? null,
+        category: categories.get(String(product.id)) ?? null,
+        brand: details.get(String(product.id))?.brand ?? null,
+        description: details.get(String(product.id))?.description ?? null,
       })));
       setLoading(false);
     };
