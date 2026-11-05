@@ -338,7 +338,7 @@ function AdminOffersPage() {
         )}
 
         {formOpen && (
-          <form onSubmit={saveProduct} className="mb-8 rounded-3xl border border-[#DCEAF4] bg-white p-5 shadow-sm sm:p-8">
+          <form onSubmit={saveProduct} className="mb-5 rounded-3xl border border-[#DCEAF4] bg-white p-4 shadow-sm sm:mb-8 sm:p-8">
             <div className="mb-6 flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-bold text-[#F97316]">{editingId ? "تعديل المنتج" : "منتج جديد"}</p>
@@ -486,11 +486,11 @@ function AdminOffersPage() {
 
             </div>
 
-            <div className="mt-6 flex flex-wrap gap-3">
+            <div className="mt-6 grid grid-cols-[minmax(0,1fr)_auto] gap-3 sm:flex sm:flex-wrap">
               <button
                 disabled={saving}
                 type="submit"
-                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-l from-[#0F4C81] to-[#0284C7] px-6 py-3 font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-l from-[#0F4C81] to-[#0284C7] px-6 py-3 font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {saving ? <LoaderCircle className="size-4 animate-spin" /> : <Save className="size-4" />}
                 {saving ? "جارٍ الحفظ…" : "حفظ المنتج"}
@@ -524,7 +524,62 @@ function AdminOffersPage() {
           ) : visibleProducts.length === 0 ? (
             <p className="p-12 text-center text-sm text-gray-500">لا توجد منتجات عروض حاليًا.</p>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            <ul className="divide-y divide-[#E6F0F7] md:hidden">
+              {visibleProducts.map((product) => {
+                const finalPrice = Number(product.price) * (1 - Number(product.discount_percent) / 100);
+                const categoryLabel = product.category
+                  ? ({ electronics: "إلكترونيات", office_supplies: "أدوات مكتبية", hookah_supplies: "معسلات الشيشة", other: "أخرى" } as Record<string, string>)[product.category] ?? product.category
+                  : null;
+                return (
+                  <li key={product.id} className="p-4">
+                    <div className="flex gap-3">
+                      {product.image_url ? (
+                        <img src={product.image_url} alt="" className="size-20 shrink-0 rounded-xl object-cover" />
+                      ) : (
+                        <span className="grid size-20 shrink-0 place-items-center rounded-xl bg-gray-100 text-xs text-gray-400">لا صورة</span>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <h3 className="min-w-0 truncate font-black">{product.name}</h3>
+                          <span className="shrink-0 rounded-full bg-orange-100 px-2 py-0.5 text-xs font-bold text-orange-700">
+                            خصم %{product.discount_percent}
+                          </span>
+                        </div>
+                        <p className="mt-1 truncate text-xs text-gray-500">
+                          {[product.brand, categoryLabel, offerLabels[product.offer_type]].filter(Boolean).join(" · ")}
+                        </p>
+                        <div className="mt-2 flex flex-wrap items-baseline gap-x-2">
+                          <span className="text-base font-black text-[#0F4C81]">
+                            {finalPrice.toLocaleString("ar", { maximumFractionDigits: 2 })} ر.س
+                          </span>
+                          <span className="text-xs text-gray-400 line-through">{Number(product.price).toLocaleString("ar")} ر.س</span>
+                        </div>
+                      </div>
+                    </div>
+                    {product.description && <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-600">{product.description}</p>}
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => startEdit(product)}
+                        className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-[#DCEAF4] text-sm font-bold text-[#0284C7] hover:bg-[#EAF5FC]"
+                      >
+                        <Pencil className="size-4" /> تعديل
+                      </button>
+                      <button
+                        type="button"
+                        disabled={deletingId === product.id}
+                        onClick={() => void deleteProduct(product)}
+                        className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-rose-100 text-sm font-bold text-rose-600 hover:bg-rose-50 disabled:opacity-50"
+                      >
+                        <Trash2 className="size-4" /> حذف
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+            <div className="hidden overflow-x-auto md:block">
               <table className="w-full min-w-[1100px] text-right text-sm">
                 <thead className="bg-[#F7FAFC] text-xs text-gray-500">
                   <tr>
