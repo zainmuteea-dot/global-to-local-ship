@@ -8,6 +8,13 @@
       "when": 1793668525993,
       "tag": "0000_create_finance_vouchers",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793839989822,
+      "tag": "0001_offer_card_image_colors",
+      "breakpoints": true
     }
   ]
 }
