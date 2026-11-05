@@ -639,123 +639,76 @@ function AdminOffersPage() {
           ) : visibleProducts.length === 0 ? (
             <p className="p-12 text-center text-sm text-gray-500">لا توجد منتجات عروض حاليًا.</p>
           ) : (
-            <>
-            <ul className="divide-y divide-[#E6F0F7] md:hidden">
+            <ul className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 xl:grid-cols-3">
               {visibleProducts.map((product) => {
                 const finalPrice = Number(product.price) * (1 - Number(product.discount_percent) / 100);
                 const categoryLabel = product.category
                   ? ({ electronics: "إلكترونيات", office_supplies: "أدوات مكتبية", hookah_supplies: "معسلات الشيشة", other: "أخرى" } as Record<string, string>)[product.category] ?? product.category
                   : null;
+                const colors = resolveCardColors(product.offer_type === "exclusive" ? "exclusive" : "deals", product);
                 return (
-                  <li key={product.id} className="p-4">
-                    <div className="flex gap-3">
+                  <li
+                    key={product.id}
+                    className="min-w-0 overflow-hidden rounded-2xl border border-[#DCEAF4] bg-white shadow-sm transition-shadow hover:shadow-md"
+                  >
+                    <div
+                      className="relative aspect-[4/3] overflow-hidden"
+                      style={{ background: `linear-gradient(135deg, ${colors.bg_color}, ${colors.bg_color_2})` }}
+                    >
                       {product.image_url ? (
-                        <img src={product.image_url} alt="" className="size-20 shrink-0 rounded-xl object-cover" />
+                        <img src={product.image_url} alt={product.name} className="size-full object-cover" />
                       ) : (
-                        <span className="grid size-20 shrink-0 place-items-center rounded-xl bg-gray-100 text-xs text-gray-400">لا صورة</span>
+                        <div className="grid size-full place-items-center text-sm text-slate-500">لا توجد صورة</div>
                       )}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-start justify-between gap-2">
-                          <h3 className="min-w-0 truncate font-black">{product.name}</h3>
-                          <span className="shrink-0 rounded-full bg-orange-100 px-2 py-0.5 text-xs font-bold text-orange-700">
-                            خصم %{product.discount_percent}
-                          </span>
-                        </div>
-                        <p className="mt-1 truncate text-xs text-gray-500">
+                      <span
+                        className="absolute right-3 top-3 rounded-full px-3 py-1 text-xs font-black shadow"
+                        style={{ background: colors.accent_color, color: readableTextOn(colors.accent_color) }}
+                      >
+                        خصم %{product.discount_percent}
+                      </span>
+                    </div>
+                    <div className="space-y-3 p-4">
+                      <div>
+                        <h3 className="break-words text-base font-black" style={{ color: colors.text_color }}>{product.name}</h3>
+                        <p className="mt-1 text-xs text-slate-500">
                           {[product.brand, categoryLabel, offerLabels[product.offer_type]].filter(Boolean).join(" · ")}
                         </p>
-                        <div className="mt-2 flex flex-wrap items-baseline gap-x-2">
-                          <span className="text-base font-black text-[#0F4C81]">
-                            {finalPrice.toLocaleString("ar", { maximumFractionDigits: 2 })} ر.س
-                          </span>
-                          <span className="text-xs text-gray-400 line-through">{Number(product.price).toLocaleString("ar")} ر.س</span>
-                        </div>
                       </div>
-                    </div>
-                    {product.description && <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-600">{product.description}</p>}
-                    <div className="mt-3 grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => startEdit(product)}
-                        className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-[#DCEAF4] text-sm font-bold text-[#0284C7] hover:bg-[#EAF5FC]"
-                      >
-                        <Pencil className="size-4" /> تعديل
-                      </button>
-                      <button
-                        type="button"
-                        disabled={deletingId === product.id}
-                        onClick={() => void deleteProduct(product)}
-                        className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-rose-100 text-sm font-bold text-rose-600 hover:bg-rose-50 disabled:opacity-50"
-                      >
-                        <Trash2 className="size-4" /> حذف
-                      </button>
+                      {product.description && (
+                        <p className="line-clamp-2 text-sm leading-6 text-slate-600">{product.description}</p>
+                      )}
+                      <div className="flex flex-wrap items-baseline gap-x-2">
+                        <span className="text-base font-black text-[#0F4C81]">
+                          {finalPrice.toLocaleString("ar", { maximumFractionDigits: 2 })} ر.س
+                        </span>
+                        <span className="text-xs text-gray-400 line-through">
+                          {Number(product.price).toLocaleString("ar", { maximumFractionDigits: 2 })} ر.س
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 border-t border-[#E6F0F7] pt-3">
+                        <button
+                          type="button"
+                          onClick={() => startEdit(product)}
+                          aria-label={`تعديل ${product.name}`}
+                          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-[#DCEAF4] text-sm font-bold text-[#0284C7] hover:bg-[#EAF5FC]"
+                        >
+                          <Pencil className="size-4" /> تعديل
+                        </button>
+                        <button
+                          type="button"
+                          disabled={deletingId === product.id}
+                          onClick={() => void deleteProduct(product)}
+                          aria-label={`حذف ${product.name}`}
+                          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-rose-100 text-sm font-bold text-rose-600 hover:bg-rose-50 disabled:opacity-50"
+                        >
+                          <Trash2 className="size-4" /> حذف
+                        </button>
+                      </div>
                     </div>
                   </li>
                 );
               })}
             </ul>
-            <div className="hidden overflow-x-auto md:block">
-              <table className="w-full min-w-[1100px] text-right text-sm">
-                <thead className="bg-[#F7FAFC] text-xs text-gray-500">
-                  <tr>
-                    {["الصورة", "الاسم", "الماركة", "الوصف", "القسم", "السعر قبل الخصم", "السعر بعد الخصم", "الخصم", "نوع العرض", "إجراء"].map((label) => (
-                      <th key={label} className="px-4 py-4 font-bold">
-                        {label}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#E6F0F7]">
-                  {visibleProducts.map((product) => (
-                    <tr key={product.id} className="hover:bg-[#F8FBFE]">
-                      <td className="px-4 py-3">
-                        {product.image_url ? (
-                          <img src={product.image_url} alt="" className="size-14 rounded-xl object-cover" />
-                        ) : (
-                          <span className="grid size-14 place-items-center rounded-xl bg-gray-100 text-xs text-gray-400">
-                            لا صورة
-                          </span>
-                        )}
-                      </td>
-                      <td className="max-w-56 px-4 py-3 font-bold">{product.name}</td>
-                      <td className="px-4 py-3">{product.brand || "—"}</td>
-                      <td className="max-w-64 px-4 py-3">{product.description ? <span className="line-clamp-2">{product.description}</span> : "—"}</td>
-                      <td className="px-4 py-3">{product.category ? ({ electronics: "إلكترونيات", office_supplies: "أدوات مكتبية", hookah_supplies: "معسلات الشيشة", other: "أخرى" } as Record<string, string>)[product.category] ?? product.category : "—"}</td>
-                      <td className="px-4 py-3">{Number(product.price).toLocaleString("ar")} ر.س</td>
-                      <td className="px-4 py-3 font-bold text-[#0F4C81]">{(Number(product.price) * (1 - Number(product.discount_percent) / 100)).toLocaleString("ar", { maximumFractionDigits: 2 })} ر.س</td>
-                      <td className="px-4 py-3">
-                        <span className="rounded-full bg-orange-100 px-3 py-1 font-bold text-orange-700">
-                          خصم %{product.discount_percent}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">{offerLabels[product.offer_type]}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => startEdit(product)}
-                            aria-label={`تعديل ${product.name}`}
-                            className="rounded-lg border border-[#DCEAF4] p-2 text-[#0284C7] hover:bg-[#EAF5FC]"
-                          >
-                            <Pencil className="size-4" />
-                          </button>
-                          <button
-                            type="button"
-                            disabled={deletingId === product.id}
-                            onClick={() => void deleteProduct(product)}
-                            aria-label={`حذف ${product.name}`}
-                            className="rounded-lg border border-rose-100 p-2 text-rose-600 hover:bg-rose-50 disabled:opacity-50"
-                          >
-                            <Trash2 className="size-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            </>
           )}
         </section>
           </div>
