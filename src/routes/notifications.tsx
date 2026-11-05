@@ -477,7 +477,7 @@ function CustomerNotificationsPage({
   );
 }
 
-/** شاشة الإدارة: لا تعر�� إلا بعد نجاح التحقق من دور admin أو staff. */
+/** شاشة الإدارة: لا تعر���� إلا بعد نجاح التحقق من دور admin أو staff. */
 function AdminNotificationsPage({ userId }: { userId: string }) {
   const navigate = useNavigate();
   const [orders, setOrders] = useState<OrderNotification[]>([]);
@@ -917,12 +917,12 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
       <div className="relative mx-auto w-full max-w-[1200px] space-y-6">
         <header className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-[#FF6B00]/20 bg-[#0A1931]/90 p-4 shadow-[0_0_30px_rgba(255,107,0,0.1)] backdrop-blur-[16px] sm:px-6">
           <div className="flex items-center gap-3">
-            <img src="/alshamel-logo.png" alt="شعار الشامل للتسوق" className="size-14 shrink-0 rounded-2xl border border-[#E8A43A]/30 bg-[#FFF9F1] object-cover shadow-[0_8px_20px_rgba(18,59,99,0.12)]" />
+            <img src="/alshamel-logo.png" alt="شعار الشامل للتسوق" className="size-14 shrink-0 rounded-2xl border border-[#E8A43A]/40 bg-[#FFF9F1] p-1 object-contain shadow-[0_8px_20px_rgba(18,59,99,0.2)]" />
             <div>
               <h1 className="text-xl font-black text-white sm:text-2xl">
                 الشامل للتسوق - مركز الإشعارات
               </h1>
-              <p className="mt-1 text-xs text-[#5D7183]">
+              <p className="mt-1 text-xs text-slate-400">
                 تابع الطلبات والتنبيهات وتواصل مع العملاء من مكان واحد.
               </p>
             </div>
