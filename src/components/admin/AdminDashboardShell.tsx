@@ -118,6 +118,7 @@ const navItems = [
   { label: "طرق الدفع", href: "/payments", icon: CircleDollarSign },
   { label: "التقارير", href: "/client-reports", icon: Activity },
   { label: "العروض والتخفيضات", href: "/admin/offers", icon: PackageSearch },
+  { label: "إدارة بطاقات العروض", href: "/admin/offer-cards", icon: PackageSearch },
   { label: "الشات", href: "/admin-chat", icon: MessageSquare },
   { label: "الإشعارات", href: "/notifications", icon: Bell },
   { label: "المنتجات الفورية", href: "/products/manage", icon: PackageOpen },
