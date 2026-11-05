@@ -3,6 +3,8 @@ import { createFileRoute, Outlet, useLocation, Link } from "@tanstack/react-rout
 import { readCart } from "@/lib/extension-cart";
 import { supabase } from "@/integrations/supabase/client";
 
+import { readableTextOn, resolveCardColors, safeImageUrl } from "@/lib/offer-card-style";
+
 const db = supabase as any;
 
 const playTone = (frequency: number) => {
@@ -127,6 +129,11 @@ type StorefrontOfferCard = {
   theme: "exclusive" | "deals";
   is_active: boolean;
   sort_order: number;
+  image_url?: string | null;
+  bg_color?: string | null;
+  bg_color_2?: string | null;
+  text_color?: string | null;
+  accent_color?: string | null;
 };
 
 const DEFAULT_OFFER_CARDS: StorefrontOfferCard[] = [
@@ -306,7 +313,7 @@ const CUSTOMER_STOREFRONT_CSS = `
 .pr-banner{position:relative;min-height:300px;overflow:hidden;border-radius:18px;padding:36px;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:14px;text-align:right;text-decoration:none;transition:transform .25s ease,box-shadow .25s ease}.pr-banner:hover{transform:translateY(-3px)}
 .pr-sale{background:linear-gradient(135deg,#F8BBD0,#F5A6BF);color:#7A2140;box-shadow:0 16px 40px rgba(248,187,208,.48)}.pr-sale:before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(400px 220px at 88% 10%,rgba(255,255,255,.6),transparent 60%),radial-gradient(300px 200px at 10% 100%,rgba(255,255,255,.35),transparent 60%)}
 .pr-exclusive{background:linear-gradient(135deg,#17130F,#050505);color:#D4AF37;box-shadow:0 16px 40px rgba(0,0,0,.32);border:1px solid rgba(212,175,55,.4)}.pr-exclusive:before{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(115deg,rgba(212,175,55,.12) 0 1px,transparent 1px 22px);mask-image:linear-gradient(180deg,rgba(0,0,0,.9),rgba(0,0,0,.15));-webkit-mask-image:linear-gradient(180deg,rgba(0,0,0,.9),rgba(0,0,0,.15))}
-.pr-banner-icon{position:absolute;top:16px;left:22px;z-index:1;font-size:48px;opacity:.65;pointer-events:none}.pr-badge{position:relative;z-index:1;display:inline-flex;align-items:center;border-radius:999px;background:#fff;color:#E0447D;padding:8px 18px;font-size:15px;font-weight:900;box-shadow:0 6px 16px rgba(224,68,125,.18)}
+.pr-banner-img{position:absolute;top:0;bottom:0;left:0;width:45%;height:100%;object-fit:cover;pointer-events:none;-webkit-mask-image:linear-gradient(to left,transparent,#000 45%);mask-image:linear-gradient(to left,transparent,#000 45%)}.pr-has-img h2,.pr-has-img p{max-width:56%}@media(max-width:720px){.pr-banner.pr-has-img{padding-top:190px}.pr-banner-img{width:100%;height:170px;bottom:auto;-webkit-mask-image:linear-gradient(to top,transparent,#000 40%);mask-image:linear-gradient(to top,transparent,#000 40%)}.pr-has-img h2,.pr-has-img p{max-width:none}}.pr-banner-icon{position:absolute;top:16px;left:22px;z-index:1;font-size:48px;opacity:.65;pointer-events:none}.pr-badge{position:relative;z-index:1;display:inline-flex;align-items:center;border-radius:999px;background:#fff;color:#E0447D;padding:8px 18px;font-size:15px;font-weight:900;box-shadow:0 6px 16px rgba(224,68,125,.18)}
 .pr-banner h2{position:relative;z-index:1;margin:2px 0;font-size:clamp(24px,3vw,36px);font-weight:900}.pr-banner p{position:relative;z-index:1;max-width:430px;margin:0;font-size:15px;font-weight:700;line-height:1.9;opacity:.88}.pr-cta{position:relative;z-index:1;display:inline-flex;align-items:center;gap:10px;margin-top:3px;border-radius:999px;background:#fff;color:#E0447D;padding:12px 24px;font-size:14px;font-weight:900;box-shadow:0 10px 24px rgba(224,68,125,.2)}.pr-exclusive .pr-cta{background:linear-gradient(135deg,#B8912A,#D4AF37 45%,#F1DA8E);color:#1B1408;box-shadow:0 10px 26px rgba(212,175,55,.28)}
 /* شريط علوي وسفلي متناسقان مع هوية المتجر */
 .pr-topbar{position:relative;z-index:2;width:100%;background:rgba(255,255,255,.88);border-bottom:1px solid rgba(212,175,55,.34);box-shadow:0 4px 18px rgba(27,20,8,.045);backdrop-filter:blur(12px)}
@@ -365,12 +372,19 @@ function CustomerStorefront() {
     let isCurrent = true;
 
     const loadOfferCards = async () => {
-      const { data, error } = await db
-        .from("storefront_offer_cards")
-        .select("id,title,icon,badge,description,button_label,target_path,theme,is_active,sort_order")
-        .eq("is_active", true)
-        .order("sort_order", { ascending: true })
-        .order("created_at", { ascending: true });
+      const baseColumns = "id,title,icon,badge,description,button_label,target_path,theme,is_active,sort_order";
+      const query = (columns: string) =>
+        db
+          .from("storefront_offer_cards")
+          .select(columns)
+          .eq("is_active", true)
+          .order("sort_order", { ascending: true })
+          .order("created_at", { ascending: true });
+      let { data, error } = await query(`${baseColumns},image_url,bg_color,bg_color_2,text_color,accent_color`);
+      // قاعدة لم تُحدَّث بعد بأعمدة الصورة والألوان: اعرض البطاقات بالألوان الافتراضية.
+      if (error && (error.code === "42703" || /column/i.test(error.message ?? ""))) {
+        ({ data, error } = await query(baseColumns));
+      }
 
       if (!isCurrent) return;
       if (error) {
@@ -465,19 +479,27 @@ function CustomerStorefront() {
           {visibleOfferCards.map((card) => {
             const exclusive = card.theme === "exclusive";
             const targetPath = card.target_path === "/exclusive" ? "/exclusive" : "/deals";
+            const colors = resolveCardColors(card.theme, card);
+            const image = safeImageUrl(card.image_url);
+            const accentStyle = { background: colors.accent_color, color: readableTextOn(colors.accent_color) };
             return (
               <a
                 id={card.id}
                 key={card.id}
-                className={`pr-banner ${exclusive ? "pr-exclusive" : "pr-sale"}`}
+                className={`pr-banner ${exclusive ? "pr-exclusive" : "pr-sale"}${image ? " pr-has-img" : ""}`}
                 href={targetPath}
                 aria-label={`تصفح ${card.title}`}
+                style={{ background: `linear-gradient(135deg, ${colors.bg_color}, ${colors.bg_color_2})`, color: colors.text_color }}
               >
-                <span className="pr-banner-icon" aria-hidden="true">{card.icon || (exclusive ? "👑" : "🌹")}</span>
-                {card.badge && <span className="pr-badge">{card.badge}</span>}
+                {image ? (
+                  <img className="pr-banner-img" src={image} alt="" loading="lazy" />
+                ) : (
+                  <span className="pr-banner-icon" aria-hidden="true">{card.icon || (exclusive ? "👑" : "🌹")}</span>
+                )}
+                {card.badge && <span className="pr-badge" style={accentStyle}>{card.badge}</span>}
                 <h2>{card.title}</h2>
                 {card.description && <p>{card.description}</p>}
-                <span className="pr-cta">
+                <span className="pr-cta" style={accentStyle}>
                   {card.button_label || "تصفح العروض"}
                   <span aria-hidden="true">←</span>
                 </span>
