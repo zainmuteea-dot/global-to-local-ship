@@ -7,6 +7,13 @@ import { readableTextOn, resolveCardColors, safeImageUrl } from "@/lib/offer-car
 
 const db = supabase as any;
 
+/** Allow only legacy offer routes or a safe internal custom-offer route. */
+function safeOfferPath(value: unknown): string {
+  if (value === "/deals" || value === "/exclusive") return value;
+  if (typeof value === "string" && /^\/offers\/[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value)) return value;
+  return "/deals";
+}
+
 const playTone = (frequency: number) => {
   if (typeof window === "undefined") return;
   try {
@@ -125,7 +132,7 @@ type StorefrontOfferCard = {
   badge: string;
   description: string;
   button_label: string;
-  target_path: "/exclusive" | "/deals";
+  target_path: string;
   theme: "exclusive" | "deals";
   is_active: boolean;
   sort_order: number;
@@ -394,7 +401,7 @@ function CustomerStorefront() {
 
       setOfferCards((data ?? []).map((card: StorefrontOfferCard) => ({
         ...card,
-        target_path: card.target_path === "/exclusive" ? "/exclusive" : "/deals",
+        target_path: safeOfferPath(card.target_path),
         theme: card.theme === "exclusive" ? "exclusive" : "deals",
       })));
     };
@@ -475,7 +482,7 @@ function CustomerStorefront() {
         <section className="pr-banners" aria-label="العروض المميزة">
           {visibleOfferCards.map((card) => {
             const exclusive = card.theme === "exclusive";
-            const targetPath = card.target_path === "/exclusive" ? "/exclusive" : "/deals";
+            const targetPath = safeOfferPath(card.target_path);
             const colors = resolveCardColors(card.theme, card);
             const image = safeImageUrl(card.image_url);
             const accentStyle = { background: colors.accent_color, color: readableTextOn(colors.accent_color) };
