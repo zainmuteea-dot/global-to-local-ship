@@ -127,6 +127,51 @@ export type Database = {
           },
         ]
       }
+      site_ticker_messages: {
+        Row: {
+          badge: string
+          created_at: string
+          created_by: string | null
+          ends_at: string | null
+          href: string | null
+          id: string
+          is_active: boolean
+          message: string
+          placement: "home_guest" | "dashboard" | "both"
+          sort_order: number
+          starts_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          badge?: string
+          created_at?: string
+          created_by?: string | null
+          ends_at?: string | null
+          href?: string | null
+          id?: string
+          is_active?: boolean
+          message: string
+          placement?: "home_guest" | "dashboard" | "both"
+          sort_order?: number
+          starts_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          badge?: string
+          created_at?: string
+          created_by?: string | null
+          ends_at?: string | null
+          href?: string | null
+          id?: string
+          is_active?: boolean
+          message?: string
+          placement?: "home_guest" | "dashboard" | "both"
+          sort_order?: number
+          starts_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           body: string | null
