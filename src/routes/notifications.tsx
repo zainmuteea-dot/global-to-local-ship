@@ -1,3 +1,8 @@
+// src/routes/notifications.tsx
+// نسخة يدوية من فرع GitHub main (الملف الكامل وقت الاستخراج: SHA 703434f8088bcb992baa13f75eefbff8b8a08153).
+// التعديل هنا تنسيقي فقط؛ يحافظ على المسار والصلاحيات وSupabase وتدفق SMS الموجود.
+// لم يُطبّق هذا الملف داخل Lovable أو يُختبر ببناء المشروع.
+
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
@@ -5,7 +10,6 @@ import {
   Bell,
   AlertTriangle,
   CheckCheck,
-  Clock,
   Inbox,
   MapPinned,
   MessageCircle,
@@ -477,7 +481,7 @@ function CustomerNotificationsPage({
   );
 }
 
-/** شاشة الإدارة: لا تعر���� إلا بعد نجاح التحقق من دور admin أو staff. */
+/** شاشة الإدارة: لا تظهر إلا بعد نجاح التحقق من دور admin أو staff. */
 function AdminNotificationsPage({ userId }: { userId: string }) {
   const navigate = useNavigate();
   const [orders, setOrders] = useState<OrderNotification[]>([]);
@@ -496,6 +500,11 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
   const [draftTitle, setDraftTitle] = useState("");
   const [draftMessage, setDraftMessage] = useState("");
   const [draftType, setDraftType] = useState("offer");
+  const [readFilter, setReadFilter] = useState<"all" | "unread" | "read">("all");
+  const [categoryFilter, setCategoryFilter] = useState<
+    "all" | "offer" | "shipment" | "purchase" | "support"
+  >("all");
+  const [notificationSearch, setNotificationSearch] = useState("");
   const [expandedMessages, setExpandedMessages] = useState<Set<string>>(
     new Set(),
   );
@@ -838,9 +847,28 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
   const unreadSystem = notifications.filter(
     (item) => !readIds.has(item.id),
   ).length;
-  const latestFirst = [...notifications].sort(
+  const sortedNotifications = [...notifications].sort(
     (a, b) => Date.parse(b.created_at) - Date.parse(a.created_at),
   );
+  const matchesCategory = (type: string) => {
+    if (categoryFilter === "all") return true;
+    if (categoryFilter === "support")
+      return !["offer", "shipment", "purchase"].includes(type);
+    return type === categoryFilter;
+  };
+  const searchTerm = notificationSearch.trim().toLowerCase();
+  const latestFirst = sortedNotifications.filter((item) => {
+    const isRead = readIds.has(item.id);
+    if (readFilter === "unread" && isRead) return false;
+    if (readFilter === "read" && !isRead) return false;
+    if (!matchesCategory(item.type)) return false;
+    if (
+      searchTerm &&
+      !`${item.title} ${item.message ?? ""}`.toLowerCase().includes(searchTerm)
+    )
+      return false;
+    return true;
+  });
   const totalShown = notifications.length;
   const readCount = Math.max(0, totalShown - unreadSystem);
   const readPercent = totalShown
@@ -911,34 +939,34 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
     <div
       dir="rtl"
       lang="ar"
-      className="min-h-[100dvh] bg-[#050A14] px-3 py-5 text-white sm:px-5 sm:py-7"
+      className="min-h-[100dvh] bg-[#060D1E] px-3 py-5 text-white sm:px-5 sm:py-7"
     >
       <div className="pointer-events-none fixed inset-x-0 top-0 h-[480px] bg-[radial-gradient(ellipse_at_top,rgba(35,119,171,0.12),transparent_68%)]" />
-      <div className="relative mx-auto w-full max-w-[1200px] space-y-6">
-        <header className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-[#FF6B00]/20 bg-[#0A1931]/90 p-4 shadow-[0_0_30px_rgba(255,107,0,0.1)] backdrop-blur-[16px] sm:px-6">
+      <div className="relative mx-auto w-full max-w-[1200px] space-y-4">
+        <header className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-[#19274E] bg-[#0B152B]/95 p-4 shadow-[0_0_30px_rgba(245,158,11,0.10)] backdrop-blur-[16px] sm:px-6">
           <div className="flex items-center gap-3">
-            <img src="/alshamel-logo.png" alt="شعار الشامل للتسوق" className="size-14 shrink-0 rounded-2xl border border-[#E8A43A]/40 bg-[#FFF9F1] p-1 object-contain shadow-[0_8px_20px_rgba(18,59,99,0.2)]" />
+            <span className="grid size-14 shrink-0 place-items-center rounded-2xl border border-amber-300/40 bg-gradient-to-br from-amber-300 to-amber-600 text-[#10172A] shadow-[0_8px_24px_rgba(245,158,11,0.22)]" aria-label="مركز الإشعارات"><Bell className="size-7 stroke-[2.5]" aria-hidden="true" /></span>
             <div>
               <h1 className="text-xl font-black text-white sm:text-2xl">
-                الشامل للتسوق - مركز الإشعارات
+                التسوق الشامل - مركز الإشعارات
               </h1>
               <p className="mt-1 text-xs text-slate-400">
                 تابع الطلبات والتنبيهات وتواصل مع العملاء من مكان واحد.
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
             <button
               type="button"
               onClick={() => void toggleSound()}
-              className={`rounded-xl border px-3 py-2 text-xs font-bold transition ${soundOn ? "border-[#22C55E]/30 bg-[#22C55E]/10 text-[#22C55E]" : "border-white/10 bg-white/5 text-white/60"}`}
+              className={`inline-flex min-h-11 items-center justify-center rounded-xl border px-4 py-2.5 text-xs font-bold transition ${soundOn ? "border-[#22C55E]/30 bg-[#22C55E]/10 text-[#22C55E]" : "border-white/10 bg-white/5 text-white/60"}`}
             >
               {soundOn ? "🔔 الصوت يعمل" : "🔕 الصوت متوقف"}
             </button>
             <button
               type="button"
               onClick={() => navigate({ to: "/admin" })}
-              className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-white/80 transition hover:border-[#00D4FF]/40 hover:text-[#00D4FF]"
+              className="inline-flex min-h-11 items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-xs font-bold text-white/80 transition hover:border-[#00D4FF]/40 hover:text-[#00D4FF]"
             >
               رجوع للوحة القيادة
             </button>
@@ -964,7 +992,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
 
         <section
           aria-label="ملخص الإشعارات"
-          className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
+          className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4"
         >
           <article className="rounded-2xl border border-[#00D4FF]/20 bg-[#0A1931]/60 p-4 shadow-[0_0_20px_rgba(0,212,255,0.1)]">
             <div className="flex items-start justify-between">
@@ -1026,7 +1054,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
 
         <section
           aria-label="تحليلات الإشعارات"
-          className="grid gap-4 lg:grid-cols-3"
+          className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
         >
           <article className="rounded-2xl border border-white/10 bg-[#0A1931]/60 p-5">
             <h2 className="font-bold text-white">نسبة القراءة</h2>
@@ -1093,7 +1121,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
                   التوزيع الجغرافي - اليمن
                 </h2>
                 <p className="mt-1 text-[11px] text-[#5D7183]">
-                  قيم توضيحية حسب نموذج التصميم
+                  أرقام شكلية للمعاينة، وليست بيانات تشغيلية
                 </p>
               </div>
               <MapPinned className="size-5 text-[#00D4FF]" />
@@ -1215,6 +1243,89 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
           </form>
         </section>
 
+        <section
+          aria-label="فرز الإشعارات"
+          className="rounded-2xl border border-white/10 bg-[#0A1931]/60 p-4"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="flex items-center gap-2 text-sm font-bold text-white">
+              <Tag className="size-4 text-[#FF6B00]" />
+              فرز الإشعارات والبحث فيها
+            </h2>
+            <div className="flex flex-wrap gap-2">
+              {(
+                [
+                  ["all", `عرض الكل (${notifications.length})`],
+                  ["unread", `غير المقروءة (${unreadSystem})`],
+                  ["read", `المقروءة (${readCount})`],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={readFilter === value}
+                  onClick={() => setReadFilter(value)}
+                  className={`rounded-lg border px-3 py-1.5 text-xs font-bold transition ${
+                    readFilter === value
+                      ? "border-[#FF6B00] bg-[#FF6B00] text-white"
+                      : "border-white/15 bg-white/5 text-white/70 hover:bg-white/10"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap gap-2">
+              {(
+                [
+                  ["all", "الكل"],
+                  ["offer", "عروض"],
+                  ["shipment", "تحديثات شحن"],
+                  ["purchase", "تحديثات شراء"],
+                  ["support", "دعم وإدارة"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={categoryFilter === value}
+                  onClick={() => setCategoryFilter(value)}
+                  className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${
+                    categoryFilter === value
+                      ? "border-[#EAB308] bg-[#EAB308] text-[#0A1931]"
+                      : "border-white/15 bg-transparent text-white/70 hover:bg-white/10"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                disabled={savingRead || unreadSystem === 0}
+                onClick={() => void markAllSystemRead()}
+                className="rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs font-bold text-white/80 hover:bg-white/10 disabled:opacity-50"
+              >
+                تحديد الكل كمقروء
+              </button>
+              <input
+                type="search"
+                value={notificationSearch}
+                onChange={(event) => setNotificationSearch(event.target.value)}
+                placeholder="بحث في الإشعارات…"
+                aria-label="بحث في الإشعارات"
+                className="w-56 rounded-lg border border-white/15 bg-[#071226] px-3 py-2 text-xs text-white placeholder:text-white/40 focus:border-[#00D4FF] focus:outline-none"
+              />
+            </div>
+          </div>
+          <p className="mt-3 text-[11px] text-[#5D7183]">
+            يظهر {latestFirst.length} من {notifications.length} إشعار
+          </p>
+        </section>
+
         <section className="grid items-start gap-4 lg:grid-cols-2">
           <article className="overflow-hidden rounded-2xl border border-white/10 bg-[#0A1931]/60">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 p-4">
@@ -1274,7 +1385,53 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
                 </p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <>
+              <div className="space-y-3 p-3 md:hidden">
+                {latestFirst.map((notification) => {
+                  const isRead = readIds.has(notification.id);
+                  const isBroadcast = notification.user_id === null;
+                  return (
+                    <article
+                      key={`mobile-${notification.id}`}
+                      className="rounded-xl border border-white/10 bg-[#071226] p-3 shadow-sm"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h3 className="break-words text-sm font-bold text-white">
+                            {notification.title}
+                          </h3>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <span className="rounded-full bg-[#00D4FF]/15 px-2 py-1 text-[10px] text-[#00D4FF]">
+                              {isBroadcast ? "إشعار عام" : "إشعار حساب"}
+                            </span>
+                            <span className={`rounded-full px-2 py-1 text-[10px] ${isRead ? "bg-white/10 text-white/60" : "bg-[#22C55E]/20 text-[#22C55E]"}`}>
+                              {isRead ? "مقروء" : "جديد"}
+                            </span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => void deleteCustomerNotification(notification)}
+                          aria-label={`حذف إشعار ${notification.title}`}
+                          title="حذف الإشعار"
+                          className="shrink-0 rounded-lg border border-[#FF6B00]/30 p-2 text-[#FF6B00] hover:bg-[#FF6B00]/10"
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      </div>
+                      {notification.message && (
+                        <p className="mt-3 whitespace-pre-wrap break-words text-xs leading-5 text-white/65">
+                          {notification.message}
+                        </p>
+                      )}
+                      <time className="mt-3 block text-[10px] text-[#5D7183]" dateTime={notification.created_at}>
+                        {new Date(notification.created_at).toLocaleString("ar-YE")}
+                      </time>
+                    </article>
+                  );
+                })}
+              </div>
+              <div className="hidden overflow-x-auto md:block">
                 <table className="w-full min-w-[600px] text-right text-xs">
                   <thead className="bg-white/5 text-[11px] font-bold text-[#5D7183]">
                     <tr>
@@ -1358,6 +1515,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
                   </tbody>
                 </table>
               </div>
+              </>
             )}
           </article>
 
@@ -1391,7 +1549,42 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
                 </p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <>
+              <div className="space-y-3 p-3 md:hidden">
+                {orders.map((order) => {
+                  const phone = (order.phone || "").replace(/\D/g, "");
+                  return (
+                    <article key={`mobile-${order.id}`} className="rounded-xl border border-white/10 bg-[#071226] p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h3 className="break-words text-sm font-bold text-white">{order.customer_name}</h3>
+                          <p className="mt-1 break-all font-mono text-[11px] text-white/60">{order.tracking_code}</p>
+                        </div>
+                        <span className={`shrink-0 rounded-full border px-2 py-1 text-[10px] ${orderStatusClass(order.status)}`}>
+                          {order.status}
+                        </span>
+                      </div>
+                      <p className="mt-3 text-[10px] text-[#5D7183]">{new Date(order.created_at).toLocaleString("ar-YE")}</p>
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        {phone && (
+                          <>
+                            <a aria-label="اتصال بالعميل" href={`tel:${phone}`} className="grid size-9 place-items-center rounded-lg bg-[#00D4FF]/20 text-[#00D4FF]">
+                              <Phone className="size-4" />
+                            </a>
+                            <a aria-label="مراسلة العميل عبر واتساب" href={`https://wa.me/${phone}?text=${encodeURIComponent(`مرحبًا ${order.customer_name}، وصلنا طلبك ${order.tracking_code}`)}`} target="_blank" rel="noreferrer" className="grid size-9 place-items-center rounded-lg bg-[#22C55E] text-white">
+                              <MessageCircle className="size-4" />
+                            </a>
+                          </>
+                        )}
+                        <button type="button" onClick={() => void markOrderSeen(order.id)} className="rounded-lg border border-[#22C55E]/30 bg-[#22C55E]/10 px-3 py-2 text-xs font-bold text-[#22C55E]">
+                          تمت المتابعة
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+              <div className="hidden overflow-x-auto md:block">
                 <table className="w-full min-w-[660px] text-right text-xs">
                   <thead className="bg-white/5 text-[11px] font-bold text-[#5D7183]">
                     <tr>
@@ -1463,12 +1656,13 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
                   </tbody>
                 </table>
               </div>
+              </>
             )}
           </article>
         </section>
 
         <footer className="border-t border-white/10 py-4 text-center text-[10px] text-white/30">
-          الشامل للتسوق © 2024 © مركز الإشعارات - جميع الحقوق محفوظة
+          السوق الشامل © 2026 - مركز الإشعارات
         </footer>
       </div>
     </div>
