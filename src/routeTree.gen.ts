@@ -62,6 +62,7 @@ import { Route as AdminOfferCardsRouteImport } from './routes/admin/offer-cards'
 import { Route as AdminOffersRouteImport } from './routes/admin/offers'
 import { Route as AdminSheinSyncRouteImport } from './routes/admin/shein-sync'
 import { Route as ApiSheinPriceRouteImport } from './routes/api/shein-price'
+import { Route as OffersSlugRouteImport } from './routes/offers/$slug'
 import { Route as ProductsManageRouteImport } from './routes/products/manage'
 import { Route as TrackIndexRouteImport } from './routes/track/index'
 import { Route as TrackTrackingCodeRouteImport } from './routes/track/$trackingCode'
@@ -334,6 +335,11 @@ const ApiSheinPriceRoute = ApiSheinPriceRouteImport.update({
   path: '/api/shein-price',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OffersSlugRoute = OffersSlugRouteImport.update({
+  id: '/offers/$slug',
+  path: '/offers/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProductsManageRoute = ProductsManageRouteImport.update({
   id: '/manage',
   path: '/manage',
@@ -419,6 +425,7 @@ export interface FileRoutesByFullPath {
   '/admin/offers': typeof AdminOffersRoute
   '/admin/shein-sync': typeof AdminSheinSyncRoute
   '/api/shein-price': typeof ApiSheinPriceRoute
+  '/offers/$slug': typeof OffersSlugRoute
   '/products/manage': typeof ProductsManageRoute
   '/track/$trackingCode': typeof TrackTrackingCodeRoute
   '/track/': typeof TrackIndexRoute
@@ -480,6 +487,7 @@ export interface FileRoutesByTo {
   '/admin/offers': typeof AdminOffersRoute
   '/admin/shein-sync': typeof AdminSheinSyncRoute
   '/api/shein-price': typeof ApiSheinPriceRoute
+  '/offers/$slug': typeof OffersSlugRoute
   '/products/manage': typeof ProductsManageRoute
   '/track/$trackingCode': typeof TrackTrackingCodeRoute
   '/track': typeof TrackIndexRoute
@@ -542,6 +550,7 @@ export interface FileRoutesById {
   '/admin/offers': typeof AdminOffersRoute
   '/admin/shein-sync': typeof AdminSheinSyncRoute
   '/api/shein-price': typeof ApiSheinPriceRoute
+  '/offers/$slug': typeof OffersSlugRoute
   '/products/manage': typeof ProductsManageRoute
   '/track/$trackingCode': typeof TrackTrackingCodeRoute
   '/track/': typeof TrackIndexRoute
@@ -605,6 +614,7 @@ export interface FileRouteTypes {
     | '/admin/offers'
     | '/admin/shein-sync'
     | '/api/shein-price'
+    | '/offers/$slug'
     | '/products/manage'
     | '/track/$trackingCode'
     | '/track/'
@@ -666,6 +676,7 @@ export interface FileRouteTypes {
     | '/admin/offers'
     | '/admin/shein-sync'
     | '/api/shein-price'
+    | '/offers/$slug'
     | '/products/manage'
     | '/track/$trackingCode'
     | '/track'
@@ -727,6 +738,7 @@ export interface FileRouteTypes {
     | '/admin/offers'
     | '/admin/shein-sync'
     | '/api/shein-price'
+    | '/offers/$slug'
     | '/products/manage'
     | '/track/$trackingCode'
     | '/track/'
@@ -786,6 +798,7 @@ export interface RootRouteChildren {
   AccountProfileRoute: typeof AccountProfileRoute
   AccountWalletRoute: typeof AccountWalletRoute
   ApiSheinPriceRoute: typeof ApiSheinPriceRoute
+  OffersSlugRoute: typeof OffersSlugRoute
   TrackTrackingCodeRoute: typeof TrackTrackingCodeRoute
   TrackIndexRoute: typeof TrackIndexRoute
   ApiPublicSheinPriceRoute: typeof ApiPublicSheinPriceRoute
@@ -1164,6 +1177,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSheinPriceRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/offers/$slug': {
+      id: '/offers/$slug'
+      path: '/offers/$slug'
+      fullPath: '/offers/$slug'
+      preLoaderRoute: typeof OffersSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/products/manage': {
       id: '/products/manage'
       path: '/manage'
@@ -1290,6 +1310,7 @@ const rootRouteChildren: RootRouteChildren = {
   AccountProfileRoute: AccountProfileRoute,
   AccountWalletRoute: AccountWalletRoute,
   ApiSheinPriceRoute: ApiSheinPriceRoute,
+  OffersSlugRoute: OffersSlugRoute,
   TrackTrackingCodeRoute: TrackTrackingCodeRoute,
   TrackIndexRoute: TrackIndexRoute,
   ApiPublicSheinPriceRoute: ApiPublicSheinPriceRoute,
