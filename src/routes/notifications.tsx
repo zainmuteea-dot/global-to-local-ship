@@ -1,6 +1,6 @@
 // src/routes/notifications.tsx
-// نسخة يدوية من فرع GitHub main (الملف الكامل وقت الاستخراج: SHA 703434f8088bcb992baa13f75eefbff8b8a08153).
-// التعديل هنا تنسيقي فقط؛ يحافظ على المسار والصلاحيات وSupabase وتدفق SMS الموجود.
+// نسخة يدوية مبنية على الملف المتاح في المشروع؛ أضيف زران لفتح لوحتي إشعارات العملاء وطلبات العملاء.
+// يحافظ التعديل على المسار والصلاحيات وSupabase وتدفق SMS الموجود.
 // لم يُطبّق هذا الملف داخل Lovable أو يُختبر ببناء المشروع.
 
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
@@ -505,6 +505,9 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
     "all" | "offer" | "shipment" | "purchase" | "support"
   >("all");
   const [notificationSearch, setNotificationSearch] = useState("");
+  const [activeCustomerPanel, setActiveCustomerPanel] = useState<
+    "notifications" | "orders" | null
+  >(null);
   const [expandedMessages, setExpandedMessages] = useState<Set<string>>(
     new Set(),
   );
@@ -513,6 +516,21 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
   useEffect(() => {
     soundOnRef.current = soundOn;
   }, [soundOn]);
+
+  // عند اختيار أحد الزرين، افتح القسم المقابل وانتقل إليه داخل /notifications.
+  useEffect(() => {
+    if (!activeCustomerPanel) return;
+    const frame = window.requestAnimationFrame(() => {
+      document
+        .getElementById(
+          activeCustomerPanel === "notifications"
+            ? "customer-notifications-panel"
+            : "customer-orders-panel",
+        )
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeCustomerPanel]);
 
   const playSound = () => {
     if (!soundOnRef.current || typeof window === "undefined") return;
@@ -1327,6 +1345,180 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
         </section>
 
 
+        <section
+          aria-label="أقسام العملاء"
+          className="grid gap-3 sm:grid-cols-2"
+        >
+          <button
+            type="button"
+            aria-controls="customer-notifications-panel"
+            aria-expanded={activeCustomerPanel === "notifications"}
+            onClick={() => setActiveCustomerPanel("notifications")}
+            className={`flex min-h-16 items-center justify-between gap-3 rounded-2xl border p-4 text-right transition hover:-translate-y-0.5 hover:border-[#00D4FF]/50 ${
+              activeCustomerPanel === "notifications"
+                ? "border-[#00D4FF]/60 bg-[#00D4FF]/10"
+                : "border-[#00D4FF]/20 bg-[#0A1931]/80"
+            }`}
+          >
+            <span className="flex items-center gap-3">
+              <span className="grid size-11 place-items-center rounded-xl bg-[#00D4FF]/15 text-[#00D4FF]">
+                <MessageCircle className="size-5" aria-hidden="true" />
+              </span>
+              <span>
+                <span className="block font-bold text-white">إشعارات العملاء</span>
+                <span className="mt-1 block text-xs text-white/50">عرض الإشعارات المنشورة</span>
+              </span>
+            </span>
+            <span className="rounded-full bg-[#00D4FF]/15 px-3 py-1 text-sm font-black text-[#00D4FF]">
+              {notifications.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            aria-controls="customer-orders-panel"
+            aria-expanded={activeCustomerPanel === "orders"}
+            onClick={() => setActiveCustomerPanel("orders")}
+            className={`flex min-h-16 items-center justify-between gap-3 rounded-2xl border p-4 text-right transition hover:-translate-y-0.5 hover:border-[#FF6B00]/50 ${
+              activeCustomerPanel === "orders"
+                ? "border-[#FF6B00]/60 bg-[#FF6B00]/10"
+                : "border-[#FF6B00]/20 bg-[#0A1931]/80"
+            }`}
+          >
+            <span className="flex items-center gap-3">
+              <span className="grid size-11 place-items-center rounded-xl bg-[#FF6B00]/15 text-[#FF6B00]">
+                <PackagePlus className="size-5" aria-hidden="true" />
+              </span>
+              <span>
+                <span className="block font-bold text-white">طلبات العملاء</span>
+                <span className="mt-1 block text-xs text-white/50">الطلبات الجديدة: {unreadOrders}</span>
+              </span>
+            </span>
+            <span className="rounded-full bg-[#FF6B00]/15 px-3 py-1 text-sm font-black text-[#FF6B00]">
+              {orders.length}
+            </span>
+          </button>
+        </section>
+
+        {activeCustomerPanel === "notifications" && (
+          <section
+            id="customer-notifications-panel"
+            aria-label="إشعارات العملاء والإدارة"
+            className="scroll-mt-4 space-y-3 rounded-2xl border border-[#00D4FF]/20 bg-[#0A1931]/70 p-4 sm:p-5"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-black text-white">إشعارات العملاء والإدارة</h2>
+                <p className="mt-1 text-xs text-white/50">{notifications.length} إشعارًا محفوظًا في القائمة</p>
+              </div>
+              <button
+                type="button"
+                disabled={savingRead || unreadSystem === 0}
+                onClick={() => void markAllSystemRead()}
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-[#00D4FF]/30 bg-[#00D4FF]/10 px-4 py-2 text-sm font-bold text-[#00D4FF] hover:bg-[#00D4FF]/20 disabled:opacity-50"
+              >
+                <CheckCheck className="size-4" aria-hidden="true" />
+                تحديد غير المقروء كمقروء ({unreadSystem})
+              </button>
+            </div>
+            {notifications.length === 0 ? (
+              <p className="rounded-xl border border-white/10 bg-black/20 p-5 text-center text-sm text-white/50">لا توجد إشعارات للعملاء حاليًا.</p>
+            ) : (
+              <div className="grid gap-3 lg:grid-cols-2">
+                {sortedNotifications.map((item) => {
+                  const isRead = readIds.has(item.id);
+                  return (
+                    <article key={item.id} className="rounded-xl border border-white/10 bg-[#071226]/80 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h3 className="break-words font-bold text-white">{item.title}</h3>
+                          <p className="mt-1 text-[11px] text-white/45">
+                            {item.type} · {new Date(item.created_at).toLocaleString("ar", { dateStyle: "medium", timeStyle: "short" })}
+                          </p>
+                        </div>
+                        <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold ${isRead ? "bg-white/10 text-white/50" : "bg-[#FF6B00]/15 text-[#FF8C32]"}`}>
+                          {isRead ? "مقروء" : "جديد"}
+                        </span>
+                      </div>
+                      {item.message && <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-white/70">{item.message}</p>}
+                      <div className="mt-3 flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => void deleteCustomerNotification(item)}
+                          className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-red-400/20 px-3 py-2 text-xs font-bold text-red-300 transition hover:bg-red-400/10"
+                        >
+                          <Trash2 className="size-4" aria-hidden="true" />
+                          حذف الإشعار
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        )}
+
+        {activeCustomerPanel === "orders" && (
+          <section
+            id="customer-orders-panel"
+            aria-label="طلبات العملاء اللحظية"
+            className="scroll-mt-4 space-y-3 rounded-2xl border border-[#FF6B00]/20 bg-[#0A1931]/70 p-4 sm:p-5"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-black text-white">طلبات العملاء اللحظية</h2>
+                <p className="mt-1 text-xs text-white/50">{orders.length} طلبًا محمّلًا · الجديد: {unreadOrders}</p>
+              </div>
+              <button
+                type="button"
+                disabled={loading || refreshing}
+                onClick={() => void refreshAdminLists()}
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-bold text-white/80 hover:bg-white/10 disabled:opacity-50"
+              >
+                <RefreshCw className={`size-4 ${refreshing ? "animate-spin" : ""}`} aria-hidden="true" />
+                تحديث الطلبات
+              </button>
+            </div>
+            {orders.length === 0 ? (
+              <p className="rounded-xl border border-white/10 bg-black/20 p-5 text-center text-sm text-white/50">لا توجد طلبات عملاء حاليًا.</p>
+            ) : (
+              <div className="grid gap-3 lg:grid-cols-2">
+                {orders.map((order) => (
+                  <article key={order.id} className="rounded-xl border border-white/10 bg-[#071226]/80 p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <h3 className="font-bold text-white">{order.customer_name || "عميل"}</h3>
+                        <p className="mt-1 text-xs text-[#00D4FF]">رقم التتبع: {order.tracking_code || "—"}</p>
+                      </div>
+                      <span className={`rounded-full border px-3 py-1 text-xs font-bold ${orderStatusClass(order.status)}`}>{order.status || "جديد"}</span>
+                    </div>
+                    <p className="mt-3 text-xs text-white/45">{new Date(order.created_at).toLocaleString("ar", { dateStyle: "medium", timeStyle: "short" })}</p>
+                    {order.notes && <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-white/70">{order.notes}</p>}
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {order.phone && (
+                        <a href={`tel:${order.phone}`} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-[#22C55E]/25 bg-[#22C55E]/10 px-3 py-2 text-xs font-bold text-[#22C55E]">
+                          <Phone className="size-4" aria-hidden="true" />
+                          اتصال بالعميل
+                        </a>
+                      )}
+                      {!order.status?.includes("تم التواصل") && (
+                        <button
+                          type="button"
+                          onClick={() => void markOrderSeen(order.id)}
+                          className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-[#00D4FF]/25 bg-[#00D4FF]/10 px-3 py-2 text-xs font-bold text-[#00D4FF]"
+                        >
+                          <CheckCheck className="size-4" aria-hidden="true" />
+                          تسجيل التواصل
+                        </button>
+                      )}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
 
         <footer className="border-t border-white/10 py-4 text-center text-[10px] text-white/30">
           السوق الشامل © 2026 - مركز الإشعارات
