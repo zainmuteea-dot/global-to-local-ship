@@ -5,7 +5,6 @@ import {
   Bell,
   AlertTriangle,
   CheckCheck,
-  Clock,
   Inbox,
   MapPinned,
   MessageCircle,
@@ -477,7 +476,7 @@ function CustomerNotificationsPage({
   );
 }
 
-/** شاشة الإدارة: لا تعر���� إلا بعد نجاح التحقق من دور admin أو staff. */
+/** شاشة الإدارة: لا تظهر إلا بعد نجاح التحقق من دور admin أو staff. */
 function AdminNotificationsPage({ userId }: { userId: string }) {
   const navigate = useNavigate();
   const [orders, setOrders] = useState<OrderNotification[]>([]);
@@ -914,7 +913,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
       className="min-h-[100dvh] bg-[#050A14] px-3 py-5 text-white sm:px-5 sm:py-7"
     >
       <div className="pointer-events-none fixed inset-x-0 top-0 h-[480px] bg-[radial-gradient(ellipse_at_top,rgba(35,119,171,0.12),transparent_68%)]" />
-      <div className="relative mx-auto w-full max-w-[1200px] space-y-6">
+      <div className="relative mx-auto w-full max-w-[1200px] space-y-4">
         <header className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-[#FF6B00]/20 bg-[#0A1931]/90 p-4 shadow-[0_0_30px_rgba(255,107,0,0.1)] backdrop-blur-[16px] sm:px-6">
           <div className="flex items-center gap-3">
             <img src="/alshamel-logo.png" alt="شعار الشامل للتسوق" className="size-14 shrink-0 rounded-2xl border border-[#E8A43A]/40 bg-[#FFF9F1] p-1 object-contain shadow-[0_8px_20px_rgba(18,59,99,0.2)]" />
@@ -964,7 +963,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
 
         <section
           aria-label="ملخص الإشعارات"
-          className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
+          className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4"
         >
           <article className="rounded-2xl border border-[#00D4FF]/20 bg-[#0A1931]/60 p-4 shadow-[0_0_20px_rgba(0,212,255,0.1)]">
             <div className="flex items-start justify-between">
@@ -1026,7 +1025,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
 
         <section
           aria-label="تحليلات الإشعارات"
-          className="grid gap-4 lg:grid-cols-3"
+          className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
         >
           <article className="rounded-2xl border border-white/10 bg-[#0A1931]/60 p-5">
             <h2 className="font-bold text-white">نسبة القراءة</h2>
@@ -1274,7 +1273,53 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
                 </p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <>
+              <div className="space-y-3 p-3 md:hidden">
+                {latestFirst.map((notification) => {
+                  const isRead = readIds.has(notification.id);
+                  const isBroadcast = notification.user_id === null;
+                  return (
+                    <article
+                      key={`mobile-${notification.id}`}
+                      className="rounded-xl border border-white/10 bg-[#071226] p-3 shadow-sm"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h3 className="break-words text-sm font-bold text-white">
+                            {notification.title}
+                          </h3>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <span className="rounded-full bg-[#00D4FF]/15 px-2 py-1 text-[10px] text-[#00D4FF]">
+                              {isBroadcast ? "إشعار عام" : "إشعار حساب"}
+                            </span>
+                            <span className={`rounded-full px-2 py-1 text-[10px] ${isRead ? "bg-white/10 text-white/60" : "bg-[#22C55E]/20 text-[#22C55E]"}`}>
+                              {isRead ? "مقروء" : "جديد"}
+                            </span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => void deleteCustomerNotification(notification)}
+                          aria-label={`حذف إشعار ${notification.title}`}
+                          title="حذف الإشعار"
+                          className="shrink-0 rounded-lg border border-[#FF6B00]/30 p-2 text-[#FF6B00] hover:bg-[#FF6B00]/10"
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      </div>
+                      {notification.message && (
+                        <p className="mt-3 whitespace-pre-wrap break-words text-xs leading-5 text-white/65">
+                          {notification.message}
+                        </p>
+                      )}
+                      <time className="mt-3 block text-[10px] text-[#5D7183]" dateTime={notification.created_at}>
+                        {new Date(notification.created_at).toLocaleString("ar-YE")}
+                      </time>
+                    </article>
+                  );
+                })}
+              </div>
+              <div className="hidden overflow-x-auto md:block">
                 <table className="w-full min-w-[600px] text-right text-xs">
                   <thead className="bg-white/5 text-[11px] font-bold text-[#5D7183]">
                     <tr>
@@ -1358,6 +1403,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
                   </tbody>
                 </table>
               </div>
+              </>
             )}
           </article>
 
@@ -1391,7 +1437,42 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
                 </p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <>
+              <div className="space-y-3 p-3 md:hidden">
+                {orders.map((order) => {
+                  const phone = (order.phone || "").replace(/\D/g, "");
+                  return (
+                    <article key={`mobile-${order.id}`} className="rounded-xl border border-white/10 bg-[#071226] p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h3 className="break-words text-sm font-bold text-white">{order.customer_name}</h3>
+                          <p className="mt-1 break-all font-mono text-[11px] text-white/60">{order.tracking_code}</p>
+                        </div>
+                        <span className={`shrink-0 rounded-full border px-2 py-1 text-[10px] ${orderStatusClass(order.status)}`}>
+                          {order.status}
+                        </span>
+                      </div>
+                      <p className="mt-3 text-[10px] text-[#5D7183]">{new Date(order.created_at).toLocaleString("ar-YE")}</p>
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        {phone && (
+                          <>
+                            <a aria-label="اتصال بالعميل" href={`tel:${phone}`} className="grid size-9 place-items-center rounded-lg bg-[#00D4FF]/20 text-[#00D4FF]">
+                              <Phone className="size-4" />
+                            </a>
+                            <a aria-label="مراسلة العميل عبر واتساب" href={`https://wa.me/${phone}?text=${encodeURIComponent(`مرحبًا ${order.customer_name}، وصلنا طلبك ${order.tracking_code}`)}`} target="_blank" rel="noreferrer" className="grid size-9 place-items-center rounded-lg bg-[#22C55E] text-white">
+                              <MessageCircle className="size-4" />
+                            </a>
+                          </>
+                        )}
+                        <button type="button" onClick={() => void markOrderSeen(order.id)} className="rounded-lg border border-[#22C55E]/30 bg-[#22C55E]/10 px-3 py-2 text-xs font-bold text-[#22C55E]">
+                          تمت المتابعة
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+              <div className="hidden overflow-x-auto md:block">
                 <table className="w-full min-w-[660px] text-right text-xs">
                   <thead className="bg-white/5 text-[11px] font-bold text-[#5D7183]">
                     <tr>
@@ -1463,12 +1544,13 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
                   </tbody>
                 </table>
               </div>
+              </>
             )}
           </article>
         </section>
 
         <footer className="border-t border-white/10 py-4 text-center text-[10px] text-white/30">
-          الشامل للتسوق © 2024 © مركز الإشعارات - جميع الحقوق محفوظة
+          السوق الشامل © 2026 - مركز الإشعارات
         </footer>
       </div>
     </div>
