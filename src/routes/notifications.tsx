@@ -19,6 +19,11 @@ import {
   Send,
   Trash2,
   Tag,
+  Pencil,
+  Plus,
+  Eye,
+  EyeOff,
+  X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
@@ -39,6 +44,55 @@ type OrderNotification = {
   created_at: string;
   read: boolean;
 };
+
+type SiteTickerRow = {
+  id: string;
+  message: string;
+  placement: "home_guest" | "dashboard" | "both";
+  badge: string;
+  href: string | null;
+  sort_order: number;
+  starts_at: string | null;
+  ends_at: string | null;
+  is_active: boolean;
+  created_at?: string;
+};
+
+type SiteTickerDraft = {
+  id: string | null;
+  message: string;
+  placement: SiteTickerRow["placement"];
+  badge: string;
+  href: string;
+  sort_order: string;
+  starts_at: string;
+  ends_at: string;
+  is_active: boolean;
+};
+
+const emptyTickerDraft: SiteTickerDraft = {
+  id: null,
+  message: "",
+  placement: "home_guest",
+  badge: "",
+  href: "",
+  sort_order: "0",
+  starts_at: "",
+  ends_at: "",
+  is_active: true,
+};
+
+function toLocalDateTimeInput(value: string | null | undefined) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "";
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 16);
+}
+
+function toIsoDateTime(value: string) {
+  return value ? new Date(value).toISOString() : null;
+}
 
 type SystemNotification = {
   id: string;
@@ -497,6 +551,13 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
   );
   const [savingRead, setSavingRead] = useState(false);
   const [sending, setSending] = useState(false);
+  const [tickerRows, setTickerRows] = useState<SiteTickerRow[]>([]);
+  const [tickerLoading, setTickerLoading] = useState(true);
+  const [tickerSaving, setTickerSaving] = useState(false);
+  const [tickerError, setTickerError] = useState<string | null>(null);
+  const [tickerSuccess, setTickerSuccess] = useState<string | null>(null);
+  const [tickerDraft, setTickerDraft] = useState<SiteTickerDraft>(emptyTickerDraft);
+  const [tickerFormOpen, setTickerFormOpen] = useState(false);
   const [draftTitle, setDraftTitle] = useState("");
   const [draftMessage, setDraftMessage] = useState("");
   const [draftType, setDraftType] = useState("offer");
@@ -516,6 +577,144 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
   useEffect(() => {
     soundOnRef.current = soundOn;
   }, [soundOn]);
+
+  // رسائل الشريط محفوظة في جدول مستقل، ولا تدخل في تدفق إشعارات العملاء أو SMS.
+  const loadTickerRows = useCallback(async () => {
+    setTickerLoading(true);
+    const { data, error: loadError } = await supabase.from("site_ticker_messages")
+      .select("id,message,placement,badge,href,sort_order,starts_at,ends_at,is_active,created_at")
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true });
+    if (loadError) {
+      console.error("تعذر تحميل رسائل أشرطة الموقع:", loadError);
+      setTickerError("تعذر تحميل رسائل الشريط. تحقق من تطبيق ترحيل site_ticker_messages والصلاحيات.");
+    } else {
+      setTickerRows((data ?? []) as SiteTickerRow[]);
+      setTickerError(null);
+    }
+    setTickerLoading(false);
+  }, []);
+
+  useEffect(() => { void loadTickerRows(); }, [loadTickerRows]);
+
+  const saveTickerMessage = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const message = tickerDraft.message.trim();
+    const badge = tickerDraft.badge.trim();
+    const href = tickerDraft.href.trim();
+    const sortOrder = Number(tickerDraft.sort_order);
+    if (!message || message.length > 180) {
+      setTickerError("اكتب نصًا من 1 إلى 180 حرفًا.");
+      return;
+    }
+    if (badge.length > 30) {
+      setTickerError("الشارة يجب ألا تتجاوز 30 حرفًا.");
+      return;
+    }
+    if (!Number.isInteger(sortOrder) || sortOrder < 0 || sortOrder > 9999) {
+      setTickerError("الترتيب يجب أن يكون عددًا صحيحًا من 0 إلى 9999.");
+      return;
+    }
+    if (href && (!href.startsWith("/") || href.startsWith("//"))) {
+      setTickerError("الرابط يجب أن يكون مسارًا داخليًا يبدأ بـ /.");
+      return;
+    }
+    const starts = tickerDraft.starts_at ? new Date(tickerDraft.starts_at) : null;
+    const ends = tickerDraft.ends_at ? new Date(tickerDraft.ends_at) : null;
+    if (starts && !Number.isFinite(starts.getTime())) {
+      setTickerError("تاريخ البداية غير صالح.");
+      return;
+    }
+    if (ends && !Number.isFinite(ends.getTime())) {
+      setTickerError("تاريخ النهاية غير صالح.");
+      return;
+    }
+    if (starts && ends && ends <= starts) {
+      setTickerError("يجب أن يكون تاريخ النهاية بعد تاريخ البداية.");
+      return;
+    }
+
+    setTickerSaving(true);
+    setTickerError(null);
+    setTickerSuccess(null);
+    const payload = {
+      message,
+      placement: tickerDraft.placement,
+      badge,
+      href: href || null,
+      sort_order: sortOrder,
+      starts_at: toIsoDateTime(tickerDraft.starts_at),
+      ends_at: toIsoDateTime(tickerDraft.ends_at),
+      is_active: tickerDraft.is_active,
+      updated_at: new Date().toISOString(),
+    };
+    const query = tickerDraft.id
+      ? supabase.from("site_ticker_messages").update(payload).eq("id", tickerDraft.id)
+      : supabase.from("site_ticker_messages").insert(payload);
+    const { error: saveError } = await query;
+    setTickerSaving(false);
+    if (saveError) {
+      console.error("تعذر حفظ رسالة الشريط:", saveError);
+      setTickerError("تعذر حفظ الرسالة. تحقق من الترحيل وصلاحيات الإدارة.");
+      return;
+    }
+    setTickerSuccess(tickerDraft.id ? "تم تحديث رسالة الشريط." : "تمت إضافة رسالة الشريط.");
+    setTickerDraft(emptyTickerDraft);
+    setTickerFormOpen(false);
+    await loadTickerRows();
+  };
+
+  const startTickerEdit = (row: SiteTickerRow) => {
+    setTickerDraft({
+      id: row.id,
+      message: row.message,
+      placement: row.placement,
+      badge: row.badge ?? "",
+      href: row.href ?? "",
+      sort_order: String(row.sort_order ?? 0),
+      starts_at: toLocalDateTimeInput(row.starts_at),
+      ends_at: toLocalDateTimeInput(row.ends_at),
+      is_active: row.is_active,
+    });
+    setTickerSuccess(null);
+    setTickerError(null);
+    setTickerFormOpen(true);
+    document.getElementById("site-ticker-manager")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const toggleTickerActive = async (row: SiteTickerRow) => {
+    setTickerError(null);
+    setTickerSuccess(null);
+    const { error: toggleError } = await supabase.from("site_ticker_messages")
+      .update({ is_active: !row.is_active, updated_at: new Date().toISOString() })
+      .eq("id", row.id);
+    if (toggleError) {
+      console.error("تعذر تغيير حالة رسالة الشريط:", toggleError);
+      setTickerError("تعذر تغيير حالة الرسالة.");
+      return;
+    }
+    setTickerSuccess(row.is_active ? "تم تعطيل الرسالة." : "تم تفعيل الرسالة.");
+    await loadTickerRows();
+  };
+
+  const deleteTickerMessage = async (row: SiteTickerRow) => {
+    if (!window.confirm(`حذف رسالة الشريط «${row.message}» نهائيًا؟`)) return;
+    setTickerError(null);
+    setTickerSuccess(null);
+    const { error: deleteError } = await supabase.from("site_ticker_messages")
+      .delete().eq("id", row.id);
+    if (deleteError) {
+      console.error("تعذر حذف رسالة الشريط:", deleteError);
+      setTickerError("تعذر حذف الرسالة.");
+      return;
+    }
+    setTickerRows((rows) => rows.filter((item) => item.id !== row.id));
+    if (tickerDraft.id === row.id) {
+      setTickerDraft(emptyTickerDraft);
+      setTickerFormOpen(false);
+    }
+    setTickerSuccess("تم حذف رسالة الشريط.");
+  };
 
   // عند اختيار أحد الزرين، افتح القسم المقابل وانتقل إليه داخل /notifications.
   useEffect(() => {
@@ -1202,6 +1401,66 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
               </div>
             </div>
           </article>
+        </section>
+
+        <section id="site-ticker-manager" className="scroll-mt-5 rounded-2xl border border-[#EAB308]/30 bg-[#0A1931]/90 p-4 sm:p-5">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="flex items-center gap-2 font-bold text-white"><Tag className="size-5 text-[#EAB308]" /> إدارة أشرطة الموقع</h2>
+              <p className="mt-1 text-xs text-[#91A2BD]">رسائل مستقلة عن إشعارات العملاء وSMS. تُعرض حسب الموقع والترتيب وفترة التفعيل.</p>
+            </div>
+            <button type="button" onClick={() => { setTickerDraft(emptyTickerDraft); setTickerFormOpen((open) => !open); setTickerError(null); setTickerSuccess(null); }} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#EAB308] px-4 py-2 text-sm font-black text-[#111827] hover:brightness-110">
+              {tickerFormOpen ? <X className="size-4" /> : <Plus className="size-4" />}{tickerFormOpen ? "إغلاق النموذج" : "إضافة رسالة شريط"}
+            </button>
+          </div>
+          {tickerError && <p role="alert" className="mb-3 rounded-xl border border-red-400/30 bg-red-500/10 p-3 text-sm text-red-200">{tickerError}</p>}
+          {tickerSuccess && <p role="status" className="mb-3 rounded-xl border border-emerald-400/30 bg-emerald-500/10 p-3 text-sm text-emerald-200">{tickerSuccess}</p>}
+
+          {tickerFormOpen && <form onSubmit={(event) => void saveTickerMessage(event)} className="mb-5 grid gap-3 rounded-2xl border border-white/10 bg-black/20 p-4 md:grid-cols-2">
+            <label className="grid gap-1.5 text-xs font-bold text-slate-300 md:col-span-2">نص الرسالة *
+              <textarea required minLength={1} maxLength={180} rows={2} value={tickerDraft.message} onChange={(event) => setTickerDraft((draft) => ({ ...draft, message: event.target.value }))} placeholder="اكتب رسالة الشريط (حتى 180 حرفًا)" className="rounded-xl border border-white/10 bg-[#060D1E] px-3 py-3 text-sm text-white outline-none focus:border-[#EAB308]/60" />
+              <span className="text-left text-[11px] text-slate-500">{tickerDraft.message.trim().length}/180</span>
+            </label>
+            <label className="grid gap-1.5 text-xs font-bold text-slate-300">مكان الظهور *
+              <select value={tickerDraft.placement} onChange={(event) => setTickerDraft((draft) => ({ ...draft, placement: event.target.value as SiteTickerRow["placement"] }))} className="rounded-xl border border-white/10 bg-[#060D1E] px-3 py-3 text-sm text-white">
+                <option value="home_guest">الصفحة الرئيسية للزوار</option><option value="dashboard">لوحة العميل</option><option value="both">كلاهما</option>
+              </select>
+            </label>
+            <label className="grid gap-1.5 text-xs font-bold text-slate-300">شارة قصيرة (اختيارية)
+              <input maxLength={30} value={tickerDraft.badge} onChange={(event) => setTickerDraft((draft) => ({ ...draft, badge: event.target.value }))} placeholder="مثال: عرض أو تنبيه" className="rounded-xl border border-white/10 bg-[#060D1E] px-3 py-3 text-sm text-white" />
+            </label>
+            <label className="grid gap-1.5 text-xs font-bold text-slate-300">رابط داخلي اختياري
+              <input type="text" value={tickerDraft.href} onChange={(event) => setTickerDraft((draft) => ({ ...draft, href: event.target.value }))} placeholder="مثال: /products" pattern="^(/(?!/).*)?$" title="استخدم مسارًا داخليًا يبدأ بشرطة واحدة /" className="rounded-xl border border-white/10 bg-[#060D1E] px-3 py-3 text-sm text-white" />
+            </label>
+            <label className="grid gap-1.5 text-xs font-bold text-slate-300">ترتيب العرض
+              <input type="number" min="0" max="9999" step="1" required value={tickerDraft.sort_order} onChange={(event) => setTickerDraft((draft) => ({ ...draft, sort_order: event.target.value }))} className="rounded-xl border border-white/10 bg-[#060D1E] px-3 py-3 text-sm text-white" />
+            </label>
+            <label className="grid gap-1.5 text-xs font-bold text-slate-300">يبدأ التفعيل (اختياري)
+              <input type="datetime-local" value={tickerDraft.starts_at} onChange={(event) => setTickerDraft((draft) => ({ ...draft, starts_at: event.target.value }))} className="rounded-xl border border-white/10 bg-[#060D1E] px-3 py-3 text-sm text-white" />
+            </label>
+            <label className="grid gap-1.5 text-xs font-bold text-slate-300">ينتهي التفعيل (اختياري)
+              <input type="datetime-local" value={tickerDraft.ends_at} onChange={(event) => setTickerDraft((draft) => ({ ...draft, ends_at: event.target.value }))} className="rounded-xl border border-white/10 bg-[#060D1E] px-3 py-3 text-sm text-white" />
+            </label>
+            <label className="flex min-h-11 items-center gap-2 text-sm font-bold text-slate-200"><input type="checkbox" checked={tickerDraft.is_active} onChange={(event) => setTickerDraft((draft) => ({ ...draft, is_active: event.target.checked }))} className="size-4 accent-amber-400" /> الرسالة نشطة</label>
+            <div className="rounded-xl border border-sky-300/20 bg-gradient-to-r from-[#0A2540] to-[#0F4C81] p-3 md:col-span-2">
+              <p className="mb-2 text-[10px] font-bold text-sky-200">معاينة الشريط</p>
+              <div className="flex min-h-10 items-center gap-2 overflow-hidden rounded-lg border border-sky-300/20 bg-[#071B34] px-3 text-sm text-white">
+                {tickerDraft.badge.trim() && <span className="shrink-0 rounded-full bg-orange-500 px-2 py-1 text-[10px] font-black">{tickerDraft.badge.trim()}</span>}
+                <span className="truncate">{tickerDraft.message.trim() || "سيظهر نص الرسالة هنا"}</span>
+              </div>
+              {tickerDraft.href.trim() && <p className="mt-1 text-[10px] text-sky-200">رابط: {tickerDraft.href}</p>}
+            </div>
+            <div className="flex flex-wrap gap-2 md:col-span-2">
+              <button type="submit" disabled={tickerSaving} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#EAB308] px-5 py-2.5 text-sm font-black text-[#111827] disabled:opacity-50">{tickerSaving ? "جارٍ الحفظ…" : tickerDraft.id ? "حفظ التعديلات" : "إضافة الرسالة"}</button>
+              {tickerDraft.id && <button type="button" onClick={() => { setTickerDraft(emptyTickerDraft); setTickerFormOpen(false); }} className="min-h-11 rounded-xl border border-white/15 px-4 py-2 text-sm text-white/80">إلغاء التعديل</button>}
+            </div>
+          </form>}
+
+          {tickerLoading ? <p className="py-5 text-center text-sm text-slate-400">جارٍ تحميل رسائل الأشرطة…</p> : tickerRows.length === 0 ? <p className="rounded-xl border border-dashed border-white/15 p-5 text-center text-sm text-slate-400">لا توجد رسائل بعد. أضف أول رسالة لتظهر بعد تفعيل الترحيل.</p> : <div className="space-y-3">{tickerRows.map((row) => <article key={row.id} className={`rounded-xl border p-3 ${row.is_active ? "border-sky-300/20 bg-[#071B34]/70" : "border-white/10 bg-black/20 opacity-70"}`}>
+            <div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0 flex-1"><div className="mb-2 flex flex-wrap items-center gap-2">{row.badge && <span className="rounded-full bg-orange-500/15 px-2 py-1 text-[10px] font-bold text-orange-200">{row.badge}</span>}<span className="rounded-full bg-sky-400/10 px-2 py-1 text-[10px] text-sky-200">{row.placement === "home_guest" ? "الرئيسية للزوار" : row.placement === "dashboard" ? "لوحة العميل" : "الرئيسية ولوحة العميل"}</span><span className={`rounded-full px-2 py-1 text-[10px] ${row.is_active ? "bg-emerald-500/10 text-emerald-300" : "bg-slate-500/20 text-slate-400"}`}>{row.is_active ? "مفعلة" : "معطلة"}</span><span className="text-[10px] text-slate-500">ترتيب {row.sort_order}</span></div><p className="text-sm leading-6 text-white">{row.message}</p><p className="mt-1 text-[10px] text-slate-500">{row.href ? `الرابط: ${row.href}` : "دون رابط"} · {row.starts_at ? `من ${new Date(row.starts_at).toLocaleString("ar-YE")}` : "دون بداية محددة"} · {row.ends_at ? `إلى ${new Date(row.ends_at).toLocaleString("ar-YE")}` : "دون نهاية محددة"}</p></div>
+              <div className="flex shrink-0 gap-2"><button type="button" onClick={() => startTickerEdit(row)} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-sky-300/20 px-3 text-xs font-bold text-sky-200 hover:bg-sky-300/10"><Pencil className="size-3.5" /> تعديل</button><button type="button" onClick={() => void toggleTickerActive(row)} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-amber-300/20 px-3 text-xs font-bold text-amber-200 hover:bg-amber-300/10">{row.is_active ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}{row.is_active ? "تعطيل" : "تفعيل"}</button><button type="button" onClick={() => void deleteTickerMessage(row)} aria-label="حذف رسالة الشريط" className="inline-flex min-h-9 items-center justify-center rounded-lg border border-red-300/20 px-3 text-red-200 hover:bg-red-300/10"><Trash2 className="size-4" /></button></div>
+            </div>
+          </article>)}</div>}
         </section>
 
         <section className="rounded-2xl border border-[#00D4FF]/20 bg-[#0A1931]/80 p-4 sm:p-5">
