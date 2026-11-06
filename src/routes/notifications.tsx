@@ -1319,6 +1319,40 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
                   {label}
                 </button>
               ))}
+              <button
+                type="button"
+                aria-controls="customer-notifications-panel"
+                aria-expanded={activeCustomerPanel === "notifications"}
+                onClick={() => setActiveCustomerPanel("notifications")}
+                className={`inline-flex min-h-9 items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold transition hover:border-[#00D4FF]/50 ${
+                  activeCustomerPanel === "notifications"
+                    ? "border-[#00D4FF]/60 bg-[#00D4FF]/15 text-[#00D4FF]"
+                    : "border-[#00D4FF]/25 bg-[#00D4FF]/5 text-white/80"
+                }`}
+              >
+                <MessageCircle className="size-4 text-[#00D4FF]" aria-hidden="true" />
+                إشعارات العملاء
+                <span className="rounded-full bg-[#00D4FF]/15 px-2 py-0.5 text-[11px] font-black text-[#00D4FF]">
+                  {notifications.length}
+                </span>
+              </button>
+              <button
+                type="button"
+                aria-controls="customer-orders-panel"
+                aria-expanded={activeCustomerPanel === "orders"}
+                onClick={() => setActiveCustomerPanel("orders")}
+                className={`inline-flex min-h-9 items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold transition hover:border-[#FF6B00]/50 ${
+                  activeCustomerPanel === "orders"
+                    ? "border-[#FF6B00]/60 bg-[#FF6B00]/15 text-[#FF8C32]"
+                    : "border-[#FF6B00]/25 bg-[#FF6B00]/5 text-white/80"
+                }`}
+              >
+                <PackagePlus className="size-4 text-[#FF6B00]" aria-hidden="true" />
+                طلبات العملاء
+                <span className="rounded-full bg-[#FF6B00]/15 px-2 py-0.5 text-[11px] font-black text-[#FF8C32]">
+                  {orders.length}
+                </span>
+              </button>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <button
@@ -1345,60 +1379,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
         </section>
 
 
-        <section
-          aria-label="أقسام العملاء"
-          className="grid gap-3 sm:grid-cols-2"
-        >
-          <button
-            type="button"
-            aria-controls="customer-notifications-panel"
-            aria-expanded={activeCustomerPanel === "notifications"}
-            onClick={() => setActiveCustomerPanel("notifications")}
-            className={`flex min-h-16 items-center justify-between gap-3 rounded-2xl border p-4 text-right transition hover:-translate-y-0.5 hover:border-[#00D4FF]/50 ${
-              activeCustomerPanel === "notifications"
-                ? "border-[#00D4FF]/60 bg-[#00D4FF]/10"
-                : "border-[#00D4FF]/20 bg-[#0A1931]/80"
-            }`}
-          >
-            <span className="flex items-center gap-3">
-              <span className="grid size-11 place-items-center rounded-xl bg-[#00D4FF]/15 text-[#00D4FF]">
-                <MessageCircle className="size-5" aria-hidden="true" />
-              </span>
-              <span>
-                <span className="block font-bold text-white">إشعارات العملاء</span>
-                <span className="mt-1 block text-xs text-white/50">عرض الإشعارات المنشورة</span>
-              </span>
-            </span>
-            <span className="rounded-full bg-[#00D4FF]/15 px-3 py-1 text-sm font-black text-[#00D4FF]">
-              {notifications.length}
-            </span>
-          </button>
 
-          <button
-            type="button"
-            aria-controls="customer-orders-panel"
-            aria-expanded={activeCustomerPanel === "orders"}
-            onClick={() => setActiveCustomerPanel("orders")}
-            className={`flex min-h-16 items-center justify-between gap-3 rounded-2xl border p-4 text-right transition hover:-translate-y-0.5 hover:border-[#FF6B00]/50 ${
-              activeCustomerPanel === "orders"
-                ? "border-[#FF6B00]/60 bg-[#FF6B00]/10"
-                : "border-[#FF6B00]/20 bg-[#0A1931]/80"
-            }`}
-          >
-            <span className="flex items-center gap-3">
-              <span className="grid size-11 place-items-center rounded-xl bg-[#FF6B00]/15 text-[#FF6B00]">
-                <PackagePlus className="size-5" aria-hidden="true" />
-              </span>
-              <span>
-                <span className="block font-bold text-white">طلبات العملاء</span>
-                <span className="mt-1 block text-xs text-white/50">الطلبات الجديدة: {unreadOrders}</span>
-              </span>
-            </span>
-            <span className="rounded-full bg-[#FF6B00]/15 px-3 py-1 text-sm font-black text-[#FF6B00]">
-              {orders.length}
-            </span>
-          </button>
-        </section>
 
         {activeCustomerPanel === "notifications" && (
           <section
