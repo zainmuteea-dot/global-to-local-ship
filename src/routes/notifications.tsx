@@ -495,6 +495,11 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
   const [draftTitle, setDraftTitle] = useState("");
   const [draftMessage, setDraftMessage] = useState("");
   const [draftType, setDraftType] = useState("offer");
+  const [readFilter, setReadFilter] = useState<"all" | "unread" | "read">("all");
+  const [categoryFilter, setCategoryFilter] = useState<
+    "all" | "offer" | "shipment" | "purchase" | "support"
+  >("all");
+  const [notificationSearch, setNotificationSearch] = useState("");
   const [expandedMessages, setExpandedMessages] = useState<Set<string>>(
     new Set(),
   );
@@ -837,9 +842,28 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
   const unreadSystem = notifications.filter(
     (item) => !readIds.has(item.id),
   ).length;
-  const latestFirst = [...notifications].sort(
+  const sortedNotifications = [...notifications].sort(
     (a, b) => Date.parse(b.created_at) - Date.parse(a.created_at),
   );
+  const matchesCategory = (type: string) => {
+    if (categoryFilter === "all") return true;
+    if (categoryFilter === "support")
+      return !["offer", "shipment", "purchase"].includes(type);
+    return type === categoryFilter;
+  };
+  const searchTerm = notificationSearch.trim().toLowerCase();
+  const latestFirst = sortedNotifications.filter((item) => {
+    const isRead = readIds.has(item.id);
+    if (readFilter === "unread" && isRead) return false;
+    if (readFilter === "read" && !isRead) return false;
+    if (!matchesCategory(item.type)) return false;
+    if (
+      searchTerm &&
+      !`${item.title} ${item.message ?? ""}`.toLowerCase().includes(searchTerm)
+    )
+      return false;
+    return true;
+  });
   const totalShown = notifications.length;
   const readCount = Math.max(0, totalShown - unreadSystem);
   const readPercent = totalShown
@@ -1212,6 +1236,89 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
               {sending ? "جارٍ الإرسال…" : "ارسل لجميع العملاء"}
             </button>
           </form>
+        </section>
+
+        <section
+          aria-label="فرز الإشعارات"
+          className="rounded-2xl border border-white/10 bg-[#0A1931]/60 p-4"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="flex items-center gap-2 text-sm font-bold text-white">
+              <Tag className="size-4 text-[#FF6B00]" />
+              فرز الإشعارات والبحث فيها
+            </h2>
+            <div className="flex flex-wrap gap-2">
+              {(
+                [
+                  ["all", `عرض الكل (${notifications.length})`],
+                  ["unread", `غير المقروءة (${unreadSystem})`],
+                  ["read", `المقروءة (${readCount})`],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={readFilter === value}
+                  onClick={() => setReadFilter(value)}
+                  className={`rounded-lg border px-3 py-1.5 text-xs font-bold transition ${
+                    readFilter === value
+                      ? "border-[#FF6B00] bg-[#FF6B00] text-white"
+                      : "border-white/15 bg-white/5 text-white/70 hover:bg-white/10"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap gap-2">
+              {(
+                [
+                  ["all", "الكل"],
+                  ["offer", "عروض"],
+                  ["shipment", "تحديثات شحن"],
+                  ["purchase", "تحديثات شراء"],
+                  ["support", "دعم وإدارة"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={categoryFilter === value}
+                  onClick={() => setCategoryFilter(value)}
+                  className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${
+                    categoryFilter === value
+                      ? "border-[#EAB308] bg-[#EAB308] text-[#0A1931]"
+                      : "border-white/15 bg-transparent text-white/70 hover:bg-white/10"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                disabled={savingRead || unreadSystem === 0}
+                onClick={() => void markAllSystemRead()}
+                className="rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs font-bold text-white/80 hover:bg-white/10 disabled:opacity-50"
+              >
+                تحديد الكل كمقروء
+              </button>
+              <input
+                type="search"
+                value={notificationSearch}
+                onChange={(event) => setNotificationSearch(event.target.value)}
+                placeholder="بحث في الإشعارات…"
+                aria-label="بحث في الإشعارات"
+                className="w-56 rounded-lg border border-white/15 bg-[#071226] px-3 py-2 text-xs text-white placeholder:text-white/40 focus:border-[#00D4FF] focus:outline-none"
+              />
+            </div>
+          </div>
+          <p className="mt-3 text-[11px] text-[#5D7183]">
+            يظهر {latestFirst.length} من {notifications.length} إشعار
+          </p>
         </section>
 
         <section className="grid items-start gap-4 lg:grid-cols-2">
