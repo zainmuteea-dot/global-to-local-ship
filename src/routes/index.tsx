@@ -394,6 +394,7 @@ export const QuickSidebar: React.FC<{
    ========================================================================= */
 export function HomePage() {
   const [user, setUser] = useState<any>(null);
+  const [authResolved, setAuthResolved] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [notifications, setNotifications] = useState<HomeNotification[]>([]);
   const [readNotificationIds, setReadNotificationIds] = useState<Set<string>>(new Set());
@@ -409,10 +410,12 @@ export function HomePage() {
       if (!alive) return;
       if (error) console.error("تعذر قراءة جلسة المستخدم:", error);
       setUser(data?.user ?? null);
+      setAuthResolved(true);
     });
 
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+      setAuthResolved(true);
     });
 
     return () => {
@@ -612,6 +615,31 @@ export function HomePage() {
   border-radius: 16px !important;
   box-shadow: 0 0 15px rgba(0,255,255,0.5), 0 0 25px rgba(255,122,0,0.4);
 }
+
+@keyframes als-welcome-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.als-welcome-track {
+  display: flex;
+  width: max-content;
+  animation: als-welcome-marquee 24s linear infinite;
+  will-change: transform;
+}
+.als-welcome-item {
+  flex: none;
+  padding-inline: 2.5rem;
+  white-space: nowrap;
+}
+.als-welcome-marquee:hover .als-welcome-track {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .als-welcome-track { animation: none; width: 100%; justify-content: center; }
+  .als-welcome-item { display: none; }
+  .als-welcome-item:first-child { display: block; width: 100%; text-align: center; }
+}
+
 /* بطاقات المتاجر: زجاج واضح مع لمعة خفيفة */
 .als-store-tile {
   isolation: isolate;
@@ -652,6 +680,19 @@ export function HomePage() {
 }
 `}</style>
       <BestBackground />
+      {authResolved && !user && (
+        <div
+          className="als-welcome-marquee relative z-40 overflow-hidden border-b border-sky-300/25 bg-gradient-to-r from-[#0A2540] via-[#0F4C81] to-[#0A2540] px-3 py-2 text-sky-50 shadow-sm"
+          role="status"
+          aria-label="مرحبًا بكم في السوق الشامل، تمتعوا بتجربة تسوق عالمية مميزة"
+          dir="ltr"
+        >
+          <div className="als-welcome-track" aria-hidden="true">
+            <span className="als-welcome-item" dir="rtl">مرحبًا بكم في السوق الشامل، تمتعوا بتجربة تسوق عالمية مميزة</span>
+            <span className="als-welcome-item" dir="rtl">مرحبًا بكم في السوق الشامل، تمتعوا بتجربة تسوق عالمية مميزة</span>
+          </div>
+        </div>
+      )}
       {activeNotification && (
         <div className="sticky top-0 z-40 border-b border-orange-200/70 bg-white/95 px-3 py-2.5 shadow-sm backdrop-blur-md sm:px-4">
           <div className="mx-auto flex max-w-5xl items-center gap-2 text-xs">
