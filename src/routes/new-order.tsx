@@ -29,6 +29,13 @@ function getOrderConversionRateToYER(currency: OrderCurrency): number {
   return FIXED_YER_RATE[currency];
 }
 
+function createOrderTrackingCode(): string {
+  const random = new Uint32Array(1);
+  crypto.getRandomValues(random);
+  const sequence = 100000 + (random[0] % 900000);
+  return `SQ-${sequence}`;
+}
+
 export const Route = createFileRoute("/new-order")({
   validateSearch: (
     search: Record<string, unknown>,
@@ -866,10 +873,12 @@ function NewOrderPage() {
         return;
       }
 
-      // لا نرسل tracking_code: قاعدة البيانات تنشئه عبر trigger.
-      const { data: savedOrder, error: insertError } = await supabase
-        .from("orders")
+      // نولّد رقمًا واحدًا ونحفظه في الحقلين معًا، حتى لا يبقى order_number فارغًا.
+      const generatedTrackingCode = createOrderTrackingCode();
+      const { data: savedOrder, error: insertError } = await (supabase.from("orders") as any)
         .insert({
+          tracking_code: generatedTrackingCode,
+          order_number: generatedTrackingCode,
           customer_name: name.trim(),
           phone: phone.trim(),
           product_link: url.trim(),
@@ -894,7 +903,7 @@ function NewOrderPage() {
           user_id: user.id,
           sms_status: "pending",
         })
-        .select("id, tracking_code")
+        .select("id, tracking_code, order_number")
         .single();
 
       if (insertError) {
@@ -906,7 +915,15 @@ function NewOrderPage() {
         );
       }
 
-      const code = savedOrder.tracking_code || "";
+      const code = String(savedOrder.tracking_code || "").trim();
+      if (!code || code !== generatedTrackingCode || savedOrder.order_number !== code) {
+        setTrackingUnavailable(true);
+        setSbError(
+          "حُفظ الطلب، لكن لم يتطابق رقم الطلب ورمز التتبع كما ينبغي. لا تعِد تقديم الطلب؛ تواصل مع الدعم للتحقق.",
+        );
+        setStatus("done");
+        return;
+      }
 
       // تخزين نسخة محلية للعرض فقط؛ مصدر الحقيقة هو قاعدة البيانات.
       try {
@@ -917,7 +934,8 @@ function NewOrderPage() {
         const currentList = Array.isArray(parsedOrders) ? parsedOrders : [];
         const newRecord = {
           id: savedOrder.id,
-          tracking_code: code || null,
+          tracking_code: code,
+          order_number: code,
           customer_name: name.trim(),
           phone: phone.trim(),
           product_link: url.trim(),
@@ -1310,281 +1328,6 @@ function NewOrderPage() {
         )}
 
         {/* 1 - رابط المنتج */}
-        <section className="no-card">
-          <div className="no-head">
-            <div className="no-num">1</div>
-            <div className="no-ico">
-              <Cart />
-            </div>
-            <div className="no-title">تفاصيل السلة</div>
-          </div>
-          {store && <span className="no-pill">{store.label}</span>}
-          <div className="no-field">
-            <label className="no-lbl">
-              رابط السلة / المنتج <span className="no-req">*</span>
-            </label>
-            <div className="no-iw">
-              <LinkIcon />
-              <input
-                id="new-order-product-url"
-                className="has-ic"
-                type="text"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                dir="ltr"
-                style={{ textAlign: "right" }}
-                placeholder="الصق رابط المنتج من أي متجر عالمي (SHEIN، Amazon، AliExpress...)"
-              />
-            </div>
-            {store && (
-              <div className="no-ok">
-                <Check s={18} />
-                <span>تم التعرف على متجر {store.label} بنجاح</span>
-                <Flash />
-              </div>
-            )}
-          </div>
-        </section>
+      
 
-        {/* 2 - سعر السلعة في المتجر الأصلي */}
-        <section className="no-card">
-          <div className="no-head">
-            <div className="no-num">2</div>
-            <div className="no-ico">
-              <Bag />
-            </div>
-            <div className="no-title">سعر السلعة في المتجر الأصلي</div>
-          </div>
-          <div className="no-field">
-            <label className="no-lbl" htmlFor="new-order-product-price">
-              سعر السلعة في المتجر الأصلي <span className="no-req">*</span>
-            </label>
-            <div className="no-price">
-              <div className="no-iw">
-                <input
-                  id="new-order-product-price"
-                  type="number"
-                  min="0.01"
-                  step="0.01"
-                  required
-                  aria-required="true"
-                  aria-invalid={Boolean(priceError)}
-                  aria-describedby={priceError ? "new-order-product-price-error" : undefined}
-                  value={price}
-                  onChange={(e) => {
-                    setPrice(e.target.value);
-                    if (priceError) setPriceError("");
-                  }}
-                  placeholder="0.00"
-                />
-              </div>
-              <select
-                value={currency}
-                onChange={(e) => setCurrency(e.target.value)}
-              >
-                <option>ر.س سعودي</option>
-                <option>$ دولار</option>
-              </select>
-            </div>
-            <p className="no-entry-guidance">
-              أدخل السعر الظاهر في المتجر بالريال السعودي أو الدولار؛ يُحوّل
-              تلقائيًا إلى الريال اليمني بسعر ثابت: السعودي 140 والدولار 535.
-            </p>
-            {priceError && (
-              <div
-                id="new-order-product-price-error"
-                className="no-warn"
-                role="alert"
-                aria-live="assertive"
-              >
-                <Flash />
-                <span>{priceError}</span>
-              </div>
-            )}
-            {price.trim() &&
-              Number.isFinite(Number(price)) &&
-              Number(price) > 0 &&
-              (() => {
-                const currentCurrency = getOrderCurrency(currency);
-                const amountYER = convertOrderPriceToYER(
-                  Number(price),
-                  currentCurrency,
-                );
-                const rateToYER = getOrderConversionRateToYER(currentCurrency);
-                if (amountYER !== null && rateToYER !== null) {
-                  return (
-                    <div className="no-ok" role="status" aria-live="polite">
-                      <Check s={18} />
-                      <span>
-                        يعادل تقريبًا {amountYER.toLocaleString("ar-YE")} ر.ي
-                        {currentCurrency !== "YER" && (
-                          <>
-                            {" "}
-                            · سعر التحويل الثابت: 1 {currentCurrency} ={" "}
-                            {rateToYER.toLocaleString("ar-YE", {
-                              maximumFractionDigits: 4,
-                            })} ر.ي
-                          </>
-                        )}
-                      </span>
-                    </div>
-                  );
-                }
-                return (
-                  <div className="no-warn" role="status" aria-live="polite">
-                    <Flash />
-                    <span>تعذر حساب التحويل. تحقق من قيمة السعر المدخلة.</span>
-                  </div>
-                );
-              })()}
-          </div>
-        </section>
-        {/* 3 - عنوان التوصيل وبيانات المستلم */}
-        <section className="no-card">
-          <div className="no-head">
-            <div className="no-num">3</div>
-            <div className="no-ico">
-              <Truck />
-            </div>
-            <div className="no-title">عنوان التوصيل وبيانات المستلم</div>
-          </div>
-          <div className="no-field">
-            <label className="no-lbl">
-              عنوان التوصيل بالتفصيل (المدينة، الحي، أقرب معلم){" "}
-              <span className="no-req">*</span>
-            </label>
-            <div className="no-iw">
-              <input
-                style={{ paddingInlineEnd: 58 }}
-                type="text"
-                value={address}
-                onChange={(e) => updateAddress(e.target.value)}
-                placeholder="مثال: صنعاء - شارع حدة - بجوار فندق برج السلام..."
-              />
-              <button
-                className="no-location"
-                type="button"
-                onClick={useCurrentLocation}
-                disabled={isLocating}
-                aria-label={isLocating
-                  ? "جارٍ تحديد الموقع"
-                  : "استخدام موقعي الحالي"}
-                title={isLocating ? "جارٍ تحديد الموقع" : "استخدام موقعي الحالي"}
-              >
-                <Pin />
-              </button>
-            </div>
-          </div>
-          <div className="no-field">
-            <label className="no-lbl">
-              اسم المستلم الكريم <span className="no-req">*</span>
-            </label>
-            <div className="no-iw">
-              <User />
-              <input
-                className="has-ic"
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="اسم المستلم"
-              />
-            </div>
-          </div>
-          <div className="no-field">
-            <label className="no-lbl">
-              رقم الهاتف / الواتساب <span className="no-req">*</span>
-            </label>
-            <div className="no-iw">
-              <Phone />
-              <input
-                className="has-ic"
-                type="tel"
-                dir="ltr"
-                style={{ textAlign: "right" }}
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="7XXXXXXXX"
-              />
-            </div>
-          </div>
-        </section>
-
-        {/* 4 - ملاحظات إضافية */}
-        <section className="no-card">
-          <div className="no-head alt">
-            <div className="no-num">4</div>
-            <div className="no-ico">
-              <Msg />
-            </div>
-            <div className="no-title">ملاحظات إضافية (اختياري)</div>
-          </div>
-          <div className="no-ta">
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="اكتب أي ملاحظات خاصة بطلبك هنا (مقاسات، ألوان، تعليمات خاصة)..."
-              aria-label="ملاحظات إضافية على الطلب"
-            />
-            <button
-              className={`mic ${isRecording ? "listening" : ""}`}
-              type="button"
-              title={isRecording
-                ? "جارٍ الاستماع... انقر للإيقاف"
-                : "إملاء الملاحظات صوتيًا"}
-              aria-label={isRecording
-                ? "إيقاف الإملاء الصوتي"
-                : "إملاء الملاحظات صوتيًا"}
-              aria-pressed={isRecording}
-              onClick={toggleSpeechRecognition}
-            >
-              <Mic />
-            </button>
-          </div>
-          {(isRecording || voiceError) && (
-            <p className="no-voice-status" role="status" aria-live="polite">
-              {isRecording
-                ? "جارٍ الاستماع... تحدث الآن، وستُضاف كلماتك إلى الملاحظات."
-                : voiceError}
-            </p>
-          )}
-        </section>
-
-        {/* زر تقديم الطلب */}
-        <button
-          id="new-order-submit"
-          className="no-btn no-primary"
-          type="button"
-          onClick={submit}
-          disabled={status === "sending"}
-        >
-          <Rocket />
-          <span>
-            {status === "sending" ? "جارٍ إرسال وحفظ الطلب..." : "تقديم الطلب"}
-          </span>
-        </button>
-
-        {/* زر الرجوع للصفحة الرئيسية */}
-        <button
-          className="no-btn no-ghost"
-          type="button"
-          onClick={() => navigate({ to: "/dashboard" })}
-        >
-          <Arrow />
-          <span>الرجوع للصفحة الرئيسية</span>
-        </button>
-
-        <div className="no-foot">
-          <div className="f">
-            <Check /> فحص ومطابقة أصلية
-          </div>
-          <div className="f">
-            <Truck /> توصيل لكافة المدن
-          </div>
-          <div className="f">
-            <Check /> تأكيد بالواتساب
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+... [truncated — file is 61852 bytes, showing first 51200]
