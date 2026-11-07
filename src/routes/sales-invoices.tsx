@@ -23,7 +23,9 @@ import {
   Wallet,
 } from "lucide-react";
 import { AdminRouteGuard } from "@/components/admin/AdminRouteGuard";
+import { PermissionRouteGuard } from "@/components/admin/PermissionRouteGuard";
 import { supabase } from "@/integrations/supabase/client";
+import { checkPermission, usePermission } from "@/lib/permissions";
 
 export const Route = createFileRoute("/sales-invoices")({
   component: GuardedSalesInvoicesPage,
@@ -206,9 +208,9 @@ async function attachOrderBalances(rows: InvoiceRow[]): Promise<InvoiceRow[]> {
 
 function GuardedSalesInvoicesPage() {
   return (
-    <AdminRouteGuard>
+    <PermissionRouteGuard area="finance" action="view" allowStaff redirectTo="/sales-invoices">
       <SalesInvoicesPage />
-    </AdminRouteGuard>
+    </PermissionRouteGuard>
   );
 }
 
@@ -222,6 +224,8 @@ function SalesInvoicesPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const managePermission = usePermission("finance", "manage");
+  const deletePermission = usePermission("finance", "delete");
 
   const loadInvoices = useCallback(async () => {
     setLoading(true);
@@ -352,6 +356,18 @@ function SalesInvoicesPage() {
       setErrorMessage("معرّف الطلب يجب أن يكون UUID صحيحًا، أو اتركه فارغًا.");
       return;
     }
+    if (editingId) {
+      try {
+        if (!(await checkPermission("finance", "manage"))) {
+          setErrorMessage("لا تملك صلاحية تعديل فواتير المبيعات.");
+          return;
+        }
+      } catch (permissionError) {
+        console.error("Could not verify invoice edit permission:", permissionError);
+        setErrorMessage("تعذر التحقق من صلاحية تعديل الفاتورة. لم يتم حفظ التغييرات.");
+        return;
+      }
+    }
     setSaving(true);
     const { data: authData, error: authError } = await supabase.auth.getUser();
     if (authError || !authData.user) {
@@ -397,7 +413,17 @@ function SalesInvoicesPage() {
     await loadInvoices();
   };
 
-  const startEditing = (row: InvoiceRow) => {
+  const startEditing = async (row: InvoiceRow) => {
+    try {
+      if (!(await checkPermission("finance", "manage"))) {
+        setErrorMessage("لا تملك صلاحية تعديل فواتير المبيعات.");
+        return;
+      }
+    } catch (permissionError) {
+      console.error("Could not verify invoice edit permission:", permissionError);
+      setErrorMessage("تعذر التحقق من صلاحية التعديل. حاول مرة أخرى.");
+      return;
+    }
     setEditingId(row.id);
     setForm({
       client: row.client ?? "",
@@ -415,6 +441,16 @@ function SalesInvoicesPage() {
   };
 
   const deleteInvoice = async (row: InvoiceRow) => {
+    try {
+      if (!(await checkPermission("finance", "delete"))) {
+        setErrorMessage("لا تملك صلاحية حذف فواتير المبيعات.");
+        return;
+      }
+    } catch (permissionError) {
+      console.error("Could not verify invoice delete permission:", permissionError);
+      setErrorMessage("تعذر التحقق من صلاحية الحذف. لم يتم حذف الفاتورة.");
+      return;
+    }
     if (
       !window.confirm(
         `هل أنت متأكد من حذف الفاتورة ${row.invoice_number}؟ لا يمكن التراجع عن الحذف.`,
@@ -489,6 +525,7 @@ function SalesInvoicesPage() {
               />{" "}
               تحديث
             </button>
+            {!managePermission.loading && managePermission.allowed && (
             <button
               type="button"
               onClick={() => {
@@ -502,6 +539,7 @@ function SalesInvoicesPage() {
             >
               <Plus className="size-4" /> إصدار فاتورة
             </button>
+          )}
             <button
               type="button"
               onClick={() => window.print()}
@@ -680,22 +718,28 @@ function SalesInvoicesPage() {
                         <div className="flex justify-center gap-1.5">
                           {row.source !== "order" && (
                             <>
-                              <button
-                                type="button"
-                                onClick={() => startEditing(row)}
-                                title="تعديل الفاتورة"
-                                className="rounded-lg bg-sky-50 p-1.5 text-sky-700 transition hover:bg-sky-100"
-                              >
-                                <Pencil className="size-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => void deleteInvoice(row)}
-                                title="حذف الفاتورة"
-                                className="rounded-lg bg-red-50 p-1.5 text-red-700 transition hover:bg-red-100"
-                              >
-                                <Trash2 className="size-4" />
-                              </button>
+                              {!managePermission.loading && managePermission.allowed && (
+                                <button
+                                  type="button"
+                                  onClick={() => void startEditing(row)}
+                                  title="تعديل الفاتورة"
+                                  aria-label={`تعديل الفاتورة ${row.invoice_number}`}
+                                  className="rounded-lg bg-sky-50 p-1.5 text-sky-700 transition hover:bg-sky-100"
+                                >
+                                  <Pencil className="size-4" />
+                                </button>
+                              )}
+                              {!deletePermission.loading && deletePermission.allowed && (
+                                <button
+                                  type="button"
+                                  onClick={() => void deleteInvoice(row)}
+                                  title="حذف الفاتورة"
+                                  aria-label={`حذف الفاتورة ${row.invoice_number}`}
+                                  className="rounded-lg bg-red-50 p-1.5 text-red-700 transition hover:bg-red-100"
+                                >
+                                  <Trash2 className="size-4" />
+                                </button>
+                              )}
                             </>
                           )}
                           <button
