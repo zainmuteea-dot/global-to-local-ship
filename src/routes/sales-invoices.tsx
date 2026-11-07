@@ -1,5 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type FormEvent,
+} from "react";
 import {
   ArrowRight,
   CheckCircle2,
@@ -19,7 +25,9 @@ import {
 import { AdminRouteGuard } from "@/components/admin/AdminRouteGuard";
 import { supabase } from "@/integrations/supabase/client";
 
-export const Route = createFileRoute("/sales-invoices")({ component: GuardedSalesInvoicesPage });
+export const Route = createFileRoute("/sales-invoices")({
+  component: GuardedSalesInvoicesPage,
+});
 
 type InvoiceRow = {
   id: string;
@@ -57,7 +65,8 @@ const EMPTY_FORM: InvoiceForm = {
   customerUserId: "",
   orderId: "",
 };
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const amount = (value: number | string | null | undefined) => {
   const n = Number(value ?? 0);
   return Number.isFinite(n) ? n : 0;
@@ -70,7 +79,10 @@ const dateLabel = (value: string | null) => {
   return Number.isNaN(d.getTime()) ? value : d.toLocaleDateString("ar-YE");
 };
 
-const sumComplete = (rows: InvoiceRow[], field: "total_yer" | "paid_yer" | "remaining_yer") => {
+const sumComplete = (
+  rows: InvoiceRow[],
+  field: "total_yer" | "paid_yer" | "remaining_yer",
+) => {
   if (rows.length === 0 || rows.some((row) => row[field] == null)) return null;
   return rows.reduce((sum, row) => sum + amount(row[field]), 0);
 };
@@ -79,84 +91,115 @@ const yerLabel = (value: number | string | null | undefined) =>
   value == null ? "غير مسجل" : `${money(value, 0)} ر.ي`;
 
 async function attachOrderBalances(rows: InvoiceRow[]): Promise<InvoiceRow[]> {
-  const orderIds = Array.from(new Set(rows.map((row) => row.order_id).filter((id): id is string => Boolean(id))));
+  // order_id is the only key used to connect an invoice/order to its payments.
+  // Tracking strings are deliberately not used for payment matching.
+  const orderIds = Array.from(
+    new Set(
+      rows.map((row) => row.order_id).filter((id): id is string => Boolean(id)),
+    ),
+  );
   if (orderIds.length === 0) {
-    return rows.map((row) => ({ ...row, paid_yer: null, remaining_yer: null }));
+    return rows.map((row) => ({
+      ...row,
+      total_yer: null,
+      paid_yer: null,
+      remaining_yer: null,
+    }));
   }
 
   const db = supabase as any;
   const { data: orderRows, error: ordersError } = await db
     .from("orders")
-    .select("id, tracking_code, total_cost_yer")
+    .select("id, total_cost_yer")
     .in("id", orderIds);
+
   if (ordersError) {
-    console.warn("Could not load linked order balances:", ordersError);
-    return rows.map((row) => ({ ...row, paid_yer: null, remaining_yer: null }));
+    console.error(
+      "Could not load linked orders for invoice balances:",
+      ordersError,
+    );
+    return rows.map((row) => ({
+      ...row,
+      total_yer: null,
+      paid_yer: null,
+      remaining_yer: null,
+    }));
   }
 
-  const orderById = new Map<string, any>((orderRows ?? []).map((order: any) => [String(order.id), order]));
-  const explicitBalances = new Map<string, { paid: number | null; remaining: number | null }>();
+  const orderById = new Map<string, any>(
+    (orderRows ?? []).map((order: any) => [String(order.id), order]),
+  );
+  const paidByOrderId = new Map<string, number>();
+  const invalidOrderIds = new Set<string>();
+  const paymentPageSize = 1000;
 
-  // These legacy fields are optional across deployed database versions. A failed optional read
-  // must not prevent the invoice list from loading; approved YER payments are used as a safe fallback.
-  const { data: storedBalances, error: balanceError } = await db
-    .from("orders")
-    .select("id, paid_amount, remaining_amount")
-    .in("id", orderIds);
-  if (!balanceError) {
-    for (const order of storedBalances ?? []) {
-      explicitBalances.set(String(order.id), {
-        paid: order.paid_amount == null ? null : Number(order.paid_amount),
-        remaining: order.remaining_amount == null ? null : Number(order.remaining_amount),
-      });
-    }
-  }
+  try {
+    // Chunk IDs to keep PostgREST URLs bounded, and paginate to avoid silently
+    // truncating an order's approved payment history at the API row cap.
+    for (let idStart = 0; idStart < orderIds.length; idStart += 100) {
+      const idChunk = orderIds.slice(idStart, idStart + 100);
+      for (let from = 0; ; from += paymentPageSize) {
+        const { data: paymentRows, error: paymentsError } = await db
+          .from("payments")
+          .select("order_id, amount")
+          .in("order_id", idChunk)
+          .eq("status", "approved")
+          .order("order_id", { ascending: true })
+          .order("id", { ascending: true })
+          .range(from, from + paymentPageSize - 1);
 
-  const orderIdsByTracking = new Map<string, string[]>();
-  for (const [id, order] of orderById) {
-    const tracking = String(order.tracking_code ?? "").trim();
-    if (!tracking) continue;
-    orderIdsByTracking.set(tracking, [...(orderIdsByTracking.get(tracking) ?? []), id]);
-  }
-  const uniqueTrackings = Array.from(orderIdsByTracking.entries())
-    .filter(([, ids]) => new Set(ids).size === 1)
-    .map(([tracking]) => tracking);
-  const paidFromPayments = new Map<string, number>();
+        if (paymentsError) throw paymentsError;
 
-  if (uniqueTrackings.length > 0) {
-    const { data: paymentRows, error: paymentsError } = await db
-      .from("payments")
-      .select("id, tracking_code, amount, currency, status")
-      .in("tracking_code", uniqueTrackings);
-    if (!paymentsError) {
-      for (const payment of paymentRows ?? []) {
-        const status = String(payment.status ?? "").trim().toLowerCase();
-        const currency = String(payment.currency ?? "").trim().toUpperCase();
-        const value = Number(payment.amount);
-        if (status !== "approved" || currency !== "YER" || !Number.isFinite(value) || value < 0) continue;
-        const tracking = String(payment.tracking_code ?? "").trim();
-        const ids = orderIdsByTracking.get(tracking) ?? [];
-        if (ids.length !== 1) continue;
-        const id = ids[0];
-        if (id) paidFromPayments.set(id, (paidFromPayments.get(id) ?? 0) + value);
+        for (const payment of paymentRows ?? []) {
+          const orderId = String(payment.order_id ?? "");
+          const value = Number(payment.amount);
+          if (!idChunk.includes(orderId)) continue;
+          if (!Number.isFinite(value)) {
+            invalidOrderIds.add(orderId);
+            continue;
+          }
+          paidByOrderId.set(orderId, (paidByOrderId.get(orderId) ?? 0) + value);
+        }
+
+        if ((paymentRows ?? []).length < paymentPageSize) break;
       }
-    } else {
-      console.warn("Could not load approved YER payments for invoice balances:", paymentsError);
     }
+  } catch (paymentsError) {
+    console.error(
+      "Could not load approved payments by order_id:",
+      paymentsError,
+    );
+    return rows.map((row) => {
+      const order = row.order_id ? orderById.get(row.order_id) : null;
+      return {
+        ...row,
+        total_yer: order?.total_cost_yer ?? null,
+        paid_yer: null,
+        remaining_yer: null,
+      };
+    });
   }
 
   return rows.map((row) => {
-    if (!row.order_id) return { ...row, paid_yer: null, remaining_yer: null };
+    if (!row.order_id) {
+      return { ...row, total_yer: null, paid_yer: null, remaining_yer: null };
+    }
+
     const order = orderById.get(row.order_id);
-    const stored = explicitBalances.get(row.order_id);
-    const paid = stored?.paid ?? paidFromPayments.get(row.order_id) ?? null;
-    const total = row.total_yer ?? order?.total_cost_yer ?? null;
-    const remaining = stored?.remaining ?? (total != null && paid != null ? Math.max(0, Number(total) - paid) : null);
+    const total =
+      order?.total_cost_yer == null ? null : Number(order.total_cost_yer);
+    const hasValidTotal = total !== null && Number.isFinite(total);
+    const paid = invalidOrderIds.has(row.order_id)
+      ? null
+      : (paidByOrderId.get(row.order_id) ?? 0);
+
     return {
       ...row,
-      total_yer: row.total_yer ?? order?.total_cost_yer ?? null,
+      // The order's total_cost_yer is the sole source of the displayed total.
+      total_yer: hasValidTotal ? total : null,
       paid_yer: paid,
-      remaining_yer: remaining,
+      remaining_yer:
+        hasValidTotal && paid !== null ? Math.max(0, total - paid) : null,
     };
   });
 }
@@ -197,7 +240,11 @@ function SalesInvoicesPage() {
         "تعذر تحميل فواتير المبيعات. تحقق من اتصال Supabase وصلاحية المدير وسياسات RLS.",
       );
     } else if (data?.length) {
-      setInvoices(await attachOrderBalances((data as InvoiceRow[]).map((row) => ({ ...row, source: "invoice" }))));
+      setInvoices(
+        await attachOrderBalances(
+          (data as InvoiceRow[]).map((row) => ({ ...row, source: "invoice" })),
+        ),
+      );
     } else {
       // الطلبات هي مصدر الفاتورة في المسارات القديمة؛ نعرضها حتى لا تنفصل صفحة الفواتير عن البيانات الفعلية.
       const { data: orders, error: ordersError } = await db
@@ -208,26 +255,31 @@ function SalesInvoicesPage() {
         .order("created_at", { ascending: false })
         .limit(200);
       if (ordersError) {
-        console.error("Failed to load orders for invoice linkage:", ordersError);
+        console.error(
+          "Failed to load orders for invoice linkage:",
+          ordersError,
+        );
         setInvoices([]);
         setErrorMessage("تعذر ربط الفواتير بالطلبات في قاعدة البيانات.");
       } else {
-        const orderInvoices: InvoiceRow[] = (orders ?? []).map((order: any) => ({
-          id: String(order.id),
-          invoice_number: order.tracking_code || `ORD-${order.id}`,
-          client: order.customer_name ?? null,
-          tracking_code: order.tracking_code ?? null,
-          total: null,
-          total_yer: order.total_cost_yer ?? null,
-          paid_yer: null,
-          remaining_yer: null,
-          deposit_due_yer: null,
-          created_at: order.created_at ?? null,
-          order_id: String(order.id),
-          user_id: order.user_id ?? null,
-          created_by: null,
-          source: "order",
-        }));
+        const orderInvoices: InvoiceRow[] = (orders ?? []).map(
+          (order: any) => ({
+            id: String(order.id),
+            invoice_number: order.tracking_code || `ORD-${order.id}`,
+            client: order.customer_name ?? null,
+            tracking_code: order.tracking_code ?? null,
+            total: null,
+            total_yer: order.total_cost_yer ?? null,
+            paid_yer: null,
+            remaining_yer: null,
+            deposit_due_yer: null,
+            created_at: order.created_at ?? null,
+            order_id: String(order.id),
+            user_id: order.user_id ?? null,
+            created_by: null,
+            source: "order",
+          }),
+        );
         setInvoices(await attachOrderBalances(orderInvoices));
       }
     }
@@ -266,23 +318,34 @@ function SalesInvoicesPage() {
     const client = form.client.trim();
     const total = Number(form.total);
     const totalYer = Number(form.totalYer);
-    const depositDueYer = form.depositDueYer.trim() === "" ? null : Number(form.depositDueYer);
+    const depositDueYer =
+      form.depositDueYer.trim() === "" ? null : Number(form.depositDueYer);
     const customerUserId = form.customerUserId.trim() || null;
     const orderId = form.orderId.trim() || null;
     if (!client) {
       setErrorMessage("أدخل اسم العميل.");
       return;
     }
-    if (!Number.isFinite(total) || total < 0 || !Number.isFinite(totalYer) || totalYer < 0) {
+    if (
+      !Number.isFinite(total) ||
+      total < 0 ||
+      !Number.isFinite(totalYer) ||
+      totalYer < 0
+    ) {
       setErrorMessage("أدخل إجماليًا صحيحًا غير سالب في حقول الفاتورة.");
       return;
     }
-    if (depositDueYer !== null && (!Number.isFinite(depositDueYer) || depositDueYer < 0)) {
+    if (
+      depositDueYer !== null &&
+      (!Number.isFinite(depositDueYer) || depositDueYer < 0)
+    ) {
       setErrorMessage("أدخل مبلغ الدفعة المقدمة بالريال كرقم صحيح غير سالب.");
       return;
     }
     if (customerUserId && !UUID_RE.test(customerUserId)) {
-      setErrorMessage("معرّف حساب العميل يجب أن يكون UUID صحيحًا، أو اتركه فارغًا.");
+      setErrorMessage(
+        "معرّف حساب العميل يجب أن يكون UUID صحيحًا، أو اتركه فارغًا.",
+      );
       return;
     }
     if (orderId && !UUID_RE.test(orderId)) {
@@ -294,7 +357,9 @@ function SalesInvoicesPage() {
     if (authError || !authData.user) {
       console.error("Could not identify signed-in admin:", authError);
       setSaving(false);
-      setErrorMessage("انتهت جلسة الدخول أو تعذر التحقق منها. سجّل الدخول مجددًا.");
+      setErrorMessage(
+        "انتهت جلسة الدخول أو تعذر التحقق منها. سجّل الدخول مجددًا.",
+      );
       return;
     }
     const db = supabase as any;
@@ -310,7 +375,9 @@ function SalesInvoicesPage() {
     };
     const result = editingId
       ? await db.from("sales_invoices").update(values).eq("id", editingId)
-      : await db.from("sales_invoices").insert({ ...values, created_by: authData.user.id });
+      : await db
+          .from("sales_invoices")
+          .insert({ ...values, created_by: authData.user.id });
     setSaving(false);
     if (result.error) {
       console.error("Failed to save sales invoice:", result.error);
@@ -323,7 +390,9 @@ function SalesInvoicesPage() {
     setEditingId(null);
     setShowAddModal(false);
     setSuccessMessage(
-      editingId ? "تم تحديث الفاتورة في قاعدة البيانات." : "تم حفظ الفاتورة في قاعدة البيانات.",
+      editingId
+        ? "تم تحديث الفاتورة في قاعدة البيانات."
+        : "تم حفظ الفاتورة في قاعدة البيانات.",
     );
     await loadInvoices();
   };
@@ -335,7 +404,8 @@ function SalesInvoicesPage() {
       trackingCode: row.tracking_code ?? "",
       total: row.total == null ? "" : String(row.total),
       totalYer: row.total_yer == null ? "" : String(row.total_yer),
-      depositDueYer: row.deposit_due_yer == null ? "" : String(row.deposit_due_yer),
+      depositDueYer:
+        row.deposit_due_yer == null ? "" : String(row.deposit_due_yer),
       customerUserId: row.user_id ?? "",
       orderId: row.order_id ?? "",
     });
@@ -375,7 +445,11 @@ function SalesInvoicesPage() {
     ]
       .filter(Boolean)
       .join("\n");
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
+    window.open(
+      `https://wa.me/?text=${encodeURIComponent(text)}`,
+      "_blank",
+      "noopener,noreferrer",
+    );
   };
 
   return (
@@ -410,7 +484,10 @@ function SalesInvoicesPage() {
               disabled={loading}
               className="flex items-center gap-2 rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-200 disabled:opacity-50"
             >
-              <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} /> تحديث
+              <RefreshCw
+                className={`size-4 ${loading ? "animate-spin" : ""}`}
+              />{" "}
+              تحديث
             </button>
             <button
               type="button"
@@ -462,33 +539,57 @@ function SalesInvoicesPage() {
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div className="rounded-2xl border border-sky-100 bg-white p-5 shadow-sm">
             <div className="mb-2 flex items-center justify-between text-[#0F4C81]">
-              <span className="text-xs font-bold">إجمالي الفواتير بالريال اليمني</span>
+              <span className="text-xs font-bold">
+                إجمالي الفواتير بالريال اليمني
+              </span>
               <Wallet className="size-5 rounded-lg bg-sky-50 p-1" />
             </div>
             <div className="text-2xl font-black text-slate-900">
-              {loading ? "…" : totals.yer == null ? "بيانات غير مكتملة" : yerLabel(totals.yer)}
+              {loading
+                ? "…"
+                : totals.yer == null
+                  ? "بيانات غير مكتملة"
+                  : yerLabel(totals.yer)}
             </div>
-            <p className="mt-1 text-[11px] text-slate-400">{invoices.length} فاتورة أو طلب محمّل</p>
+            <p className="mt-1 text-[11px] text-slate-400">
+              {invoices.length} فاتورة أو طلب محمّل
+            </p>
           </div>
           <div className="rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm">
             <div className="mb-2 flex items-center justify-between text-emerald-700">
-              <span className="text-xs font-bold">المبلغ المدفوع بالريال اليمني</span>
+              <span className="text-xs font-bold">
+                المبلغ المدفوع بالريال اليمني
+              </span>
               <CheckCircle2 className="size-5 rounded-lg bg-emerald-50 p-1" />
             </div>
             <div className="text-2xl font-black text-emerald-800">
-              {loading ? "…" : totals.paid == null ? "بيانات غير مكتملة" : yerLabel(totals.paid)}
+              {loading
+                ? "…"
+                : totals.paid == null
+                  ? "بيانات غير مكتملة"
+                  : yerLabel(totals.paid)}
             </div>
-            <p className="mt-1 text-[11px] text-slate-400">الدفعات المعتمدة أو المسجلة فقط</p>
+            <p className="mt-1 text-[11px] text-slate-400">
+              الدفعات المعتمدة أو المسجلة فقط
+            </p>
           </div>
           <div className="rounded-2xl border border-amber-100 bg-white p-5 shadow-sm">
             <div className="mb-2 flex items-center justify-between text-amber-700">
-              <span className="text-xs font-bold">المتبقي عند التسليم بالريال اليمني</span>
+              <span className="text-xs font-bold">
+                المتبقي عند التسليم بالريال اليمني
+              </span>
               <Clock className="size-5 rounded-lg bg-amber-50 p-1" />
             </div>
             <div className="text-2xl font-black text-amber-700">
-              {loading ? "…" : totals.remaining == null ? "بيانات غير مكتملة" : yerLabel(totals.remaining)}
+              {loading
+                ? "…"
+                : totals.remaining == null
+                  ? "بيانات غير مكتملة"
+                  : yerLabel(totals.remaining)}
             </div>
-            <p className="mt-1 text-[11px] text-slate-400">لا يُحتسب من مبالغ غير مرتبطة بالطلب</p>
+            <p className="mt-1 text-[11px] text-slate-400">
+              لا يُحتسب من مبالغ غير مرتبطة بالطلب
+            </p>
           </div>
         </section>
         <section className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:flex-row">
@@ -523,15 +624,22 @@ function SalesInvoicesPage() {
               <tbody className="divide-y divide-slate-100 font-medium">
                 {loading ? (
                   <tr>
-                    <td colSpan={7} className="py-12 text-center text-slate-500">
+                    <td
+                      colSpan={7}
+                      className="py-12 text-center text-slate-500"
+                    >
                       <span className="inline-flex items-center gap-2">
-                        <Loader2 className="size-4 animate-spin" /> جارٍ تحميل الفواتير...
+                        <Loader2 className="size-4 animate-spin" /> جارٍ تحميل
+                        الفواتير...
                       </span>
                     </td>
                   </tr>
                 ) : filteredInvoices.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-12 text-center text-slate-500">
+                    <td
+                      colSpan={7}
+                      className="py-12 text-center text-slate-500"
+                    >
                       {invoices.length
                         ? "لا توجد نتائج مطابقة للبحث."
                         : "لا توجد فواتير محفوظة في قاعدة البيانات."}
@@ -539,7 +647,10 @@ function SalesInvoicesPage() {
                   </tr>
                 ) : (
                   filteredInvoices.map((row) => (
-                    <tr key={row.id} className="transition hover:bg-slate-50/80">
+                    <tr
+                      key={row.id}
+                      className="transition hover:bg-slate-50/80"
+                    >
                       <td className="px-4 py-3.5">
                         <div className="font-mono font-bold text-[#0F4C81]">
                           {row.invoice_number}
@@ -548,7 +659,9 @@ function SalesInvoicesPage() {
                           {dateLabel(row.created_at)}
                         </div>
                       </td>
-                      <td className="px-4 py-3.5 font-bold text-slate-900">{row.client || "—"}</td>
+                      <td className="px-4 py-3.5 font-bold text-slate-900">
+                        {row.client || "—"}
+                      </td>
                       <td className="px-4 py-3.5">
                         <span className="inline-block rounded bg-sky-50 px-2 py-0.5 font-mono text-xs font-bold text-[#0F4C81]">
                           {row.tracking_code || "—"}
@@ -653,7 +766,9 @@ function SalesInvoicesPage() {
                     <input
                       maxLength={100}
                       value={form.trackingCode}
-                      onChange={(e) => updateForm("trackingCode", e.target.value)}
+                      onChange={(e) =>
+                        updateForm("trackingCode", e.target.value)
+                      }
                       placeholder="SQ-..."
                       className="mt-1 h-10 w-full rounded-xl border border-slate-200 px-3 font-mono text-sm outline-none focus:border-[#0F4C81]"
                     />
@@ -691,7 +806,9 @@ function SalesInvoicesPage() {
                       step="1"
                       type="number"
                       value={form.depositDueYer}
-                      onChange={(e) => updateForm("depositDueYer", e.target.value)}
+                      onChange={(e) =>
+                        updateForm("depositDueYer", e.target.value)
+                      }
                       placeholder="0"
                       className="mt-1 h-10 w-full rounded-xl border border-slate-200 px-3 font-mono text-sm outline-none focus:border-[#0F4C81]"
                     />
@@ -706,7 +823,9 @@ function SalesInvoicesPage() {
                       معرّف حساب العميل (UUID)
                       <input
                         value={form.customerUserId}
-                        onChange={(e) => updateForm("customerUserId", e.target.value)}
+                        onChange={(e) =>
+                          updateForm("customerUserId", e.target.value)
+                        }
                         placeholder="اتركه فارغًا إن لم يتوفر"
                         className="mt-1 h-10 w-full rounded-xl border border-slate-200 px-3 font-mono text-xs outline-none focus:border-[#0F4C81]"
                       />
@@ -723,8 +842,9 @@ function SalesInvoicesPage() {
                   </div>
                 </details>
                 <p className="text-[11px] leading-5 text-slate-500">
-                  رقم الفاتورة ووقت الإنشاء ينشئهما الجدول تلقائيًا. الحفظ يمر عبر جلسة المستخدم
-                  وسياسات RLS. حقول النموذج الحالية محفوظة كما هي؛ عرض قائمة الفواتير بالريال اليمني فقط.
+                  رقم الفاتورة ووقت الإنشاء ينشئهما الجدول تلقائيًا. الحفظ يمر
+                  عبر جلسة المستخدم وسياسات RLS. حقول النموذج الحالية محفوظة كما
+                  هي؛ عرض قائمة الفواتير بالريال اليمني فقط.
                 </p>
                 {errorMessage && (
                   <p
@@ -742,7 +862,8 @@ function SalesInvoicesPage() {
                   >
                     {saving ? (
                       <>
-                        <Loader2 className="size-4 animate-spin" /> جارٍ الحفظ...
+                        <Loader2 className="size-4 animate-spin" /> جارٍ
+                        الحفظ...
                       </>
                     ) : (
                       <>
