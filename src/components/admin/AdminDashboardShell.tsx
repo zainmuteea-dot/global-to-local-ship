@@ -8,7 +8,9 @@ import {
   Clock3,
   ClipboardPlus,
   FileText,
+  FileSpreadsheet,
   Headphones,
+  Home,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -16,7 +18,17 @@ import {
   PackageCheck,
   PackageOpen,
   PackageSearch,
+  Receipt,
   Search,
+  Store,
+  Tag,
+  TrendingUp,
+  UserCheck,
+  UserCog,
+  Wallet,
+  Zap,
+  Coins,
+  Database,
   Settings,
   Truck,
   Users,
@@ -122,6 +134,26 @@ const navItems = [
   { label: "الشات", href: "/admin-chat", icon: MessageSquare },
   { label: "الإشعارات", href: "/notifications", icon: Bell },
   { label: "المنتجات الفورية", href: "/products/manage", icon: PackageOpen },
+] as const;
+
+// روابط عملية من القائمة السابقة. أبقيتها منفصلة حتى لا تتأثر الاختصارات والأزرار الحالية.
+const legacyNavItems = [
+  { label: "الرئيسية", href: "/", icon: Home },
+  { label: "طلب شراء جديد", href: "/new-order", icon: Zap },
+  { label: "تتبع الشحنة", href: "/track", icon: Truck },
+  { label: "حسابي", href: "/my-account", icon: UserCheck },
+  { label: "الأسعار والشحن", href: "/prices", icon: Tag },
+  { label: "الحسابات المالية", href: "/accounts", icon: Coins },
+  { label: "المحاسبة", href: "/accounting", icon: FileSpreadsheet },
+  { label: "فواتير المشتريات", href: "/purchase-invoices", icon: Receipt },
+  { label: "المخزون", href: "/inventory", icon: PackageOpen },
+  { label: "المستودعات", href: "/warehouses", icon: PackageCheck },
+  { label: "مرتجعات المشتريات", href: "/purchase-returns", icon: PackageSearch },
+  { label: "مرتجعات المبيعات", href: "/sales-returns", icon: TrendingUp },
+  { label: "التقرير اليومي", href: "/client-daily", icon: FileText },
+  { label: "تقارير التجار", href: "/merchant-reports", icon: Store },
+  { label: "المتاجر", href: "/stores", icon: Store },
+  { label: "الموردون", href: "/suppliers", icon: Users },
 ] as const;
 
 const quickActionHrefs = ["/admin/offers", "/admin-chat", "/notifications"] as const;
@@ -245,7 +277,7 @@ export function AdminDashboardShell({
       )}
 
       <aside
-        className={`fixed inset-y-0 right-0 z-50 h-[100dvh] overflow-y-auto overscroll-contain flex w-[288px] max-w-[88vw] flex-col border-l border-sky-100 bg-white text-[#0A2540] shadow-xl transition-transform duration-300 lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "translate-x-full"}`}
+        className={`fixed inset-y-0 right-0 z-50 flex h-[100dvh] max-h-[100dvh] w-[288px] max-w-[88vw] flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain border-l border-sky-100 bg-white text-[#0A2540] shadow-xl transition-transform duration-300 lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "translate-x-full"}`}
         aria-label="القائمة الرئيسية"
       >
         <div className="flex min-h-[112px] items-center justify-between border-b border-sky-100 px-4 py-4">
@@ -271,15 +303,15 @@ export function AdminDashboardShell({
         </div>
 
         <div className="mx-4 mt-5 rounded-2xl border border-white/10 bg-white/[0.06] p-4">
-          <div className="text-xs font-medium text-blue-100/70">مرحباً بعودتك</div>
+          <div className="text-xs font-medium text-slate-600">مرحباً بعودتك</div>
           <div className="mt-1 text-base font-bold">مرحباً، {userName}</div>
-          <div className="mt-3 flex items-center gap-2 text-xs text-emerald-300">
-            <span className="size-2 rounded-full bg-emerald-400" />
+          <div className="mt-3 flex items-center gap-2 text-xs text-emerald-700">
+            <span className="size-2 rounded-full bg-emerald-500" />
             مساحة الإدارة
           </div>
         </div>
 
-        <nav className="mt-4 flex-none px-4 pb-4" aria-label="التنقل">
+        <nav className="mt-4 shrink-0 px-4 pb-4" aria-label="التنقل">
           <div className="mb-4 rounded-2xl border border-orange-100 bg-orange-50/70 p-3">
             <p className="mb-2 px-1 text-[11px] font-black text-[#0F4C81]">اختصارات الإدارة</p>
             <div className="flex flex-col gap-2">
@@ -321,21 +353,43 @@ export function AdminDashboardShell({
               );
             })}
           </div>
+          <div className="mt-4 border-t border-slate-100 pt-3">
+            <p className="mb-2 px-4 text-[11px] font-extrabold text-slate-500">روابط إضافية</p>
+            <div className="space-y-1">
+              {legacyNavItems.map(({ label, href, icon: Icon }) => {
+                const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
+                return (
+                  <a
+                    key={href}
+                    href={href}
+                    aria-current={active ? "page" : undefined}
+                    onClick={() => setSidebarOpen(false)}
+                    className={`flex min-h-11 items-center gap-3 rounded-xl px-4 text-sm font-semibold transition-colors ${
+                      active ? "bg-sky-100 text-[#0F4C81]" : "text-slate-700 hover:bg-sky-50 hover:text-[#0F4C81]"
+                    }`}
+                  >
+                    <Icon className="size-[18px] shrink-0" aria-hidden="true" />
+                    <span>{label}</span>
+                  </a>
+                );
+              })}
+            </div>
+          </div>
           <a
             href="/admin-settings"
             aria-current={pathname.startsWith("/admin-settings") ? "page" : undefined}
             onClick={() => setSidebarOpen(false)}
-            className="flex min-h-12 w-full items-center gap-3 rounded-xl px-4 text-right text-sm font-bold text-[#35566f] transition-colors hover:bg-sky-50 hover:text-[#0F4C81]"
+            className="flex min-h-12 w-full items-center gap-3 rounded-xl border border-transparent px-4 text-right text-sm font-bold text-[#274b66] transition-colors hover:border-sky-100 hover:bg-sky-50 hover:text-[#0F4C81] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F97316]"
           >
             <Settings className="size-[18px] shrink-0" aria-hidden="true" />
             <span>الإعدادات</span>
           </a>
         </nav>
 
-        <div className="space-y-1 border-t border-sky-100 p-4">
+        <div className="shrink-0 space-y-1 border-t border-sky-100 bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
           <a
             href="/admin-chat"
-            className="flex min-h-11 items-center gap-3 rounded-xl px-4 text-sm font-semibold text-[#35566f] hover:bg-sky-50 hover:text-[#0F4C81]"
+            className="flex min-h-11 items-center gap-3 rounded-xl px-4 text-sm font-semibold text-[#35566f] hover:bg-sky-50 hover:text-[#0F4C81] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F97316]"
           >
             <Headphones className="size-[18px]" aria-hidden="true" />
             الدعم
