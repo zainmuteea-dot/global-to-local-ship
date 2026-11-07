@@ -29,6 +29,13 @@ function getOrderConversionRateToYER(currency: OrderCurrency): number {
   return FIXED_YER_RATE[currency];
 }
 
+function createOrderTrackingCode(): string {
+  const random = new Uint32Array(1);
+  crypto.getRandomValues(random);
+  const sequence = 100000 + ((random[0] ?? 0) % 900000);
+  return `SQ-${sequence}`;
+}
+
 export const Route = createFileRoute("/new-order")({
   validateSearch: (
     search: Record<string, unknown>,
@@ -866,10 +873,12 @@ function NewOrderPage() {
         return;
       }
 
-      // لا نرسل tracking_code: قاعدة البيانات تنشئه عبر trigger.
-      const { data: savedOrder, error: insertError } = await supabase
-        .from("orders")
+      // نولّد رقمًا واحدًا ونحفظه في الحقلين معًا، حتى لا يبقى order_number فارغًا.
+      const generatedTrackingCode = createOrderTrackingCode();
+      const { data: savedOrder, error: insertError } = await (supabase.from("orders") as any)
         .insert({
+          tracking_code: generatedTrackingCode,
+          order_number: generatedTrackingCode,
           customer_name: name.trim(),
           phone: phone.trim(),
           product_link: url.trim(),
@@ -894,7 +903,7 @@ function NewOrderPage() {
           user_id: user.id,
           sms_status: "pending",
         })
-        .select("id, tracking_code")
+        .select("id, tracking_code, order_number")
         .single();
 
       if (insertError) {
@@ -906,7 +915,15 @@ function NewOrderPage() {
         );
       }
 
-      const code = savedOrder.tracking_code || "";
+      const code = String(savedOrder.tracking_code || "").trim();
+      if (!code || code !== generatedTrackingCode || savedOrder.order_number !== code) {
+        setTrackingUnavailable(true);
+        setSbError(
+          "حُفظ الطلب، لكن لم يتطابق رقم الطلب ورمز التتبع كما ينبغي. لا تعِد تقديم الطلب؛ تواصل مع الدعم للتحقق.",
+        );
+        setStatus("done");
+        return;
+      }
 
       // تخزين نسخة محلية للعرض فقط؛ مصدر الحقيقة هو قاعدة البيانات.
       try {
@@ -917,7 +934,8 @@ function NewOrderPage() {
         const currentList = Array.isArray(parsedOrders) ? parsedOrders : [];
         const newRecord = {
           id: savedOrder.id,
-          tracking_code: code || null,
+          tracking_code: code,
+          order_number: code,
           customer_name: name.trim(),
           phone: phone.trim(),
           product_link: url.trim(),
