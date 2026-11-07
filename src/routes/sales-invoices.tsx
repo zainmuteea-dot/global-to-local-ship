@@ -34,6 +34,7 @@ type InvoiceRow = {
   order_id: string | null;
   user_id: string | null;
   created_by: string | null;
+  source?: "invoice" | "order";
 };
 type InvoiceForm = {
   client: string;
@@ -103,7 +104,40 @@ function SalesInvoicesPage() {
       setErrorMessage(
         "تعذر تحميل فواتير المبيعات. تحقق من اتصال Supabase وصلاحية المدير وسياسات RLS.",
       );
-    } else setInvoices((data ?? []) as InvoiceRow[]);
+    } else if (data?.length) {
+      setInvoices((data as InvoiceRow[]).map((row) => ({ ...row, source: "invoice" })));
+    } else {
+      // الطلبات هي مصدر الفاتورة في المسارات القديمة؛ نعرضها حتى لا تنفصل صفحة الفواتير عن البيانات الفعلية.
+      const { data: orders, error: ordersError } = await db
+        .from("orders")
+        .select(
+          "id, order_number, tracking_code, customer_name, user_id, total_cost_usd, total_cost_yer, paid_amount, created_at",
+        )
+        .order("created_at", { ascending: false })
+        .limit(200);
+      if (ordersError) {
+        console.error("Failed to load orders for invoice linkage:", ordersError);
+        setInvoices([]);
+        setErrorMessage("تعذر ربط الفواتير بالطلبات في قاعدة البيانات.");
+      } else {
+        setInvoices(
+          (orders ?? []).map((order: any) => ({
+            id: String(order.id),
+            invoice_number: order.order_number || order.tracking_code || `ORD-${order.id}`,
+            client: order.customer_name ?? null,
+            tracking_code: order.tracking_code ?? null,
+            total: order.total_cost_usd ?? 0,
+            total_yer: order.total_cost_yer ?? 0,
+            deposit_due_yer: order.paid_amount ?? null,
+            created_at: order.created_at ?? null,
+            order_id: String(order.id),
+            user_id: order.user_id ?? null,
+            created_by: null,
+            source: "order",
+          })),
+        );
+      }
+    }
     setLoading(false);
   }, []);
 
@@ -441,22 +475,26 @@ function SalesInvoicesPage() {
                       </td>
                       <td className="px-4 py-3.5">
                         <div className="flex justify-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => startEditing(row)}
-                            title="تعديل الفاتورة"
-                            className="rounded-lg bg-sky-50 p-1.5 text-sky-700 transition hover:bg-sky-100"
-                          >
-                            <Pencil className="size-4" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => void deleteInvoice(row)}
-                            title="حذف الفاتورة"
-                            className="rounded-lg bg-red-50 p-1.5 text-red-700 transition hover:bg-red-100"
-                          >
-                            <Trash2 className="size-4" />
-                          </button>
+                          {row.source !== "order" && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => startEditing(row)}
+                                title="تعديل الفاتورة"
+                                className="rounded-lg bg-sky-50 p-1.5 text-sky-700 transition hover:bg-sky-100"
+                              >
+                                <Pencil className="size-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void deleteInvoice(row)}
+                                title="حذف الفاتورة"
+                                className="rounded-lg bg-red-50 p-1.5 text-red-700 transition hover:bg-red-100"
+                              >
+                                <Trash2 className="size-4" />
+                              </button>
+                            </>
+                          )}
                           <button
                             type="button"
                             onClick={() => shareInvoice(row)}
