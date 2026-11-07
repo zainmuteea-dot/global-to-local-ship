@@ -215,7 +215,7 @@ export function AdminDashboardShell({
   };
 
   return (
-    <div dir="rtl" className="alshamel-admin-dashboard min-h-[100dvh] overflow-y-auto bg-[#f6f7fb] font-[Tajawal] text-slate-800">
+    <div dir="rtl" className="alshamel-admin-dashboard min-h-[100dvh] w-full min-w-0 overflow-x-clip overflow-y-auto bg-[#f6f7fb] font-[Tajawal] text-slate-800">
       <style>{`
 .alshamel-admin-dashboard{--as-blue:#0F4C81;--as-blue-deep:#0284C7;--as-orange:#F97316;--as-orange-bright:#FB923C;--as-bg:#F3F8FC;--as-surface:#FFFFFF;--as-surface-soft:#F8FBFE;--as-line:#DCEAF4;--as-text:#0A2540;--as-muted:#60758A;min-height:100vh;color:var(--as-text)!important;background:radial-gradient(900px 500px at 92% -10%,rgba(249,115,22,.08),transparent 62%),radial-gradient(900px 560px at 2% 8%,rgba(2,132,199,.09),transparent 62%),var(--as-bg)!important;color-scheme:light}
 .alshamel-admin-dashboard .bg-white,.alshamel-admin-dashboard [class~="bg-white/90"]{background:#fff!important;backdrop-filter:blur(12px)}
@@ -325,7 +325,7 @@ export function AdminDashboardShell({
             href="/admin-settings"
             aria-current={pathname.startsWith("/admin-settings") ? "page" : undefined}
             onClick={() => setSidebarOpen(false)}
-            className="flex min-h-12 w-full items-center gap-3 rounded-xl px-4 text-right text-sm font-bold text-blue-100/85 transition-colors hover:bg-white/10 hover:text-white"
+            className="flex min-h-12 w-full items-center gap-3 rounded-xl px-4 text-right text-sm font-bold text-[#35566f] transition-colors hover:bg-sky-50 hover:text-[#0F4C81]"
           >
             <Settings className="size-[18px] shrink-0" aria-hidden="true" />
             <span>الإعدادات</span>
@@ -353,9 +353,9 @@ export function AdminDashboardShell({
         </div>
       </aside>
 
-      <div className="min-h-[100dvh] lg:mr-[288px]">
+      <div className="min-h-[100dvh] w-full min-w-0 overflow-x-clip lg:mr-[288px]">
         <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl">
-          <div className="mx-auto flex min-h-[76px] max-w-[1600px] items-center justify-between gap-4 px-4 sm:px-7 lg:px-9">
+          <div className="mx-auto flex min-h-[76px] w-full min-w-0 max-w-[1600px] flex-wrap items-center justify-between gap-3 px-3 sm:gap-4 sm:px-7 lg:px-9">
             <div className="flex min-w-0 items-center gap-3">
               <button
                 type="button"
@@ -414,15 +414,15 @@ export function AdminDashboardShell({
             </label>
           </div>
           {toolbar ? (
-            <div className="border-t border-slate-100 bg-white px-4 py-3 sm:px-7 lg:px-9">
-              <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0 border-t border-slate-100 bg-white px-3 py-3 sm:px-7 lg:px-9">
+              <div className="mx-auto flex w-full min-w-0 max-w-[1600px] flex-wrap items-center justify-start gap-3">
                 {toolbar}
               </div>
             </div>
           ) : null}
         </header>
 
-        <main className="mx-auto w-full max-w-[1600px] space-y-6 px-4 py-6 sm:px-7 lg:px-9 lg:py-8">
+        <main className="mx-auto w-full min-w-0 max-w-[1600px] space-y-6 overflow-x-clip px-3 py-5 sm:px-7 sm:py-6 lg:px-9 lg:py-8">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-sm font-semibold text-slate-500">نظرة سريعة على حركة الأعمال</p>
@@ -433,7 +433,7 @@ export function AdminDashboardShell({
           </div>
 
           <section
-            className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4"
+            className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4"
             aria-label="إحصائيات اليوم"
           >
             <MetricCard
@@ -483,7 +483,7 @@ export function AdminDashboardShell({
           </section>
 
           <section
-            className="grid grid-cols-1 items-start gap-5 2xl:grid-cols-2"
+            className="grid min-w-0 grid-cols-1 items-start gap-5 2xl:grid-cols-2"
             aria-label="تفاصيل اليوم"
           >
             <Panel
