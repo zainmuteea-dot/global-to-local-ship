@@ -1080,7 +1080,7 @@ export default function AdminOperationsPage() {
       }
       onSearch={setSearchQuery}
       toolbar={
-        <div className="flex flex-wrap items-center gap-2" dir="rtl">
+        <div className="flex w-full min-w-0 flex-wrap items-center justify-start gap-2" dir="rtl">
           <button
             type="button"
             onClick={() => setIsAddModalOpen(true)}
@@ -1165,10 +1165,10 @@ export default function AdminOperationsPage() {
     >
       <div className="mx-auto w-full min-w-0 max-w-[1600px] space-y-4 px-3 py-4 sm:space-y-6 sm:px-5 sm:py-6 lg:px-6 xl:px-8">
         {/* شريط التبويبات الثلاثية */}
-        <div className="mx-auto flex w-full max-w-[1600px] min-w-0 gap-1 overflow-x-auto border-t border-slate-100 px-2 sm:gap-2 sm:px-5 lg:px-6 xl:px-8">
+        <div className="mx-auto flex w-full min-w-0 flex-wrap items-center gap-1 border-t border-slate-100 px-2 sm:gap-2 sm:px-5 lg:px-6 xl:px-8">
           <button
             onClick={() => setActiveTab("operations")}
-            className={`flex flex-none items-center gap-2 border-b-2 px-3 py-3 text-xs font-bold transition-colors ${
+            className={`flex min-w-0 items-center gap-2 border-b-2 px-2 py-3 text-[11px] leading-5 sm:flex-none sm:px-3 sm:text-xs font-bold transition-colors ${
               activeTab === "operations"
                 ? "border-[#0284C7] text-[#0284C7]"
                 : "border-transparent text-slate-500 hover:text-slate-800"
@@ -1181,7 +1181,7 @@ export default function AdminOperationsPage() {
           <button
             type="button"
             onClick={() => window.location.assign("/products/manage")}
-            className="flex flex-none items-center gap-2 rounded-xl bg-[#161616] px-3 py-3 text-xs font-bold text-white transition hover:bg-[#2c2419]"
+            className="flex min-w-0 items-center gap-2 rounded-xl bg-[#161616] px-2 py-3 text-[11px] leading-5 sm:flex-none sm:px-3 sm:text-xs font-bold text-white transition hover:bg-[#2c2419]"
           >
             <Store className="size-4" />
             <span>إدارة بوابات المتاجر</span>
@@ -1189,7 +1189,7 @@ export default function AdminOperationsPage() {
 
           <button
             onClick={() => setActiveTab("finance")}
-            className={`flex flex-none items-center gap-2 border-b-2 px-3 py-3 text-xs font-bold transition-colors ${
+            className={`flex min-w-0 items-center gap-2 border-b-2 px-2 py-3 text-[11px] leading-5 sm:flex-none sm:px-3 sm:text-xs font-bold transition-colors ${
               activeTab === "finance"
                 ? "border-[#0284C7] text-[#0284C7]"
                 : "border-transparent text-slate-500 hover:text-slate-800"
@@ -1201,7 +1201,7 @@ export default function AdminOperationsPage() {
 
           <button
             onClick={() => setActiveTab("employees")}
-            className={`flex flex-none items-center gap-2 border-b-2 px-3 py-3 text-xs font-bold transition-colors ${
+            className={`flex min-w-0 items-center gap-2 border-b-2 px-2 py-3 text-[11px] leading-5 sm:flex-none sm:px-3 sm:text-xs font-bold transition-colors ${
               activeTab === "employees"
                 ? "border-[#0284C7] text-[#0284C7]"
                 : "border-transparent text-slate-500 hover:text-slate-800"
