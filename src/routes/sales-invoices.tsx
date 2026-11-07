@@ -22,10 +22,9 @@ import {
   Trash2,
   Wallet,
 } from "lucide-react";
-import { AdminRouteGuard } from "@/components/admin/AdminRouteGuard";
 import { PermissionRouteGuard } from "@/components/admin/PermissionRouteGuard";
-import { supabase } from "@/integrations/supabase/client";
 import { checkPermission, usePermission } from "@/lib/permissions";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/sales-invoices")({
   component: GuardedSalesInvoicesPage,
@@ -226,6 +225,27 @@ function SalesInvoicesPage() {
   const [successMessage, setSuccessMessage] = useState("");
   const managePermission = usePermission("finance", "manage");
   const deletePermission = usePermission("finance", "delete");
+  const [canIssueInvoice, setCanIssueInvoice] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    const verifyAdmin = async () => {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError || !authData.user) {
+        if (active) setCanIssueInvoice(false);
+        return;
+      }
+      const { data, error } = await supabase.rpc("has_role", {
+        _user_id: authData.user.id,
+        _role: "admin",
+      });
+      if (active) setCanIssueInvoice(!error && data === true);
+    };
+    void verifyAdmin();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const loadInvoices = useCallback(async () => {
     setLoading(true);
@@ -364,7 +384,7 @@ function SalesInvoicesPage() {
         }
       } catch (permissionError) {
         console.error("Could not verify invoice edit permission:", permissionError);
-        setErrorMessage("تعذر التحقق من صلاحية تعديل الفاتورة. لم يتم حفظ التغييرات.");
+        setErrorMessage("تعذر التحقق من صلاحية التعديل. لم يتم حفظ التغييرات.");
         return;
       }
     }
@@ -377,6 +397,17 @@ function SalesInvoicesPage() {
         "انتهت جلسة الدخول أو تعذر التحقق منها. سجّل الدخول مجددًا.",
       );
       return;
+    }
+    if (!editingId) {
+      const { data: isAdmin, error: roleError } = await supabase.rpc("has_role", {
+        _user_id: authData.user.id,
+        _role: "admin",
+      });
+      if (roleError || isAdmin !== true) {
+        setSaving(false);
+        setErrorMessage("إصدار الفواتير متاح للمدير فقط حاليًا.");
+        return;
+      }
     }
     const db = supabase as any;
     const values = {
@@ -525,21 +556,21 @@ function SalesInvoicesPage() {
               />{" "}
               تحديث
             </button>
-            {!managePermission.loading && managePermission.allowed && (
-            <button
-              type="button"
-              onClick={() => {
-                setEditingId(null);
-                setForm(EMPTY_FORM);
-                setErrorMessage("");
-                setSuccessMessage("");
-                setShowAddModal(true);
-              }}
-              className="flex items-center gap-2 rounded-xl bg-[#0F4C81] px-5 py-2.5 text-sm font-bold text-white shadow-md transition hover:bg-[#0c3c66]"
-            >
-              <Plus className="size-4" /> إصدار فاتورة
-            </button>
-          )}
+            {canIssueInvoice && (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingId(null);
+                  setForm(EMPTY_FORM);
+                  setErrorMessage("");
+                  setSuccessMessage("");
+                  setShowAddModal(true);
+                }}
+                className="flex items-center gap-2 rounded-xl bg-[#0F4C81] px-5 py-2.5 text-sm font-bold text-white shadow-md transition hover:bg-[#0c3c66]"
+              >
+                <Plus className="size-4" /> إصدار فاتورة
+              </button>
+            )}
             <button
               type="button"
               onClick={() => window.print()}
