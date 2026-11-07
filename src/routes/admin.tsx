@@ -906,8 +906,18 @@ export default function AdminOperationsPage() {
 
     // السعر المدخل في نموذج الإدارة موسوم بـ SAR. نخزن الأصل كما هو،
     // ونحفظ مقابله بالريال اليمني حسب معامل التحويل المستخدم في صفحة الطلبات.
+    const orderCode = String(newOrder.orderNumber ?? "").trim();
+    if (!orderCode) {
+      setStatusNotice({
+        type: "error",
+        message: "تعذّر حفظ الطلب: يجب إنشاء رقم طلب ورمز تتبع أولاً.",
+      });
+      return;
+    }
+
     const insertPayload = {
-      tracking_code: newOrder.orderNumber,
+      tracking_code: orderCode,
+      order_number: orderCode,
       customer_name: newOrder.customerName,
       phone: newOrder.customerPhone,
       product_link: `https://${newOrder.storeName.toLowerCase()}.com`,
@@ -925,8 +935,18 @@ export default function AdminOperationsPage() {
     };
 
     try {
-      const { error } = await supabase.from("orders").insert(insertPayload as any);
+      const { data: savedOrder, error } = await (supabase.from("orders") as any)
+        .insert(insertPayload)
+        .select("id, tracking_code, order_number")
+        .single();
       if (error) throw error;
+      if (
+        !savedOrder?.id ||
+        savedOrder.tracking_code !== orderCode ||
+        savedOrder.order_number !== orderCode
+      ) {
+        throw new Error("لم يتأكد حفظ رقم الطلب ورمز التتبع بالقيمة نفسها.");
+      }
 
       setOrders((prev) => [newOrder, ...prev]);
       setIsAddModalOpen(false);
