@@ -180,12 +180,19 @@ function mapDatabaseOrder(row: any): OrderItem {
       : {};
   const remaining: CurrencyMoney = currency
     ? {
-        [currency]:
-          storedRemaining !== null
-            ? storedRemaining
-            : typeof totalCost[currency] === "number" && paidAmount !== null
-              ? Math.max(0, (totalCost[currency] as number) - paidAmount)
-              : null,
+        [currency]: (() => {
+          const total = totalCost[currency];
+          const canCalculate = typeof total === "number" && paidAmount !== null;
+          const calculated = canCalculate
+            ? Math.max(0, total - paidAmount)
+            : null;
+          // بعض الطلبات القديمة تحمل remaining_amount=0 كقيمة افتراضية قبل تسجيل الدفعة.
+          // لا نسمح لهذه القيمة بإخفاء المبلغ الحقيقي المتبقي.
+          return storedRemaining === null ||
+            (storedRemaining === 0 && calculated !== null && calculated > 0)
+            ? calculated
+            : storedRemaining;
+        })(),
       }
     : storedRemaining !== null
       ? { UNKNOWN: null }
