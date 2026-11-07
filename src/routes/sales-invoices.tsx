@@ -4,7 +4,6 @@ import {
   ArrowRight,
   CheckCircle2,
   Clock,
-  DollarSign,
   FileText,
   Loader2,
   Pencil,
@@ -29,6 +28,8 @@ type InvoiceRow = {
   tracking_code: string | null;
   total: number | string | null;
   total_yer: number | string | null;
+  paid_yer?: number | null;
+  remaining_yer?: number | null;
   deposit_due_yer: number | string | null;
   created_at: string | null;
   order_id: string | null;
@@ -69,6 +70,97 @@ const dateLabel = (value: string | null) => {
   return Number.isNaN(d.getTime()) ? value : d.toLocaleDateString("ar-YE");
 };
 
+const sumComplete = (rows: InvoiceRow[], field: "total_yer" | "paid_yer" | "remaining_yer") => {
+  if (rows.length === 0 || rows.some((row) => row[field] == null)) return null;
+  return rows.reduce((sum, row) => sum + amount(row[field]), 0);
+};
+
+const yerLabel = (value: number | string | null | undefined) =>
+  value == null ? "غير مسجل" : `${money(value, 0)} ر.ي`;
+
+async function attachOrderBalances(rows: InvoiceRow[]): Promise<InvoiceRow[]> {
+  const orderIds = Array.from(new Set(rows.map((row) => row.order_id).filter((id): id is string => Boolean(id))));
+  if (orderIds.length === 0) {
+    return rows.map((row) => ({ ...row, paid_yer: null, remaining_yer: null }));
+  }
+
+  const db = supabase as any;
+  const { data: orderRows, error: ordersError } = await db
+    .from("orders")
+    .select("id, tracking_code, total_cost_yer")
+    .in("id", orderIds);
+  if (ordersError) {
+    console.warn("Could not load linked order balances:", ordersError);
+    return rows.map((row) => ({ ...row, paid_yer: null, remaining_yer: null }));
+  }
+
+  const orderById = new Map<string, any>((orderRows ?? []).map((order: any) => [String(order.id), order]));
+  const explicitBalances = new Map<string, { paid: number | null; remaining: number | null }>();
+
+  // These legacy fields are optional across deployed database versions. A failed optional read
+  // must not prevent the invoice list from loading; approved YER payments are used as a safe fallback.
+  const { data: storedBalances, error: balanceError } = await db
+    .from("orders")
+    .select("id, paid_amount, remaining_amount")
+    .in("id", orderIds);
+  if (!balanceError) {
+    for (const order of storedBalances ?? []) {
+      explicitBalances.set(String(order.id), {
+        paid: order.paid_amount == null ? null : Number(order.paid_amount),
+        remaining: order.remaining_amount == null ? null : Number(order.remaining_amount),
+      });
+    }
+  }
+
+  const orderIdsByTracking = new Map<string, string[]>();
+  for (const [id, order] of orderById) {
+    const tracking = String(order.tracking_code ?? "").trim();
+    if (!tracking) continue;
+    orderIdsByTracking.set(tracking, [...(orderIdsByTracking.get(tracking) ?? []), id]);
+  }
+  const uniqueTrackings = Array.from(orderIdsByTracking.entries())
+    .filter(([, ids]) => new Set(ids).size === 1)
+    .map(([tracking]) => tracking);
+  const paidFromPayments = new Map<string, number>();
+
+  if (uniqueTrackings.length > 0) {
+    const { data: paymentRows, error: paymentsError } = await db
+      .from("payments")
+      .select("id, tracking_code, amount, currency, status")
+      .in("tracking_code", uniqueTrackings);
+    if (!paymentsError) {
+      for (const payment of paymentRows ?? []) {
+        const status = String(payment.status ?? "").trim().toLowerCase();
+        const currency = String(payment.currency ?? "").trim().toUpperCase();
+        const value = Number(payment.amount);
+        if (status !== "approved" || currency !== "YER" || !Number.isFinite(value) || value < 0) continue;
+        const tracking = String(payment.tracking_code ?? "").trim();
+        const ids = orderIdsByTracking.get(tracking) ?? [];
+        if (ids.length !== 1) continue;
+        const id = ids[0];
+        if (id) paidFromPayments.set(id, (paidFromPayments.get(id) ?? 0) + value);
+      }
+    } else {
+      console.warn("Could not load approved YER payments for invoice balances:", paymentsError);
+    }
+  }
+
+  return rows.map((row) => {
+    if (!row.order_id) return { ...row, paid_yer: null, remaining_yer: null };
+    const order = orderById.get(row.order_id);
+    const stored = explicitBalances.get(row.order_id);
+    const paid = stored?.paid ?? paidFromPayments.get(row.order_id) ?? null;
+    const total = row.total_yer ?? order?.total_cost_yer ?? null;
+    const remaining = stored?.remaining ?? (total != null && paid != null ? Math.max(0, Number(total) - paid) : null);
+    return {
+      ...row,
+      total_yer: row.total_yer ?? order?.total_cost_yer ?? null,
+      paid_yer: paid,
+      remaining_yer: remaining,
+    };
+  });
+}
+
 function GuardedSalesInvoicesPage() {
   return (
     <AdminRouteGuard>
@@ -105,13 +197,13 @@ function SalesInvoicesPage() {
         "تعذر تحميل فواتير المبيعات. تحقق من اتصال Supabase وصلاحية المدير وسياسات RLS.",
       );
     } else if (data?.length) {
-      setInvoices((data as InvoiceRow[]).map((row) => ({ ...row, source: "invoice" })));
+      setInvoices(await attachOrderBalances((data as InvoiceRow[]).map((row) => ({ ...row, source: "invoice" }))));
     } else {
       // الطلبات هي مصدر الفاتورة في المسارات القديمة؛ نعرضها حتى لا تنفصل صفحة الفواتير عن البيانات الفعلية.
       const { data: orders, error: ordersError } = await db
         .from("orders")
         .select(
-          "id, order_number, tracking_code, customer_name, user_id, total_cost_usd, total_cost_yer, paid_amount, created_at",
+          "id, tracking_code, customer_name, user_id, total_cost_yer, created_at",
         )
         .order("created_at", { ascending: false })
         .limit(200);
@@ -120,22 +212,23 @@ function SalesInvoicesPage() {
         setInvoices([]);
         setErrorMessage("تعذر ربط الفواتير بالطلبات في قاعدة البيانات.");
       } else {
-        setInvoices(
-          (orders ?? []).map((order: any) => ({
-            id: String(order.id),
-            invoice_number: order.order_number || order.tracking_code || `ORD-${order.id}`,
-            client: order.customer_name ?? null,
-            tracking_code: order.tracking_code ?? null,
-            total: order.total_cost_usd ?? 0,
-            total_yer: order.total_cost_yer ?? 0,
-            deposit_due_yer: order.paid_amount ?? null,
-            created_at: order.created_at ?? null,
-            order_id: String(order.id),
-            user_id: order.user_id ?? null,
-            created_by: null,
-            source: "order",
-          })),
-        );
+        const orderInvoices: InvoiceRow[] = (orders ?? []).map((order: any) => ({
+          id: String(order.id),
+          invoice_number: order.tracking_code || `ORD-${order.id}`,
+          client: order.customer_name ?? null,
+          tracking_code: order.tracking_code ?? null,
+          total: null,
+          total_yer: order.total_cost_yer ?? null,
+          paid_yer: null,
+          remaining_yer: null,
+          deposit_due_yer: null,
+          created_at: order.created_at ?? null,
+          order_id: String(order.id),
+          user_id: order.user_id ?? null,
+          created_by: null,
+          source: "order",
+        }));
+        setInvoices(await attachOrderBalances(orderInvoices));
       }
     }
     setLoading(false);
@@ -156,15 +249,11 @@ function SalesInvoicesPage() {
   }, [invoices, search]);
 
   const totals = useMemo(
-    () =>
-      invoices.reduce(
-        (acc, row) => ({
-          usd: acc.usd + amount(row.total),
-          yer: acc.yer + amount(row.total_yer),
-          deposits: acc.deposits + amount(row.deposit_due_yer),
-        }),
-        { usd: 0, yer: 0, deposits: 0 },
-      ),
+    () => ({
+      yer: sumComplete(invoices, "total_yer"),
+      paid: sumComplete(invoices, "paid_yer"),
+      remaining: sumComplete(invoices, "remaining_yer"),
+    }),
     [invoices],
   );
   const updateForm = (key: keyof InvoiceForm, value: string) =>
@@ -185,7 +274,7 @@ function SalesInvoicesPage() {
       return;
     }
     if (!Number.isFinite(total) || total < 0 || !Number.isFinite(totalYer) || totalYer < 0) {
-      setErrorMessage("أدخل إجماليًا صحيحًا غير سالب بالدولار والريال.");
+      setErrorMessage("أدخل إجماليًا صحيحًا غير سالب في حقول الفاتورة.");
       return;
     }
     if (depositDueYer !== null && (!Number.isFinite(depositDueYer) || depositDueYer < 0)) {
@@ -258,7 +347,7 @@ function SalesInvoicesPage() {
   const deleteInvoice = async (row: InvoiceRow) => {
     if (
       !window.confirm(
-        `هل أنت متأكد من حذف الف��تورة ${row.invoice_number}؟ لا يمكن التراجع عن الحذف.`,
+        `هل أنت متأكد من حذف الفاتورة ${row.invoice_number}؟ لا يمكن التراجع عن الحذف.`,
       )
     )
       return;
@@ -280,10 +369,9 @@ function SalesInvoicesPage() {
       `فاتورة مبيعات: ${row.invoice_number}`,
       row.client ? `العميل: ${row.client}` : "",
       row.tracking_code ? `كود الشحنة: ${row.tracking_code}` : "",
-      `الإجمالي: $${money(row.total)} (${money(row.total_yer, 0)} ر.ي)`,
-      row.deposit_due_yer != null
-        ? `الدفعة المقدمة المطلوبة: ${money(row.deposit_due_yer, 0)} ر.ي`
-        : "",
+      `الإجمالي بالريال اليمني: ${yerLabel(row.total_yer)}`,
+      `المدفوع بالريال اليمني: ${yerLabel(row.paid_yer)}`,
+      `المتبقي عند التسليم: ${yerLabel(row.remaining_yer)}`,
     ]
       .filter(Boolean)
       .join("\n");
@@ -374,31 +462,33 @@ function SalesInvoicesPage() {
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div className="rounded-2xl border border-sky-100 bg-white p-5 shadow-sm">
             <div className="mb-2 flex items-center justify-between text-[#0F4C81]">
-              <span className="text-xs font-bold">إجمالي الفواتير</span>
-              <DollarSign className="size-5 rounded-lg bg-sky-50 p-1" />
+              <span className="text-xs font-bold">إجمالي الفواتير بالريال اليمني</span>
+              <Wallet className="size-5 rounded-lg bg-sky-50 p-1" />
             </div>
-            <div className="text-2xl font-black text-slate-900">${money(totals.usd)}</div>
-            <p className="mt-1 text-[11px] text-slate-400">{invoices.length} فاتورة محمّلة</p>
+            <div className="text-2xl font-black text-slate-900">
+              {loading ? "…" : totals.yer == null ? "بيانات غير مكتملة" : yerLabel(totals.yer)}
+            </div>
+            <p className="mt-1 text-[11px] text-slate-400">{invoices.length} فاتورة أو طلب محمّل</p>
           </div>
           <div className="rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm">
             <div className="mb-2 flex items-center justify-between text-emerald-700">
-              <span className="text-xs font-bold">الإجمالي بالريال اليمني</span>
-              <Wallet className="size-5 rounded-lg bg-emerald-50 p-1" />
+              <span className="text-xs font-bold">المبلغ المدفوع بالريال اليمني</span>
+              <CheckCircle2 className="size-5 rounded-lg bg-emerald-50 p-1" />
             </div>
-            <div className="text-2xl font-black text-emerald-800">{money(totals.yer, 0)} ر.ي</div>
-            <p className="mt-1 text-[11px] text-slate-400">مجموع عمود total_yer</p>
+            <div className="text-2xl font-black text-emerald-800">
+              {loading ? "…" : totals.paid == null ? "بيانات غير مكتملة" : yerLabel(totals.paid)}
+            </div>
+            <p className="mt-1 text-[11px] text-slate-400">الدفعات المعتمدة أو المسجلة فقط</p>
           </div>
           <div className="rounded-2xl border border-amber-100 bg-white p-5 shadow-sm">
             <div className="mb-2 flex items-center justify-between text-amber-700">
-              <span className="text-xs font-bold">الدفعات المقدمة المطلوبة</span>
+              <span className="text-xs font-bold">المتبقي عند التسليم بالريال اليمني</span>
               <Clock className="size-5 rounded-lg bg-amber-50 p-1" />
             </div>
             <div className="text-2xl font-black text-amber-700">
-              {money(totals.deposits, 0)} ر.ي
+              {loading ? "…" : totals.remaining == null ? "بيانات غير مكتملة" : yerLabel(totals.remaining)}
             </div>
-            <p className="mt-1 text-[11px] text-slate-400">
-              مجموع deposit_due_yer، وليس رصيدًا محصلًا
-            </p>
+            <p className="mt-1 text-[11px] text-slate-400">لا يُحتسب من مبالغ غير مرتبطة بالطلب</p>
           </div>
         </section>
         <section className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:flex-row">
@@ -424,9 +514,9 @@ function SalesInvoicesPage() {
                   <th className="px-4 py-3">رقم الفاتورة</th>
                   <th className="px-4 py-3">العميل</th>
                   <th className="px-4 py-3">كود الشحنة</th>
-                  <th className="px-4 py-3 text-center">الإجمالي</th>
-                  <th className="px-4 py-3 text-center">الريال اليمني</th>
-                  <th className="px-4 py-3 text-center">الدفعة المقدمة</th>
+                  <th className="px-4 py-3 text-center">الإجمالي بالريال</th>
+                  <th className="px-4 py-3 text-center">المدفوع</th>
+                  <th className="px-4 py-3 text-center">المتبقي عند التسليم</th>
                   <th className="px-4 py-3 text-center">الإجراءات</th>
                 </tr>
               </thead>
@@ -465,13 +555,13 @@ function SalesInvoicesPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3.5 text-center font-black text-slate-900">
-                        ${money(row.total)}
+                        {yerLabel(row.total_yer)}
                       </td>
                       <td className="px-4 py-3.5 text-center font-bold text-emerald-700">
-                        {money(row.total_yer, 0)} ر.ي
+                        {yerLabel(row.paid_yer)}
                       </td>
                       <td className="px-4 py-3.5 text-center font-bold text-amber-700">
-                        {row.deposit_due_yer == null ? "—" : `${money(row.deposit_due_yer, 0)} ر.ي`}
+                        {yerLabel(row.remaining_yer)}
                       </td>
                       <td className="px-4 py-3.5">
                         <div className="flex justify-center gap-1.5">
@@ -634,7 +724,7 @@ function SalesInvoicesPage() {
                 </details>
                 <p className="text-[11px] leading-5 text-slate-500">
                   رقم الفاتورة ووقت الإنشاء ينشئهما الجدول تلقائيًا. الحفظ يمر عبر جلسة المستخدم
-                  وسياسات RLS، وليس عبر service_role.
+                  وسياسات RLS. حقول النموذج الحالية محفوظة كما هي؛ عرض قائمة الفواتير بالريال اليمني فقط.
                 </p>
                 {errorMessage && (
                   <p
