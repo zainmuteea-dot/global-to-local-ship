@@ -36,6 +36,7 @@ function MyAccountRoute() {
       onNavigateToInvoices={() => navigate({ to: "/account/invoices" })}
       onNavigateToAddresses={() => navigate({ to: "/account/addresses" })}
       onNavigateToNotifications={() => navigate({ to: "/notifications" })}
+      onNavigateToWallet={() => navigate({ to: "/account/wallet" })}
     />
   );
 }
@@ -83,6 +84,7 @@ interface MyAccountProps {
   onNavigateToInvoices?: () => void;
   onNavigateToAddresses?: () => void;
   onNavigateToNotifications?: () => void;
+  onNavigateToWallet?: () => void;
 }
 
 export const MyAccountPage: React.FC<MyAccountProps> = ({
@@ -95,6 +97,7 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
   onNavigateToInvoices,
   onNavigateToAddresses,
   onNavigateToNotifications,
+  onNavigateToWallet,
 }) => {
   const { session, user, loading: isLoading } = useSession(false);
   const [orders, setOrders] = useState<OrderItem[]>([]);
@@ -586,7 +589,13 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
 
           {/* 6. زر رصيدي */}
           <button
-            onClick={() => setActiveModal("wallet")}
+            onClick={() => {
+              if (onNavigateToWallet) {
+                onNavigateToWallet();
+              } else {
+                window.location.assign("/account/wallet");
+              }
+            }}
             className="w-full bg-white hover:bg-gradient-to-r hover:from-white hover:to-orange-50/60 border-2 border-slate-200/80 hover:border-[#EA580C] rounded-2xl p-3.5 sm:p-4 shadow-xs hover:shadow-md transition-all duration-200 flex items-center justify-between cursor-pointer group active:scale-[0.99]"
           >
             <div className="flex items-center gap-3.5">
