@@ -35,6 +35,40 @@ const schema = z.object({
   details: z.string().trim().min(3, "أدخل تفاصيل العنوان").max(300),
 });
 
+type AddressWriteError = {
+  code?: string;
+  message?: string;
+};
+
+function getAddressWriteErrorMessage(error: unknown): string {
+  const dbError = (error ?? {}) as AddressWriteError;
+  const code = dbError.code ?? "";
+  const detail = typeof dbError.message === "string" ? dbError.message.trim().slice(0, 180) : "";
+  const diagnostic = [code ? `رمز ${code}` : "", detail ? `تفاصيل الخادم: ${detail}` : ""]
+    .filter(Boolean)
+    .join(" · ");
+  const withDiagnostic = (message: string) =>
+    diagnostic ? `${message} (${diagnostic})` : message;
+
+  if (code === "42501") {
+    return withDiagnostic("رفضت قاعدة البيانات حفظ العنوان بسبب الصلاحيات. تأكد من تسجيل الدخول؛ إذا استمر الخطأ أرسل هذه التفاصيل للدعم.");
+  }
+  if (code === "23502") {
+    return withDiagnostic("هناك حقل مطلوب لم يُرسل إلى قاعدة البيانات. أرسل هذه التفاصيل للدعم.");
+  }
+  if (code === "23503") {
+    return withDiagnostic("تعذر ربط العنوان بحسابك الحالي. حدّث الصفحة وسجّل الدخول مجددًا، ثم أعد المحاولة.");
+  }
+  if (code === "42P01" || code === "42703" || code.startsWith("PGRST")) {
+    return withDiagnostic("يوجد اختلاف في إعداد جدول العناوين على الخادم. أرسل هذه التفاصيل للدعم.");
+  }
+  if (error instanceof TypeError || /fetch|network|connection|internet|timeout/i.test(dbError.message ?? "")) {
+    return withDiagnostic("تعذر الاتصال بالخادم لحفظ العنوان. تحقق من الإنترنت ثم أعد المحاولة.");
+  }
+
+  return withDiagnostic("تعذر حفظ العنوان. تحقق من اتصالك وتسجيل الدخول، ثم أعد المحاولة.");
+}
+
 function AddressesPage() {
   const { user, loading: sessionLoading } = useSession();
   const [list, setList] = useState<Addr[]>([]);
@@ -121,7 +155,7 @@ function AddressesPage() {
       await load();
     } catch (error) {
       console.error("Failed to save address:", error);
-      setErr("تعذر حفظ العنوان. تأكد من تسجيل الدخول وصلاحيات العناوين.");
+      setErr(getAddressWriteErrorMessage(error));
     } finally {
       setBusy(false);
     }
