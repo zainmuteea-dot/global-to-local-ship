@@ -1,9 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
-import { Receipt, RefreshCw } from "lucide-react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ArrowRight, Check, CreditCard, Eye, Loader2, Receipt, RefreshCw, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
-import { AccountShell, EmptyState } from "@/components/AccountShell";
 
 export const Route = createFileRoute("/account/invoices")({
   component: AccountInvoicesPage,
@@ -272,60 +271,206 @@ function AccountInvoicesPage() {
     if (!sessionLoading && user) void loadInvoices();
   }, [loadInvoices, sessionLoading, user]);
 
+  const navigate = useNavigate();
+  const customerName = useMemo(() => {
+    const metadata = (user?.user_metadata ?? {}) as Record<string, unknown>;
+    const fromAccount = String(metadata["full_name"] ?? metadata["name"] ?? "").trim();
+    const fromInvoice = String(invoices.find((invoice) => invoice.client)?.client ?? "").trim();
+    return (fromAccount || fromInvoice).split(/\s+/)[0] || "عميلنا";
+  }, [invoices, user]);
+
+  const unpaidInvoices = useMemo(
+    () => invoices.filter((invoice) => invoice.remainingYer == null || invoice.remainingYer > 0),
+    [invoices],
+  );
+  const totalRemaining = useMemo<number | null>(() => {
+    if (invoices.some((invoice) => invoice.remainingYer == null)) return null;
+    return invoices.reduce((sum, invoice) => sum + (invoice.remainingYer ?? 0), 0);
+  }, [invoices]);
+
+  const openPayment = (invoice: InvoiceItem) => {
+    if (!invoice.orderId) return;
+    void navigate({ to: "/pay", search: { order: invoice.orderId } as any });
+  };
+
+  const formatDate = (value: string | null) => {
+    if (!value) return "التاريخ غير متوفر";
+    const date = new Date(value);
+    return Number.isNaN(date.getTime())
+      ? "التاريخ غير متوفر"
+      : date.toLocaleDateString("ar-YE", { year: "numeric", month: "long", day: "numeric" });
+  };
+
   return (
-    <AccountShell title="فواتيري">
-      <section className="space-y-3 rounded-3xl bg-card p-4 ring-1 ring-border">
-        {loading ? (
-          <p role="status" className="py-8 text-center text-sm">
-            جارٍ تحميل فواتيرك…
-          </p>
-        ) : error ? (
-          <div role="alert" className="space-y-3 rounded-2xl bg-red-50 p-4 text-sm text-red-800">
-            <p>{error}</p>
-            <button
-              type="button"
-              onClick={() => void loadInvoices()}
-              className="inline-flex items-center gap-2 rounded-xl bg-white px-3 py-2 font-bold"
-            >
-              <RefreshCw className="size-4" /> إعادة المحاولة
+    <div className="ai-page" dir="rtl" lang="ar">
+      <style>{INVOICE_STYLE}</style>
+      <header className="ai-topbar">
+        <div className="ai-topbar-inner">
+          <div className="ai-brand">
+            <span className="ai-brand-mark"><Wallet size={21} /></span>
+            <span className="ai-brand-copy">
+              <strong>السوق الشامل</strong>
+              <small>AL SHAMEL SHOPPING</small>
+            </span>
+          </div>
+          <button className="ai-back" type="button" onClick={() => void navigate({ to: "/my-account" })}>
+            رجوع <ArrowRight size={16} />
+          </button>
+        </div>
+      </header>
+
+      <main className="ai-main">
+        <section className="ai-welcome">
+          <h1>أهلاً بك يا {customerName} <span aria-hidden="true">👋</span></h1>
+          <p>إليك ملخص فواتيرك وحالات الدفع الخاصة بك</p>
+        </section>
+
+        {error && (
+          <div className="ai-alert" role="alert">
+            <span>{error}</span>
+            <button type="button" onClick={() => void loadInvoices()} aria-label="إعادة تحميل الفواتير">
+              <RefreshCw size={16} /> إعادة المحاولة
             </button>
           </div>
-        ) : invoices.length === 0 ? (
-          <EmptyState
-            icon={<Receipt className="size-6" />}
-            title="لا توجد فواتير مرتبطة بحسابك"
-            text="لم نعثر على طلب أو فاتورة مرتبطة بمعرّفك أو رقم هاتفك أو بريدك المسجل."
-          />
-        ) : (
-          invoices.map((invoice) => (
-            <article key={invoice.key} className="rounded-2xl border border-border p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="font-bold text-cocoadeep">فاتورة {invoice.invoiceNumber}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {invoice.createdAt
-                      ? new Date(invoice.createdAt).toLocaleDateString("ar")
-                      : "التاريخ غير متوفر"}
-                  </p>
-                </div>
-                <Receipt className="size-5 text-clay" />
-              </div>
-              <p className="mt-3 text-sm">العميل: {invoice.client || "غير محدد"}</p>
-              <div className="mt-3 grid gap-2 text-sm sm:grid-cols-3">
-                <p>
-                  الإجمالي: <strong>{money(invoice.totalYer)}</strong>
-                </p>
-                <p>
-                  المدفوع: <strong>{money(invoice.paidYer)}</strong>
-                </p>
-                <p>
-                  المتبقي: <strong>{money(invoice.remainingYer)}</strong>
-                </p>
-              </div>
-            </article>
-          ))
         )}
-      </section>
-    </AccountShell>
+
+        <section className="ai-summary" aria-label="ملخص المبالغ المتبقية">
+          <div className="ai-summary-info">
+            <span className="ai-summary-icon"><CreditCard size={24} /></span>
+            <div>
+              <div className="ai-summary-label">إجمالي المتبقي المسجل عليك</div>
+              <div className="ai-summary-value">{money(totalRemaining)}</div>
+              <div className="ai-summary-caption">
+                {unpaidInvoices.length} {unpaidInvoices.length === 1 ? "فاتورة نشطة" : "فواتير نشطة"}
+              </div>
+            </div>
+          </div>
+          <div className="ai-summary-action">
+            <span className="ai-summary-note">يمكنك دفع كل طلب على حدة من بطاقته أدناه</span>
+          </div>
+        </section>
+
+        <div className="ai-section-heading">
+          <h2>فواتيرك</h2>
+          <span>{invoices.length} {invoices.length === 1 ? "فاتورة" : "فواتير"}</span>
+        </div>
+
+        {loading ? (
+          <div className="ai-state" role="status"><Loader2 className="ai-spin" size={25} /> جارٍ تحميل فواتيرك…</div>
+        ) : invoices.length === 0 ? (
+          <div className="ai-empty">
+            <span className="ai-empty-icon"><Receipt size={25} /></span>
+            <strong>لا توجد فواتير مرتبطة بحسابك</strong>
+            <p>لم نعثر على طلب أو فاتورة مرتبطة بمعرّفك أو رقم هاتفك أو بريدك المسجل.</p>
+          </div>
+        ) : (
+          <section className="ai-list" aria-label="قائمة الفواتير">
+            {invoices.map((invoice) => {
+              const paid = invoice.paidYer;
+              const total = invoice.totalYer;
+              const remaining = invoice.remainingYer;
+              const percent = total != null && total > 0 && paid != null
+                ? Math.max(0, Math.min(100, (paid / total) * 100))
+                : null;
+              const isPaid = remaining != null && remaining <= 0 && total != null;
+              const status = isPaid
+                ? "مدفوعة بالكامل"
+                : paid != null && paid > 0
+                  ? `مدفوعة جزئياً • ${Math.round(percent ?? 0)}٪`
+                  : paid === 0
+                    ? "غير مدفوعة"
+                    : "بيانات الدفع غير مكتملة";
+
+              return (
+                <article className="ai-card" key={invoice.key}>
+                  <div className="ai-card-heading">
+                    <span className="ai-card-icon"><Receipt size={20} /></span>
+                    <div className="ai-card-title">
+                      <strong>فاتورة {invoice.invoiceNumber}</strong>
+                      <time>{formatDate(invoice.createdAt)}</time>
+                    </div>
+                  </div>
+
+                  <div className="ai-status">
+                    <div className="ai-status-line">
+                      <span className={isPaid ? "ai-status-text paid" : "ai-status-text"}>{status}</span>
+                      <span className="ai-percent">{percent == null ? "—" : `${Math.round(percent)}٪`}</span>
+                    </div>
+                    <div className="ai-progress" aria-label={percent == null ? "نسبة السداد غير متوفرة" : `تم سداد ${Math.round(percent)} بالمئة`}>
+                      <span style={{ width: `${percent ?? 0}%` }} />
+                    </div>
+                  </div>
+
+                  <div className="ai-amounts">
+                    <div className="ai-amount">
+                      <span>الإجمالي</span><strong>{money(total)}</strong>
+                    </div>
+                    <div className="ai-amount paid-amount">
+                      <span>المدفوع</span><strong>{money(paid)}</strong>
+                    </div>
+                    <div className="ai-amount remaining-amount">
+                      <span>المتبقي</span><strong>{money(remaining)}</strong>
+                    </div>
+                  </div>
+
+                  <div className="ai-actions">
+                    {isPaid ? (
+                      <button className="ai-pay-button ai-complete" type="button" disabled>
+                        <Check size={17} /> تم السداد بالكامل
+                      </button>
+                    ) : invoice.orderId && remaining != null && remaining > 0 ? (
+                      <button className="ai-pay-button" type="button" onClick={() => openPayment(invoice)}>
+                        <CreditCard size={17} /> ادفع المتبقي {money(remaining)}
+                      </button>
+                    ) : (
+                      <button className="ai-pay-button ai-unavailable" type="button" disabled>
+                        {invoice.orderId ? "بيانات المبلغ غير مكتملة" : "لا يتوفر طلب مرتبط للدفع"}
+                      </button>
+                    )}
+                    <button
+                      className="ai-details-button"
+                      type="button"
+                      onClick={() => invoice.orderId && openPayment(invoice)}
+                      disabled={!invoice.orderId}
+                    >
+                      <Eye size={16} /> عرض التفاصيل
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+          </section>
+        )}
+
+        <footer className="ai-footer">
+          <span>تحتاج مساعدة؟</span>
+          <a href="mailto:support@alsouq-alshamel.com">تواصل معنا عبر الدعم</a>
+        </footer>
+      </main>
+    </div>
   );
 }
+
+
+const INVOICE_STYLE = `
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700;800;900&display=swap');
+.ai-page{--ai-blue:#0f4c81;--ai-blue2:#1d70b7;--ai-ink:#12243a;--ai-muted:#62758b;--ai-line:#e0eaf4;--ai-bg:#eff6fc;--ai-green:#14884f;--ai-orange:#de8100;min-height:100dvh;background:linear-gradient(145deg,#edf6fd 0%,#f7fbff 70%);color:var(--ai-ink);font-family:'Tajawal',system-ui,sans-serif}
+.ai-page *{box-sizing:border-box}
+.ai-topbar{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.94);border-bottom:1px solid #e4edf6;box-shadow:0 4px 18px rgba(15,76,129,.06);backdrop-filter:blur(12px)}
+.ai-topbar-inner{max-width:720px;margin:0 auto;padding:8px 16px;display:flex;align-items:center;justify-content:space-between;gap:14px}
+.ai-brand{display:flex;align-items:center;gap:9px}.ai-brand-mark{width:39px;height:39px;display:grid;place-items:center;border-radius:12px;color:#fff;background:linear-gradient(145deg,var(--ai-blue),var(--ai-blue2));box-shadow:0 6px 14px rgba(15,76,129,.24)}
+.ai-brand-copy{display:grid;line-height:1.2}.ai-brand-copy strong{font-size:14px;font-weight:900}.ai-brand-copy small{margin-top:3px;color:#bd963b;font-size:8px;font-weight:900;letter-spacing:.3px}
+.ai-back{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border:1px solid #d8e7f5;border-radius:999px;background:#f3f8fd;color:var(--ai-blue);font:800 12px 'Tajawal',system-ui,sans-serif;cursor:pointer}.ai-back:hover{background:#e7f1fb}
+.ai-main{width:min(100% - 28px,720px);margin:0 auto;padding:16px 0 28px}.ai-welcome{padding:2px 2px 0}.ai-welcome h1{margin:0;color:var(--ai-ink);font-size:clamp(20px,5vw,25px);line-height:1.4;font-weight:900}.ai-welcome h1 span{font-size:.88em}.ai-welcome p{margin:3px 0 0;color:var(--ai-muted);font-size:12px;font-weight:600}
+.ai-alert{margin-top:12px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid #fecaca;border-radius:12px;background:#fff1f2;color:#9f1239;font-size:12px;font-weight:700}.ai-alert button{display:inline-flex;align-items:center;gap:5px;flex:none;border:0;background:transparent;color:inherit;font:inherit;cursor:pointer}
+.ai-summary{position:relative;overflow:hidden;margin-top:14px;padding:15px 16px;display:flex;align-items:center;justify-content:space-between;gap:14px;border-radius:19px;background:linear-gradient(115deg,#0e4c83,#267fc1);color:#fff;box-shadow:0 13px 26px rgba(15,76,129,.23)}.ai-summary:after{content:'';position:absolute;width:130px;height:130px;inset-inline-start:-42px;top:-66px;border-radius:50%;background:rgba(255,255,255,.08)}.ai-summary-info{position:relative;z-index:1;display:flex;align-items:center;gap:11px}.ai-summary-icon{width:43px;height:43px;display:grid;place-items:center;flex:none;border-radius:13px;background:rgba(255,255,255,.18)}.ai-summary-label{font-size:11px;font-weight:700;opacity:.94}.ai-summary-value{margin-top:1px;font-size:24px;line-height:1.3;font-weight:900}.ai-summary-caption{font-size:10px;font-weight:600;opacity:.86}.ai-summary-action{position:relative;z-index:1;max-width:190px;text-align:center}.ai-summary-note{font-size:10px;font-weight:700;opacity:.9}
+.ai-section-heading{margin:21px 2px 10px;display:flex;align-items:center;justify-content:space-between;gap:8px}.ai-section-heading h2{margin:0;font-size:17px;font-weight:900}.ai-section-heading span{padding:5px 10px;border:1px solid #d7e6f5;border-radius:999px;background:#f4f9fe;color:var(--ai-blue);font-size:10px;font-weight:800}
+.ai-list{display:flex;flex-direction:column;gap:13px}.ai-card{padding:14px;border:1px solid #e3ebf4;border-radius:19px;background:#fff;box-shadow:0 8px 22px rgba(15,76,129,.08);transition:transform .18s,box-shadow .18s}.ai-card:hover{transform:translateY(-2px);box-shadow:0 13px 28px rgba(15,76,129,.12)}.ai-card-heading{display:flex;align-items:center;gap:9px}.ai-card-icon{width:34px;height:34px;display:grid;place-items:center;flex:none;border-radius:11px;background:linear-gradient(145deg,var(--ai-blue),var(--ai-blue2));color:#fff;box-shadow:0 5px 12px rgba(15,76,129,.2)}.ai-card-title{min-width:0;display:flex;flex:1;align-items:flex-start;justify-content:space-between;gap:8px}.ai-card-title strong{overflow-wrap:anywhere;font-size:13px;font-weight:900}.ai-card-title time{padding-top:2px;flex:none;color:var(--ai-muted);font-size:10px;font-weight:600}
+.ai-status{margin-top:12px}.ai-status-line{margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;gap:8px}.ai-status-text{font-size:10px;font-weight:800;color:var(--ai-blue)}.ai-status-text.paid{color:var(--ai-green)}.ai-percent{font-size:10px;font-weight:900;color:var(--ai-blue)}.ai-progress{height:6px;overflow:hidden;border-radius:999px;background:#eaf0f6}.ai-progress span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#0f4c81,#247bc0);transition:width .35s}
+.ai-amounts{margin-top:12px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));overflow:hidden;border:1px solid #e2eaf3;border-radius:12px}.ai-amount{min-width:0;padding:8px 5px;display:grid;justify-items:center;gap:3px;background:#fff;text-align:center}.ai-amount+.ai-amount{border-inline-start:1px solid #e9eff5}.ai-amount span{color:var(--ai-muted);font-size:9px;font-weight:700}.ai-amount strong{font-size:12px;font-weight:900;overflow-wrap:anywhere}.ai-amount.paid-amount strong{color:var(--ai-green)}.ai-amount.remaining-amount strong{color:var(--ai-orange)}
+.ai-actions{margin-top:10px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px}.ai-pay-button,.ai-details-button{min-height:35px;display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:11px;font-family:inherit;font-size:10px;font-weight:900;cursor:pointer;transition:filter .18s,transform .18s}.ai-pay-button{padding:8px 10px;border:0;background:linear-gradient(110deg,#104e84,#247bc0);color:#fff;box-shadow:0 5px 11px rgba(15,76,129,.2)}.ai-pay-button:hover:not(:disabled){filter:brightness(1.06);transform:translateY(-1px)}.ai-pay-button.ai-complete{background:#e6f7ee;color:var(--ai-green);box-shadow:none;cursor:default}.ai-pay-button.ai-unavailable{background:#f1f5f9;color:#64748b;box-shadow:none;cursor:not-allowed}.ai-details-button{padding:8px 11px;border:1px solid #d6e6f5;background:#fff;color:var(--ai-blue)}.ai-details-button:hover:not(:disabled){background:#f2f8fd}.ai-details-button:disabled{opacity:.55;cursor:not-allowed}
+.ai-state,.ai-empty{min-height:150px;padding:30px 18px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;border:1px solid #e2eaf3;border-radius:18px;background:rgba(255,255,255,.82);color:var(--ai-muted);text-align:center;font-size:13px;font-weight:700}.ai-spin{animation:ai-spin 1s linear infinite}@keyframes ai-spin{to{transform:rotate(360deg)}}.ai-empty strong{color:var(--ai-ink);font-size:14px}.ai-empty p{margin:0;font-size:11px}.ai-empty-icon{width:46px;height:46px;display:grid;place-items:center;border-radius:14px;background:#eaf3fb;color:var(--ai-blue)}
+.ai-footer{margin-top:22px;display:flex;align-items:center;justify-content:center;gap:5px;color:var(--ai-muted);font-size:10px;font-weight:700}.ai-footer a{color:var(--ai-blue);font-weight:900;text-decoration:none}.ai-footer a:hover{text-decoration:underline}
+@media(max-width:480px){.ai-main{width:min(100% - 22px,720px);padding-top:13px}.ai-topbar-inner{padding-inline:12px}.ai-summary{padding:13px}.ai-summary-action{max-width:120px}.ai-summary-value{font-size:21px}.ai-card{padding:12px}.ai-amount strong{font-size:11px}.ai-actions{grid-template-columns:minmax(0,1fr) auto}.ai-pay-button,.ai-details-button{font-size:9px;padding-inline:8px}}
+@media(prefers-reduced-motion:reduce){.ai-page *{scroll-behavior:auto!important;transition:none!important}.ai-spin{animation:none}}
+`;
