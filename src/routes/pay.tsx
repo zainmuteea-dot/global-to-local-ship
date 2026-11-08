@@ -511,6 +511,7 @@ function PayPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [customer, setCustomer] = useState("");
+  const [orderId, setOrderId] = useState<string | null>(null);
   const [phone, setPhone] = useState("");
   const [productName, setProductName] = useState("");
   const [currency, setCurrency] = useState("ر.ي");
@@ -564,6 +565,7 @@ function PayPage() {
     setLoadError("");
 
     if (!orderNo) {
+      setOrderId(null);
       setLoadError("لم يصل رقم الطلب إلى صفحة الدفع. ارجع إلى طلباتي وافتح الدفع من الطلب الصحيح.");
       setLoading(false);
       return;
@@ -584,15 +586,15 @@ function PayPage() {
 
       if (orderError) throw new Error(`تعذر تحميل بيانات الطلب: ${orderError.message}`);
       if (!dbOrder) {
+        setOrderId(null);
         setLoadError("لم نعثر على هذا الطلب. تحقق من رقم التتبع أو افتح الدفع من صفحة طلباتي.");
         return;
       }
 
-      const trackingCode = dbOrder.tracking_code || orderNo;
-      const { data: paymentsList, error: paymentsError } = await supabase
-        .from("payments")
+      setOrderId(String(dbOrder.id));
+      const { data: paymentsList, error: paymentsError } = await (supabase.from("payments") as any)
         .select("id, amount, status, receipt_image, currency")
-        .eq("tracking_code", trackingCode);
+        .eq("order_id", String(dbOrder.id));
 
       if (paymentsError) throw new Error(`تعذر تحميل سجل الدفعات: ${paymentsError.message}`);
 
@@ -783,6 +785,8 @@ function PayPage() {
       }
     };
 
+    if (!orderId) return;
+
     const setupNotificationListener = async () => {
       const user = await fetchNotifications();
       if (!user || !isActive) return;
@@ -834,7 +838,7 @@ function PayPage() {
             event: "*",
             schema: "public",
             table: "payments",
-            filter: `tracking_code=eq.${orderNo}`,
+            filter: `order_id=eq.${orderId}`,
           },
           () => {
             void loadOrderData();
@@ -866,7 +870,7 @@ function PayPage() {
       if (notifChannel) void supabase.removeChannel(notifChannel);
       if (paymentsChannel) void supabase.removeChannel(paymentsChannel);
     };
-  }, [orderNo, loadOrderData, playNotificationTone]);
+  }, [orderNo, orderId, loadOrderData, playNotificationTone]);
 
   useEffect(() => {
     return () => {
@@ -958,7 +962,7 @@ function PayPage() {
 
       const orderOwnershipQuery = supabase
         .from("orders")
-        .select("user_id, tracking_code, customer_name, phone");
+        .select("id, user_id, tracking_code, customer_name, phone");
       const { data: ownedOrder, error: ownerError } = await (
         isUuid(orderNo)
           ? orderOwnershipQuery.or(`tracking_code.eq.${orderNo},id.eq.${orderNo}`)
@@ -971,6 +975,9 @@ function PayPage() {
       if (!ownedOrder || ownedOrder.user_id !== user.id) {
         throw new Error("هذا الطلب غير مرتبط بحسابك. سجّل الدخول بالحساب الذي أنشأ الطلب.");
       }
+      if (!ownedOrder.id) {
+        throw new Error("تعذر قراءة معرّف الطلب؛ لم يتم حفظ الدفعة.");
+      }
       if (!ownedOrder.tracking_code) {
         throw new Error("تعذر قراءة رمز تتبع الطلب؛ لم يتم إرسال الدفع.");
       }
@@ -980,6 +987,7 @@ function PayPage() {
 
       const paymentMethod = wallet?.label || walletKey;
       const paymentPayload = {
+        order_id: ownedOrder.id,
         tracking_code: ownedOrder.tracking_code,
         customer_name: ownedOrder.customer_name || null,
         phone: ownedOrder.phone || null,
@@ -991,7 +999,7 @@ function PayPage() {
         status: "pending",
       };
 
-      const { error: payErr } = await supabase.from("payments").insert(paymentPayload);
+      const { error: payErr } = await (supabase.from("payments") as any).insert(paymentPayload);
 
       if (payErr) {
         throw new Error(`تعذر حفظ الدفعة: ${payErr.message}`);
@@ -1277,190 +1285,6 @@ function PayPage() {
             <div className="stat paid">
               <div className="lab">المدفوع حالياً</div>
               <div className="num">{loading ? "…" : fmt(paid)}</div>
-              <div className="cur">{currency}</div>
-            </div>
-            <div className="stat rest">
-              <div className="lab">المتبقي عليكم</div>
-              <div className="num">{loading ? "…" : fmt(remaining)}</div>
-              <div className="cur">{currency}</div>
-            </div>
-          </div>
-        </section>
+              
 
-        {!isPaid && (
-          <section className="pay-card">
-            <div className="pay-head alt">
-              <div className="pay-ico">
-                <Card />
-              </div>
-              <div className="pay-title">طريقة الدفع المعتمدة</div>
-            </div>
-            <div className="pay-grid" role="listbox" aria-label="اختر طريقة الدفع">
-              {WALLETS.map((w) => {
-                const active = w.key === walletKey;
-                return (
-                  <button
-                    key={w.key}
-                    type="button"
-                    role="option"
-                    aria-selected={active}
-                    className={"wbtn" + (active ? " active" : "")}
-                    onClick={() => {
-                      setWalletKey(w.key);
-                      setCopied(false);
-                    }}
-                  >
-                    <span className="tick">
-                      <CheckIc />
-                    </span>
-                    <span className="wchip" aria-hidden="true">
-                      <WalletLogo brand={w} size={46} />
-                    </span>
-                    <span className="wname">{w.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {wallet && (
-              <div
-                className="pay-acc"
-                style={{
-                  background: `linear-gradient(140deg, ${wallet.color}, ${wallet.color}cc)`,
-                }}
-              >
-                <div className="atop">
-                  <div className="wlogo" aria-hidden="true">
-                    <WalletLogo brand={wallet} size={54} />
-                  </div>
-                  <div>
-                    <div className="at">أودِع عبر</div>
-                    <div className="an">{wallet.label}</div>
-                  </div>
-                </div>
-
-                <div className="pay-accnum">
-                  <div className="pay-acc-row">
-                    <div>
-                      <div className="k">اسم المستلم المعتمد:</div>
-                      <div className="name-val">{UNIFIED_NAME}</div>
-                    </div>
-                  </div>
-                  <div
-                    className="pay-acc-row"
-                    style={{
-                      marginTop: 4,
-                      borderTop: "1px dashed rgba(255,255,255,0.25)",
-                      paddingTop: 8,
-                    }}
-                  >
-                    <div>
-                      <div className="k">رقم الحساب / المحفظة:</div>
-                      <div className="num-val">{UNIFIED_PHONE}</div>
-                    </div>
-                    <button
-                      className={"cp" + (copied ? " ok" : "")}
-                      type="button"
-                      onClick={copyAcc}
-                      title="نسخ الرقم"
-                    >
-                      {copied ? <CheckIc /> : <Copy />}
-                    </button>
-                  </div>
-                </div>
-
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  accept="image/*"
-                  style={{ display: "none" }}
-                  onChange={handleFileUpload}
-                />
-
-                <div
-                  className="upload-box"
-                  onClick={() => fileInputRef.current?.click()}
-                  title="انقر لتحميل صورة إشعار التحويل"
-                >
-                  <div className="upload-box-content">
-                    <Camera />
-                    <span>
-                      {receiptImg
-                        ? "تغيير صورة سند / إشعار التحويل"
-                        : "اضغط هنا لتحميل صورة إشعار الدفع (سند التحويل)"}
-                    </span>
-                  </div>
-                  {receiptImg && (
-                    <div className="upload-preview" onClick={(e) => e.stopPropagation()}>
-                      <img src={receiptImg} alt="سند الدفع" />
-                      <button
-                        className="upload-remove"
-                        type="button"
-                        title="حذف الصورة"
-                        onClick={() => setReceiptImg(null)}
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                <div className="pay-hint">
-                  <Info />
-                  <span>
-                    أودِع المبلغ المطلوب ({fmt(remaining)} {currency}) إلى الرقم والاسم أعلاه، ثم
-                    ارفع صورة الإشعار واضغط على الزر أدناه لتأكيد الإيداع.
-                  </span>
-                </div>
-              </div>
-            )}
-
-            <button
-              className="pay-btn pay-primary"
-              type="button"
-              disabled={
-                !wallet ||
-                loading ||
-                Boolean(loadError) ||
-                notifying ||
-                isNotified ||
-                remaining <= 0
-              }
-              onClick={handleNotifyAdmin}
-            >
-              {isNotified ? <CheckIc /> : null}
-              <span>
-                {notifying
-                  ? "جارٍ إرسال إشعار الدفع للإدارة..."
-                  : isNotified
-                    ? "تم إرسال إشعار الدفع للإدارة بنجاح ✓"
-                    : "لقد أودعت المبلغ — إشعار الإدارة الآن"}
-              </span>
-            </button>
-
-            {paymentSaved && (
-              <div className="pay-success" role="status" aria-live="polite">
-                تم حفظ طلب الدفع والسند بنجاح، وهو الآن بانتظار مراجعة الإدارة. هذا لا يعني اعتماد
-                الدفعة بعد.
-              </div>
-            )}
-            {paymentWarning && <div className="pay-error">{paymentWarning}</div>}
-            {paymentError && (
-              <div className="pay-error">
-                <div>{paymentError}</div>
-                <button
-                  className="pay-retry"
-                  type="button"
-                  onClick={handleNotifyAdmin}
-                  disabled={notifying}
-                >
-                  إعادة المحاولة
-                </button>
-              </div>
-            )}
-          </section>
-        )}
-      </div>
-    </div>
-  );
-}
+... [truncated — file is 58267 bytes, showing first 51200]
