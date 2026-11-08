@@ -36,6 +36,7 @@ function MyAccountRoute() {
       onNavigateToInvoices={() => navigate({ to: "/account/invoices" })}
       onNavigateToAddresses={() => navigate({ to: "/account/addresses" })}
       onNavigateToNotifications={() => navigate({ to: "/notifications" })}
+      onNavigateToWallet={() => navigate({ to: "/account/wallet" })}
     />
   );
 }
@@ -83,6 +84,7 @@ interface MyAccountProps {
   onNavigateToInvoices?: () => void;
   onNavigateToAddresses?: () => void;
   onNavigateToNotifications?: () => void;
+  onNavigateToWallet?: () => void;
 }
 
 export const MyAccountPage: React.FC<MyAccountProps> = ({
@@ -95,6 +97,7 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
   onNavigateToInvoices,
   onNavigateToAddresses,
   onNavigateToNotifications,
+  onNavigateToWallet,
 }) => {
   const { session, user, loading: isLoading } = useSession(false);
   const [orders, setOrders] = useState<OrderItem[]>([]);
@@ -586,7 +589,13 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
 
           {/* 6. زر رصيدي */}
           <button
-            onClick={() => setActiveModal("wallet")}
+            onClick={() => {
+              if (onNavigateToWallet) {
+                onNavigateToWallet();
+              } else {
+                window.location.assign("/account/wallet");
+              }
+            }}
             className="w-full bg-white hover:bg-gradient-to-r hover:from-white hover:to-orange-50/60 border-2 border-slate-200/80 hover:border-[#EA580C] rounded-2xl p-3.5 sm:p-4 shadow-xs hover:shadow-md transition-all duration-200 flex items-center justify-between cursor-pointer group active:scale-[0.99]"
           >
             <div className="flex items-center gap-3.5">
@@ -1014,193 +1023,6 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
                     الخارجة عن سيطرة المنصة. قدّم اسمًا ورقم هاتف وعنوانًا صحيحًا، وتابع حالة الطلب
                     من خلال رقم التتبع عند توفره. تُعرض أي رسوم شحن أو توصيل إضافية قبل استحقاقها.
                   </p>
-                </section>
-                <section>
-                  <h4 className="font-black text-[#0F4C81]">5. مسؤولية العميل والتواصل</h4>
-                  <p>
-                    تحقق من مواصفات المنتج والرابط والكمية والعنوان قبل تأكيد الطلب، ولا ترسل
-                    معلومات دفع أو مستندات تخص شخصًا آخر دون إذنه. للإبلاغ عن مشكلة أو طلب توضيح،
-                    تواصل مع خدمة العملاء عبر القنوات المعروضة في المنصة واحتفظ برقم الطلب وإثباتات
-                    الدفع.
-                  </p>
-                </section>
-                <p className="text-slate-500">
-                  هذه صياغة أولية عامة وليست استشارة قانونية، ولا تحدد رسومًا أو ضمانات غير موضحة في
-                  تفاصيل الطلب.
-                </p>
-              </div>
-            )}
+                </
 
-            {/* محتوى: سياسة الخصوصية */}
-            {activeModal === "privacy" && (
-              <div className="text-xs text-slate-700 leading-relaxed space-y-3">
-                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-900">
-                  <p className="font-black">إشعار خصوصية أولي</p>
-                  <p className="mt-1">
-                    هذا شرح داخل التطبيق وليس مراجعة قانونية. يجب على إدارة المنصة تأكيد ممارساتها
-                    الفعلية والجهات التي تعالج البيانات قبل اعتماده كسياسة نهائية.
-                  </p>
-                </div>
-                <section>
-                  <h4 className="font-black text-[#0F4C81]">ما المعلومات التي قد نعالجها؟</h4>
-                  <p>
-                    بحسب استخدامك للمنصة، قد تشمل المعلومات بيانات الحساب وتسجيل الدخول، مثل الاسم
-                    والبريد الإلكتروني ورقم الهاتف؛ وبيانات الملف الشخصي وصورة الحساب؛ وعناوين
-                    التوصيل والمدينة؛ ومعلومات الطلبات والمنتجات والتتبع؛ وإيصالات الدفع والمبالغ
-                    وحالة السداد؛ والرسائل التي ترسلها لخدمة العملاء. وقد تُسجل معلومات تقنية أساسية
-                    لازمة لتشغيل الخدمة وحمايتها.
-                  </p>
-                </section>
-                <section>
-                  <h4 className="font-black text-[#0F4C81]">لماذا نستخدمها؟</h4>
-                  <p>
-                    لإنشاء الحساب وإدارته، والتواصل بشأن الطلب، ومراجعة المدفوعات وإثباتاتها، وترتيب
-                    الشراء والشحن والتسليم، وإظهار حالة الطلب والإشعارات، والرد على الدعم، ومعالجة
-                    الأعطال أو إساءة الاستخدام.
-                  </p>
-                </section>
-                <section>
-                  <h4 className="font-black text-[#0F4C81]">متى قد تُشارك؟</h4>
-                  <p>
-                    قد تُرسل المعلومات الضرورية لتنفيذ طلبك إلى المتجر أو جهة الشحن والتوصيل، وقد
-                    تُعالج بواسطة مزودي التقنية الذين تعتمد عليهم المنصة لتشغيل الحسابات والتخزين
-                    والاستضافة. يجب قصر المشاركة على ما يلزم للعمل؛ وعلى إدارة المنصة تحديد الجهات
-                    الفعلية ومواقع المعالجة قبل اعتماد هذه السياسة.
-                  </p>
-                </section>
-                <section>
-                  <h4 className="font-black text-[#0F4C81]">الحفظ والحماية</h4>
-                  <p>
-                    لا تحدد هذه النافذة مدة الاحتفاظ بالبيانات أو تفاصيل تدابير الحماية. احتفظ بسرية
-                    كلمة المرور ورموز الدخول، ولا ترسل بيانات دفع سرية أو معلومات أشخاص آخرين. ينبغي
-                    للمنصة تحديد مدة الحفظ، وضوابط الوصول، وطريقة التعامل مع الحوادث في سياسة
-                    معتمدة.
-                  </p>
-                </section>
-                <section>
-                  <h4 className="font-black text-[#0F4C81]">طلباتك واستفساراتك</h4>
-                  <p>
-                    يمكنك التواصل مع الدعم لطلب الاطلاع على بيانات حسابك أو تصحيحها أو طلب حذفها. قد
-                    يتطلب تنفيذ الطلب التحقق من هويتك، وقد تُحتفظ بعض السجلات عند الحاجة لإدارة طلب
-                    قائم أو الوفاء بمتطلبات واجبة التطبيق؛ يوضح لك الدعم ما يمكن تنفيذه بعد مراجعة
-                    الطلب.
-                  </p>
-                  <p className="mt-1">
-                    البريد:{" "}
-                    <a
-                      className="font-bold text-sky-700 underline"
-                      href="mailto:support@alshamel.ye"
-                    >
-                      support@alshamel.ye
-                    </a>{" "}
-                    · واتساب:{" "}
-                    <a
-                      className="font-bold text-sky-700 underline"
-                      href="https://wa.me/967773370041"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      dir="ltr"
-                    >
-                      +967 773 370 041
-                    </a>
-                  </p>
-                </section>
-                <section>
-                  <h4 className="font-black text-[#0F4C81]">التعديلات على السياسة</h4>
-                  <p>
-                    إذا تغيرت طريقة جمع المعلومات أو استخدامها أو مشاركتها، ينبغي تحديث هذا الإشعار
-                    وبيان تاريخ سريانه. راجع النص عند استخدام المنصة.
-                  </p>
-                </section>
-                <p className="text-slate-500">
-                  قبل النشر النهائي، راجع هذا النص مع آلية تسجيل الدخول الفعلية، والتخزين، ورفع
-                  الصور وإيصالات الدفع، ومقدمي الخدمات، ومتطلبات الخصوصية المطبقة على نشاط المنصة.
-                </p>
-              </div>
-            )}
-
-            {/* محتوى: معلومات المنصة */}
-            {activeModal === "about" && (
-              <div className="text-xs text-slate-700 leading-relaxed space-y-3">
-                <div className="rounded-xl border border-sky-200 bg-sky-50 p-3">
-                  <h4 className="font-black text-[#0F4C81]">السوق الشامل</h4>
-                  <p className="mt-1">
-                    منصة تساعد العملاء في اليمن على تقديم طلبات لمنتجات من متاجر خارجية ومتابعة
-                    الطلب والدفع والتسليم من خلال حسابهم.
-                  </p>
-                </div>
-                <section>
-                  <h4 className="font-black text-[#0F4C81]">كيف تستخدم المنصة؟</h4>
-                  <p>
-                    تصفح المنتجات المتاحة أو أرسل تفاصيل ورابط المنتج عند تقديم الطلب. راجع وصف
-                    المنتج والكمية والسعر والمبلغ المطلوب قبل التأكيد، ثم تابع حالة الطلب ورقم
-                    التتبع عند توفره من صفحات الحساب.
-                  </p>
-                </section>
-                <section>
-                  <h4 className="font-black text-[#0F4C81]">الأسعار والطلبات</h4>
-                  <p>
-                    قد يختلف توفر المنتج وسعره لدى المتجر الخارجي. يعتمد المبلغ النهائي وأي رسوم على
-                    تفاصيل الطلب التي تراجعها الإدارة وتعرضها لك قبل اعتمادها. راجع صفحة الطلب
-                    والفاتورة أو إشعار الدفع لمعرفة المدفوع والمتبقي.
-                  </p>
-                </section>
-                <section>
-                  <h4 className="font-black text-[#0F4C81]">خدمات الحساب</h4>
-                  <p>
-                    يتيح الحساب الوصول إلى الطلبات والفواتير والعناوين والرصيد والإشعارات وخدمة
-                    العملاء. ظهور البيانات والخيارات يعتمد على تسجيل الدخول وحالة الطلب وتوفر
-                    الخدمة.
-                  </p>
-                </section>
-                <section>
-                  <h4 className="font-black text-[#0F4C81]">التواصل</h4>
-                  <p>
-                    للاستفسارات أو الإبلاغ عن مشكلة، أرسل رقم الطلب والتفاصيل ذات الصلة إلى خدمة
-                    العملاء:
-                  </p>
-                  <div className="mt-1 flex flex-col gap-1">
-                    <a
-                      className="font-bold text-sky-700 underline"
-                      href="https://wa.me/967773370041"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      dir="ltr"
-                    >
-                      واتساب: +967 773 370 041
-                    </a>
-                    <a
-                      className="font-bold text-sky-700 underline"
-                      href="mailto:support@alshamel.ye"
-                    >
-                      البريد: support@alshamel.ye
-                    </a>
-                  </div>
-                </section>
-                <p className="text-slate-500">
-                  معلومات التواصل والخدمات أعلاه بحسب ما هو مذكور في التطبيق. لم تُضف هنا ساعات عمل
-                  أو عنوانًا تجاريًا أو ادعاء اعتماد رسمي لعدم توفر معلومات مؤكدة عنها.
-                </p>
-              </div>
-            )}
-
-            {/* محتوى: الفواتير */}
-            {activeModal === "invoices" && (
-              <div className="text-xs text-slate-700 leading-relaxed space-y-2">
-                <p className="font-bold text-[#0F4C81]">
-                  تُعرض الفاتورة أو تفاصيل المبالغ عند توفرها للطلب.
-                </p>
-                <p>
-                  تحقق من إجمالي الطلب والمبالغ المدفوعة والمتبقية، واحتفظ بإثباتات الدفع. عند وجود
-                  اختلاف، تواصل مع خدمة العملاء وأرفق رقم الطلب والإثبات.
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-export default MyAccountPage;
+... [truncated — file is 63204 bytes, showing first 51200]
