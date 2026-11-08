@@ -511,6 +511,7 @@ function PayPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [customer, setCustomer] = useState("");
+  const [orderId, setOrderId] = useState<string | null>(null);
   const [phone, setPhone] = useState("");
   const [productName, setProductName] = useState("");
   const [currency, setCurrency] = useState("ر.ي");
@@ -564,6 +565,7 @@ function PayPage() {
     setLoadError("");
 
     if (!orderNo) {
+      setOrderId(null);
       setLoadError("لم يصل رقم الطلب إلى صفحة الدفع. ارجع إلى طلباتي وافتح الدفع من الطلب الصحيح.");
       setLoading(false);
       return;
@@ -584,15 +586,15 @@ function PayPage() {
 
       if (orderError) throw new Error(`تعذر تحميل بيانات الطلب: ${orderError.message}`);
       if (!dbOrder) {
+        setOrderId(null);
         setLoadError("لم نعثر على هذا الطلب. تحقق من رقم التتبع أو افتح الدفع من صفحة طلباتي.");
         return;
       }
 
-      const trackingCode = dbOrder.tracking_code || orderNo;
-      const { data: paymentsList, error: paymentsError } = await supabase
-        .from("payments")
+      setOrderId(String(dbOrder.id));
+      const { data: paymentsList, error: paymentsError } = await (supabase.from("payments") as any)
         .select("id, amount, status, receipt_image, currency")
-        .eq("tracking_code", trackingCode);
+        .eq("order_id", String(dbOrder.id));
 
       if (paymentsError) throw new Error(`تعذر تحميل سجل الدفعات: ${paymentsError.message}`);
 
@@ -834,7 +836,7 @@ function PayPage() {
             event: "*",
             schema: "public",
             table: "payments",
-            filter: `tracking_code=eq.${orderNo}`,
+            filter: `order_id=eq.${orderId}`,
           },
           () => {
             void loadOrderData();
@@ -859,6 +861,8 @@ function PayPage() {
         });
     };
 
+    if (!orderId) return;
+
     void setupNotificationListener();
 
     return () => {
@@ -866,7 +870,7 @@ function PayPage() {
       if (notifChannel) void supabase.removeChannel(notifChannel);
       if (paymentsChannel) void supabase.removeChannel(paymentsChannel);
     };
-  }, [orderNo, loadOrderData, playNotificationTone]);
+  }, [orderNo, orderId, loadOrderData, playNotificationTone]);
 
   useEffect(() => {
     return () => {
@@ -958,7 +962,7 @@ function PayPage() {
 
       const orderOwnershipQuery = supabase
         .from("orders")
-        .select("user_id, tracking_code, customer_name, phone");
+        .select("id, user_id, tracking_code, customer_name, phone");
       const { data: ownedOrder, error: ownerError } = await (
         isUuid(orderNo)
           ? orderOwnershipQuery.or(`tracking_code.eq.${orderNo},id.eq.${orderNo}`)
@@ -971,6 +975,9 @@ function PayPage() {
       if (!ownedOrder || ownedOrder.user_id !== user.id) {
         throw new Error("هذا الطلب غير مرتبط بحسابك. سجّل الدخول بالحساب الذي أنشأ الطلب.");
       }
+      if (!ownedOrder.id) {
+        throw new Error("تعذر قراءة معرّف الطلب؛ لم يتم حفظ الدفعة.");
+      }
       if (!ownedOrder.tracking_code) {
         throw new Error("تعذر قراءة رمز تتبع الطلب؛ لم يتم إرسال الدفع.");
       }
@@ -980,6 +987,7 @@ function PayPage() {
 
       const paymentMethod = wallet?.label || walletKey;
       const paymentPayload = {
+        order_id: ownedOrder.id,
         tracking_code: ownedOrder.tracking_code,
         customer_name: ownedOrder.customer_name || null,
         phone: ownedOrder.phone || null,
@@ -991,7 +999,7 @@ function PayPage() {
         status: "pending",
       };
 
-      const { error: payErr } = await supabase.from("payments").insert(paymentPayload);
+      const { error: payErr } = await (supabase.from("payments") as any).insert(paymentPayload);
 
       if (payErr) {
         throw new Error(`تعذر حفظ الدفعة: ${payErr.message}`);
