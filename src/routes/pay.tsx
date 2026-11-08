@@ -785,8 +785,6 @@ function PayPage() {
       }
     };
 
-    if (!orderId) return;
-
     const setupNotificationListener = async () => {
       const user = await fetchNotifications();
       if (!user || !isActive) return;
@@ -862,6 +860,8 @@ function PayPage() {
           }
         });
     };
+
+    if (!orderId) return;
 
     void setupNotificationListener();
 
@@ -1285,6 +1285,190 @@ function PayPage() {
             <div className="stat paid">
               <div className="lab">المدفوع حالياً</div>
               <div className="num">{loading ? "…" : fmt(paid)}</div>
-              
+              <div className="cur">{currency}</div>
+            </div>
+            <div className="stat rest">
+              <div className="lab">المتبقي عليكم</div>
+              <div className="num">{loading ? "…" : fmt(remaining)}</div>
+              <div className="cur">{currency}</div>
+            </div>
+          </div>
+        </section>
 
-... [truncated — file is 58267 bytes, showing first 51200]
+        {!isPaid && (
+          <section className="pay-card">
+            <div className="pay-head alt">
+              <div className="pay-ico">
+                <Card />
+              </div>
+              <div className="pay-title">طريقة الدفع المعتمدة</div>
+            </div>
+            <div className="pay-grid" role="listbox" aria-label="اختر طريقة الدفع">
+              {WALLETS.map((w) => {
+                const active = w.key === walletKey;
+                return (
+                  <button
+                    key={w.key}
+                    type="button"
+                    role="option"
+                    aria-selected={active}
+                    className={"wbtn" + (active ? " active" : "")}
+                    onClick={() => {
+                      setWalletKey(w.key);
+                      setCopied(false);
+                    }}
+                  >
+                    <span className="tick">
+                      <CheckIc />
+                    </span>
+                    <span className="wchip" aria-hidden="true">
+                      <WalletLogo brand={w} size={46} />
+                    </span>
+                    <span className="wname">{w.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {wallet && (
+              <div
+                className="pay-acc"
+                style={{
+                  background: `linear-gradient(140deg, ${wallet.color}, ${wallet.color}cc)`,
+                }}
+              >
+                <div className="atop">
+                  <div className="wlogo" aria-hidden="true">
+                    <WalletLogo brand={wallet} size={54} />
+                  </div>
+                  <div>
+                    <div className="at">أودِع عبر</div>
+                    <div className="an">{wallet.label}</div>
+                  </div>
+                </div>
+
+                <div className="pay-accnum">
+                  <div className="pay-acc-row">
+                    <div>
+                      <div className="k">اسم المستلم المعتمد:</div>
+                      <div className="name-val">{UNIFIED_NAME}</div>
+                    </div>
+                  </div>
+                  <div
+                    className="pay-acc-row"
+                    style={{
+                      marginTop: 4,
+                      borderTop: "1px dashed rgba(255,255,255,0.25)",
+                      paddingTop: 8,
+                    }}
+                  >
+                    <div>
+                      <div className="k">رقم الحساب / المحفظة:</div>
+                      <div className="num-val">{UNIFIED_PHONE}</div>
+                    </div>
+                    <button
+                      className={"cp" + (copied ? " ok" : "")}
+                      type="button"
+                      onClick={copyAcc}
+                      title="نسخ الرقم"
+                    >
+                      {copied ? <CheckIc /> : <Copy />}
+                    </button>
+                  </div>
+                </div>
+
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept="image/*"
+                  style={{ display: "none" }}
+                  onChange={handleFileUpload}
+                />
+
+                <div
+                  className="upload-box"
+                  onClick={() => fileInputRef.current?.click()}
+                  title="انقر لتحميل صورة إشعار التحويل"
+                >
+                  <div className="upload-box-content">
+                    <Camera />
+                    <span>
+                      {receiptImg
+                        ? "تغيير صورة سند / إشعار التحويل"
+                        : "اضغط هنا لتحميل صورة إشعار الدفع (سند التحويل)"}
+                    </span>
+                  </div>
+                  {receiptImg && (
+                    <div className="upload-preview" onClick={(e) => e.stopPropagation()}>
+                      <img src={receiptImg} alt="سند الدفع" />
+                      <button
+                        className="upload-remove"
+                        type="button"
+                        title="حذف الصورة"
+                        onClick={() => setReceiptImg(null)}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="pay-hint">
+                  <Info />
+                  <span>
+                    أودِع المبلغ المطلوب ({fmt(remaining)} {currency}) إلى الرقم والاسم أعلاه، ثم
+                    ارفع صورة الإشعار واضغط على الزر أدناه لتأكيد الإيداع.
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <button
+              className="pay-btn pay-primary"
+              type="button"
+              disabled={
+                !wallet ||
+                loading ||
+                Boolean(loadError) ||
+                notifying ||
+                isNotified ||
+                remaining <= 0
+              }
+              onClick={handleNotifyAdmin}
+            >
+              {isNotified ? <CheckIc /> : null}
+              <span>
+                {notifying
+                  ? "جارٍ إرسال إشعار الدفع للإدارة..."
+                  : isNotified
+                    ? "تم إرسال إشعار الدفع للإدارة بنجاح ✓"
+                    : "لقد أودعت المبلغ — إشعار الإدارة الآن"}
+              </span>
+            </button>
+
+            {paymentSaved && (
+              <div className="pay-success" role="status" aria-live="polite">
+                تم حفظ طلب الدفع والسند بنجاح، وهو الآن بانتظار مراجعة الإدارة. هذا لا يعني اعتماد
+                الدفعة بعد.
+              </div>
+            )}
+            {paymentWarning && <div className="pay-error">{paymentWarning}</div>}
+            {paymentError && (
+              <div className="pay-error">
+                <div>{paymentError}</div>
+                <button
+                  className="pay-retry"
+                  type="button"
+                  onClick={handleNotifyAdmin}
+                  disabled={notifying}
+                >
+                  إعادة المحاولة
+                </button>
+              </div>
+            )}
+          </section>
+        )}
+      </div>
+    </div>
+  );
+}
