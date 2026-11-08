@@ -1,10 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
-  AlertCircle,
   Check,
-  CheckCircle2,
-  Clock3,
   LoaderCircle,
   MapPin,
   Package,
@@ -36,13 +33,6 @@ type OrderRow = {
   product_name: string | null;
   product_link: string | null;
   created_at: string | null;
-  sms_status: string | null;
-  sms_error: string | null;
-  sms_attempt_count: number | null;
-  sms_last_attempt_at: string | null;
-  sms_accepted_at: string | null;
-  sms_provider_batch_id: string | null;
-  sms_provider_response: unknown;
 };
 
 const statusLabels: Record<string, string> = {
@@ -111,8 +101,6 @@ function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
-  const [retryingId, setRetryingId] = useState<string | null>(null);
-  const [retryMessage, setRetryMessage] = useState("");
 
   useEffect(() => {
     if (sessionLoading) return;
@@ -133,7 +121,7 @@ function OrdersPage() {
       const { data, error: queryError } = await supabase
         .from("orders")
         .select(
-          "id,tracking_code,status,product_name,product_link,created_at,sms_status,sms_error,sms_attempt_count,sms_last_attempt_at,sms_accepted_at,sms_provider_batch_id,sms_provider_response",
+          "id,tracking_code,status,product_name,product_link,created_at",
         )
         .eq("user_id", userId)
         .order("created_at", { ascending: false });
@@ -156,43 +144,6 @@ function OrdersPage() {
       isActive = false;
     };
   }, [user, sessionLoading, reloadKey]);
-
-  const retrySms = async (orderId: string) => {
-    if (retryingId) return;
-    setRetryingId(orderId);
-    setRetryMessage("");
-    try {
-      const { data, error: invokeError } = await supabase.functions.invoke("send-sms", {
-        body: {
-          orderId,
-          retry: orders.find((item) => item.id === orderId)?.sms_status === "failed",
-        },
-      });
-      if (invokeError) throw new Error(invokeError.message || "تعذر الاتصال بخدمة الرسائل.");
-      if (data?.accepted !== true)
-        throw new Error(data?.error || "لم يؤكد مزود الخدمة قبول الرسالة.");
-      setRetryMessage("قبل مزود الخدمة إعادة المحاولة. هذا لا يؤكد وصول الرسالة إلى الهاتف.");
-      setReloadKey((value) => value + 1);
-    } catch (error) {
-      setRetryMessage(error instanceof Error ? error.message : "تعذر إعادة المحاولة.");
-      // Refresh persisted state because the server may have claimed an attempt before the response was lost.
-      setReloadKey((value) => value + 1);
-    } finally {
-      setRetryingId(null);
-    }
-  };
-
-  const smsLabel = (state: string | null) =>
-    (
-      ({
-        pending: "بانتظار الإرسال",
-        sending: "جارٍ الإرسال",
-        accepted: "قبله مزود الخدمة (ليس تأكيد وصول)",
-        failed: "فشل مؤكد",
-        unknown: "النتيجة غير مؤكدة؛ لا تعِد الإرسال",
-        delivered: "وصلت حسب تقرير الشبكة",
-      }) as Record<string, string>
-    )[state || ""] || "لم تُسجل حالة SMS";
 
   return (
     <AccountShell title="طلباتي" wide>
@@ -250,18 +201,18 @@ function OrdersPage() {
           .ot-step.is-current .ot-step-label { color:var(--ot-orange); }
           .ot-track-link { display:flex; align-items:center; justify-content:center; gap:7px; width:100%; margin-top:13px; padding:11px 14px; border-radius:11px; color:white; background:linear-gradient(135deg,var(--ot-primary),var(--ot-primary-light)); text-decoration:none; font-size:12px; font-weight:900; box-shadow:0 7px 16px #0f4c8129; }
           .ot-no-track { margin-top:12px; color:var(--ot-muted); text-align:center; font-size:11px; }
-          .ot-sms { margin-top:12px; padding:11px 12px; border:1px solid var(--ot-line); border-radius:12px; background:#f8fafc; }
-          .ot-sms-title { display:flex; align-items:flex-start; gap:7px; color:var(--ot-ink); font-size:11px; font-weight:800; line-height:1.6; }
-          .ot-sms-detail { margin-top:4px; color:var(--ot-muted); font-size:10px; line-height:1.7; overflow-wrap:anywhere; }
-          .ot-sms-error { color:#b91c1c; }
-          .ot-sms-warning { margin-top:7px; color:#92400e; font-size:10px; font-weight:800; line-height:1.6; }
-          .ot-sms-button { display:inline-flex; align-items:center; gap:6px; margin-top:8px; padding:8px 10px; border:0; border-radius:9px; color:white; background:var(--ot-primary); font:inherit; font-size:10px; font-weight:900; cursor:pointer; }
-          .ot-sms-button:disabled { opacity:.55; cursor:wait; }
           .ot-empty { padding:18px; border:1px dashed var(--ot-line); border-radius:16px; background:white; }
           .ot-footer { margin:17px 0 4px; text-align:center; color:var(--ot-muted); font-size:11px; font-weight:700; }
           @media (max-width:640px) {
+            .ot-intro { align-items:flex-start; }
+            .ot-intro > div:first-child { flex:1 1 100%; }
+            .ot-top-actions { width:100%; justify-content:space-between; }
+            .ot-new { flex:1 1 auto; min-height:42px; }
+            .ot-count { flex:0 1 auto; text-align:center; }
             .ot-card { padding:13px; border-radius:16px; }
-            .ot-head { gap:8px; }
+            .ot-head { align-items:center; flex-wrap:wrap; gap:9px; }
+            .ot-order-info { flex:1 1 180px; }
+            .ot-head-status { flex-direction:row; align-items:center; justify-content:space-between; flex:1 1 100%; }
             .ot-order-number { font-size:14px; }
             .ot-order-meta { font-size:10px; }
             .ot-package { width:39px; height:39px; }
@@ -275,6 +226,8 @@ function OrdersPage() {
             .ot-step-label { margin:7px 0 0; padding:0; font-size:12px; }
             .ot-current-dot { width:10px; height:10px; }
             .ot-now { margin-top:12px; }
+            .ot-track-link { min-height:44px; font-size:13px; }
+            .ot-current-stage { font-size:12px; }
           }
           @media (prefers-reduced-motion:reduce) {
             .orders-tracker *, .orders-tracker *::before { scroll-behavior:auto !important; animation-duration:.01ms !important; animation-iteration-count:1 !important; }
@@ -293,8 +246,6 @@ function OrdersPage() {
             </Link>
           </div>
         </div>
-
-        {retryMessage && <p role="status" className="ot-feedback">{retryMessage}</p>}
 
         {loading ? (
           <div role="status" className="ot-loading">
@@ -384,59 +335,6 @@ function OrdersPage() {
                     <p className="ot-no-track">لا يتوفر رمز تتبع لهذا الطلب حتى الآن.</p>
                   )}
 
-                  <div className="ot-sms">
-                    <div className="ot-sms-title">
-                      {order.sms_status === "accepted" || order.sms_status === "delivered" ? (
-                        <CheckCircle2 className="text-emerald-600" size={16} />
-                      ) : order.sms_status === "failed" ? (
-                        <AlertCircle className="text-red-600" size={16} />
-                      ) : order.sms_status === "sending" ? (
-                        <LoaderCircle className="animate-spin text-blue-600" size={16} />
-                      ) : (
-                        <Clock3 className="text-amber-600" size={16} />
-                      )}
-                      <span>رسالة SMS: {smsLabel(order.sms_status)}</span>
-                    </div>
-                    {order.sms_attempt_count ? (
-                      <p className="ot-sms-detail">عدد المحاولات: {order.sms_attempt_count}</p>
-                    ) : null}
-                    {order.sms_last_attempt_at ? (
-                      <p className="ot-sms-detail">
-                        آخر محاولة: {new Date(order.sms_last_attempt_at).toLocaleString("ar")}
-                      </p>
-                    ) : null}
-                    {order.sms_error && order.sms_status === "failed" ? (
-                      <p className="ot-sms-detail ot-sms-error">{order.sms_error}</p>
-                    ) : null}
-                    {order.sms_provider_batch_id ? (
-                      <p className="ot-sms-detail" dir="ltr">
-                        TextBee batch: {order.sms_provider_batch_id}
-                      </p>
-                    ) : null}
-                    {(order.sms_status === "failed" || order.sms_status === "pending") && (
-                      <button
-                        type="button"
-                        disabled={retryingId === order.id}
-                        onClick={() => void retrySms(order.id)}
-                        className="ot-sms-button"
-                      >
-                        <RefreshCw
-                          size={14}
-                          className={retryingId === order.id ? "animate-spin" : ""}
-                        />
-                        {retryingId === order.id
-                          ? "جارٍ المحاولة…"
-                          : order.sms_status === "pending"
-                            ? "إرسال SMS"
-                            : "إعادة محاولة SMS"}
-                      </button>
-                    )}
-                    {(order.sms_status === "unknown" || order.sms_status === "sending") && (
-                      <p className="ot-sms-warning">
-                        لا تستخدم زر إعادة الإرسال هنا: افحص حالة الدفعة في TextBee أولًا لتجنب تكرار الرسالة.
-                      </p>
-                    )}
-                  </div>
                 </article>
               );
             })}
