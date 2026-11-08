@@ -2,6 +2,49 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
+const FIXED_YER_RATE = { SAR: 140, USD: 535 } as const;
+
+function resolveOrderTotalYER(
+  storedTotal: unknown,
+  notes: string | null | undefined,
+): number {
+  const priceMatch = (notes ?? "").match(
+    /السعر المعلن:\s*([\d,]+(?:\.\d+)?)\s*([^|]*)/,
+  );
+
+  if (priceMatch) {
+    const amount = Number((priceMatch[1] ?? "").replace(/,/g, ""));
+    const currency = (priceMatch[2] ?? "").trim().toLowerCase();
+
+    if (Number.isFinite(amount) && amount > 0) {
+      if (
+        currency.includes("سعودي") ||
+        currency.includes("ر.س") ||
+        currency.includes("sar")
+      ) {
+        return Math.round(amount * FIXED_YER_RATE.SAR);
+      }
+      if (
+        currency.includes("$") ||
+        currency.includes("دولار") ||
+        currency.includes("usd")
+      ) {
+        return Math.round(amount * FIXED_YER_RATE.USD);
+      }
+      if (
+        currency.includes("يمني") ||
+        currency.includes("ر.ي") ||
+        currency.includes("yer")
+      ) {
+        return Math.round(amount);
+      }
+    }
+  }
+
+  const savedTotal = Number(storedTotal);
+  return Number.isFinite(savedTotal) && savedTotal > 0 ? savedTotal : 0;
+}
+
 export const Route = createFileRoute("/pay")({
   component: PayPage,
   validateSearch: (s: Record<string, unknown>) => ({
@@ -575,7 +618,7 @@ function PayPage() {
       const orderQuery = supabase
         .from("orders")
         .select(
-          "id, tracking_code, customer_name, phone, product_name, notes, status, created_at, user_id",
+          "id, tracking_code, customer_name, phone, product_name, notes, status, created_at, user_id, total_cost_yer",
         );
 
       const { data: dbOrder, error: orderError } = await (
@@ -618,22 +661,12 @@ function PayPage() {
       setPhone(dbOrder.phone || "");
       setProductName(dbOrder.product_name || "طلب متجر دولي");
 
-      let calculatedTotal = 0;
-      if (!calculatedTotal) {
-        const notesText = dbOrder.notes || "";
-        const priceMatch = notesText.match(/السعر المعلن:\s*([\d.]+)\s*([^|]*)/);
-        if (priceMatch) {
-          const rawPrice = parseFloat(priceMatch[1] ?? "0") || 0;
-          const rawCurrency = priceMatch[2]?.trim() || "";
-          if (rawCurrency.includes("سعودي") || rawCurrency.includes("ر.س")) {
-            calculatedTotal = Math.round(rawPrice * 142);
-          } else if (rawCurrency.includes("$") || rawCurrency.includes("دولار")) {
-            calculatedTotal = Math.round(rawPrice * 535);
-          } else if (rawPrice > 0) {
-            calculatedTotal = Math.round(rawPrice);
-          }
-        }
-      }
+      // Recalculate clear historical quotes at the fixed rates. If the
+      // original quote/currency is unavailable, preserve the saved YER total.
+      const calculatedTotal = resolveOrderTotalYER(
+        dbOrder.total_cost_yer,
+        dbOrder.notes,
+      );
 
       setTotal(calculatedTotal);
       setCurrency("ر.ي");
