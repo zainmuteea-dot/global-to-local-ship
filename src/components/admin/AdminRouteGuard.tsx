@@ -134,6 +134,7 @@ export function AdminRouteGuard({
         if (!hasVerifiedAccess) {
           setVerificationError(message);
           setChecking(false);
+          goToLogin("role-check-failed");
         }
       }
     };
