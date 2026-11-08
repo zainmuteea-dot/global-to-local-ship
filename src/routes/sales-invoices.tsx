@@ -221,6 +221,7 @@ function SalesInvoicesPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingSource, setEditingSource] = useState<"order" | "invoice" | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const managePermission = usePermission("finance", "manage");
@@ -250,63 +251,71 @@ function SalesInvoicesPage() {
   const loadInvoices = useCallback(async () => {
     setLoading(true);
     setErrorMessage("");
-    // The generated local Supabase types do not yet contain sales_invoices.
     const db = supabase as any;
-    const { data, error } = await db
-      .from("sales_invoices")
-      .select(COLUMNS)
-      .order("created_at", { ascending: false })
-      .limit(200);
-    if (error) {
-      console.error("Failed to load sales invoices:", error);
-      setInvoices([]);
-      setErrorMessage(
-        "تعذر تحميل فواتير المبيعات. تحقق من اتصال Supabase وصلاحية المدير وسياسات RLS.",
-      );
-    } else if (data?.length) {
-      setInvoices(
-        await attachOrderBalances(
-          (data as InvoiceRow[]).map((row) => ({ ...row, source: "invoice" })),
-        ),
-      );
-    } else {
-      // الطلبات هي مصدر الفاتورة في المسارات القديمة؛ نعرضها حتى لا تنفصل صفحة الفواتير عن البيانات الفعلية.
-      const { data: orders, error: ordersError } = await db
-        .from("orders")
-        .select(
-          "id, tracking_code, customer_name, user_id, total_cost_yer, created_at",
-        )
+    const [invoiceResult, orderResult] = await Promise.all([
+      db.from("sales_invoices").select(COLUMNS).order("created_at", { ascending: false }).limit(200),
+      db.from("orders")
+        .select("id, tracking_code, customer_name, user_id, total_cost_yer, created_at")
         .order("created_at", { ascending: false })
-        .limit(200);
-      if (ordersError) {
-        console.error(
-          "Failed to load orders for invoice linkage:",
-          ordersError,
-        );
-        setInvoices([]);
-        setErrorMessage("تعذر ربط الفواتير بالطلبات في قاعدة البيانات.");
-      } else {
-        const orderInvoices: InvoiceRow[] = (orders ?? []).map(
-          (order: any) => ({
-            id: String(order.id),
-            invoice_number: order.tracking_code || `ORD-${order.id}`,
-            client: order.customer_name ?? null,
-            tracking_code: order.tracking_code ?? null,
-            total: null,
-            total_yer: order.total_cost_yer ?? null,
-            paid_yer: null,
-            remaining_yer: null,
-            deposit_due_yer: null,
-            created_at: order.created_at ?? null,
-            order_id: String(order.id),
-            user_id: order.user_id ?? null,
-            created_by: null,
-            source: "order",
-          }),
-        );
-        setInvoices(await attachOrderBalances(orderInvoices));
-      }
+        .limit(200),
+    ]);
+
+    if (invoiceResult.error) {
+      console.error("Failed to load sales invoices:", invoiceResult.error);
+      setInvoices([]);
+      setErrorMessage("تعذر تحميل فواتير المبيعات. تحقق من اتصال Supabase وسياسات RLS.");
+      setLoading(false);
+      return;
     }
+    if (orderResult.error) {
+      console.error("Failed to load orders for sales invoices:", orderResult.error);
+      setInvoices([]);
+      setErrorMessage("تعذر تحميل الطلبات المرتبطة بالفواتير.");
+      setLoading(false);
+      return;
+    }
+
+    const orderRows = (orderResult.data ?? []) as any[];
+    const orderByTrackingCode = new Map<string, any>();
+    for (const order of orderRows) {
+      const code = String(order.tracking_code ?? "").trim();
+      if (code) orderByTrackingCode.set(code, order);
+    }
+    const invoiceRows = (invoiceResult.data ?? []).map((row: InvoiceRow) => {
+      const exactOrder = row.order_id
+        ? null
+        : orderByTrackingCode.get(String(row.tracking_code ?? "").trim());
+      return {
+        ...row,
+        order_id: row.order_id ?? (exactOrder?.id ? String(exactOrder.id) : null),
+        source: "invoice" as const,
+      };
+    });
+    const invoiceOrderIds = new Set(
+      invoiceRows.map((row: InvoiceRow) => row.order_id).filter((id: string | null): id is string => Boolean(id)),
+    );
+    const orderInvoices: InvoiceRow[] = orderRows
+      .filter((order) => !invoiceOrderIds.has(String(order.id)))
+      .map((order) => ({
+        id: String(order.id),
+        invoice_number: order.tracking_code || `ORD-${order.id}`,
+        client: order.customer_name ?? null,
+        tracking_code: order.tracking_code ?? null,
+        total: null,
+        total_yer: order.total_cost_yer ?? null,
+        paid_yer: null,
+        remaining_yer: null,
+        deposit_due_yer: null,
+        created_at: order.created_at ?? null,
+        order_id: String(order.id),
+        user_id: order.user_id ?? null,
+        created_by: null,
+        source: "order",
+      }));
+
+    const balanced = await attachOrderBalances([...invoiceRows, ...orderInvoices]);
+    balanced.sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
+    setInvoices(balanced);
     setLoading(false);
   }, []);
 
@@ -350,13 +359,17 @@ function SalesInvoicesPage() {
       setErrorMessage("أدخل اسم العميل.");
       return;
     }
+    const editingOrder = editingId !== null && editingSource === "order";
     if (
-      !Number.isFinite(total) ||
-      total < 0 ||
+      (!editingOrder && (!Number.isFinite(total) || total < 0)) ||
       !Number.isFinite(totalYer) ||
       totalYer < 0
     ) {
-      setErrorMessage("أدخل إجماليًا صحيحًا غير سالب في حقول الفاتورة.");
+      setErrorMessage("أدخل إجماليًا صحيحًا غير سالب بالريال اليمني.");
+      return;
+    }
+    if (editingOrder && !form.trackingCode.trim()) {
+      setErrorMessage("رقم الطلب مطلوب ولا يمكن تركه فارغًا.");
       return;
     }
     if (
@@ -420,11 +433,18 @@ function SalesInvoicesPage() {
       order_id: orderId,
       updated_at: new Date().toISOString(),
     };
-    const result = editingId
-      ? await db.from("sales_invoices").update(values).eq("id", editingId)
-      : await db
-          .from("sales_invoices")
-          .insert({ ...values, created_by: authData.user.id });
+    const result = editingId && editingSource === "order"
+      ? await db.from("orders").update({
+          customer_name: client,
+          tracking_code: form.trackingCode.trim(),
+          total_cost_yer: totalYer,
+          updated_at: new Date().toISOString(),
+        }).eq("id", editingId)
+      : editingId
+        ? await db.from("sales_invoices").update(values).eq("id", editingId)
+        : await db
+            .from("sales_invoices")
+            .insert({ ...values, created_by: authData.user.id });
     setSaving(false);
     if (result.error) {
       console.error("Failed to save sales invoice:", result.error);
@@ -435,6 +455,7 @@ function SalesInvoicesPage() {
     }
     setForm(EMPTY_FORM);
     setEditingId(null);
+    setEditingSource(null);
     setShowAddModal(false);
     setSuccessMessage(
       editingId
@@ -456,6 +477,7 @@ function SalesInvoicesPage() {
       return;
     }
     setEditingId(row.id);
+    setEditingSource(row.source ?? "invoice");
     setForm({
       client: row.client ?? "",
       trackingCode: row.tracking_code ?? "",
@@ -484,20 +506,48 @@ function SalesInvoicesPage() {
     }
     if (
       !window.confirm(
-        `هل أنت متأكد من حذف الفاتورة ${row.invoice_number}؟ لا يمكن التراجع عن الحذف.`,
+        row.source === "order"
+          ? `سيُحذف الطلب ${row.invoice_number} فعليًا من سجل الطلبات. قد تمنع علاقة الدفعات الحذف. لا يمكن التراجع عن هذا الإجراء. هل تريد المتابعة؟`
+          : `هل أنت متأكد من حذف الفاتورة ${row.invoice_number}؟ لا يمكن التراجع عن الحذف.`,
       )
     )
       return;
     setErrorMessage("");
     setSuccessMessage("");
     const db = supabase as any;
-    const { error } = await db.from("sales_invoices").delete().eq("id", row.id);
+    if (row.source === "order") {
+      const { count: paymentCount, error: paymentCheckError } = await db
+        .from("payments")
+        .select("id", { count: "exact", head: true })
+        .eq("order_id", row.id);
+      if (paymentCheckError || (paymentCount ?? 0) > 0) {
+        setErrorMessage(paymentCheckError
+          ? "تعذر التحقق من سجل الدفعات؛ أُوقف حذف الطلب حفاظًا على السجل المالي."
+          : "لا يمكن حذف طلب له سجل دفعات. عالج السجل المالي يدويًا قبل أي حذف.");
+        return;
+      }
+      const { count: linkedInvoiceCount, error: invoiceCheckError } = await db
+        .from("sales_invoices")
+        .select("id", { count: "exact", head: true })
+        .eq("order_id", row.id);
+      if (invoiceCheckError || (linkedInvoiceCount ?? 0) > 0) {
+        setErrorMessage(invoiceCheckError
+          ? "تعذر التحقق من الفواتير المرتبطة؛ أُوقف حذف الطلب حفاظًا على السجلات."
+          : "لا يمكن حذف طلب مرتبط بفاتورة محفوظة. احذف أو عالج الفاتورة وفق الصلاحية أولًا.");
+        return;
+      }
+    }
+    const { error } = row.source === "order"
+      ? await db.from("orders").delete().eq("id", row.id)
+      : await db.from("sales_invoices").delete().eq("id", row.id);
     if (error) {
-      console.error("Failed to delete sales invoice:", error);
-      setErrorMessage("تعذر حذف الفاتورة. تحقق من صلاحية المدير وسياسة RLS.");
+      console.error("Failed to delete sales invoice/order:", error);
+      setErrorMessage(row.source === "order"
+        ? "تعذر حذف الطلب. قد تمنعه سياسات RLS أو علاقة قاعدة البيانات. لم تُحذف بيانات أخرى."
+        : "تعذر حذف الفاتورة. تحقق من صلاحية الحذف وسياسة RLS.");
       return;
     }
-    setSuccessMessage("تم حذف الفاتورة.");
+    setSuccessMessage(row.source === "order" ? "تم حذف الطلب." : "تم حذف الفاتورة.");
     await loadInvoices();
   };
 
@@ -540,7 +590,7 @@ function SalesInvoicesPage() {
                 <Receipt className="size-6 text-[#F97316]" /> فواتير المبيعات
               </h1>
               <p className="text-xs font-medium text-slate-500 md:text-sm">
-                الفواتير المحفوظة في Supabase، مع صلاحية الإدارة.
+                طلبات المتجر والفواتير المحفوظة، مع حساب الدفعات المعتمدة من payments.order_id.
               </p>
             </div>
           </div>
@@ -561,6 +611,7 @@ function SalesInvoicesPage() {
                 type="button"
                 onClick={() => {
                   setEditingId(null);
+                  setEditingSource(null);
                   setForm(EMPTY_FORM);
                   setErrorMessage("");
                   setSuccessMessage("");
@@ -747,31 +798,27 @@ function SalesInvoicesPage() {
                       </td>
                       <td className="px-4 py-3.5">
                         <div className="flex justify-center gap-1.5">
-                          {row.source !== "order" && (
-                            <>
-                              {!managePermission.loading && managePermission.allowed && (
-                                <button
-                                  type="button"
-                                  onClick={() => void startEditing(row)}
-                                  title="تعديل الفاتورة"
-                                  aria-label={`تعديل الفاتورة ${row.invoice_number}`}
-                                  className="rounded-lg bg-sky-50 p-1.5 text-sky-700 transition hover:bg-sky-100"
-                                >
-                                  <Pencil className="size-4" />
-                                </button>
-                              )}
-                              {!deletePermission.loading && deletePermission.allowed && (
-                                <button
-                                  type="button"
-                                  onClick={() => void deleteInvoice(row)}
-                                  title="حذف الفاتورة"
-                                  aria-label={`حذف الفاتورة ${row.invoice_number}`}
-                                  className="rounded-lg bg-red-50 p-1.5 text-red-700 transition hover:bg-red-100"
-                                >
-                                  <Trash2 className="size-4" />
-                                </button>
-                              )}
-                            </>
+                          {!managePermission.loading && managePermission.allowed && (
+                            <button
+                              type="button"
+                              onClick={() => void startEditing(row)}
+                              title={row.source === "order" ? "تعديل الطلب" : "تعديل الفاتورة"}
+                              aria-label={`تعديل ${row.source === "order" ? "الطلب" : "الفاتورة"} ${row.invoice_number}`}
+                              className="rounded-lg bg-sky-50 p-1.5 text-sky-700 transition hover:bg-sky-100"
+                            >
+                              <Pencil className="size-4" />
+                            </button>
+                          )}
+                          {!deletePermission.loading && deletePermission.allowed && (
+                            <button
+                              type="button"
+                              onClick={() => void deleteInvoice(row)}
+                              title={row.source === "order" ? "حذف الطلب" : "حذف الفاتورة"}
+                              aria-label={`حذف ${row.source === "order" ? "الطلب" : "الفاتورة"} ${row.invoice_number}`}
+                              className="rounded-lg bg-red-50 p-1.5 text-red-700 transition hover:bg-red-100"
+                            >
+                              <Trash2 className="size-4" />
+                            </button>
                           )}
                           <button
                             type="button"
@@ -812,11 +859,11 @@ function SalesInvoicesPage() {
                   className="flex items-center gap-2 text-lg font-black text-[#0F4C81]"
                 >
                   <Receipt className="size-5 text-[#F97316]" />{" "}
-                  {editingId ? "تعديل فاتورة المبيعات" : "إصدار فاتورة مبيعات"}
+                  {editingId ? (editingSource === "order" ? "تعديل الطلب" : "تعديل فاتورة المبيعات") : "إصدار فاتورة مبيعات"}
                 </h2>
                 <button
                   type="button"
-                  onClick={() => setShowAddModal(false)}
+                  onClick={() => { setShowAddModal(false); setEditingId(null); setEditingSource(null); }}
                   aria-label="إغلاق"
                   className="flex size-8 items-center justify-center rounded-full bg-slate-100 font-bold text-slate-500 hover:bg-slate-200"
                 >
@@ -848,19 +895,21 @@ function SalesInvoicesPage() {
                       className="mt-1 h-10 w-full rounded-xl border border-slate-200 px-3 font-mono text-sm outline-none focus:border-[#0F4C81]"
                     />
                   </label>
-                  <label className="text-xs font-bold text-slate-600">
-                    الإجمالي بالدولار
-                    <input
-                      required
-                      min="0"
-                      step="0.01"
-                      type="number"
-                      value={form.total}
-                      onChange={(e) => updateForm("total", e.target.value)}
-                      placeholder="0.00"
-                      className="mt-1 h-10 w-full rounded-xl border border-slate-200 px-3 font-mono text-sm outline-none focus:border-[#0F4C81]"
-                    />
-                  </label>
+                  {editingSource !== "order" && (
+                    <label className="text-xs font-bold text-slate-600">
+                      الإجمالي بالدولار
+                      <input
+                        required
+                        min="0"
+                        step="0.01"
+                        type="number"
+                        value={form.total}
+                        onChange={(e) => updateForm("total", e.target.value)}
+                        placeholder="0.00"
+                        className="mt-1 h-10 w-full rounded-xl border border-slate-200 px-3 font-mono text-sm outline-none focus:border-[#0F4C81]"
+                      />
+                    </label>
+                  )}
                   <label className="text-xs font-bold text-slate-600">
                     الإجمالي بالريال اليمني
                     <input
@@ -950,7 +999,7 @@ function SalesInvoicesPage() {
                   <button
                     type="button"
                     disabled={saving}
-                    onClick={() => setShowAddModal(false)}
+                    onClick={() => { setShowAddModal(false); setEditingId(null); setEditingSource(null); }}
                     className="h-11 rounded-xl bg-slate-100 px-4 text-sm font-bold text-slate-600 transition hover:bg-slate-200"
                   >
                     إلغاء
