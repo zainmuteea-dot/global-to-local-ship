@@ -104,9 +104,11 @@ function WalletPage() {
     void loadTransactions();
   }, [user, loadTransactions]);
 
-  const adds = tx.filter((item) => item.amount > 0).reduce((sum, item) => sum + item.amount, 0);
-  const subs = tx.filter((item) => item.amount < 0).reduce((sum, item) => sum - item.amount, 0);
-  const balance = adds - subs;
+  const addedTransactions = tx.filter((item) => item.amount > 0);
+  const deductedTransactions = tx.filter((item) => item.amount < 0);
+  const additionsTotal = addedTransactions.reduce((sum, item) => sum + item.amount, 0);
+  const deductionsTotal = deductedTransactions.reduce((sum, item) => sum - item.amount, 0);
+  const balance = additionsTotal - deductionsTotal;
   const fmt = (value: number) => value.toLocaleString("ar-YE");
 
   const scrollToTopup = () => {
@@ -420,12 +422,12 @@ function WalletPage() {
               <p className="mt-0.5 text-xs font-black text-slate-900">{transactionsLoading ? "…" : transactionsError ? "—" : fmt(tx.length)}</p>
             </div>
             <div className="rounded-xl bg-emerald-50 p-2 text-center">
-              <p className="text-[9px] font-semibold text-emerald-700">الإضافات</p>
-              <p className="mt-0.5 text-xs font-black text-emerald-800">{transactionsLoading ? "…" : transactionsError ? "—" : fmt(adds)}</p>
+              <p className="text-[9px] font-semibold text-emerald-700">عدد الإضافات</p>
+              <p className="mt-0.5 text-xs font-black text-emerald-800">{transactionsLoading ? "…" : transactionsError ? "—" : fmt(addedTransactions.length)}</p>
             </div>
             <div className="rounded-xl bg-red-50 p-2 text-center">
-              <p className="text-[9px] font-semibold text-red-700">الخصومات</p>
-              <p className="mt-0.5 text-xs font-black text-red-800">{transactionsLoading ? "…" : transactionsError ? "—" : fmt(subs)}</p>
+              <p className="text-[9px] font-semibold text-red-700">عدد الخصومات</p>
+              <p className="mt-0.5 text-xs font-black text-red-800">{transactionsLoading ? "…" : transactionsError ? "—" : fmt(deductedTransactions.length)}</p>
             </div>
           </div>
 
