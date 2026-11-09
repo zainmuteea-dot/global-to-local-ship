@@ -97,7 +97,7 @@ function OfferSlugPage() {
               style={{ background: `linear-gradient(135deg, ${productColors.bg_color}, ${productColors.bg_color_2})`, color: productColors.text_color }}>
               <div className="aspect-[4/3] bg-black/5">{product.image_url ? <img src={product.image_url} alt={product.name} loading="lazy" className="size-full object-cover" /> : <div className="grid size-full place-items-center"><ShoppingBag className="size-12" /></div>}</div>
               <div className="p-5"><h2 className="font-extrabold">{product.name}</h2>{product.brand && <p className="mt-1 text-sm">الماركة: {product.brand}</p>}{product.description && <p className="mt-2 text-sm leading-6">{product.description}</p>}
-              <p className="mt-4 text-xl font-black">{(price * (1 - discount / 100)).toLocaleString("ar", { maximumFractionDigits: 2 })} ر.س</p></div>
+              <p className="mt-4 text-xl font-black">{(price * (1 - discount / 100)).toLocaleString("en-US", { maximumFractionDigits: 2 })} ر.س</p></div>
             </article>;
           })}</div>}
       </div>

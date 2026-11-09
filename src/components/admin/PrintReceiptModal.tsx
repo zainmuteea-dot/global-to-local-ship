@@ -170,7 +170,7 @@ export function PrintReceiptModal({ order, onClose }: { order: OrderItem; onClos
                 <span>السعر المسجل للمنتج</span>
                 <strong>
                   {Number.isFinite(Number(order.originalPrice))
-                    ? Number(order.originalPrice).toLocaleString("ar-YE")
+                    ? Number(order.originalPrice).toLocaleString("en-US")
                     : "—"}{" "}
                   ر.س
                 </strong>

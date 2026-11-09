@@ -170,7 +170,7 @@ export function AdminAlerts() {
                   )}
 
                   <div className="mt-1 text-[11px] text-slate-500">
-                    {payment.created_at ? new Date(payment.created_at).toLocaleString("ar") : ""}
+                    {payment.created_at ? new Date(payment.created_at).toLocaleString("ar-u-nu-latn") : ""}
                   </div>
                 </div>
 

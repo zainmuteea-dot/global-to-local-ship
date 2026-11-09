@@ -99,7 +99,7 @@ function normalizeCurrency(value: unknown): CurrencyCode | null {
 }
 
 function formatMoney(value: number | null | undefined): string {
-  return value === null || value === undefined ? "غير مسجل" : value.toLocaleString("ar-YE");
+  return value === null || value === undefined ? "غير مسجل" : value.toLocaleString("en-US");
 }
 
 function formatCurrency(value: number | null | undefined, currency: CurrencyCode): string {

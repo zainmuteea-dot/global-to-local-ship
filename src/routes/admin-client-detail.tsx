@@ -108,7 +108,7 @@ function AdminClientDetail() {
                   <td className="p-3 font-mono">{order.tracking_code}</td>
                   <td className="p-3">{order.product_name || "طلب متجر دولي"}</td>
                   <td className="p-3">{order.status}</td>
-                  <td className="p-3">{new Date(order.created_at).toLocaleDateString("ar-YE")}</td>
+                  <td className="p-3">{new Date(order.created_at).toLocaleDateString("ar-YE-u-nu-latn")}</td>
                 </tr>
               ))}
             </tbody>

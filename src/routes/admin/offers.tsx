@@ -845,10 +845,10 @@ function AdminOffersPage() {
                       )}
                       <div className="flex flex-wrap items-baseline gap-x-2">
                         <span className="text-base font-black text-[#0F4C81]">
-                          {finalPrice.toLocaleString("ar", { maximumFractionDigits: 2 })} ر.س
+                          {finalPrice.toLocaleString("en-US", { maximumFractionDigits: 2 })} ر.س
                         </span>
                         <span className="text-xs text-gray-400 line-through">
-                          {Number(product.price).toLocaleString("ar", { maximumFractionDigits: 2 })} ر.س
+                          {Number(product.price).toLocaleString("en-US", { maximumFractionDigits: 2 })} ر.س
                         </span>
                       </div>
                       <div className="grid grid-cols-2 gap-2 border-t border-[#E6F0F7] pt-3">
@@ -907,8 +907,8 @@ function OfferProductPreview({ form }: { form: ProductForm }) {
         {form.brand && <p className="text-sm font-bold opacity-85">الماركة: {form.brand}</p>}
         {form.description && <p className="line-clamp-2 text-sm leading-6 opacity-85">{form.description}</p>}
         <div className="flex items-baseline gap-2">
-          {discount > 0 && <span className="text-sm line-through opacity-60">{price.toLocaleString("ar", { maximumFractionDigits: 2 })} ر.س</span>}
-          <strong className="text-xl">{salePrice.toLocaleString("ar", { maximumFractionDigits: 2 })} ر.س</strong>
+          {discount > 0 && <span className="text-sm line-through opacity-60">{price.toLocaleString("en-US", { maximumFractionDigits: 2 })} ر.س</span>}
+          <strong className="text-xl">{salePrice.toLocaleString("en-US", { maximumFractionDigits: 2 })} ر.س</strong>
         </div>
       </div>
     </article>

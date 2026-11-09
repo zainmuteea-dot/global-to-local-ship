@@ -271,8 +271,8 @@ export function OfferListing({ type }: { type: OfferType }) {
                     {product.brand && <p className="mt-1 text-sm font-bold opacity-85">الماركة: {product.brand}</p>}
                     {product.description && <p className="mt-2 line-clamp-3 text-sm leading-6 opacity-80">{product.description}</p>}
                     <div className="mt-4 flex flex-wrap items-baseline gap-2">
-                      {discount > 0 && <span className="text-sm line-through opacity-60">{originalPrice.toLocaleString("ar", { maximumFractionDigits: 2 })} ر.س</span>}
-                      <strong className="text-xl font-black">{salePrice.toLocaleString("ar", { maximumFractionDigits: 2 })} ر.س</strong>
+                      {discount > 0 && <span className="text-sm line-through opacity-60">{originalPrice.toLocaleString("en-US", { maximumFractionDigits: 2 })} ر.س</span>}
+                      <strong className="text-xl font-black">{salePrice.toLocaleString("en-US", { maximumFractionDigits: 2 })} ر.س</strong>
                     </div>
                     <p className="mt-1 text-xs opacity-70">{discount > 0 ? "السعر بعد الخصم" : "سعر البيع"}</p>
                   </div>

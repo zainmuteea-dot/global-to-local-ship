@@ -86,11 +86,11 @@ function formatDate(value: string) {
   const date = new Date(value);
   return Number.isNaN(date.getTime())
     ? "—"
-    : date.toLocaleString("ar-YE", { dateStyle: "medium", timeStyle: "short" });
+    : date.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
 }
 
 function formatAmount(value: number) {
-  return value.toLocaleString("ar-YE", { maximumFractionDigits: 2 });
+  return value.toLocaleString("en-US", { maximumFractionDigits: 2 });
 }
 
 function ClientReportsPage() {
@@ -414,7 +414,7 @@ function ClientReportsPageContent() {
               </h2>
               <p className="mt-1 text-xs text-slate-500">
                 {activeClient.phone || "لا يوجد هاتف"} · عضو منذ{" "}
-                {new Date(activeClient.created_at).toLocaleDateString("ar-YE")}
+                {new Date(activeClient.created_at).toLocaleDateString("ar-YE-u-nu-latn")}
               </p>
             </div>
             <span className="inline-flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2 text-sm font-bold text-slate-700">

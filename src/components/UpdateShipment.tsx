@@ -448,7 +448,7 @@ export const UpdateShipment: React.FC<UpdateShipmentProps> = ({
                 <div className="p-3.5 bg-[#F8FAFC] rounded-2xl border border-slate-200">
                   <span className="text-[#0F4C81] block mb-1 font-bold">تاريخ التسجيل:</span>
                   <span className="font-bold text-slate-800">
-                    {new Date(order.createdAt).toLocaleDateString("ar-YE", {
+                    {new Date(order.createdAt).toLocaleDateString("ar-YE-u-nu-latn", {
                       year: "numeric",
                       month: "long",
                       day: "numeric",

@@ -151,7 +151,7 @@ function InsurancePage() {
                 <td className="p-3 font-bold">{item.amount}</td>
                 <td className="p-3">{item.description}</td>
                 <td className="p-3 text-xs text-gray-500">
-                  {item.created_at ? new Date(item.created_at).toLocaleDateString("ar") : "—"}
+                  {item.created_at ? new Date(item.created_at).toLocaleDateString("ar-u-nu-latn") : "—"}
                 </td>
               </tr>
             ))}

@@ -57,6 +57,10 @@
   --glass-border: oklch(1 0 0 / 0.2);
 }
 
+body {
+  font-variant-numeric: tabular-nums;
+}
+
 /* ================== الروبوت الأزرق وفقاعة الترحيب ================== */
 
 .chatbot {

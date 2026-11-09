@@ -64,7 +64,7 @@ function sumIfComplete<T>(rows: T[], getValue: (row: T) => number | null): numbe
 }
 
 function formatMoney(value: number | null): string {
-  return value === null ? "غير مكتمل" : value.toLocaleString("ar-YE");
+  return value === null ? "غير مكتمل" : value.toLocaleString("en-US");
 }
 
 export function MerchantReportsPage() {

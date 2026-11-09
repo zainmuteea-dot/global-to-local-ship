@@ -92,7 +92,7 @@ function getCurrentStage(status: string | null): number {
 function formatOrderDate(value: string | null): string {
   if (!value) return "";
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString("ar");
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString("ar-u-nu-latn");
 }
 
 function OrdersPage() {

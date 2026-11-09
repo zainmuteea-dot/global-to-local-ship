@@ -148,7 +148,7 @@ function playNotificationSound() {
 function formatDate(value: string | null | undefined): string {
   if (!value) return "غير متاح";
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "غير متاح" : date.toLocaleDateString("ar-YE");
+  return Number.isNaN(date.getTime()) ? "غير متاح" : date.toLocaleDateString("ar-YE-u-nu-latn");
 }
 
 function TrackingDetailPage() {
