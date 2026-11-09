@@ -111,6 +111,7 @@ type SystemNotification = {
 };
 
 const ADMIN_ONLY_NOTIFICATION_KINDS = new Set(["new_payment_submitted"]);
+const CUSTOMER_NOTIFICATION_PAGE_SIZE = 50;
 
 // حالة القراءة لهذا الملف مصدرها notification_reads فقط، وليس notifications.is_read.
 // يتوقع الجدول notification_id وuser_id وقيدًا فريدًا عليهما معًا.
@@ -243,6 +244,10 @@ function CustomerNotificationsPage({
   const [loading, setLoading] = useState(true);
   const [savingRead, setSavingRead] = useState(false);
   const [activeFilter, setActiveFilter] = useState<"all" | "ord" | "pay" | "acc">("all");
+  const [hasMoreNotifications, setHasMoreNotifications] = useState(false);
+  const [loadingMoreNotifications, setLoadingMoreNotifications] = useState(false);
+  const pageCursor = useRef<{ createdAt: string; id: string } | null>(null);
+  const loadingMoreRef = useRef(false);
   const pendingReadIds = useRef(new Set<string>());
   const [error, setError] = useState<string | null>(roleError);
 
@@ -251,12 +256,15 @@ function CustomerNotificationsPage({
 
     const loadNotifications = async () => {
       setLoading(true);
+      pageCursor.current = null;
+      setHasMoreNotifications(false);
       const [notificationsResult, readsResult] = await Promise.all([
         (supabase.from("notifications") as any)
           .select("id,user_id,title,message,type,created_at,sent_by,href,is_active")
           .or(`and(user_id.is.null,is_active.eq.true),user_id.eq.${userId}`)
           .order("created_at", { ascending: false })
-          .limit(50),
+          .order("id", { ascending: false })
+          .range(0, CUSTOMER_NOTIFICATION_PAGE_SIZE - 1),
         loadNotificationReadIds(userId),
       ]);
 
@@ -265,11 +273,21 @@ function CustomerNotificationsPage({
       if (notificationsResult.error) {
         console.error("تعذر تحميل إشعارات العميل:", notificationsResult.error);
         setError("تعذر تحميل الإشعارات. تحقق من الاتصال والصلاحيات ثم حاول مجددًا.");
+        setHasMoreNotifications(false);
+        pageCursor.current = null;
       } else {
-        const rows = (notificationsResult.data ?? []).filter(
-          (item: SystemNotification) => !ADMIN_ONLY_NOTIFICATION_KINDS.has(item.type),
+        const fetchedRows = (notificationsResult.data ?? []) as SystemNotification[];
+        const rows = fetchedRows.filter(
+          (item) => !ADMIN_ONLY_NOTIFICATION_KINDS.has(item.type),
         );
-        setNotifications(rows as SystemNotification[]);
+        setNotifications(rows);
+        const lastRow = fetchedRows[fetchedRows.length - 1];
+        pageCursor.current = lastRow
+          ? { createdAt: lastRow.created_at, id: lastRow.id }
+          : null;
+        setHasMoreNotifications(
+          fetchedRows.length === CUSTOMER_NOTIFICATION_PAGE_SIZE,
+        );
         setError(roleError);
       }
 
@@ -305,7 +323,11 @@ function CustomerNotificationsPage({
       }
 
       setNotifications((current) =>
-        [notification, ...current.filter((item) => item.id !== notification.id)].slice(0, 50),
+        [notification, ...current.filter((item) => item.id !== notification.id)].sort(
+          (a, b) =>
+            Date.parse(b.created_at) - Date.parse(a.created_at) ||
+            b.id.localeCompare(a.id),
+        ),
       );
     };
 
@@ -330,6 +352,64 @@ function CustomerNotificationsPage({
       void supabase.removeChannel(channel);
     };
   }, [userId, roleError]);
+
+  const loadMoreNotifications = async () => {
+    const cursor = pageCursor.current;
+    if (!cursor || !hasMoreNotifications || loadingMoreRef.current) return;
+
+    loadingMoreRef.current = true;
+    setLoadingMoreNotifications(true);
+    setError(null);
+
+    try {
+      const cursorFilter =
+        `and(user_id.is.null,is_active.eq.true,created_at.lt.${cursor.createdAt}),` +
+        `and(user_id.is.null,is_active.eq.true,created_at.eq.${cursor.createdAt},id.lt.${cursor.id}),` +
+        `and(user_id.eq.${userId},created_at.lt.${cursor.createdAt}),` +
+        `and(user_id.eq.${userId},created_at.eq.${cursor.createdAt},id.lt.${cursor.id})`;
+      const { data, error: loadError } = await (supabase.from("notifications") as any)
+        .select("id,user_id,title,message,type,created_at,sent_by,href,is_active")
+        .or(cursorFilter)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .range(0, CUSTOMER_NOTIFICATION_PAGE_SIZE - 1);
+
+      if (loadError) {
+        console.error("تعذر تحميل المزيد من الإشعارات:", loadError);
+        setError("تعذر تحميل المزيد من الإشعارات. حاول مرة أخرى.");
+        return;
+      }
+
+      const fetchedRows = (data ?? []) as SystemNotification[];
+      const rows = fetchedRows.filter(
+        (item) => !ADMIN_ONLY_NOTIFICATION_KINDS.has(item.type),
+      );
+      const lastRow = fetchedRows[fetchedRows.length - 1];
+
+      if (lastRow) {
+        pageCursor.current = {
+          createdAt: lastRow.created_at,
+          id: lastRow.id,
+        };
+      }
+      setHasMoreNotifications(
+        fetchedRows.length === CUSTOMER_NOTIFICATION_PAGE_SIZE,
+      );
+
+      setNotifications((current) => {
+        const existingIds = new Set(current.map((item) => item.id));
+        return [...current, ...rows.filter((item) => !existingIds.has(item.id))].sort(
+          (a, b) =>
+            Date.parse(b.created_at) - Date.parse(a.created_at) ||
+            b.id.localeCompare(a.id),
+        );
+      });
+      setError(null);
+    } finally {
+      loadingMoreRef.current = false;
+      setLoadingMoreNotifications(false);
+    }
+  };
 
   const markRead = useCallback(
     async (notificationId: string) => {
@@ -523,7 +603,7 @@ function CustomerNotificationsPage({
                   .replace(/\s{2,}/g, " ")
                   .trim();
                 const date = notification.created_at
-                  ? new Date(notification.created_at).toLocaleString("en-US", {
+                  ? new Date(notification.created_at).toLocaleString("ar-YE", {
                       year: "numeric", month: "2-digit", day: "2-digit",
                       hour: "2-digit", minute: "2-digit",
                     })
@@ -560,6 +640,19 @@ function CustomerNotificationsPage({
                 );
               })}
             </section>
+          )}
+          {!loading && hasMoreNotifications && (
+            <div style={{ display: "flex", justifyContent: "center", marginTop: 14 }}>
+              <button
+                type="button"
+                className="nt-read-all"
+                onClick={() => void loadMoreNotifications()}
+                disabled={loadingMoreNotifications}
+                aria-busy={loadingMoreNotifications}
+              >
+                {loadingMoreNotifications ? "جارٍ تحميل المزيد…" : "عرض المزيد"}
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -1496,7 +1589,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
           </form>}
 
           {tickerLoading ? <p className="py-5 text-center text-sm text-slate-400">جارٍ تحميل رسائل الأشرطة…</p> : tickerRows.length === 0 ? <p className="rounded-xl border border-dashed border-white/15 p-5 text-center text-sm text-slate-400">لا توجد رسائل بعد. أضف أول رسالة لتظهر بعد تفعيل الترحيل.</p> : <div className="space-y-3">{tickerRows.map((row) => <article key={row.id} className={`rounded-xl border p-3 ${row.is_active ? "border-sky-300/20 bg-[#071B34]/70" : "border-white/10 bg-black/20 opacity-70"}`}>
-            <div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0 flex-1"><div className="mb-2 flex flex-wrap items-center gap-2">{row.badge && <span className="rounded-full bg-orange-500/15 px-2 py-1 text-[10px] font-bold text-orange-200">{row.badge}</span>}<span className="rounded-full bg-sky-400/10 px-2 py-1 text-[10px] text-sky-200">{row.placement === "home_guest" ? "الرئيسية للزوار" : row.placement === "dashboard" ? "لوحة العميل" : "الرئيسية ولوحة العميل"}</span><span className={`rounded-full px-2 py-1 text-[10px] ${row.is_active ? "bg-emerald-500/10 text-emerald-300" : "bg-slate-500/20 text-slate-400"}`}>{row.is_active ? "مفعلة" : "معطلة"}</span><span className="text-[10px] text-slate-500">ترتيب {row.sort_order}</span></div><p className="text-sm leading-6 text-white">{row.message}</p><p className="mt-1 text-[10px] text-slate-500">{row.href ? `الرابط: ${row.href}` : "دون رابط"} · {row.starts_at ? `من ${new Date(row.starts_at).toLocaleString("en-US")}` : "دون بداية محددة"} · {row.ends_at ? `إلى ${new Date(row.ends_at).toLocaleString("en-US")}` : "دون نهاية محددة"}</p></div>
+            <div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0 flex-1"><div className="mb-2 flex flex-wrap items-center gap-2">{row.badge && <span className="rounded-full bg-orange-500/15 px-2 py-1 text-[10px] font-bold text-orange-200">{row.badge}</span>}<span className="rounded-full bg-sky-400/10 px-2 py-1 text-[10px] text-sky-200">{row.placement === "home_guest" ? "الرئيسية للزوار" : row.placement === "dashboard" ? "لوحة العميل" : "الرئيسية ولوحة العميل"}</span><span className={`rounded-full px-2 py-1 text-[10px] ${row.is_active ? "bg-emerald-500/10 text-emerald-300" : "bg-slate-500/20 text-slate-400"}`}>{row.is_active ? "مفعلة" : "معطلة"}</span><span className="text-[10px] text-slate-500">ترتيب {row.sort_order}</span></div><p className="text-sm leading-6 text-white">{row.message}</p><p className="mt-1 text-[10px] text-slate-500">{row.href ? `الرابط: ${row.href}` : "دون رابط"} · {row.starts_at ? `من ${new Date(row.starts_at).toLocaleString("ar-YE")}` : "دون بداية محددة"} · {row.ends_at ? `إلى ${new Date(row.ends_at).toLocaleString("ar-YE")}` : "دون نهاية محددة"}</p></div>
               <div className="flex shrink-0 gap-2"><button type="button" onClick={() => startTickerEdit(row)} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-sky-300/20 px-3 text-xs font-bold text-sky-200 hover:bg-sky-300/10"><Pencil className="size-3.5" /> تعديل</button><button type="button" onClick={() => void toggleTickerActive(row)} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-amber-300/20 px-3 text-xs font-bold text-amber-200 hover:bg-amber-300/10">{row.is_active ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}{row.is_active ? "تعطيل" : "تفعيل"}</button><button type="button" onClick={() => void deleteTickerMessage(row)} aria-label="حذف رسالة الشريط" className="inline-flex min-h-9 items-center justify-center rounded-lg border border-red-300/20 px-3 text-red-200 hover:bg-red-300/10"><Trash2 className="size-4" /></button></div>
             </div>
           </article>)}</div>}
@@ -1712,7 +1805,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
                         <div className="min-w-0">
                           <h3 className="break-words font-bold text-white">{item.title}</h3>
                           <p className="mt-1 text-[11px] text-white/45">
-                            {item.type} · {new Date(item.created_at).toLocaleString("ar-u-nu-latn", { dateStyle: "medium", timeStyle: "short" })}
+                            {item.type} · {new Date(item.created_at).toLocaleString("ar", { dateStyle: "medium", timeStyle: "short" })}
                           </p>
                         </div>
                         <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold ${isRead ? "bg-white/10 text-white/50" : "bg-[#FF6B00]/15 text-[#FF8C32]"}`}>
@@ -1772,7 +1865,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
                       </div>
                       <span className={`rounded-full border px-3 py-1 text-xs font-bold ${orderStatusClass(order.status)}`}>{order.status || "جديد"}</span>
                     </div>
-                    <p className="mt-3 text-xs text-white/45">{new Date(order.created_at).toLocaleString("ar-u-nu-latn", { dateStyle: "medium", timeStyle: "short" })}</p>
+                    <p className="mt-3 text-xs text-white/45">{new Date(order.created_at).toLocaleString("ar", { dateStyle: "medium", timeStyle: "short" })}</p>
                     {order.notes && <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-white/70">{order.notes}</p>}
                     <div className="mt-4 flex flex-wrap gap-2">
                       {order.phone && (
