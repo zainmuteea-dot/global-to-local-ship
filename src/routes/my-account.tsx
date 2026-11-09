@@ -37,6 +37,8 @@ function MyAccountRoute() {
       onNavigateToAddresses={() => navigate({ to: "/account/addresses" })}
       onNavigateToNotifications={() => navigate({ to: "/notifications" })}
       onNavigateToWallet={() => navigate({ to: "/account/wallet" })}
+      onNavigateToTerms={() => navigate({ to: "/terms" })}
+      onNavigateToPrivacy={() => navigate({ to: "/privacy" })}
     />
   );
 }
@@ -85,6 +87,8 @@ interface MyAccountProps {
   onNavigateToAddresses?: () => void;
   onNavigateToNotifications?: () => void;
   onNavigateToWallet?: () => void;
+  onNavigateToTerms?: () => void;
+  onNavigateToPrivacy?: () => void;
 }
 
 export const MyAccountPage: React.FC<MyAccountProps> = ({
@@ -98,6 +102,8 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
   onNavigateToAddresses,
   onNavigateToNotifications,
   onNavigateToWallet,
+  onNavigateToTerms,
+  onNavigateToPrivacy,
 }) => {
   const { session, user, loading: isLoading } = useSession(false);
   const [orders, setOrders] = useState<OrderItem[]>([]);
@@ -677,7 +683,7 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
 
           {/* 10. زر شروط الاستخدام */}
           <button
-            onClick={() => setActiveModal("terms")}
+            onClick={() => onNavigateToTerms?.()}
             className="w-full bg-white hover:bg-gradient-to-r hover:from-white hover:to-slate-50 border-2 border-slate-200/80 hover:border-slate-500 rounded-2xl p-3.5 sm:p-4 shadow-xs hover:shadow-md transition-all duration-200 flex items-center justify-between cursor-pointer group active:scale-[0.99]"
           >
             <div className="flex items-center gap-3.5">
@@ -693,7 +699,7 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
 
           {/* 11. زر سياسة الخصوصية */}
           <button
-            onClick={() => setActiveModal("privacy")}
+            onClick={() => onNavigateToPrivacy?.()}
             className="w-full bg-white hover:bg-gradient-to-r hover:from-white hover:to-teal-50/60 border-2 border-slate-200/80 hover:border-teal-600 rounded-2xl p-3.5 sm:p-4 shadow-xs hover:shadow-md transition-all duration-200 flex items-center justify-between cursor-pointer group active:scale-[0.99]"
           >
             <div className="flex items-center gap-3.5">
