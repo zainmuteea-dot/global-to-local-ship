@@ -87,7 +87,7 @@ function getMonthStart(now = new Date()) {
 function formatDate(value: string | null | undefined) {
   if (!value) return "غير مسجل";
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "غير مسجل" : date.toLocaleDateString("ar-YE");
+  return Number.isNaN(date.getTime()) ? "غير مسجل" : date.toLocaleDateString("ar-YE-u-nu-latn");
 }
 
 function initials(name: string) {
@@ -734,7 +734,7 @@ function CustomersPageContent() {
                   <Icon className="size-5" />
                 </span>
                 <p className="mt-3 text-3xl font-black leading-none" style={{ color: stat.color }}>
-                  {loading ? "—" : stat.value.toLocaleString("ar-YE")}
+                  {loading ? "—" : stat.value.toLocaleString("en-US")}
                 </p>
                 <p className="mt-1.5 text-xs font-bold text-slate-600">{stat.label}</p>
                 <p className="mt-1 text-[10px] text-slate-400">{stat.hint}</p>
@@ -864,7 +864,7 @@ function CustomersPageContent() {
                         </td>
                         <td className="px-4 py-3">
                           <span className="font-bold text-slate-700">
-                            {customer.orders.length.toLocaleString("ar-YE")}
+                            {customer.orders.length.toLocaleString("en-US")}
                           </span>
                           {latest?.tracking_code && (
                             <span className="mt-1 block text-[10px] text-slate-400">
@@ -1173,7 +1173,7 @@ function CustomersPageContent() {
                     </p>
                   </div>
                   <span className="shrink-0 rounded-lg bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600">
-                    {selected.orders.length.toLocaleString("ar-YE")} طلب
+                    {selected.orders.length.toLocaleString("en-US")} طلب
                   </span>
                 </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -1237,7 +1237,7 @@ function CustomersPageContent() {
                                 className="flex flex-wrap items-baseline justify-between gap-1 text-sm font-black text-slate-800"
                               >
                                 <span>
-                                  {line.total.toLocaleString("ar-YE")}{" "}
+                                  {line.total.toLocaleString("en-US")}{" "}
                                   {CURRENCY_INFO[line.code].suffix}
                                 </span>
                                 <span className="text-[10px] font-medium text-slate-400">
@@ -1278,10 +1278,10 @@ function CustomersPageContent() {
                           className="flex items-center justify-between gap-2 text-sm font-black text-amber-950"
                         >
                           <span>
-                            {line.total.toLocaleString("ar-YE")} {line.label}
+                            {line.total.toLocaleString("en-US")} {line.label}
                           </span>
                           <span className="text-[10px] font-medium">
-                            {line.count.toLocaleString("ar-YE")} دفعة معتمدة
+                            {line.count.toLocaleString("en-US")} دفعة معتمدة
                           </span>
                         </li>
                       ))}
@@ -1302,7 +1302,7 @@ function CustomersPageContent() {
                     </p>
                   </div>
                   <span className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600">
-                    {(selected.payments ?? []).length.toLocaleString("ar-YE")} عملية
+                    {(selected.payments ?? []).length.toLocaleString("en-US")} عملية
                   </span>
                 </div>
                 {(selected.payments ?? []).length === 0 ? (
@@ -1321,7 +1321,7 @@ function CustomersPageContent() {
                           {payment.tracking_code || payment.order_tracking || "بدون رقم تتبع"}
                         </span>
                         <span className="text-sm font-black text-slate-800">
-                          {numeric(payment.amount)?.toLocaleString("ar-YE") ?? "غير مسجل"}{" "}
+                          {numeric(payment.amount)?.toLocaleString("en-US") ?? "غير مسجل"}{" "}
                           {payment.currency || ""}
                         </span>
                         <span
@@ -1348,7 +1348,7 @@ function CustomersPageContent() {
                     <Package className="size-4 text-orange-500" /> طلبات العميل
                   </h4>
                   <span className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600">
-                    {selected.orders.length.toLocaleString("ar-YE")} طلب
+                    {selected.orders.length.toLocaleString("en-US")} طلب
                   </span>
                 </div>
                 {selected.orders.length === 0 ? (

@@ -640,7 +640,7 @@ function AccountsPageContent() {
                         سند {v.kind} — {v.note}
                       </div>
                       <div className="text-[10px] text-slate-400 font-bold truncate">
-                        {v.fundName} • {new Date(v.date).toLocaleString("ar-YE")}
+                        {v.fundName} • {new Date(v.date).toLocaleString("en-US")}
                       </div>
                     </div>
                   </div>

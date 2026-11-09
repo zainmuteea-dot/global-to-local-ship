@@ -1120,7 +1120,7 @@ function LiveTrackingAdminRoute() {
                           </label>
                         </td>
                         <td className="px-3 py-3 text-xs text-slate-500">
-                          {new Date(s.createdAt).toLocaleDateString("ar-YE")}
+                          {new Date(s.createdAt).toLocaleDateString("ar-YE-u-nu-latn")}
                         </td>
                         <td className="px-3 py-3">
                           <div className="flex flex-wrap gap-1.5">
@@ -1388,7 +1388,7 @@ function LiveTrackingAdminRoute() {
                                 : ev.delivery_state}
                         </span>
                         <time className="text-slate-400">
-                          {new Date(ev.created_at).toLocaleString("ar-YE")}
+                          {new Date(ev.created_at).toLocaleString("en-US")}
                         </time>
                       </div>
                       <p className="mt-1 whitespace-pre-line text-slate-600">{ev.message}</p>
@@ -1460,7 +1460,7 @@ function LiveTrackingAdminRoute() {
                             {stageTitle} · {stateLabel} · محاولات: {row.sms_attempt_count}
                           </b>
                           <time className="text-slate-400">
-                            {new Date(row.updated_at).toLocaleString("ar-YE")}
+                            {new Date(row.updated_at).toLocaleString("en-US")}
                           </time>
                         </div>
                         {row.sms_error && <p className="mt-1 text-[#DC2626]">{row.sms_error}</p>}

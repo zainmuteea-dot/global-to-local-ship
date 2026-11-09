@@ -203,7 +203,7 @@ function AdminChatRoute() {
                         </span>
                       </div>
                       <div className="mt-1 text-xs text-slate-500">
-                        آخر نشاط: {new Date(conversation.last_message_at).toLocaleString("ar-YE")}
+                        آخر نشاط: {new Date(conversation.last_message_at).toLocaleString("en-US")}
                       </div>
                     </button>
                   ))
@@ -226,7 +226,7 @@ function AdminChatRoute() {
                           : "محادثة زائر"}
                       </div>
                       <div className="mt-1 text-xs text-slate-500">
-                        بدأت {new Date(selectedConversation.created_at).toLocaleString("ar-YE")}
+                        بدأت {new Date(selectedConversation.created_at).toLocaleString("en-US")}
                       </div>
                     </div>
                     <button
@@ -263,7 +263,7 @@ function AdminChatRoute() {
                                 {message.body}
                               </p>
                               <time className="mt-2 block text-left text-[10px] opacity-70">
-                                {new Date(message.created_at).toLocaleString("ar-YE")}
+                                {new Date(message.created_at).toLocaleString("en-US")}
                               </time>
                             </div>
                           </div>

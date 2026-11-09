@@ -203,7 +203,7 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
       ? "سجّل الدخول لعرض الرصيد"
       : walletBalance === null
         ? "تعذر تحميل الرصيد"
-        : `${walletBalance.toLocaleString("ar-YE", {
+        : `${walletBalance.toLocaleString("en-US", {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
           })} ر.ي`;

@@ -18,7 +18,7 @@ interface PrintReceiptModalProps {
 export function PrintReceiptModal({ order, onClose }: PrintReceiptModalProps) {
   const orderCode = order.orderNumber || "SQ-800816";
   const receiptNo = `RCP-${orderCode.replace(/^SQ-?/i, "")}`;
-  const currentDate = new Date().toLocaleDateString("ar-YE", {
+  const currentDate = new Date().toLocaleDateString("ar-YE-u-nu-latn", {
     year: "numeric",
     month: "long",
     day: "numeric",

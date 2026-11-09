@@ -1067,7 +1067,7 @@ function PaymentsPage() {
                           ) : null}
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 text-slate-600">
-                          {validDate ? new Date(payment.createdAt).toLocaleString("ar") : "—"}
+                          {validDate ? new Date(payment.createdAt).toLocaleString("ar-u-nu-latn") : "—"}
                         </td>
                         <td className="px-4 py-3">
                           <span
@@ -1083,7 +1083,7 @@ function PaymentsPage() {
                           </span>
                           {payment.settledAt && (
                             <div className="mt-1 text-[10px] font-bold text-sky-700">
-                              تمت التسوية في {new Date(payment.settledAt).toLocaleString("ar")}
+                              تمت التسوية في {new Date(payment.settledAt).toLocaleString("ar-u-nu-latn")}
                             </div>
                           )}
                         </td>

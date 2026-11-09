@@ -43,7 +43,7 @@ function normalizeCurrency(currency: string | null): string {
 }
 
 function formatNumber(amount: number): string {
-  return amount.toLocaleString("ar-YE", { maximumFractionDigits: 2 });
+  return amount.toLocaleString("en-US", { maximumFractionDigits: 2 });
 }
 
 function formatCurrencyAmount(amount: number, currency: string): string {

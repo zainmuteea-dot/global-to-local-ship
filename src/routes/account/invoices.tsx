@@ -49,7 +49,7 @@ function resolveOrderTotalYER(
 }
 
 const money = (value: number | null) =>
-  value == null ? "غير مسجل" : `${Math.round(value).toLocaleString("ar-YE")} ر.ي`;
+  value == null ? "غير مسجل" : `${Math.round(value).toLocaleString("en-US")} ر.ي`;
 
 function AccountInvoicesPage() {
   const { user, loading: sessionLoading } = useSession();
@@ -298,7 +298,7 @@ function AccountInvoicesPage() {
     const date = new Date(value);
     return Number.isNaN(date.getTime())
       ? "التاريخ غير متوفر"
-      : date.toLocaleDateString("ar-YE", { year: "numeric", month: "long", day: "numeric" });
+      : date.toLocaleDateString("ar-YE-u-nu-latn", { year: "numeric", month: "long", day: "numeric" });
   };
 
   return (

@@ -647,7 +647,7 @@ export default function AdminOperationsPage() {
       return;
     }
     receiptWindow.document.write(
-      `<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><title>فاتورة كاشير</title><style>body{font-family:Arial,sans-serif;padding:28px;color:#123}h1{font-size:20px}table{width:100%;border-collapse:collapse;margin-top:24px}td,th{border-bottom:1px solid #ddd;padding:12px;text-align:right}.total{font-size:18px;font-weight:bold;margin-top:24px}</style><h1>السوق الشامل — فاتورة كاشير</h1><p>${new Date().toLocaleString("ar-YE")}</p><table><tr><th>الصنف</th><th>الكمية</th><th>السعر</th></tr><tr><td>${posItemName.replace(/[<>]/g, "")}</td><td>${qty}</td><td>${unit.toLocaleString("en-US")}</td></tr></table><p class="total">الإجمالي: ${total.toLocaleString("en-US")} YER</p><script>window.onload=()=>window.print()<\/script></html>`,
+      `<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><title>فاتورة كاشير</title><style>body{font-family:Arial,sans-serif;padding:28px;color:#123}h1{font-size:20px}table{width:100%;border-collapse:collapse;margin-top:24px}td,th{border-bottom:1px solid #ddd;padding:12px;text-align:right}.total{font-size:18px;font-weight:bold;margin-top:24px}</style><h1>السوق الشامل — فاتورة كاشير</h1><p>${new Date().toLocaleString("en-US")}</p><table><tr><th>الصنف</th><th>الكمية</th><th>السعر</th></tr><tr><td>${posItemName.replace(/[<>]/g, "")}</td><td>${qty}</td><td>${unit.toLocaleString("en-US")}</td></tr></table><p class="total">الإجمالي: ${total.toLocaleString("en-US")} YER</p><script>window.onload=()=>window.print()<\/script></html>`,
     );
     receiptWindow.document.close();
 
@@ -1915,7 +1915,7 @@ export default function AdminOperationsPage() {
                         <p className="mt-0.5 text-slate-500">
                           {voucher.party || "بدون اسم"}
                           {voucher.description ? ` — ${voucher.description}` : ""} •{" "}
-                          {new Date(voucher.created_at).toLocaleString("ar-YE")}
+                          {new Date(voucher.created_at).toLocaleString("en-US")}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">

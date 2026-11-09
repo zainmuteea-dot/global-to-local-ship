@@ -77,7 +77,7 @@ const money = (value: number | string | null | undefined, digits = 2) =>
 const dateLabel = (value: string | null) => {
   if (!value) return "—";
   const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? value : d.toLocaleDateString("ar-YE");
+  return Number.isNaN(d.getTime()) ? value : d.toLocaleDateString("ar-YE-u-nu-latn");
 };
 
 const sumComplete = (

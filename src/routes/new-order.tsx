@@ -1434,12 +1434,12 @@ function NewOrderPage() {
                     <div className="no-ok" role="status" aria-live="polite">
                       <Check s={18} />
                       <span>
-                        يعادل تقريبًا {amountYER.toLocaleString("ar-YE")} ر.ي
+                        يعادل تقريبًا {amountYER.toLocaleString("en-US")} ر.ي
                         {currentCurrency !== "YER" && (
                           <>
                             {" "}
                             · سعر التحويل الثابت: 1 {currentCurrency} ={" "}
-                            {rateToYER.toLocaleString("ar-YE", {
+                            {rateToYER.toLocaleString("en-US", {
                               maximumFractionDigits: 4,
                             })} ر.ي
                           </>

@@ -109,7 +109,7 @@ function WalletPage() {
   const additionsTotal = addedTransactions.reduce((sum, item) => sum + item.amount, 0);
   const deductionsTotal = deductedTransactions.reduce((sum, item) => sum - item.amount, 0);
   const balance = additionsTotal - deductionsTotal;
-  const fmt = (value: number) => value.toLocaleString("ar-YE");
+  const fmt = (value: number) => value.toLocaleString("en-US");
 
   const scrollToTopup = () => {
     topupFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -451,7 +451,7 @@ function WalletPage() {
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-xs font-bold text-slate-900">{item.description || "عملية رصيد"}</p>
-                    <p className="mt-0.5 text-[10px] text-slate-500">{new Date(item.created_at).toLocaleDateString("ar")}</p>
+                    <p className="mt-0.5 text-[10px] text-slate-500">{new Date(item.created_at).toLocaleDateString("ar-u-nu-latn")}</p>
                   </div>
                   <p dir="ltr" className={`shrink-0 text-xs font-black ${item.amount >= 0 ? "text-emerald-700" : "text-red-600"}`}>
                     {item.amount >= 0 ? "+" : "−"}{fmt(Math.abs(item.amount))} <span className="text-[9px]">ر.ي</span>
