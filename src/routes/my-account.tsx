@@ -39,6 +39,7 @@ function MyAccountRoute() {
       onNavigateToWallet={() => navigate({ to: "/account/wallet" })}
       onNavigateToTerms={() => navigate({ to: "/terms" })}
       onNavigateToPrivacy={() => navigate({ to: "/privacy" })}
+      onNavigateToAbout={() => navigate({ to: "/about" })}
     />
   );
 }
@@ -89,6 +90,7 @@ interface MyAccountProps {
   onNavigateToWallet?: () => void;
   onNavigateToTerms?: () => void;
   onNavigateToPrivacy?: () => void;
+  onNavigateToAbout?: () => void;
 }
 
 export const MyAccountPage: React.FC<MyAccountProps> = ({
@@ -104,6 +106,7 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
   onNavigateToWallet,
   onNavigateToTerms,
   onNavigateToPrivacy,
+  onNavigateToAbout,
 }) => {
   const { session, user, loading: isLoading } = useSession(false);
   const [orders, setOrders] = useState<OrderItem[]>([]);
@@ -721,7 +724,10 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
 
           {/* 12. زر معلومات المنصة */}
           <button
-            onClick={() => setActiveModal("about")}
+            onClick={() => {
+              if (onNavigateToAbout) onNavigateToAbout();
+              else window.location.assign("/about");
+            }}
             className="w-full bg-white hover:bg-gradient-to-r hover:from-white hover:to-sky-50/60 border-2 border-slate-200/80 hover:border-[#0F4C81] rounded-2xl p-3.5 sm:p-4 shadow-xs hover:shadow-md transition-all duration-200 flex items-center justify-between cursor-pointer group active:scale-[0.99]"
           >
             <div className="flex items-center gap-3.5">
@@ -780,7 +786,6 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
                 {activeModal === "support" && <span>خدمة العملاء والدعم الفني</span>}
                 {activeModal === "terms" && <span>شروط الاستخدام</span>}
                 {activeModal === "privacy" && <span>سياسة الخصوصية والأمان</span>}
-                {activeModal === "about" && <span>عن السوق الشامل (AL SHAMEL)</span>}
               </h3>
               <button
                 onClick={() => setActiveModal(null)}
@@ -1136,71 +1141,6 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
                 <p className="text-slate-500">
                   قبل النشر النهائي، راجع هذا النص مع آلية تسجيل الدخول الفعلية، والتخزين، ورفع
                   الصور وإيصالات الدفع، ومقدمي الخدمات، ومتطلبات الخصوصية المطبقة على نشاط المنصة.
-                </p>
-              </div>
-            )}
-
-            {/* محتوى: معلومات المنصة */}
-            {activeModal === "about" && (
-              <div className="text-xs text-slate-700 leading-relaxed space-y-3">
-                <div className="rounded-xl border border-sky-200 bg-sky-50 p-3">
-                  <h4 className="font-black text-[#0F4C81]">السوق الشامل</h4>
-                  <p className="mt-1">
-                    منصة تساعد العملاء في اليمن على تقديم طلبات لمنتجات من متاجر خارجية ومتابعة
-                    الطلب والدفع والتسليم من خلال حسابهم.
-                  </p>
-                </div>
-                <section>
-                  <h4 className="font-black text-[#0F4C81]">كيف تستخدم المنصة؟</h4>
-                  <p>
-                    تصفح المنتجات المتاحة أو أرسل تفاصيل ورابط المنتج عند تقديم الطلب. راجع وصف
-                    المنتج والكمية والسعر والمبلغ المطلوب قبل التأكيد، ثم تابع حالة الطلب ورقم
-                    التتبع عند توفره من صفحات الحساب.
-                  </p>
-                </section>
-                <section>
-                  <h4 className="font-black text-[#0F4C81]">الأسعار والطلبات</h4>
-                  <p>
-                    قد يختلف توفر المنتج وسعره لدى المتجر الخارجي. يعتمد المبلغ النهائي وأي رسوم على
-                    تفاصيل الطلب التي تراجعها الإدارة وتعرضها لك قبل اعتمادها. راجع صفحة الطلب
-                    والفاتورة أو إشعار الدفع لمعرفة المدفوع والمتبقي.
-                  </p>
-                </section>
-                <section>
-                  <h4 className="font-black text-[#0F4C81]">خدمات الحساب</h4>
-                  <p>
-                    يتيح الحساب الوصول إلى الطلبات والفواتير والعناوين والرصيد والإشعارات وخدمة
-                    العملاء. ظهور البيانات والخيارات يعتمد على تسجيل الدخول وحالة الطلب وتوفر
-                    الخدمة.
-                  </p>
-                </section>
-                <section>
-                  <h4 className="font-black text-[#0F4C81]">التواصل</h4>
-                  <p>
-                    للاستفسارات أو الإبلاغ عن مشكلة، أرسل رقم الطلب والتفاصيل ذات الصلة إلى خدمة
-                    العملاء:
-                  </p>
-                  <div className="mt-1 flex flex-col gap-1">
-                    <a
-                      className="font-bold text-sky-700 underline"
-                      href="https://wa.me/967773370041"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      dir="ltr"
-                    >
-                      واتساب: +967 773 370 041
-                    </a>
-                    <a
-                      className="font-bold text-sky-700 underline"
-                      href="mailto:support@alshamel.ye"
-                    >
-                      البريد: support@alshamel.ye
-                    </a>
-                  </div>
-                </section>
-                <p className="text-slate-500">
-                  معلومات التواصل والخدمات أعلاه بحسب ما هو مذكور في التطبيق. لم تُضف هنا ساعات عمل
-                  أو عنوانًا تجاريًا أو ادعاء اعتماد رسمي لعدم توفر معلومات مؤكدة عنها.
                 </p>
               </div>
             )}
