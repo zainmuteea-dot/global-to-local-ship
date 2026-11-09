@@ -5,10 +5,8 @@ import {
   ArrowUpRight,
   CheckCircle2,
   List,
-  Plus,
   UploadCloud,
   Wallet,
-  Zap,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
@@ -39,7 +37,6 @@ const PAYMENT_METHODS = [
   "جيب Jeeb",
   "حوالة النجم",
 ] as const;
-const QUICK_AMOUNTS = [5000, 10000, 20000] as const;
 const MAX_RECEIPT_BYTES = 2 * 1024 * 1024;
 
 function WalletPage() {
@@ -113,13 +110,6 @@ function WalletPage() {
 
   const scrollToTopup = () => {
     topupFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-
-  const chooseQuickAmount = (value: number) => {
-    setAmount(String(value));
-    setError("");
-    setSuccess("");
-    scrollToTopup();
   };
 
   const choosePaymentMethod = (method: string) => {
@@ -260,29 +250,6 @@ function WalletPage() {
           <div className="relative mt-3 flex items-center gap-1.5 text-[10px] font-semibold text-white/85">
             <span className="size-2 rounded-full bg-emerald-300 shadow-[0_0_0_3px_rgba(110,231,183,.2)]" />
             يُحسب الرصيد من سجل عملياتك المسجلة
-          </div>
-        </section>
-
-        <section aria-labelledby="quick-charge-title">
-          <div className="mb-2 flex items-center gap-2 px-1">
-            <span className="grid size-8 place-items-center rounded-lg bg-sky-50 text-[#0F4C81]"><Zap className="size-4" /></span>
-            <h3 id="quick-charge-title" className="text-sm font-black text-slate-900">شحن سريع</h3>
-            <span className="ms-auto text-[10px] font-medium text-slate-500">اختر مبلغًا لبدء طلب الشحن</span>
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            {QUICK_AMOUNTS.map((value) => (
-              <button
-                key={value}
-                type="button"
-                disabled={!user}
-                onClick={() => chooseQuickAmount(value)}
-                className="flex min-h-[76px] flex-col items-center justify-center gap-1.5 rounded-xl border border-slate-100 bg-white p-2 text-slate-900 shadow-sm transition hover:-translate-y-0.5 hover:border-orange-200 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <span className="grid size-6 place-items-center rounded-full bg-gradient-to-br from-orange-400 to-orange-600 text-sm font-black text-white"><Plus className="size-3.5" /></span>
-                <span className="text-sm font-black">{fmt(value)}</span>
-                <span className="text-[9px] font-bold text-slate-500">ر.ي</span>
-              </button>
-            ))}
           </div>
         </section>
 
