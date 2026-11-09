@@ -348,7 +348,10 @@ function WalletPage() {
           </div>
 
           <div className="space-y-1.5">
-            <span className="block text-xs font-bold text-slate-700">سند التحويل (JPG / PNG / WEBP، حتى 2MB)</span>
+            <span className="block text-xs font-bold text-slate-700">صورة سند التحويل (إيصال الدفع)</span>
+            <p className="rounded-lg border border-sky-100 bg-sky-50 px-3 py-2 text-[11px] leading-5 text-sky-900">
+              أرفق صورة واضحة لإيصال نجاح التحويل عبر وسيلة الدفع المختارة. تأكد من ظهور مبلغ التحويل وتاريخه أو رقم العملية.
+            </p>
             <input
               ref={fileInputRef}
               type="file"
@@ -356,12 +359,12 @@ function WalletPage() {
               onChange={(event) => handleReceipt(event.target.files?.[0])}
               className="block w-full text-xs text-slate-600 file:me-2 file:rounded-lg file:border-0 file:bg-sky-50 file:px-3 file:py-2 file:font-bold file:text-[#0F4C81]"
             />
+            <p className="text-[10px] leading-4 text-slate-500">الملفات المقبولة: JPG أو PNG أو WEBP، بحد أقصى 2MB. لا ترفع صورة بطاقة أو تشارك كلمة مرورك.</p>
             {receipt && (
               <div className="flex items-center gap-2 text-xs font-semibold text-emerald-700">
                 <CheckCircle2 className="size-4 shrink-0" /> {receipt.fileName}
               </div>
             )}
-            <p className="text-[10px] leading-4 text-slate-500">لا ترسل معلومات بطاقة أو كلمة مرور.</p>
           </div>
 
           {error && <p role="alert" className="break-words rounded-xl bg-red-50 p-3 text-xs font-bold leading-5 text-red-800">{error}</p>}
