@@ -10,6 +10,10 @@ import {
   Bell,
   AlertTriangle,
   CheckCheck,
+  UserRound,
+  PackageCheck,
+  CircleDollarSign,
+  ChevronLeft,
   Inbox,
   MapPinned,
   MessageCircle,
@@ -197,7 +201,19 @@ function NotificationsPage() {
 
   if (user && canManage) return <AdminNotificationsPage userId={user.id} />;
   if (user) {
-    return <CustomerNotificationsPage userId={user.id} roleError={roleError} />;
+    const displayName = String(
+      user.user_metadata?.["full_name"] ??
+        user.user_metadata?.["name"] ??
+        user.email?.split("@")[0] ??
+        "بك",
+    ).trim() || "بك";
+    return (
+      <CustomerNotificationsPage
+        userId={user.id}
+        roleError={roleError}
+        displayName={displayName}
+      />
+    );
   }
 
   return (
@@ -211,18 +227,22 @@ function NotificationsPage() {
   );
 }
 
-/** واجهة العميل: تجلب إشعارات الحساب والعروض العامة النشطة فقط. */
+/** واجهة العميل: إشعارات الحساب والعروض العامة النشطة فقط. */
 function CustomerNotificationsPage({
   userId,
   roleError,
+  displayName,
 }: {
   userId: string;
   roleError: string | null;
+  displayName: string;
 }) {
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState<SystemNotification[]>([]);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [savingRead, setSavingRead] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<"all" | "ord" | "pay" | "acc">("all");
   const pendingReadIds = useRef(new Set<string>());
   const [error, setError] = useState<string | null>(roleError);
 
@@ -233,9 +253,7 @@ function CustomerNotificationsPage({
       setLoading(true);
       const [notificationsResult, readsResult] = await Promise.all([
         (supabase.from("notifications") as any)
-          .select(
-            "id,user_id,title,message,type,created_at,sent_by,href,is_active",
-          )
+          .select("id,user_id,title,message,type,created_at,sent_by,href,is_active")
           .or(`and(user_id.is.null,is_active.eq.true),user_id.eq.${userId}`)
           .order("created_at", { ascending: false })
           .limit(50),
@@ -246,13 +264,10 @@ function CustomerNotificationsPage({
 
       if (notificationsResult.error) {
         console.error("تعذر تحميل إشعارات العميل:", notificationsResult.error);
-        setError(
-          "تعذر تحميل الإشعارات. تحقق من الاتصال والصلاحيات ثم حاول مجددًا.",
-        );
+        setError("تعذر تحميل الإشعارات. تحقق من الاتصال والصلاحيات ثم حاول مجددًا.");
       } else {
         const rows = (notificationsResult.data ?? []).filter(
-          (item: SystemNotification) =>
-            !ADMIN_ONLY_NOTIFICATION_KINDS.has(item.type),
+          (item: SystemNotification) => !ADMIN_ONLY_NOTIFICATION_KINDS.has(item.type),
         );
         setNotifications(rows as SystemNotification[]);
         setError(roleError);
@@ -272,9 +287,7 @@ function CustomerNotificationsPage({
 
     const isVisibleToCustomer = (notification: SystemNotification) => {
       const isOwnNotification = notification.user_id === userId;
-      const isActiveBroadcast =
-        notification.user_id === null && notification.is_active === true;
-
+      const isActiveBroadcast = notification.user_id === null && notification.is_active === true;
       return (
         (isOwnNotification || isActiveBroadcast) &&
         !ADMIN_ONLY_NOTIFICATION_KINDS.has(notification.type)
@@ -283,38 +296,23 @@ function CustomerNotificationsPage({
 
     const upsertCustomerNotification = (payload: any) => {
       if (!active) return;
-
       const notification = payload.new as SystemNotification;
       if (!notification?.id) return;
 
       if (!isVisibleToCustomer(notification)) {
-        // Remove it if a broadcast was deactivated or the row is no longer visible.
-        setNotifications((current) =>
-          current.filter((item) => item.id !== notification.id),
-        );
+        setNotifications((current) => current.filter((item) => item.id !== notification.id));
         return;
       }
 
       setNotifications((current) =>
-        [
-          notification,
-          ...current.filter((item) => item.id !== notification.id),
-        ].slice(0, 50),
+        [notification, ...current.filter((item) => item.id !== notification.id)].slice(0, 50),
       );
     };
 
     const channel = supabase
       .channel(`customer-notifications-${userId}`)
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "notifications" },
-        upsertCustomerNotification,
-      )
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "notifications" },
-        upsertCustomerNotification,
-      )
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications" }, upsertCustomerNotification)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "notifications" }, upsertCustomerNotification)
       .on(
         "postgres_changes",
         { event: "DELETE", schema: "public", table: "notifications" },
@@ -322,9 +320,7 @@ function CustomerNotificationsPage({
           if (!active) return;
           const deleted = payload.old as { id?: string };
           if (!deleted?.id) return;
-          setNotifications((current) =>
-            current.filter((item) => item.id !== deleted.id),
-          );
+          setNotifications((current) => current.filter((item) => item.id !== deleted.id));
         },
       )
       .subscribe();
@@ -337,24 +333,16 @@ function CustomerNotificationsPage({
 
   const markRead = useCallback(
     async (notificationId: string) => {
-      if (
-        readIds.has(notificationId) ||
-        pendingReadIds.current.has(notificationId)
-      )
-        return;
+      if (readIds.has(notificationId) || pendingReadIds.current.has(notificationId)) return;
       pendingReadIds.current.add(notificationId);
       setSavingRead(true);
-
       try {
-        const { error: saveError } = await saveNotificationReadIds(userId, [
-          notificationId,
-        ]);
+        const { error: saveError } = await saveNotificationReadIds(userId, [notificationId]);
         if (saveError) {
           console.error("تعذر حفظ قراءة الإشعار:", saveError);
           setError("لم تُحفظ حالة القراءة. حاول مرة أخرى.");
           return;
         }
-
         setReadIds((current) => new Set(current).add(notificationId));
         setError(null);
       } finally {
@@ -365,22 +353,14 @@ function CustomerNotificationsPage({
     [readIds, userId],
   );
 
-  // Mark a customer's notification read only after most of its card is visible on screen.
+  // Keep the existing behavior: a notification becomes read once most of its card is visible.
   useEffect(() => {
-    if (
-      loading ||
-      notifications.length === 0 ||
-      typeof IntersectionObserver === "undefined"
-    )
-      return;
-
+    if (loading || notifications.length === 0 || typeof IntersectionObserver === "undefined") return;
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
           if (!entry.isIntersecting) continue;
-          const notificationId = (entry.target as HTMLElement).dataset[
-            "customerNotificationId"
-          ];
+          const notificationId = (entry.target as HTMLElement).dataset["customerNotificationId"];
           if (!notificationId) continue;
           observer.unobserve(entry.target);
           if (!readIds.has(notificationId)) void markRead(notificationId);
@@ -388,11 +368,9 @@ function CustomerNotificationsPage({
       },
       { threshold: 0.65 },
     );
-
     document
       .querySelectorAll<HTMLElement>("[data-customer-notification-id]")
       .forEach((card) => observer.observe(card));
-
     return () => observer.disconnect();
   }, [loading, notifications, readIds, markRead]);
 
@@ -400,140 +378,201 @@ function CustomerNotificationsPage({
     const unread = notifications.filter((item) => !readIds.has(item.id));
     if (unread.length === 0) return;
     setSavingRead(true);
-
     const { error: saveError } = await saveNotificationReadIds(
       userId,
       unread.map((item) => item.id),
     );
-
     setSavingRead(false);
     if (saveError) {
       console.error("تعذر حفظ قراءة الإشعارات:", saveError);
       setError("لم تُحفظ حالة القراءة. تحقق من الاتصال ثم حاول مرة أخرى.");
       return;
     }
-
-    setReadIds(
-      (current) => new Set([...current, ...unread.map((item) => item.id)]),
-    );
+    setReadIds((current) => new Set([...current, ...unread.map((item) => item.id)]));
     setError(null);
   };
 
-  const unreadCount = notifications.filter(
-    (item) => !readIds.has(item.id),
-  ).length;
-  const latestFirst = [...notifications].sort(
+  const unreadCount = notifications.filter((item) => !readIds.has(item.id)).length;
+  const getCategory = (type: string): "ord" | "pay" | "acc" => {
+    const value = (type ?? "").toLowerCase();
+    if (/pay|payment|invoice|wallet/.test(value)) return "pay";
+    if (/order|shipment|ship|purchase|tracking|delivery/.test(value)) return "ord";
+    return "acc";
+  };
+  const categoryMeta = {
+    ord: { label: "الطلبات", Icon: PackageCheck },
+    pay: { label: "الدفع", Icon: CircleDollarSign },
+    acc: { label: "الحساب", Icon: UserRound },
+  } as const;
+  const categoryOf = (item: SystemNotification) => getCategory(item.type);
+  const categoryCounts = {
+    all: notifications.length,
+    ord: notifications.filter((item) => categoryOf(item) === "ord").length,
+    pay: notifications.filter((item) => categoryOf(item) === "pay").length,
+    acc: notifications.filter((item) => categoryOf(item) === "acc").length,
+  };
+  const filteredNotifications = notifications.filter(
+    (item) => activeFilter === "all" || categoryOf(item) === activeFilter,
+  );
+  const visibleNotifications = [...filteredNotifications].sort(
     (a, b) => Date.parse(b.created_at) - Date.parse(a.created_at),
   );
 
+  const handleOpenDetails = async (notification: SystemNotification) => {
+    if (!readIds.has(notification.id)) await markRead(notification.id);
+    if (notification.href) window.location.assign(notification.href);
+  };
+
+  const filters = [
+    { key: "all" as const, label: "الكل" },
+    { key: "ord" as const, label: "الطلبات" },
+    { key: "pay" as const, label: "الدفع" },
+    { key: "acc" as const, label: "الحساب" },
+  ];
+
   return (
     <AccountShell title="إشعاراتي">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <div>
-          <h2 className="font-bold text-slate-900">تحديثات حسابك</h2>
-          <p className="mt-1 text-xs text-slate-500">
-            {unreadCount > 0
-              ? `${unreadCount} إشعار غير مقروء`
-              : "لا توجد إشعارات غير مقروءة"}
-          </p>
-        </div>
-        {unreadCount > 0 && (
-          <button
-            type="button"
-            disabled={savingRead}
-            onClick={() => void markAllRead()}
-            className="inline-flex items-center gap-1 rounded-xl border border-sky-200 bg-white px-3 py-2 text-xs font-bold text-sky-800 hover:bg-sky-50 disabled:opacity-50"
-          >
-            <CheckCheck className="size-4" /> تحديد الكل كمقروء
-          </button>
-        )}
-      </div>
+      <div className="nt-root" dir="rtl">
+        <style>{NOTIFICATIONS_CUSTOMER_STYLE}</style>
+        <div className="nt-wrap">
+          <header className="nt-topbar">
+            <div className="nt-topbar-title">
+              <Bell className="size-5" aria-hidden="true" />
+              <h1>إشعاراتي</h1>
+              {unreadCount > 0 && <span className="nt-unread-badge">{unreadCount}</span>}
+            </div>
+            <button type="button" className="nt-back" onClick={() => void navigate({ to: "/my-account" })}>
+              رجوع <ChevronLeft className="size-4" aria-hidden="true" />
+            </button>
+          </header>
 
-      {error && (
-        <p
-          role="alert"
-          className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800"
-        >
-          {error}
-        </p>
-      )}
+          <section className="nt-greet">
+            <span className="nt-avatar"><Bell className="size-6" aria-hidden="true" /></span>
+            <div className="nt-greet-copy">
+              <h2>أهلاً بك يا {displayName} 👋</h2>
+              <p>إليك آخر تحديثات إشعاراتك</p>
+            </div>
+          </section>
 
-      {loading ? (
-        <p
-          role="status"
-          className="rounded-2xl border border-slate-200 bg-white p-4 text-center text-sm text-slate-600"
-        >
-          جارٍ تحميل إشعاراتك…
-        </p>
-      ) : notifications.length === 0 ? (
-        <EmptyState
-          icon={<Bell className="size-8" />}
-          title="لا توجد إشعارات"
-          text="ستظهر هنا تحديثات طلباتك ودفعاتك عند وصولها."
-        />
-      ) : (
-        <div className="space-y-3">
-          {latestFirst.map((notification) => {
-            const isRead = readIds.has(notification.id);
-            return (
-              <article
-                key={notification.id}
-                data-customer-notification-id={notification.id}
-                className={`rounded-2xl border bg-white p-4 shadow-sm ${
-                  isRead
-                    ? "border-slate-200"
-                    : "border-sky-300 ring-1 ring-sky-100"
-                }`}
+          <section className="nt-summary" aria-live="polite">
+            <div className="nt-summary-copy">
+              <span className={`nt-summary-icon ${unreadCount === 0 ? "is-read" : ""}`}>
+                <CheckCheck className="size-5" aria-hidden="true" />
+              </span>
+              <div>
+                <p className="nt-summary-title">
+                  {unreadCount === 0 ? "لا توجد إشعارات غير مقروءة" : `لديك ${unreadCount} إشعار غير مقروء`}
+                </p>
+                <p className="nt-summary-subtitle">
+                  {unreadCount === 0 ? "جميع إشعاراتك مقروءة ومحدّثة" : "تابع آخر المستجدات في حسابك"}
+                </p>
+              </div>
+            </div>
+            <button
+              className="nt-read-all"
+              type="button"
+              onClick={() => void markAllRead()}
+              disabled={unreadCount === 0 || savingRead}
+            >
+              <CheckCheck className="size-4" aria-hidden="true" />
+              تعيين الكل كمقروء
+            </button>
+          </section>
+
+          <nav className="nt-filters" aria-label="تصفية الإشعارات">
+            {filters.map((filter) => (
+              <button
+                key={filter.key}
+                type="button"
+                className={`nt-filter ${activeFilter === filter.key ? "active" : ""}`}
+                aria-pressed={activeFilter === filter.key}
+                onClick={() => setActiveFilter(filter.key)}
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="font-bold text-slate-900">
-                        {notification.title}
-                      </h3>
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                          isRead
-                            ? "bg-slate-100 text-slate-500"
-                            : "bg-orange-100 text-orange-800"
-                        }`}
-                      >
-                        {isRead ? "مقروء" : "جديد"}
-                      </span>
+                {filter.label}<span className="nt-filter-count">{categoryCounts[filter.key]}</span>
+              </button>
+            ))}
+          </nav>
+
+          {error && (
+            <p role="alert" className="nt-error">
+              <AlertTriangle className="size-4 shrink-0" aria-hidden="true" /> {error}
+            </p>
+          )}
+
+          {loading ? (
+            <p role="status" className="nt-loading">جارٍ تحميل إشعاراتك…</p>
+          ) : visibleNotifications.length === 0 ? (
+            <div className="nt-empty">
+              <span className="nt-empty-icon"><Inbox className="size-7" aria-hidden="true" /></span>
+              <p className="nt-empty-title">
+                {notifications.length === 0 ? "لا توجد إشعارات" : "لا توجد إشعارات في هذا التصنيف"}
+              </p>
+              <p className="nt-empty-subtitle">
+                {notifications.length === 0 ? "ستظهر هنا تحديثات طلباتك ودفعاتك عند وصولها." : "جرّب تصنيفًا آخر من الفلترة بالأعلى."}
+              </p>
+            </div>
+          ) : (
+            <section className="nt-list" aria-label="قائمة الإشعارات">
+              {visibleNotifications.map((notification) => {
+                const isRead = readIds.has(notification.id);
+                const category = categoryOf(notification);
+                const meta = categoryMeta[category];
+                const Icon = meta.Icon;
+                const safeMessage = (notification.message ?? "")
+                  .replace(/https?:\/\/[^\s]+/g, "")
+                  .replace(/\s{2,}/g, " ")
+                  .trim();
+                const date = notification.created_at
+                  ? new Date(notification.created_at).toLocaleString("ar-YE", {
+                      year: "numeric", month: "2-digit", day: "2-digit",
+                      hour: "2-digit", minute: "2-digit",
+                    })
+                  : "";
+                return (
+                  <article
+                    key={notification.id}
+                    data-customer-notification-id={notification.id}
+                    className={`nt-card ${category} ${isRead ? "read" : "unread"}`}
+                  >
+                    <div className="nt-card-header">
+                      <span className="nt-category-icon"><Icon className="size-5" aria-hidden="true" /></span>
+                      <div className="nt-card-content">
+                        <div className="nt-meta-row">
+                          <span className="nt-category-label">{meta.label}</span>
+                          <time className="nt-date" dateTime={notification.created_at}>{date}</time>
+                          {!isRead && <span className="nt-new">جديد</span>}
+                        </div>
+                        <h3 className="nt-card-title">{notification.title}</h3>
+                      </div>
                     </div>
-                    {notification.message && (
-                      <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600">
-                        {notification.message}
-                      </p>
-                    )}
-                    <time
-                      className="mt-2 block text-xs text-slate-400"
-                      dateTime={notification.created_at}
-                    >
-                      {new Date(notification.created_at).toLocaleString(
-                        "ar-YE",
-                      )}
-                    </time>
-                  </div>
-                  {!isRead && (
-                    <button
-                      type="button"
-                      disabled={savingRead}
-                      onClick={() => void markRead(notification.id)}
-                      className="shrink-0 rounded-lg border border-sky-200 px-2.5 py-1.5 text-xs font-bold text-sky-800 hover:bg-sky-50 disabled:opacity-50"
-                    >
-                      تعليم كمقروء
-                    </button>
-                  )}
-                </div>
-              </article>
-            );
-          })}
+                    {safeMessage && <p className="nt-message">{safeMessage}</p>}
+                    <div className="nt-card-actions">
+                      <button
+                        type="button"
+                        className="nt-details"
+                        onClick={() => void handleOpenDetails(notification)}
+                      >
+                        {notification.href ? "عرض التفاصيل" : isRead ? "تمت القراءة" : "تعيين كمقروء"}
+                        <ChevronLeft className="size-4" aria-hidden="true" />
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
+            </section>
+          )}
         </div>
-      )}
+      </div>
     </AccountShell>
   );
 }
+
+const NOTIFICATIONS_CUSTOMER_STYLE = `
+.nt-root{--nt-primary:#0f4c81;--nt-primary2:#1c6fb8;--nt-ink:#15233b;--nt-muted:#64748b;--nt-line:#e3edf7;--nt-bg:#f3f7fc;direction:rtl;color:var(--nt-ink);font-family:'Tajawal','Cairo',system-ui,sans-serif;background:linear-gradient(135deg,#eef5fd,#f7faff 65%);border-radius:22px;padding:12px;min-height:70vh}
+.nt-root *{box-sizing:border-box}.nt-wrap{max-width:680px;margin:0 auto;padding:0 0 26px}.nt-topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:4px 2px 14px}.nt-topbar-title{display:flex;align-items:center;gap:9px;color:var(--nt-primary);font-weight:900;font-size:16px}.nt-topbar-title h1{margin:0;font:inherit}.nt-unread-badge{display:inline-flex;min-width:21px;height:21px;align-items:center;justify-content:center;padding:0 6px;border-radius:999px;background:#f97316;color:#fff;font-size:11px;font-weight:900}.nt-back{display:inline-flex;align-items:center;gap:6px;border:1px solid #d5e4f3;border-radius:999px;background:#fff;color:var(--nt-primary);padding:8px 13px;font-family:inherit;font-size:12px;font-weight:800;cursor:pointer}.nt-back:hover{background:#eaf3fd}.nt-greet{display:flex;align-items:center;gap:13px;overflow:hidden;position:relative;border-radius:19px;padding:17px 16px;color:white;background:linear-gradient(110deg,#0f4c81,#287fc4);box-shadow:0 12px 25px #0f4c8126}.nt-greet:after{content:'';position:absolute;inset-inline-start:-24px;bottom:-55px;width:130px;height:130px;border-radius:50%;background:#ffffff13}.nt-avatar{display:grid;place-items:center;flex:none;width:48px;height:48px;border-radius:15px;background:#ffffff25;z-index:1}.nt-greet-copy{z-index:1;min-width:0}.nt-greet h2{font-size:clamp(16px,4vw,21px);font-weight:900;margin:0 0 3px}.nt-greet p{font-size:12px;font-weight:600;color:#e4f2ff;margin:0}.nt-summary{margin-top:13px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:13px;border:1px solid var(--nt-line);border-radius:16px;background:#fff;box-shadow:0 7px 18px #0f4c810d}.nt-summary-copy{display:flex;align-items:center;gap:10px;min-width:0}.nt-summary-icon{display:grid;place-items:center;flex:none;width:40px;height:40px;border-radius:13px;background:#e6f7ef;color:#119653}.nt-summary-icon.is-read{background:#e9f7ef}.nt-summary-title{font-size:13px;font-weight:900;margin:0}.nt-summary-subtitle{font-size:10px;color:var(--nt-muted);font-weight:700;margin:3px 0 0}.nt-read-all{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid #d7e6f5;border-radius:10px;padding:9px 11px;background:#edf5fd;color:var(--nt-primary);font-family:inherit;font-size:11px;font-weight:800;cursor:pointer}.nt-read-all:disabled{opacity:.48;cursor:not-allowed}.nt-filters{display:flex;gap:7px;overflow-x:auto;margin:13px 0 3px;padding:1px 0 5px;scrollbar-width:none}.nt-filters::-webkit-scrollbar{display:none}.nt-filter{display:inline-flex;align-items:center;gap:6px;flex:none;border:1px solid var(--nt-line);border-radius:999px;padding:7px 11px;background:#fff;color:var(--nt-muted);font-family:inherit;font-size:11px;font-weight:800;cursor:pointer}.nt-filter.active{border-color:transparent;background:linear-gradient(110deg,#0f4c81,#287fc4);color:#fff;box-shadow:0 5px 12px #0f4c8129}.nt-filter-count{display:inline-grid;place-items:center;min-width:17px;height:17px;padding:0 4px;border-radius:999px;background:#eaf2fb;color:var(--nt-primary);font-size:9px;font-weight:900}.nt-filter.active .nt-filter-count{background:#ffffff32;color:white}.nt-error{display:flex;align-items:flex-start;gap:7px;margin:9px 0;padding:10px 12px;border:1px solid #fde68a;border-radius:12px;background:#fffbeb;color:#92400e;font-size:11px;font-weight:700;line-height:1.6}.nt-loading,.nt-empty{margin-top:12px;border:1px solid var(--nt-line);border-radius:16px;background:#fff;text-align:center;padding:24px 14px;color:var(--nt-muted);font-size:12px}.nt-list{display:flex;flex-direction:column;gap:11px;margin-top:11px}.nt-card{position:relative;overflow:hidden;border:1px solid var(--nt-line);border-radius:17px;background:#fff;padding:13px;box-shadow:0 8px 20px #0f4c810c;transition:transform .18s,box-shadow .18s}.nt-card:hover{transform:translateY(-2px);box-shadow:0 13px 25px #0f4c8119}.nt-card:before{content:'';position:absolute;inset-inline-start:0;top:0;bottom:0;width:4px}.nt-card.ord:before{background:#1c6fb8}.nt-card.pay:before{background:#13a15b}.nt-card.acc:before{background:#8249e8}.nt-card.unread{box-shadow:0 0 0 1px #cfe2f5,0 8px 20px #0f4c8110}.nt-card-header{display:flex;align-items:flex-start;gap:10px}.nt-category-icon{display:grid;place-items:center;flex:none;width:39px;height:39px;border-radius:12px}.nt-card.ord .nt-category-icon{background:#e7f1fc;color:#1c6fb8}.nt-card.pay .nt-category-icon{background:#e5f7ed;color:#119653}.nt-card.acc .nt-category-icon{background:#f1eaff;color:#8249e8}.nt-card-content{flex:1;min-width:0}.nt-meta-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:0 0 4px}.nt-category-label,.nt-new{border-radius:999px;padding:3px 7px;font-size:9px;font-weight:900}.nt-card.ord .nt-category-label{background:#e7f1fc;color:#1c6fb8}.nt-card.pay .nt-category-label{background:#e5f7ed;color:#119653}.nt-card.acc .nt-category-label{background:#f1eaff;color:#8249e8}.nt-new{background:#fff1e5;color:#c75a0b}.nt-date{font-size:9px;font-weight:700;color:#8090a5}.nt-card-title{font-size:13px;line-height:1.5;font-weight:900;margin:0;color:var(--nt-ink);overflow-wrap:anywhere}.nt-message{margin:9px 0 0;border:1px solid #e4eef8;border-radius:11px;background:#f7fbff;padding:9px 10px;color:#42536a;font-size:11px;font-weight:650;line-height:1.8;overflow-wrap:anywhere;white-space:pre-wrap}.nt-card-actions{display:flex;justify-content:flex-end;margin-top:9px}.nt-details{display:inline-flex;align-items:center;gap:5px;border:1px solid #d5e5f5;border-radius:10px;background:white;color:var(--nt-primary);padding:7px 10px;font-family:inherit;font-size:10px;font-weight:800;cursor:pointer}.nt-card.pay .nt-details{border-color:#b9e7cc;color:#119653}.nt-card.acc .nt-details{border-color:#dbcafa;color:#8249e8}.nt-details:hover{background:#f1f7fd}.nt-empty{display:flex;flex-direction:column;align-items:center;gap:7px;background:linear-gradient(135deg,#fff,#f6faff)}.nt-empty-icon{display:grid;place-items:center;width:54px;height:54px;border-radius:17px;background:#eaf3fd;color:#0f4c81}.nt-empty-title{margin:3px 0 0;color:var(--nt-ink);font-size:13px;font-weight:900}.nt-empty-subtitle{margin:0;color:var(--nt-muted);font-size:10px;font-weight:650}
+@media(max-width:480px){.nt-root{border-radius:16px;padding:9px}.nt-summary{align-items:stretch}.nt-read-all{width:100%}.nt-card{padding:11px}.nt-category-icon{width:36px;height:36px}}
+@media(prefers-reduced-motion:reduce){.nt-root *{scroll-behavior:auto!important;transition:none!important}}
+`;
 
 /** شاشة الإدارة: لا تظهر إلا بعد نجاح التحقق من دور admin أو staff. */
 function AdminNotificationsPage({ userId }: { userId: string }) {
