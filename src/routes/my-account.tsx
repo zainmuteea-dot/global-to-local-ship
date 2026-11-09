@@ -683,7 +683,10 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
 
           {/* 10. زر شروط الاستخدام */}
           <button
-            onClick={() => onNavigateToTerms?.()}
+            onClick={() => {
+                if (onNavigateToTerms) onNavigateToTerms();
+                else window.location.assign("/terms");
+              }}
             className="w-full bg-white hover:bg-gradient-to-r hover:from-white hover:to-slate-50 border-2 border-slate-200/80 hover:border-slate-500 rounded-2xl p-3.5 sm:p-4 shadow-xs hover:shadow-md transition-all duration-200 flex items-center justify-between cursor-pointer group active:scale-[0.99]"
           >
             <div className="flex items-center gap-3.5">
@@ -691,7 +694,7 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
                 <FileText className="w-5 h-5" />
               </div>
               <span className="text-sm font-black text-slate-800 group-hover:text-slate-900 transition-colors">
-                شروط الاستخدام
+                شر��ط الاستخدام
               </span>
             </div>
             <ChevronLeft className="w-4 h-4 text-slate-400 group-hover:text-slate-800 group-hover:-translate-x-1 transition-transform" />
@@ -699,7 +702,10 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
 
           {/* 11. زر سياسة الخصوصية */}
           <button
-            onClick={() => onNavigateToPrivacy?.()}
+            onClick={() => {
+                if (onNavigateToPrivacy) onNavigateToPrivacy();
+                else window.location.assign("/privacy");
+              }}
             className="w-full bg-white hover:bg-gradient-to-r hover:from-white hover:to-teal-50/60 border-2 border-slate-200/80 hover:border-teal-600 rounded-2xl p-3.5 sm:p-4 shadow-xs hover:shadow-md transition-all duration-200 flex items-center justify-between cursor-pointer group active:scale-[0.99]"
           >
             <div className="flex items-center gap-3.5">
@@ -1093,7 +1099,7 @@ export const MyAccountPage: React.FC<MyAccountProps> = ({
                   </p>
                 </section>
                 <section>
-                  <h4 className="font-black text-[#0F4C81]">طلباتك واستفساراتك</h4>
+                  <h4 className="font-black text-[#0F4C81]">طل��اتك واستفساراتك</h4>
                   <p>
                     يمكنك التواصل مع الدعم لطلب الاطلاع على بيانات حسابك أو تصحيحها أو طلب حذفها. قد
                     يتطلب تنفيذ الطلب التحقق من هويتك، وقد تُحتفظ بعض السجلات عند الحاجة لإدارة طلب
