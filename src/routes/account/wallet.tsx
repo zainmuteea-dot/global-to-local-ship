@@ -411,7 +411,7 @@ function WalletPage() {
           </div>
 
           <div className="fd-field">
-            <label htmlFor="wallet-receipt">سند التحويل (صورة الإشعار) (JPG / PNG / WEBP، حتى 2MB) <span className="req">*</span></label>
+            <label htmlFor="wallet-receipt">صورة سند التحويل (إيصال الدفع) <span className="req">*</span></label>
             <label className="fd-file" htmlFor="wallet-receipt">
               <span className="fic"><UploadCloud size={20} aria-hidden="true" /></span>
               <span className="fd-file-copy">
@@ -426,7 +426,8 @@ function WalletPage() {
                 onChange={(event) => handleReceipt(event.target.files?.[0])}
               />
             </label>
-            <p className="fd-receipt-help">أرفق صورة واضحة لإشعار نجاح التحويل؛ JPG أو PNG أو WEBP، حتى 2MB.</p>
+            <p className="fd-receipt-help">أرفق صورة واضحة لإيصال نجاح التحويل عبر وسيلة الدفع المختارة. تأكد من ظهور مبلغ التحويل وتاريخه أو رقم العملية.</p>
+            <p className="fd-receipt-help">الملفات المقبولة: JPG أو PNG أو WEBP، بحد أقصى 2MB. لا ترفع صورة بطاقة أو تشارك كلمة مرورك.</p>
           </div>
 
           {receiptPreview && (
