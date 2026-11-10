@@ -156,7 +156,10 @@ Deno.serve(async (req: Request) => {
     status: 200,
     headers: {
       ...corsHeaders,
-      "Content-Type": imageType,
+      // Supabase JS parses application/octet-stream as Blob; expose the verified image MIME separately.
+      "Content-Type": "application/octet-stream",
+      "X-Image-Content-Type": imageType,
+      "Access-Control-Expose-Headers": "X-Image-Content-Type, Content-Disposition, Content-Length",
       "Content-Length": String(bytes.byteLength),
       "Content-Disposition": `inline; filename="wallet-proof.${extension}"`,
       "Cache-Control": "private, no-store, max-age=0",
