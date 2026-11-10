@@ -319,15 +319,19 @@ function PaymentsPage() {
     try {
       // The server authenticates the caller and checks staff role for each image request.
       // No signed Storage URL is created or returned to the browser.
-      const { data, error } = await supabase.functions.invoke<Blob>("wallet-topup-proof", {
+      const { data, error, response } = await supabase.functions.invoke<Blob>("wallet-topup-proof", {
         body: { request_id: request.id },
-        responseType: "blob",
       });
       if (error) throw error;
       if (!(data instanceof Blob) || data.size === 0) {
         throw new Error("تعذر استلام صورة السند من الخادم.");
       }
-      setTopupProofPreview(URL.createObjectURL(data));
+      const imageType = response?.headers.get("X-Image-Content-Type");
+      if (!["image/jpeg", "image/png", "image/webp"].includes(imageType ?? "")) {
+        throw new Error("نوع صورة السند المستلمة غير صالح.");
+      }
+      const imageBlob = new Blob([data], { type: imageType });
+      setTopupProofPreview(URL.createObjectURL(imageBlob));
     } catch (cause) {
       console.error("Could not open wallet top-up proof", cause);
       setTopupsError("تعذر عرض السند أو لا تملك صلاحية الوصول إليه.");
