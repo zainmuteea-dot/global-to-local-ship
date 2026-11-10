@@ -234,7 +234,11 @@ function WalletPage() {
           </div>
           <div className="fd-bal">
             <div className="amt" dir="ltr">
-              {transactionsLoading ? "…" : transactionsError ? "—" : fmt(balance)}.00
+              {transactionsLoading
+                ? "…"
+                : transactionsError
+                  ? "—"
+                  : balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               <span className="cur">ر.ي</span>
             </div>
             <div className="sub"><span className="dot" /> الرصيد المتاح حسب سجل العمليات</div>
