@@ -504,10 +504,10 @@ function CustomerNotificationsPage({
   };
 
   const filters = [
-    { key: "all" as const, label: "الكل" },
-    { key: "ord" as const, label: "الطلبات" },
-    { key: "pay" as const, label: "الدفع" },
-    { key: "acc" as const, label: "الحساب" },
+    { key: "all" as const, label: "الكل", to: "/notifications" as const },
+    { key: "ord" as const, label: "الطلبات", to: "/account/orders" as const },
+    { key: "pay" as const, label: "الدفع", to: "/account/invoices" as const },
+    { key: "acc" as const, label: "الحساب", to: "/my-account" as const },
   ];
 
   return (
@@ -566,7 +566,10 @@ function CustomerNotificationsPage({
                 type="button"
                 className={`nt-filter ${activeFilter === filter.key ? "active" : ""}`}
                 aria-pressed={activeFilter === filter.key}
-                onClick={() => setActiveFilter(filter.key)}
+                onClick={() => {
+                  setActiveFilter(filter.key);
+                  void navigate({ to: filter.to });
+                }}
               >
                 {filter.label}<span className="nt-filter-count">{categoryCounts[filter.key]}</span>
               </button>
@@ -667,7 +670,7 @@ const NOTIFICATIONS_CUSTOMER_STYLE = `
 @media(prefers-reduced-motion:reduce){.nt-root *{scroll-behavior:auto!important;transition:none!important}}
 `;
 
-/** شاشة الإدارة: لا تظهر إلا بعد نجاح التحقق من دور admin أو staff. */
+/** شاشة الإدار��: لا تظهر إلا بعد نجاح التحقق من دور admin أو staff. */
 function AdminNotificationsPage({ userId }: { userId: string }) {
   const navigate = useNavigate();
   const [orders, setOrders] = useState<OrderNotification[]>([]);
