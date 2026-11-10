@@ -297,7 +297,7 @@ function PaymentsPage() {
       if (!adminRole.data && !staffRole.data) throw new Error("هذه القائمة متاحة للموظفين المخوّلين فقط.");
 
       // RLS still enforces staff access; the explicit role check is an additional UI guard.
-      const { data, error } = await (supabase.from("wallet_topup_requests") as any)
+      const { data, error } = await (supabase as any).from("wallet_topup_requests")
         .select("id,user_id,amount,currency,payment_method,sender_phone,note,proof_path,status,created_at")
         .eq("status", "pending_review")
         .order("created_at", { ascending: false })
