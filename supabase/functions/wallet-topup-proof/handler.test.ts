@@ -17,8 +17,9 @@ function createDependencies({
   staff?: boolean;
 } = {}) {
   const getUser = vi.fn().mockResolvedValue({ data: { user }, error: null });
+  let staffRoleGranted = staff;
   const rpc = vi.fn(async (_name: string, args: Record<string, string>) => ({
-    data: args._role === "admin" ? admin : staff,
+    data: args._role === "admin" ? admin : staffRoleGranted,
     error: null,
   }));
   const maybeSingle = vi.fn().mockResolvedValue({
@@ -53,7 +54,17 @@ function createDependencies({
     body: JSON.stringify({ request_id: REQUEST_ID }),
   });
 
-  return { handler, makeRequest, createClient, getUser, rpc, maybeSingle, download, createSignedUrl };
+  return {
+    handler,
+    makeRequest,
+    createClient,
+    getUser,
+    rpc,
+    maybeSingle,
+    download,
+    createSignedUrl,
+    revokeStaffRole: () => { staffRoleGranted = false; },
+  };
 }
 
 describe("wallet-topup-proof server authorization", () => {
@@ -69,15 +80,20 @@ describe("wallet-topup-proof server authorization", () => {
     expect(deps.createSignedUrl).not.toHaveBeenCalled();
   });
 
-  it("يرفض العرض فور سحب دور staff ويعيد فحص الدور عند كل طلب", async () => {
-    const deps = createDependencies({ staff: false, admin: false });
+  it("يرفض الطلب التالي فور سحب دور staff بعد طلب كان مصرحًا به", async () => {
+    const deps = createDependencies({ staff: true, admin: false });
 
-    const response = await deps.handler(deps.makeRequest());
+    const beforeRevocation = await deps.handler(deps.makeRequest());
+    expect(beforeRevocation.status).toBe(200);
+    expect(deps.download).toHaveBeenCalledTimes(1);
 
-    expect(response.status).toBe(403);
-    expect(deps.rpc).toHaveBeenCalledTimes(2);
-    expect(deps.maybeSingle).not.toHaveBeenCalled();
-    expect(deps.download).not.toHaveBeenCalled();
+    deps.revokeStaffRole();
+    const afterRevocation = await deps.handler(deps.makeRequest());
+
+    expect(afterRevocation.status).toBe(403);
+    expect(deps.rpc).toHaveBeenCalledTimes(4);
+    expect(deps.maybeSingle).toHaveBeenCalledTimes(1);
+    expect(deps.download).toHaveBeenCalledTimes(1);
     expect(deps.createSignedUrl).not.toHaveBeenCalled();
   });
 
