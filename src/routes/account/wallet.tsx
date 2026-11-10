@@ -253,6 +253,33 @@ function WalletPage() {
           </div>
         </section>
 
+        <section className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-xs font-bold leading-5 text-amber-900 shadow-sm">
+          <span className="grid size-8 shrink-0 place-items-center rounded-xl bg-amber-100 text-amber-700" aria-hidden="true">!</span>
+          <p>لتغذية حسابك أرسل الحوالة باسم المستلم المعتمد، ثم أرفق سند التحويل. تتم مراجعة الطلب قبل إضافة الرصيد.</p>
+        </section>
+
+        <section aria-label="مبالغ شحن سريعة" className="space-y-2">
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-xs font-black text-slate-800">شحن سريع</h3>
+            <span className="text-[10px] font-semibold text-slate-500">اختر مبلغًا لبدء طلب الشحن</span>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {[5000, 10000, 20000].map((quickAmount) => (
+              <button
+                key={quickAmount}
+                type="button"
+                disabled={!user}
+                onClick={() => { setAmount(String(quickAmount)); scrollToTopup(); }}
+                className="rounded-xl border border-slate-200 bg-white px-2 py-3 text-center shadow-sm transition hover:-translate-y-0.5 hover:border-orange-300 disabled:opacity-50"
+              >
+                <span className="mx-auto grid size-5 place-items-center rounded-full bg-orange-500 text-xs font-black text-white">+</span>
+                <span className="mt-1 block text-xs font-black text-slate-900">{fmt(quickAmount)}</span>
+                <span className="text-[9px] font-bold text-slate-500">ر.ي</span>
+              </button>
+            ))}
+          </div>
+        </section>
+
         <section aria-label="وسائل الشحن" className="grid grid-cols-2 gap-2">
           <button
             type="button"
@@ -379,6 +406,12 @@ function WalletPage() {
             {saving ? "جارٍ حفظ الطلب…" : "إرسال طلب الشحن للمراجعة"}
           </button>
         </form>
+
+        <section aria-label="ملخص العمليات" className="grid grid-cols-3 gap-2">
+          <div className="rounded-xl border border-sky-100 bg-white p-2 text-center shadow-sm"><p className="text-[10px] font-bold text-slate-500">عدد العمليات</p><p className="mt-1 text-sm font-black text-slate-900">{transactionsLoading ? "…" : fmt(tx.length)}</p></div>
+          <div className="rounded-xl border border-emerald-100 bg-white p-2 text-center shadow-sm"><p className="text-[10px] font-bold text-emerald-700">الإضافات</p><p className="mt-1 text-sm font-black text-emerald-800">{transactionsLoading ? "…" : fmt(addedTransactions.length)}</p></div>
+          <div className="rounded-xl border border-orange-100 bg-white p-2 text-center shadow-sm"><p className="text-[10px] font-bold text-orange-700">الخصومات</p><p className="mt-1 text-sm font-black text-orange-800">{transactionsLoading ? "…" : fmt(deductionsTotal)}</p></div>
+        </section>
 
         <section className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
           <h3 className="flex items-center gap-2 text-sm font-black text-slate-900">
