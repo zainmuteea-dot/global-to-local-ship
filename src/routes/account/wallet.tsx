@@ -14,6 +14,8 @@ import {
   CheckCircle2,
   Copy,
   List,
+  Plus,
+  X,
   Trash2,
   UploadCloud,
   Wallet,
@@ -73,6 +75,8 @@ function WalletPage() {
   const [note, setNote] = useState("");
   const [amount, setAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<string>(PAYMENT_METHODS[0]);
+  const [methodPickerOpen, setMethodPickerOpen] = useState(false);
+  const [showTopupForm, setShowTopupForm] = useState(false);
   const [receipt, setReceipt] = useState<File | null>(null);
   const [receiptPreview, setReceiptPreview] = useState("");
   const [copied, setCopied] = useState(false);
@@ -165,7 +169,6 @@ function WalletPage() {
   const deductionsTotal = deductedTransactions.reduce((sum, item) => sum - item.amount, 0);
   const balance = additionsTotal - deductionsTotal;
   const fmt = (value: number) => value.toLocaleString("en-US");
-
 
   const copyRecipient = async () => {
     setCopyError("");
@@ -293,11 +296,6 @@ function WalletPage() {
     }
   };
 
-  const displayName =
-    String(user?.user_metadata?.["full_name"] ?? user?.user_metadata?.["name"] ?? "").trim() ||
-    user?.email?.split("@")[0] ||
-    "بك";
-
   return (
     <div className="fd-root" dir="rtl" lang="ar">
       <style>{WALLET_STYLE}</style>
@@ -305,7 +303,7 @@ function WalletPage() {
         <div className="fd-topbar-in">
           <div className="fd-tp-title">
             <Wallet size={20} aria-hidden="true" />
-            شحن المحفظة
+            الرصيد
           </div>
           <button className="fd-ghost" type="button" onClick={() => navigate({ to: "/my-account" })}>
             <span aria-hidden="true">←</span> رجوع
@@ -313,34 +311,29 @@ function WalletPage() {
         </div>
       </header>
       <main className="fd-wrap">
-        <section className="fd-greet">
-          <span className="ava">{displayName.slice(0, 1).toUpperCase()}</span>
-          <div>
-            <h1>أهلاً بك يا {displayName} 👋</h1>
-            <p>هذه محفظتك الشخصية للشحن والدفع</p>
-          </div>
-        </section>
-
         <section className="fd-card" aria-label="رصيد المحفظة">
           <div className="fd-card-top">
-            <span className="lbl"><Wallet size={18} aria-hidden="true" /> رصيد حساب المحفظة</span>
-            <span className="fd-chip" aria-hidden="true" />
+            <span className="lbl">الرصيد الحالي</span>
+            <button className="fd-add-button" type="button" aria-label="إضافة رصيد وعرض طرق الدفع" onClick={() => setMethodPickerOpen(true)}>
+              <Plus size={21} aria-hidden="true" />
+            </button>
           </div>
           <div className="fd-bal">
             <div className="amt" dir="ltr">
-              {transactionsLoading
-                ? "…"
-                : transactionsError
-                  ? "—"
-                  : balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              <span className="cur">ر.ي</span>
+              {transactionsLoading ? "…" : transactionsError ? "—" : fmt(balance)}
+              <span className="cur">YER</span>
             </div>
-            <div className="sub"><span className="dot" /> الرصيد المتاح حسب سجل العمليات</div>
             {transactionsError && <p className="fd-card-error">تعذر التحقق من الرصيد؛ أعد المحاولة من سجل العمليات.</p>}
           </div>
         </section>
 
-        <section className="fd-notice" role="note">
+        {showTopupForm && (
+          <section className="fd-topup-panel" aria-label="إضافة رصيد">
+            <div className="fd-selected-method">
+              <span>طريقة الدفع المختارة</span><strong>{paymentMethod}</strong>
+              <button type="button" onClick={() => setMethodPickerOpen(true)}>تغيير</button>
+            </div>
+                    <section className="fd-notice" role="note">
           <span className="ic" aria-hidden="true">!</span>
           <div className="tx">حوّل إلى بيانات المستلم الموضحة أدناه، ثم ارفع صورة إشعار التحويل. سيُراجع الطلب قبل إضافة أي مبلغ إلى رصيدك.</div>
         </section>
@@ -358,11 +351,11 @@ function WalletPage() {
           {copyError && <p className="fd-copy-error" role="status">{copyError}</p>}
         </section>
 
-        {!user && (
+
+                    {!user && (
           <p className="fd-login-alert" role="alert">سجّل الدخول أولًا لعرض محفظتك أو إرسال طلب شحن.</p>
         )}
-
-        <form id="topup-form" onSubmit={submitTopup} className="fd-form">
+                    <form id="topup-form" onSubmit={submitTopup} className="fd-form">
           <h3><span className="ic"><UploadCloud size={18} aria-hidden="true" /></span> نموذج تعبئة الرصيد</h3>
 
           <div className="fd-field">
@@ -453,7 +446,60 @@ function WalletPage() {
             {saving ? "جارٍ الإرسال…" : "إرسال طلب الشحن"}
           </button>
         </form>
+          </section>
+        )}
 
+        <section className="fd-stats" aria-label="ملخص عمليات المحفظة">
+          <div className="fd-stat rem">
+            <div className="st-l">عدد العمليات</div>
+            <div className="st-v">{transactionsLoading ? "…" : transactionsError ? "—" : fmt(tx.length)}</div>
+          </div>
+          <div className="fd-stat total">
+            <div className="st-l">الإضافات</div>
+            <div className="st-v">{transactionsLoading ? "…" : transactionsError ? "—" : fmt(additionsTotal)}</div>
+          </div>
+          <div className="fd-stat paid">
+            <div className="st-l">الخصومات</div>
+            <div className="st-v">{transactionsLoading ? "…" : transactionsError ? "—" : fmt(deductionsTotal)}</div>
+          </div>
+        </section>
+
+        <section className="fd-log">
+          <h3><span className="ic"><List size={18} aria-hidden="true" /></span> سجل العمليات</h3>
+          {transactionsLoading ? (
+            <p className="fd-empty-state" role="status">جارٍ تحميل العمليات…</p>
+          ) : transactionsError ? (
+            <div className="fd-log-error" role="alert">
+              <p>{transactionsError}</p>
+              <button type="button" onClick={() => void loadTransactions()}>إعادة المحاولة</button>
+            </div>
+          ) : tx.length === 0 ? (
+            <div className="fd-empty">
+              <span className="eic"><List size={28} aria-hidden="true" /></span>
+              <div className="et">لا توجد عمليات بعد</div>
+              <div className="es">ستظهر عمليات الشحن والخصم هنا بعد تسجيلها.</div>
+            </div>
+          ) : (
+            <div className="fd-transactions">
+              {tx.map((item) => (
+                <article key={item.id} className="fd-transaction">
+                  <span className={`fd-tx-icon ${item.amount >= 0 ? "positive" : "negative"}`}>
+                    {item.amount >= 0 ? <ArrowDownLeft size={17} aria-hidden="true" /> : <ArrowUpRight size={17} aria-hidden="true" />}
+                  </span>
+                  <div className="fd-tx-info">
+                    <strong>{item.description || "عملية رصيد"}</strong>
+                    <time dateTime={item.created_at}>{new Date(item.created_at).toLocaleDateString("ar-u-nu-latn")}</time>
+                  </div>
+                  <span dir="ltr" className={`fd-tx-amount ${item.amount >= 0 ? "positive" : "negative"}`}>
+                    {item.amount >= 0 ? "+" : "−"}{fmt(Math.abs(item.amount))} <small>ر.ي</small>
+                  </span>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+
+{(topups.length > 0 || topupsLoading || topupsError) && (
         <section className="fd-log fd-topups" aria-label="طلبات الشحن وسنداتها">
           <div className="fd-topups-heading">
             <h3><span className="ic"><List size={18} aria-hidden="true" /></span> طلبات الشحن وسنداتها</h3>
@@ -507,56 +553,30 @@ function WalletPage() {
           )}
         </section>
 
-        <section className="fd-stats" aria-label="ملخص عمليات المحفظة">
-          <div className="fd-stat total">
-            <div className="st-l">الإجمالي</div>
-            <div className="st-v">{transactionsLoading ? "…" : transactionsError ? "—" : fmt(additionsTotal)}<span className="cu">ر.ي</span></div>
-          </div>
-          <div className="fd-stat paid">
-            <div className="st-l">المدفوع</div>
-            <div className="st-v">{transactionsLoading ? "…" : transactionsError ? "—" : fmt(deductionsTotal)}<span className="cu">ر.ي</span></div>
-          </div>
-          <div className="fd-stat rem">
-            <div className="st-l">المتبقي</div>
-            <div className="st-v">{transactionsLoading ? "…" : transactionsError ? "—" : fmt(balance)}<span className="cu">ر.ي</span></div>
-          </div>
-        </section>
 
-        <section className="fd-log">
-          <h3><span className="ic"><List size={18} aria-hidden="true" /></span> سجل العمليات</h3>
-          {transactionsLoading ? (
-            <p className="fd-empty-state" role="status">جارٍ تحميل العمليات…</p>
-          ) : transactionsError ? (
-            <div className="fd-log-error" role="alert">
-              <p>{transactionsError}</p>
-              <button type="button" onClick={() => void loadTransactions()}>إعادة المحاولة</button>
-            </div>
-          ) : tx.length === 0 ? (
-            <div className="fd-empty">
-              <span className="eic"><List size={28} aria-hidden="true" /></span>
-              <div className="et">لا توجد عمليات بعد</div>
-              <div className="es">ستظهر عمليات الشحن والخصم هنا بعد تسجيلها.</div>
-            </div>
-          ) : (
-            <div className="fd-transactions">
-              {tx.map((item) => (
-                <article key={item.id} className="fd-transaction">
-                  <span className={`fd-tx-icon ${item.amount >= 0 ? "positive" : "negative"}`}>
-                    {item.amount >= 0 ? <ArrowDownLeft size={17} aria-hidden="true" /> : <ArrowUpRight size={17} aria-hidden="true" />}
-                  </span>
-                  <div className="fd-tx-info">
-                    <strong>{item.description || "عملية رصيد"}</strong>
-                    <time dateTime={item.created_at}>{new Date(item.created_at).toLocaleDateString("ar-u-nu-latn")}</time>
-                  </div>
-                  <span dir="ltr" className={`fd-tx-amount ${item.amount >= 0 ? "positive" : "negative"}`}>
-                    {item.amount >= 0 ? "+" : "−"}{fmt(Math.abs(item.amount))} <small>ر.ي</small>
-                  </span>
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
+        )}
         <p className="fd-footer">تُراجع جميع طلبات الشحن قبل اعتمادها. تأكّد من المبلغ وسند التحويل قبل الإرسال.</p>
+
+        {methodPickerOpen && (
+          <div className="fd-method-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setMethodPickerOpen(false); }}>
+            <section className="fd-method-dialog" role="dialog" aria-modal="true" aria-labelledby="fd-method-title">
+              <div className="fd-method-handle" aria-hidden="true" />
+              <header className="fd-method-head">
+                <div><h2 id="fd-method-title">إضافة رصيد</h2><p>اختر طريقة الدفع المناسبة ثم أدخل المبلغ وأرفق إيصال التحويل.</p></div>
+                <button type="button" className="fd-method-close" onClick={() => setMethodPickerOpen(false)} aria-label="إغلاق طرق الدفع"><X size={18} /></button>
+              </header>
+              <div className="fd-method-grid" role="group" aria-label="طريقة الدفع">
+                {PAYMENT_METHODS.map((method) => (
+                  <button key={method} type="button" className={`fd-method-option ${paymentMethod === method ? "selected" : ""}`} aria-pressed={paymentMethod === method} onClick={() => { setPaymentMethod(method); setShowTopupForm(true); setMethodPickerOpen(false); window.setTimeout(() => document.getElementById("topup-form")?.scrollIntoView({ behavior: "smooth", block: "start" }), 80); }}>
+                    <span className="fd-method-radio" aria-hidden="true" />
+                    <span className="fd-method-mark" aria-hidden="true">{method.slice(0, 1)}</span>
+                    <strong>{method}</strong>
+                  </button>
+                ))}
+              </div>
+            </section>
+          </div>
+        )}
       </main>
     </div>
   );
@@ -749,4 +769,64 @@ const WALLET_STYLE = `
 .fd-root .fd-proof-viewer-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;color:var(--primary);font-size:12px;}
 .fd-root .fd-proof-viewer img{display:block;max-width:100%;max-height:60vh;margin:0 auto;object-fit:contain;border-radius:9px;background:#fff;}
 @media(max-width:480px){.fd-root .fd-topups-heading h3{font-size:10px;}.fd-root .fd-topups-refresh,.fd-root .fd-proof-button,.fd-root .fd-proof-close{padding:6px 8px;font-size:9px;}.fd-root .fd-topup-row{padding:9px;}.fd-root .fd-topup-details{font-size:9px;}.fd-root .fd-topup-title{font-size:11px;}.fd-root .fd-topup-status{font-size:8px;}.fd-root .fd-topup-details time,.fd-root .fd-proof-privacy{font-size:8px;}}
+
+/* Refined wallet balance screen; all rules stay scoped to this route. */
+.fd-root{--primary:#93400f;--primary2:#b85b22;--gold:#c99b60;--orange:#b85b22;--orange2:#d47a3b;--ink:#202334;--ink2:#89745f;--line:#eadbc9;--sky:#fbf7f1;min-height:100dvh;background:linear-gradient(180deg,#f7efe2,#f1e5d2 70%);color:var(--ink);}
+.fd-root .fd-topbar{background:rgba(249,243,234,.96);border-bottom:1px solid #eadbc9;box-shadow:none;}
+.fd-root .fd-topbar-in{position:relative;max-width:472px;min-height:58px;justify-content:center;padding:10px 12px;}
+.fd-root .fd-tp-title{color:#93400f;font-size:17px;font-weight:900;}
+.fd-root .fd-tp-title svg{display:none;}
+.fd-root .fd-ghost{position:absolute;inset-inline-start:12px;top:50%;transform:translateY(-50%);border-color:#e7d1b7;background:#f2e4d2;color:#93400f;border-radius:12px;padding:8px 12px;font-size:11px;}
+.fd-root .fd-ghost:hover{transform:translateY(calc(-50% - 1px));background:#ead7bf;}
+.fd-root .fd-wrap{max-width:472px;padding:18px 12px 40px;}
+.fd-root .fd-card{margin-top:0;min-height:90px;padding:16px;border:1px solid rgba(255,255,255,.78);border-radius:22px;color:var(--ink);background:linear-gradient(135deg,#fff 0%,#fbf7f1 100%);box-shadow:0 10px 28px rgba(117,74,34,.08);}
+.fd-root .fd-card::before{display:none;}
+.fd-root .fd-card-top{align-items:center;}
+.fd-root .fd-card-top .lbl{color:#8b745f;font-size:12px;font-weight:800;}
+.fd-root .fd-bal{margin-top:5px;}
+.fd-root .fd-bal .amt{flex-direction:row-reverse;justify-content:flex-start;gap:8px;font-size:31px;letter-spacing:0;color:#191d30;}
+.fd-root .fd-bal .amt .cur{font-size:13px;color:#202334;opacity:1;}
+.fd-root .fd-add-button{width:54px;height:54px;display:grid;place-items:center;border:0;border-radius:17px;background:linear-gradient(145deg,#bd6734,#93400f);color:#fff;box-shadow:0 8px 16px rgba(147,64,15,.18);cursor:pointer;transition:transform .15s,filter .15s;}
+.fd-root .fd-add-button:hover{transform:translateY(-1px);filter:brightness(1.06);}
+.fd-root .fd-add-button:focus-visible,.fd-root .fd-method-option:focus-visible,.fd-root .fd-method-close:focus-visible{outline:3px solid #d6a779;outline-offset:3px;}
+.fd-root .fd-card-error{color:#a33a31;}
+.fd-root .fd-stats{margin-top:12px;gap:9px;}
+.fd-root .fd-stat{padding:13px 7px;border:1px solid rgba(234,219,201,.8);border-radius:16px;box-shadow:0 5px 14px rgba(117,74,34,.04);}
+.fd-root .fd-stat .st-l{color:#8d7965;font-size:10px;margin-bottom:5px;}
+.fd-root .fd-stat .st-v{font-size:15px;color:#202334!important;}
+.fd-root .fd-stat .st-v .cu{display:none;}
+.fd-root .fd-stat.total,.fd-root .fd-stat.paid,.fd-root .fd-stat.rem{border-color:rgba(234,219,201,.8);}
+.fd-root .fd-log{margin-top:12px;padding:14px;border:1px solid rgba(255,255,255,.8);border-radius:18px;box-shadow:0 7px 18px rgba(117,74,34,.05);}
+.fd-root .fd-log h3{font-size:14px;color:#93400f;}
+.fd-root .fd-log h3 .ic{width:auto;height:auto;background:transparent;color:#a34d1a;}
+.fd-root .fd-empty{border-color:#eadbc9;background:#fff;padding:20px 10px;}
+.fd-root .fd-empty .eic{width:48px;height:48px;border-radius:15px;background:#f8f3ee;color:#93400f;box-shadow:none;}
+.fd-root .fd-empty .et{font-size:13px;color:#93400f;}
+.fd-root .fd-empty .es{color:#89745f;}
+.fd-root .fd-transactions{gap:8px;}
+.fd-root .fd-transaction{border-color:#f0e7dc;background:#fff;}
+.fd-root .fd-topup-panel{margin-top:12px;padding:12px;border:1px solid #eadbc9;border-radius:18px;background:#fff;box-shadow:0 7px 18px rgba(117,74,34,.05);}
+.fd-root .fd-selected-method{display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:10px 11px;border-radius:12px;background:#faf4ec;color:#89745f;font-size:11px;font-weight:700;}
+.fd-root .fd-selected-method strong{color:#93400f;font-size:12px;}
+.fd-root .fd-selected-method button{margin-inline-start:auto;border:1px solid #eadbc9;border-radius:9px;padding:6px 10px;background:#fff;color:#93400f;font:inherit;font-size:10px;font-weight:900;cursor:pointer;}
+.fd-root .fd-topup-panel .fd-notice{margin-top:0;}
+.fd-root .fd-method-overlay{position:fixed;inset:0;z-index:100;display:flex;align-items:flex-end;justify-content:center;padding:12px;background:rgba(32,25,18,.42);backdrop-filter:blur(3px);}
+.fd-root .fd-method-dialog{width:min(100%,460px);max-height:min(88dvh,720px);overflow-y:auto;padding:10px 14px 18px;border:1px solid #eadbc9;border-radius:24px;background:#fffdfa;box-shadow:0 18px 60px rgba(42,28,15,.22);animation:fd-sheet-in .2s ease-out;}
+.fd-root .fd-method-handle{width:42px;height:4px;margin:0 auto 13px;border-radius:9px;background:#eadbc9;}
+.fd-root .fd-method-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:15px;}
+.fd-root .fd-method-head h2{margin:0;color:#93400f;font-size:17px;font-weight:900;}
+.fd-root .fd-method-head p{margin:4px 0 0;color:#89745f;font-size:11px;font-weight:700;line-height:1.65;}
+.fd-root .fd-method-close{width:34px;height:34px;flex:none;display:grid;place-items:center;border:0;border-radius:11px;background:#f7f2ed;color:#93400f;cursor:pointer;}
+.fd-root .fd-method-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+.fd-root .fd-method-option{position:relative;min-height:80px;display:grid;grid-template-columns:25px 42px 1fr;align-items:center;gap:8px;padding:11px;border:1px solid #e7d2bb;border-radius:18px;background:#fff;color:#222;cursor:pointer;text-align:right;transition:border-color .15s,background .15s,transform .15s;}
+.fd-root .fd-method-option:hover{transform:translateY(-1px);border-color:#bd7a4e;background:#fffaf4;}
+.fd-root .fd-method-option.selected{border-color:#a64f1d;background:#fff7ed;box-shadow:0 0 0 2px rgba(166,79,29,.08);}
+.fd-root .fd-method-radio{width:21px;height:21px;border:1px solid #e2cdb9;border-radius:50%;background:#fff;}
+.fd-root .fd-method-option.selected .fd-method-radio{border:6px solid #a64f1d;}
+.fd-root .fd-method-mark{width:40px;height:40px;display:grid;place-items:center;border:1px solid #eadbc9;border-radius:12px;background:#fff;color:#a64f1d;font-size:18px;font-weight:900;box-shadow:0 3px 8px rgba(117,74,34,.06);}
+.fd-root .fd-method-option strong{font-size:12px;font-weight:900;}
+@keyframes fd-sheet-in{from{opacity:.5;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@media(min-width:700px){.fd-root .fd-method-overlay{align-items:center}.fd-root .fd-method-dialog{border-radius:24px}}
+@media(max-width:480px){.fd-root .fd-wrap{max-width:472px;padding:14px 12px 28px}.fd-root .fd-topbar-in{max-width:472px;min-height:54px;padding:8px 12px}.fd-root .fd-tp-title{font-size:15px}.fd-root .fd-card{min-height:86px;padding:14px}.fd-root .fd-add-button{width:48px;height:48px}.fd-root .fd-bal .amt{font-size:29px}.fd-root .fd-stat{padding:11px 5px}.fd-root .fd-stat .st-l{font-size:9px}.fd-root .fd-stat .st-v{font-size:14px}.fd-root .fd-log{padding:13px}.fd-root .fd-method-dialog{padding:9px 12px 16px}.fd-root .fd-method-option{min-height:72px;grid-template-columns:20px 36px 1fr;gap:7px;padding:9px;border-radius:16px}.fd-root .fd-method-radio{width:18px;height:18px}.fd-root .fd-method-mark{width:35px;height:35px;border-radius:10px}.fd-root .fd-method-option strong{font-size:11px}}
+
 `;
