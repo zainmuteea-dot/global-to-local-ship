@@ -38,6 +38,19 @@ type Tx = {
   created_at: string;
 };
 
+type WalletTopup = {
+  id: string;
+  amount: number;
+  currency: string;
+  payment_method: string;
+  sender_phone: string;
+  note: string | null;
+  proof_path: string;
+  status: string;
+  created_at: string;
+  reviewed_at: string | null;
+};
+
 const PAYMENT_METHODS = ["الكريمي", "ون كاش", "فلوسك", "جوالي", "جيب", "حوالة النجم"] as const;
 const RECIPIENT_NAME = "زين العابدين مطيع حاتم الوصابي";
 const RECIPIENT_NUMBER = "772399744";
@@ -50,6 +63,12 @@ function WalletPage() {
   const [tx, setTx] = useState<Tx[]>([]);
   const [transactionsLoading, setTransactionsLoading] = useState(true);
   const [transactionsError, setTransactionsError] = useState("");
+  const [topups, setTopups] = useState<WalletTopup[]>([]);
+  const [topupsLoading, setTopupsLoading] = useState(true);
+  const [topupsError, setTopupsError] = useState("");
+  const [proofPreview, setProofPreview] = useState<{ id: string; url: string } | null>(null);
+  const [proofLoadingId, setProofLoadingId] = useState<string | null>(null);
+  const [proofError, setProofError] = useState("");
   const [senderPhone, setSenderPhone] = useState("");
   const [note, setNote] = useState("");
   const [amount, setAmount] = useState("");
@@ -95,15 +114,46 @@ function WalletPage() {
     }
   }, [user]);
 
+  const loadTopups = useCallback(async () => {
+    if (!user) {
+      setTopups([]);
+      setTopupsLoading(false);
+      setTopupsError("");
+      return;
+    }
+
+    setTopupsLoading(true);
+    setTopupsError("");
+    try {
+      // RLS limits customers to their own requests and allows only authorized staff to see all.
+      const { data, error: loadError } = await (supabase.from("wallet_topup_requests") as any)
+        .select("id,amount,currency,payment_method,sender_phone,note,proof_path,status,created_at,reviewed_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      if (loadError) throw loadError;
+      setTopups((data ?? []) as WalletTopup[]);
+    } catch (cause) {
+      console.error("Could not load wallet top-up requests", cause);
+      setTopupsError("تعذر تحميل طلبات الشحن. أعد المحاولة لاحقًا.");
+    } finally {
+      setTopupsLoading(false);
+    }
+  }, [user]);
+
   useEffect(() => {
     if (!user) {
       setSenderPhone("");
+      setProofPreview(null);
       void loadTransactions();
+      void loadTopups();
       return;
     }
     setSenderPhone(String(user.user_metadata?.["phone"] ?? ""));
     void loadTransactions();
-  }, [user, loadTransactions]);
+    void loadTopups();
+  }, [user, loadTransactions, loadTopups]);
 
   useEffect(() => {
     return () => { if (receiptPreview) URL.revokeObjectURL(receiptPreview); };
@@ -142,6 +192,27 @@ function WalletPage() {
     }
     setReceipt(file);
     setReceiptPreview(URL.createObjectURL(file));
+  };
+
+  const openTopupProof = async (request: WalletTopup) => {
+    if (!user) return;
+    setProofError("");
+    setProofLoadingId(request.id);
+    setProofPreview(null);
+    try {
+      // The bucket remains private. Storage RLS checks owner/staff before issuing a 5-minute URL.
+      const { data, error: signError } = await supabase.storage
+        .from(RECEIPT_BUCKET)
+        .createSignedUrl(request.proof_path, 300);
+      if (signError) throw signError;
+      if (!data?.signedUrl) throw new Error("لم يُنشأ رابط عرض للسند.");
+      setProofPreview({ id: request.id, url: data.signedUrl });
+    } catch (cause) {
+      console.error("Could not create a wallet proof preview URL", cause);
+      setProofError("لا تملك صلاحية عرض هذا السند أو تعذر تحميله.");
+    } finally {
+      setProofLoadingId(null);
+    }
   };
 
   const submitTopup = async (event: FormEvent<HTMLFormElement>) => {
@@ -200,6 +271,7 @@ function WalletPage() {
 
       if (insertError) throw insertError;
       uploadedProofPath = null;
+      void loadTopups();
       setSuccess(
         `تم استلام طلب الشحن ${String(data?.id ?? "").slice(0, 8)} للمراجعة. سيُضاف الرصيد بعد اعتماده فقط.`,
       );
@@ -380,6 +452,59 @@ function WalletPage() {
             {saving ? "جارٍ الإرسال…" : "إرسال طلب الشحن"}
           </button>
         </form>
+
+        <section className="fd-log fd-topups" aria-label="طلبات الشحن وسنداتها">
+          <div className="fd-topups-heading">
+            <h3><span className="ic"><List size={18} aria-hidden="true" /></span> طلبات الشحن وسنداتها</h3>
+            <button type="button" className="fd-topups-refresh" onClick={() => void loadTopups()} disabled={topupsLoading}>
+              {topupsLoading ? "جارٍ التحديث…" : "تحديث"}
+            </button>
+          </div>
+
+          {topupsError ? (
+            <div className="fd-log-error" role="alert">
+              <p>{topupsError}</p>
+              <button type="button" onClick={() => void loadTopups()}>إعادة المحاولة</button>
+            </div>
+          ) : topupsLoading ? (
+            <p className="fd-empty-state" role="status">جارٍ تحميل طلبات الشحن…</p>
+          ) : topups.length === 0 ? (
+            <div className="fd-empty-state">لا توجد طلبات شحن بعد.</div>
+          ) : (
+            <div className="fd-topup-list">
+              {topups.map((request) => (
+                <article key={request.id} className="fd-topup-row">
+                  <div className="fd-topup-details">
+                    <div className="fd-topup-title">
+                      <strong>{Number(request.amount).toLocaleString("en-US")} {request.currency === "YER" ? "ر.ي" : request.currency}</strong>
+                      <span className={`fd-topup-status ${request.status === "approved" ? "approved" : request.status === "rejected" ? "rejected" : "pending"}`}>
+                        {request.status === "approved" ? "معتمد" : request.status === "rejected" ? "مرفوض" : request.status === "pending_review" ? "قيد المراجعة" : request.status}
+                      </span>
+                    </div>
+                    <span>الوسيلة: {request.payment_method} · رقم المرسل: <bdi dir="ltr">{request.sender_phone}</bdi></span>
+                    <time dateTime={request.created_at}>{new Date(request.created_at).toLocaleString("ar-u-nu-latn")}</time>
+                    {request.note && <span className="fd-topup-note">ملاحظة: {request.note}</span>}
+                    <button type="button" className="fd-proof-button" onClick={() => void openTopupProof(request)} disabled={proofLoadingId === request.id}>
+                      <UploadCloud size={15} aria-hidden="true" />
+                      {proofLoadingId === request.id ? "جارٍ فتح السند…" : "عرض سند التحويل"}
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+          <p className="fd-proof-privacy">تُعرض الطلبات والسندات وفق صلاحيات الحساب وسياسات الوصول. رابط الصورة مؤقت وصالح لخمس دقائق.</p>
+          {proofError && <p className="fd-message fd-error" role="alert">{proofError}</p>}
+          {proofPreview && (
+            <div className="fd-proof-viewer" role="dialog" aria-modal="true" aria-label="معاينة سند التحويل">
+              <div className="fd-proof-viewer-head">
+                <strong>معاينة سند التحويل</strong>
+                <button type="button" className="fd-proof-close" onClick={() => setProofPreview(null)} aria-label="إغلاق المعاينة">إغلاق</button>
+              </div>
+              <img src={proofPreview.url} alt="سند التحويل" />
+            </div>
+          )}
+        </section>
 
         <section className="fd-stats" aria-label="ملخص عمليات المحفظة">
           <div className="fd-stat total">
@@ -603,4 +728,24 @@ const WALLET_STYLE = `
 .fd-root .fd-footer{margin-top:14px;font-size:9px;}
 }
 @media(prefers-reduced-motion:reduce){.fd-root *{transition:none!important;scroll-behavior:auto!important;}}
+.fd-root .fd-topups-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.fd-root .fd-topups-heading h3{margin:0;}
+.fd-root .fd-topups-refresh,.fd-root .fd-proof-button,.fd-root .fd-proof-close{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid #D7E6F5;border-radius:10px;padding:8px 11px;background:#F7FBFF;color:var(--primary);font:inherit;font-size:11px;font-weight:900;cursor:pointer;}
+.fd-root .fd-topups-refresh:disabled,.fd-root .fd-proof-button:disabled{opacity:.6;cursor:wait;}
+.fd-root .fd-topup-list{display:flex;flex-direction:column;gap:10px;margin-top:14px;}
+.fd-root .fd-topup-row{padding:13px;border:1px solid var(--line);border-radius:14px;background:#FBFDFF;}
+.fd-root .fd-topup-details{display:flex;flex-direction:column;align-items:flex-start;gap:7px;color:var(--ink2);font-size:11px;line-height:1.7;}
+.fd-root .fd-topup-title{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--ink);font-size:13px;}
+.fd-root .fd-topup-status{border-radius:999px;padding:3px 9px;font-size:10px;font-weight:900;white-space:nowrap;}
+.fd-root .fd-topup-status.pending{background:#FFF5D6;color:#8A5A00;}
+.fd-root .fd-topup-status.approved{background:#E3F6EC;color:#126B3C;}
+.fd-root .fd-topup-status.rejected{background:#FFF0F0;color:#A32222;}
+.fd-root .fd-topup-details time{font-size:10px;color:#8493A7;}
+.fd-root .fd-topup-note{color:#48576A;overflow-wrap:anywhere;}
+.fd-root .fd-proof-button{margin-top:2px;background:#EAF2FB;}
+.fd-root .fd-proof-privacy{margin:12px 0 0;color:var(--ink2);font-size:10px;line-height:1.7;}
+.fd-root .fd-proof-viewer{margin-top:12px;padding:12px;border:1px solid #C9DCEF;border-radius:14px;background:#F8FBFE;}
+.fd-root .fd-proof-viewer-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;color:var(--primary);font-size:12px;}
+.fd-root .fd-proof-viewer img{display:block;max-width:100%;max-height:60vh;margin:0 auto;object-fit:contain;border-radius:9px;background:#fff;}
+@media(max-width:480px){.fd-root .fd-topups-heading h3{font-size:10px;}.fd-root .fd-topups-refresh,.fd-root .fd-proof-button,.fd-root .fd-proof-close{padding:6px 8px;font-size:9px;}.fd-root .fd-topup-row{padding:9px;}.fd-root .fd-topup-details{font-size:9px;}.fd-root .fd-topup-title{font-size:11px;}.fd-root .fd-topup-status{font-size:8px;}.fd-root .fd-topup-details time,.fd-root .fd-proof-privacy{font-size:8px;}}
 `;
