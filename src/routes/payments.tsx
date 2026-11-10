@@ -330,7 +330,7 @@ function PaymentsPage() {
       if (!["image/jpeg", "image/png", "image/webp"].includes(imageType ?? "")) {
         throw new Error("نوع صورة السند المستلمة غير صالح.");
       }
-      const imageBlob = new Blob([data], { type: imageType });
+      const imageBlob = new Blob([data], { type: imageType ?? "" });
       setTopupProofPreview(URL.createObjectURL(imageBlob));
     } catch (cause) {
       console.error("Could not open wallet top-up proof", cause);
