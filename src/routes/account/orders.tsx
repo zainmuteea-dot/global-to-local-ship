@@ -324,13 +324,12 @@ function OrdersPage() {
                   </div>
 
                   {order.tracking_code ? (
-                    <Link
-                      to="/track/$trackingCode"
-                      params={{ trackingCode: order.tracking_code }}
+                    <a
+                      href={`/track?tracking=${encodeURIComponent(order.tracking_code)}`}
                       className="ot-track-link"
                     >
                       <Search size={16} /> تتبع الطلب
-                    </Link>
+                    </a>
                   ) : (
                     <p className="ot-no-track">لا يتوفر رمز تتبع لهذا الطلب حتى الآن.</p>
                   )}
