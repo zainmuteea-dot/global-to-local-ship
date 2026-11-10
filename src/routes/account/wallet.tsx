@@ -126,7 +126,7 @@ function WalletPage() {
     setTopupsError("");
     try {
       // RLS limits customers to their own requests and allows only authorized staff to see all.
-      const { data, error: loadError } = await (supabase.from("wallet_topup_requests") as any)
+      const { data, error: loadError } = await (supabase as any).from("wallet_topup_requests")
         .select("id,amount,currency,payment_method,sender_phone,note,proof_path,status,created_at,reviewed_at")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
