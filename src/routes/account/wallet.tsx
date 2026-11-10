@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import {
   ArrowDownLeft,
@@ -10,7 +10,6 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
-import { AccountShell } from "@/components/AccountShell";
 
 export const Route = createFileRoute("/account/wallet")({
   head: () => ({
@@ -40,6 +39,7 @@ const PAYMENT_METHODS = [
 const MAX_RECEIPT_BYTES = 2 * 1024 * 1024;
 
 function WalletPage() {
+  const navigate = useNavigate();
   const { user } = useSession();
   const [tx, setTx] = useState<Tx[]>([]);
   const [transactionsLoading, setTransactionsLoading] = useState(true);
@@ -53,7 +53,6 @@ function WalletPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const topupFormRef = useRef<HTMLFormElement>(null);
 
   const loadTransactions = useCallback(async () => {
     if (!user) {
@@ -108,16 +107,6 @@ function WalletPage() {
   const balance = additionsTotal - deductionsTotal;
   const fmt = (value: number) => value.toLocaleString("en-US");
 
-  const scrollToTopup = () => {
-    topupFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-
-  const choosePaymentMethod = (method: string) => {
-    setPaymentMethod(method);
-    setError("");
-    setSuccess("");
-    scrollToTopup();
-  };
 
   const handleReceipt = (file?: File) => {
     setError("");
@@ -216,306 +205,281 @@ function WalletPage() {
     "بك";
 
   return (
-    <AccountShell title="محفظتي">
-      <div className="wallet-fund-page" dir="rtl">
-        <style>{WALLET_STYLE}</style>
-
-        <header className="wf-topbar">
-          <div className="wf-topbar-inner">
-            <div className="wf-page-title"><Wallet size={18} /> شحن المحفظة</div>
-            <button type="button" className="wf-back" onClick={() => window.history.back()}>
-              رجوع <span aria-hidden="true">←</span>
-            </button>
+    <div className="fd-root" dir="rtl" lang="ar">
+      <style>{WALLET_STYLE}</style>
+      <header className="fd-topbar">
+        <div className="fd-topbar-in">
+          <div className="fd-tp-title">
+            <Wallet size={20} aria-hidden="true" />
+            شحن المحفظة
           </div>
-        </header>
+          <button className="fd-ghost" type="button" onClick={() => navigate({ to: "/my-account" })}>
+            <span aria-hidden="true">←</span> رجوع
+          </button>
+        </div>
+      </header>
+      <main className="fd-wrap">
+        <section className="fd-greet">
+          <span className="ava">{displayName.slice(0, 1).toUpperCase()}</span>
+          <div>
+            <h1>أهلاً بك يا {displayName} 👋</h1>
+            <p>هذه محفظتك الشخصية للشحن والدفع</p>
+          </div>
+        </section>
 
-        <main className="wf-content">
-          <section className="wf-greeting">
-            <span className="wf-avatar">{displayName.slice(0, 1).toUpperCase()}</span>
-            <div className="wf-greeting-copy">
-              <h2>أهلاً بك يا {displayName} 👋</h2>
-              <p>هذه محفظتك الشخصية للشحن والدفع</p>
+        <section className="fd-card" aria-label="رصيد المحفظة">
+          <div className="fd-card-top">
+            <span className="lbl"><Wallet size={18} aria-hidden="true" /> رصيد حساب المحفظة</span>
+            <span className="fd-chip" aria-hidden="true" />
+          </div>
+          <div className="fd-bal">
+            <div className="amt" dir="ltr">
+              {transactionsLoading
+                ? "…"
+                : transactionsError
+                  ? "—"
+                  : balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              <span className="cur">ر.ي</span>
             </div>
-          </section>
+            <div className="sub"><span className="dot" /> الرصيد المتاح حسب سجل العمليات</div>
+            {transactionsError && <p className="fd-card-error">تعذر التحقق من الرصيد؛ أعد المحاولة من سجل العمليات.</p>}
+          </div>
+        </section>
 
-          <section className="wf-balance-card" aria-label="رصيد المحفظة">
-            <span className="wf-orb wf-orb-one" aria-hidden="true" />
-            <span className="wf-orb wf-orb-two" aria-hidden="true" />
-            <div className="wf-card-heading">
-              <span><Wallet size={16} /> رصيد حساب المحفظة</span>
-              <span className="wf-currency-chip">ر.ي</span>
-            </div>
-            <div className="wf-balance-value" dir="ltr">
-              <span>{transactionsLoading ? "…" : transactionsError ? "—" : fmt(balance)}</span>
-              <small>ر.ي</small>
-            </div>
-            <div className="wf-balance-caption">
-              <span className="wf-live-dot" /> الرصيد المتاح حسب سجل عملياتك المسجل
-            </div>
-            {transactionsError && <p className="wf-card-error">تعذر التحقق من الرصيد، أعد المحاولة من سجل العمليات.</p>}
-          </section>
+        <section className="fd-notice" role="note">
+          <span className="ic" aria-hidden="true">!</span>
+          <div className="tx">أرسل مبلغ التحويل عبر وسيلة الدفع المناسبة وأرفق سندًا واضحًا. سيُراجع الطلب قبل إضافة أي مبلغ إلى رصيدك.</div>
+        </section>
 
-          <section className="wf-notice" role="note">
-            <span className="wf-notice-icon" aria-hidden="true">!</span>
-            <p>اختر وسيلة الدفع المناسبة، ثم أرسل مبلغ التحويل وأرفق صورة واضحة للسند. سيُراجع طلب الشحن قبل إضافة أي مبلغ إلى رصيدك.</p>
-          </section>
+        {!user && (
+          <p className="fd-login-alert" role="alert">سجّل الدخول أولًا لعرض محفظتك أو إرسال طلب شحن.</p>
+        )}
 
-          {!user && (
-            <p role="alert" className="wf-login-alert">
-              سجّل الدخول أولًا لعرض محفظتك أو إرسال طلب شحن.
-            </p>
+        <form id="topup-form" onSubmit={submitTopup} className="fd-form">
+          <h3><span className="ic"><UploadCloud size={18} aria-hidden="true" /></span> نموذج الشحن</h3>
+
+          <div className="fd-field">
+            <label htmlFor="wallet-customer-name">اسم العميل</label>
+            <input
+              id="wallet-customer-name"
+              className="fd-input"
+              type="text"
+              required
+              minLength={2}
+              maxLength={120}
+              value={customerName}
+              onChange={(event) => setCustomerName(event.target.value)}
+              autoComplete="name"
+              placeholder="اكتب اسم العميل"
+            />
+          </div>
+
+          <div className="fd-field">
+            <label htmlFor="wallet-phone">رقم الهاتف / المحفظة</label>
+            <input
+              id="wallet-phone"
+              className="fd-input"
+              type="tel"
+              required
+              minLength={7}
+              maxLength={30}
+              value={phone}
+              onChange={(event) => setPhone(event.target.value)}
+              inputMode="tel"
+              autoComplete="tel"
+              dir="ltr"
+              placeholder="رقم الهاتف أو المحفظة"
+            />
+          </div>
+
+          <div className="fd-field">
+            <label htmlFor="wallet-amount">مبلغ الشحن <span className="req">*</span></label>
+            <div className="fd-amtwrap">
+              <span className="cu">ر.ي</span>
+              <input
+                id="wallet-amount"
+                className="fd-input amt-in"
+                type="number"
+                min="1"
+                max="100000000"
+                step="1"
+                inputMode="numeric"
+                placeholder="0"
+                value={amount}
+                onChange={(event) => setAmount(event.target.value)}
+                required
+              />
+            </div>
+          </div>
+
+          <div className="fd-field">
+            <label htmlFor="wallet-method">وسيلة الدفع <span className="req">*</span></label>
+            <select id="wallet-method" className="fd-select" value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)}>
+              {PAYMENT_METHODS.map((method) => <option key={method} value={method}>{method}</option>)}
+            </select>
+          </div>
+
+          <div className="fd-field">
+            <label htmlFor="wallet-receipt">سند التحويل (JPG / PNG / WEBP، حتى 2MB) <span className="req">*</span></label>
+            <label className="fd-file" htmlFor="wallet-receipt">
+              <span className="fic"><UploadCloud size={20} aria-hidden="true" /></span>
+              <span className="fd-file-copy">
+                <span className="ft">{receipt ? receipt.fileName : "اختيار ملف سند التحويل"}</span>
+                <span className="fs">JPG / PNG / WEBP وحتى 2MB</span>
+              </span>
+              <input
+                id="wallet-receipt"
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={(event) => handleReceipt(event.target.files?.[0])}
+              />
+            </label>
+            <p className="fd-receipt-help">أرفق صورة واضحة لإيصال نجاح التحويل، ولا ترفع بيانات البطاقة أو كلمة المرور.</p>
+          </div>
+
+          <div className="fd-secnote"><CheckCircle2 size={15} aria-hidden="true" /> لا ترسل معلومات بطاقة أو كلمة مرور</div>
+          {error && <p className="fd-message fd-error" role="alert">{error}</p>}
+          {success && <p className="fd-message fd-success" role="status">{success}</p>}
+
+          <button className="fd-submit" type="submit" disabled={saving || !user}>
+            <UploadCloud size={19} aria-hidden="true" />
+            {saving ? "جارٍ الإرسال…" : "إرسال طلب الشحن"}
+          </button>
+        </form>
+
+        <section className="fd-stats" aria-label="ملخص عمليات المحفظة">
+          <div className="fd-stat total">
+            <div className="st-l">إجمالي الإضافات</div>
+            <div className="st-v">{transactionsLoading ? "…" : transactionsError ? "—" : fmt(additionsTotal)}<span className="cu">ر.ي</span></div>
+          </div>
+          <div className="fd-stat paid">
+            <div className="st-l">إجمالي الخصومات</div>
+            <div className="st-v">{transactionsLoading ? "…" : transactionsError ? "—" : fmt(deductionsTotal)}<span className="cu">ر.ي</span></div>
+          </div>
+          <div className="fd-stat rem">
+            <div className="st-l">الرصيد الحالي</div>
+            <div className="st-v">{transactionsLoading ? "…" : transactionsError ? "—" : fmt(balance)}<span className="cu">ر.ي</span></div>
+          </div>
+        </section>
+
+        <section className="fd-log">
+          <h3><span className="ic"><List size={18} aria-hidden="true" /></span> سجل العمليات</h3>
+          {transactionsLoading ? (
+            <p className="fd-empty-state" role="status">جارٍ تحميل العمليات…</p>
+          ) : transactionsError ? (
+            <div className="fd-log-error" role="alert">
+              <p>{transactionsError}</p>
+              <button type="button" onClick={() => void loadTransactions()}>إعادة المحاولة</button>
+            </div>
+          ) : tx.length === 0 ? (
+            <div className="fd-empty">
+              <span className="eic"><List size={28} aria-hidden="true" /></span>
+              <div className="et">لا توجد عمليات بعد</div>
+              <div className="es">ستظهر عمليات الشحن والخصم هنا بعد تسجيلها.</div>
+            </div>
+          ) : (
+            <div className="fd-transactions">
+              {tx.map((item) => (
+                <article key={item.id} className="fd-transaction">
+                  <span className={`fd-tx-icon ${item.amount >= 0 ? "positive" : "negative"}`}>
+                    {item.amount >= 0 ? <ArrowDownLeft size={17} aria-hidden="true" /> : <ArrowUpRight size={17} aria-hidden="true" />}
+                  </span>
+                  <div className="fd-tx-info">
+                    <strong>{item.description || "عملية رصيد"}</strong>
+                    <time dateTime={item.created_at}>{new Date(item.created_at).toLocaleDateString("ar-u-nu-latn")}</time>
+                  </div>
+                  <span dir="ltr" className={`fd-tx-amount ${item.amount >= 0 ? "positive" : "negative"}`}>
+                    {item.amount >= 0 ? "+" : "−"}{fmt(Math.abs(item.amount))} <small>ر.ي</small>
+                  </span>
+                </article>
+              ))}
+            </div>
           )}
-
-          <form ref={topupFormRef} id="topup-form" onSubmit={submitTopup} className="wf-form">
-            <div className="wf-section-heading">
-              <span className="wf-heading-icon"><UploadCloud size={16} /></span>
-              <div>
-                <h3>نموذج الشحن</h3>
-                <p>أدخل بيانات التحويل لإرسال طلبك للمراجعة</p>
-              </div>
-            </div>
-
-            <label className="wf-field">
-              <span>اسم العميل</span>
-              <input
-                required
-                minLength={2}
-                maxLength={120}
-                value={customerName}
-                onChange={(event) => setCustomerName(event.target.value)}
-                autoComplete="name"
-                placeholder="اكتب اسم العميل"
-              />
-            </label>
-
-            <label className="wf-field">
-              <span>رقم الهاتف أو المحفظة</span>
-              <input
-                required
-                minLength={7}
-                maxLength={30}
-                value={phone}
-                onChange={(event) => setPhone(event.target.value)}
-                inputMode="tel"
-                autoComplete="tel"
-                dir="ltr"
-                placeholder="+967..."
-              />
-            </label>
-
-            <label className="wf-field">
-              <span>مبلغ الشحن <b>*</b></span>
-              <div className="wf-amount-wrap">
-                <span>ر.ي</span>
-                <input
-                  required
-                  type="number"
-                  min="1"
-                  max="100000000"
-                  step="1"
-                  value={amount}
-                  onChange={(event) => setAmount(event.target.value)}
-                  inputMode="decimal"
-                  placeholder="0"
-                />
-              </div>
-            </label>
-
-            <label className="wf-field">
-              <span>وسيلة الدفع <b>*</b></span>
-              <select value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)}>
-                {PAYMENT_METHODS.map((method) => <option key={method} value={method}>{method}</option>)}
-              </select>
-            </label>
-
-            <div className="wf-field wf-receipt-field">
-              <span className="wf-label">سند التحويل (JPG / PNG / WEBP، حتى 2MB) <b>*</b></span>
-              <p className="wf-receipt-help">أرفق صورة واضحة لإيصال نجاح التحويل، وتأكد من ظهور المبلغ وتاريخ التحويل أو رقم العملية.</p>
-              <button type="button" className="wf-file-picker" onClick={() => fileInputRef.current?.click()}>
-                <span className="wf-upload-icon"><UploadCloud size={17} /></span>
-                <span className="wf-file-copy">
-                  <strong>{receipt ? receipt.fileName : "اختيار ملف سند التحويل"}</strong>
-                  <small>JPG / PNG / WEBP • حتى 2MB</small>
-                </span>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  onChange={(event) => handleReceipt(event.target.files?.[0])}
-                  aria-label="اختيار صورة سند التحويل"
-                />
-              </button>
-              {receipt && (
-                <p className="wf-file-selected" role="status"><CheckCircle2 size={14} /> تم اختيار السند</p>
-              )}
-            </div>
-
-            <div className="wf-security-note"><CheckCircle2 size={14} /> لا ترفع صورة بطاقة ولا تشارك كلمة مرورك.</div>
-
-            {error && <p role="alert" className="wf-message wf-error">{error}</p>}
-            {success && <p role="status" className="wf-message wf-success">{success}</p>}
-
-            <button type="submit" disabled={saving || !user} className="wf-submit">
-              <UploadCloud size={17} />
-              {saving ? "جارٍ حفظ الطلب…" : "إرسال طلب الشحن للمراجعة"}
-            </button>
-          </form>
-
-          <section className="wf-stats" aria-label="ملخص سجل الرصيد">
-            <div className="wf-stat wf-stat-add">
-              <span>إجمالي الإضافات</span>
-              <strong dir="ltr">{transactionsLoading ? "…" : transactionsError ? "—" : fmt(additionsTotal)} <small>ر.ي</small></strong>
-            </div>
-            <div className="wf-stat wf-stat-deduct">
-              <span>إجمالي الخصومات</span>
-              <strong dir="ltr">{transactionsLoading ? "…" : transactionsError ? "—" : fmt(deductionsTotal)} <small>ر.ي</small></strong>
-            </div>
-            <div className="wf-stat wf-stat-balance">
-              <span>الرصيد الحالي</span>
-              <strong dir="ltr">{transactionsLoading ? "…" : transactionsError ? "—" : fmt(balance)} <small>ر.ي</small></strong>
-            </div>
-          </section>
-
-          <section className="wf-log">
-            <div className="wf-section-heading">
-              <span className="wf-heading-icon"><List size={16} /></span>
-              <div>
-                <h3>سجل العمليات</h3>
-                <p>عمليات الإضافة والخصم المسجلة على رصيدك</p>
-              </div>
-            </div>
-
-            {transactionsLoading ? (
-              <p role="status" className="wf-empty-state">جارٍ تحميل العمليات…</p>
-            ) : transactionsError ? (
-              <div role="alert" className="wf-load-error">
-                <p>{transactionsError}</p>
-                <button type="button" onClick={() => void loadTransactions()}>إعادة المحاولة</button>
-              </div>
-            ) : tx.length === 0 ? (
-              <div className="wf-empty-state">
-                <span className="wf-empty-icon"><List size={22} /></span>
-                <strong>لا توجد عمليات بعد</strong>
-                <p>ستظهر عمليات الشحن والخصم هنا بعد تسجيلها.</p>
-              </div>
-            ) : (
-              <div className="wf-transactions">
-                {tx.map((item) => (
-                  <article key={item.id} className="wf-transaction">
-                    <span className={`wf-transaction-icon ${item.amount >= 0 ? "is-positive" : "is-negative"}`}>
-                      {item.amount >= 0 ? <ArrowDownLeft size={16} /> : <ArrowUpRight size={16} />}
-                    </span>
-                    <div className="wf-transaction-details">
-                      <strong>{item.description || "عملية رصيد"}</strong>
-                      <time dateTime={item.created_at}>{new Date(item.created_at).toLocaleDateString("ar-u-nu-latn")}</time>
-                    </div>
-                    <span dir="ltr" className={`wf-transaction-amount ${item.amount >= 0 ? "is-positive" : "is-negative"}`}>
-                      {item.amount >= 0 ? "+" : "−"}{fmt(Math.abs(item.amount))} <small>ر.ي</small>
-                    </span>
-                  </article>
-                ))}
-              </div>
-            )}
-          </section>
-
-          <p className="wf-footer">تُراجع جميع طلبات الشحن قبل إضافة أي مبلغ إلى رصيد المحفظة.</p>
-        </main>
-      </div>
-    </AccountShell>
+        </section>
+        <p className="fd-footer">تُراجع جميع طلبات الشحن قبل اعتمادها. تأكّد من المبلغ وسند التحويل قبل الإرسال.</p>
+      </main>
+    </div>
   );
 }
 
+
 const WALLET_STYLE = `
-.wallet-fund-page{--wf-primary:#0f4c81;--wf-primary-2:#287fc4;--wf-orange:#f97316;--wf-ink:#15233b;--wf-muted:#64748b;--wf-line:#e4edf6;--wf-green:#12a150;direction:rtl;color:var(--wf-ink);font-family:'Tajawal','Cairo',sans-serif;}
-.wallet-fund-page *{box-sizing:border-box;}
-.wf-topbar{margin:-.75rem -.75rem 0;padding:10px 14px;background:rgba(255,255,255,.95);border-bottom:1px solid var(--wf-line);box-shadow:0 5px 18px rgba(15,76,129,.05);}
-.wf-topbar-inner{max-width:600px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;}
-.wf-page-title{display:flex;align-items:center;gap:8px;color:var(--wf-primary);font-size:14px;font-weight:900;}
-.wf-back{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border:1px solid #d7e6f5;border-radius:999px;background:#eff6fc;color:var(--wf-primary);font:inherit;font-size:11px;font-weight:800;cursor:pointer;}
-.wf-content{width:100%;max-width:600px;margin:0 auto;padding:0 4px 28px;}
-.wf-greeting{display:flex;align-items:center;gap:10px;margin:14px 0 12px;}
-.wf-avatar{display:grid;flex:none;place-items:center;width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,var(--wf-primary),var(--wf-primary-2));color:#fff;font-size:17px;font-weight:900;box-shadow:0 6px 14px #0f4c8128;}
-.wf-greeting-copy{min-width:0;}
-.wf-greeting h2{margin:0;font-size:15px;font-weight:900;line-height:1.45;}
-.wf-greeting p{margin:2px 0 0;color:var(--wf-muted);font-size:10px;font-weight:700;}
-.wf-balance-card{position:relative;isolation:isolate;overflow:hidden;padding:17px 16px 14px;border-radius:17px;color:white;background:linear-gradient(115deg,#f97316 0%,#f7a34e 25%,#327bb6 67%,#0f4c81 100%);box-shadow:0 14px 28px #0f4c812b;}
-.wf-orb{position:absolute;z-index:-1;border-radius:999px;background:#ffffff20;pointer-events:none;}
-.wf-orb-one{width:115px;height:115px;inset-inline-start:-40px;top:-58px;}
-.wf-orb-two{width:90px;height:90px;inset-inline-end:-34px;bottom:-54px;background:#ffffff12;}
-.wf-card-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:10px;font-weight:800;}
-.wf-card-heading>span:first-child{display:flex;align-items:center;gap:6px;}
-.wf-currency-chip{padding:4px 8px;border:1px solid #ffffff55;border-radius:7px;background:#ffffff20;font-size:9px;}
-.wf-balance-value{display:flex;align-items:baseline;gap:6px;margin-top:14px;font-size:clamp(30px,8vw,40px);font-weight:900;line-height:1;letter-spacing:-.7px;}
-.wf-balance-value small{font-size:12px;letter-spacing:0;}
-.wf-balance-caption{display:flex;align-items:center;gap:7px;margin-top:9px;color:#ffffffed;font-size:9px;font-weight:700;}
-.wf-live-dot{width:7px;height:7px;border-radius:50%;background:#7cf2b0;box-shadow:0 0 0 3px #7cf2b044;}
-.wf-card-error{margin:8px 0 0;font-size:10px;font-weight:700;}
-.wf-notice{display:flex;align-items:center;gap:9px;margin-top:12px;padding:10px 11px;border:1px solid #f4d876;border-radius:12px;background:#fff8df;color:#79520a;}
-.wf-notice-icon{display:grid;flex:none;place-items:center;width:27px;height:27px;border-radius:8px;background:#fff0bd;color:#b45309;font-weight:900;}
-.wf-notice p{margin:0;font-size:10px;font-weight:800;line-height:1.7;}
-.wf-login-alert{margin:12px 0 0;padding:10px;border:1px solid #f4d876;border-radius:11px;background:#fff8df;color:#79520a;font-size:11px;font-weight:800;line-height:1.7;}
-.wf-form,.wf-log{margin-top:12px;padding:13px;border:1px solid var(--wf-line);border-radius:15px;background:#fff;box-shadow:0 8px 22px #0f4c8109;}
-.wf-section-heading{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
-.wf-heading-icon{display:grid;flex:none;place-items:center;width:28px;height:28px;border-radius:9px;background:#eaf2fb;color:var(--wf-primary);}
-.wf-section-heading h3{margin:0;font-size:12px;font-weight:900;}
-.wf-section-heading p{margin:2px 0 0;color:var(--wf-muted);font-size:9px;font-weight:700;line-height:1.5;}
-.wf-field{display:block;margin:0 0 10px;color:var(--wf-ink);}
-.wf-field>span:first-child,.wf-label{display:block;margin-bottom:5px;color:#52647b;font-size:10px;font-weight:800;}
-.wf-field b,.wf-label b{color:var(--wf-orange);}
-.wf-field input:not([type=file]),.wf-field select,.wf-amount-wrap input{width:100%;min-height:36px;padding:8px 10px;border:1px solid #dce7f1;border-radius:9px;background:#f5f8fc;color:var(--wf-ink);font-family:inherit;font-size:11px;font-weight:800;outline:none;transition:border-color .15s,background .15s;}
-.wf-field input:focus,.wf-field select:focus,.wf-amount-wrap input:focus{border-color:#5a9bd1;background:#fff;box-shadow:0 0 0 3px #dceeff;}
-.wf-field input::placeholder{color:#91a4ba;font-weight:600;}
-.wf-amount-wrap{position:relative;}
-.wf-amount-wrap>span{position:absolute;inset-inline-start:10px;top:50%;z-index:1;transform:translateY(-50%);color:var(--wf-muted);font-size:9px;font-weight:900;pointer-events:none;}
-.wf-amount-wrap input{padding-inline-start:42px;}
-.wf-field select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%2364748B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m3 5 4 4 4-4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:left 11px center;cursor:pointer;}
-.wf-receipt-field{margin-top:1px;}
-.wf-receipt-help{margin:0 0 6px;color:var(--wf-muted);font-size:9px;line-height:1.6;}
-.wf-file-picker{display:flex;width:100%;align-items:center;gap:9px;padding:8px;border:1px dashed #b9d5ef;border-radius:10px;background:#f6faff;text-align:right;font-family:inherit;cursor:pointer;}
-.wf-upload-icon{display:grid;flex:none;place-items:center;width:30px;height:30px;border-radius:8px;background:#e5f1fc;color:var(--wf-primary);}
-.wf-file-copy{display:flex;min-width:0;flex:1;flex-direction:column;gap:2px;}
-.wf-file-copy strong{overflow:hidden;color:var(--wf-ink);font-size:9px;text-overflow:ellipsis;white-space:nowrap;}
-.wf-file-copy small{color:var(--wf-muted);font-size:8px;}
-.wf-file-picker input{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;clip-path:inset(50%);}
-.wf-file-picker:focus-within{outline:2px solid #5a9bd1;outline-offset:2px;}
-.wf-file-selected{display:flex;align-items:center;gap:5px;margin:5px 0 0;color:#087b43;font-size:9px;font-weight:800;}
-.wf-security-note{display:flex;align-items:center;gap:6px;margin:2px 0 0;padding:8px 9px;border:1px solid #b6e6cb;border-radius:8px;background:#e9f9ef;color:#13804a;font-size:9px;font-weight:800;}
-.wf-message{margin:9px 0 0;padding:9px 10px;border-radius:9px;font-size:10px;font-weight:800;line-height:1.6;overflow-wrap:anywhere;}
-.wf-error{background:#fff0f0;color:#a32222;}
-.wf-success{background:#eaf8ef;color:#126b3c;}
-.wf-submit{display:flex;width:100%;min-height:38px;align-items:center;justify-content:center;gap:7px;margin-top:10px;padding:9px 12px;border:0;border-radius:9px;background:linear-gradient(100deg,var(--wf-primary),var(--wf-primary-2));color:#fff;font-family:inherit;font-size:10px;font-weight:900;box-shadow:0 7px 15px #0f4c8127;cursor:pointer;transition:filter .15s,transform .15s;}
-.wf-submit:hover:not(:disabled){filter:brightness(1.06);transform:translateY(-1px);}
-.wf-submit:disabled{cursor:not-allowed;opacity:.55;}
-.wf-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:10px;}
-.wf-stat{display:flex;min-width:0;flex-direction:column;align-items:center;gap:4px;padding:9px 4px;border:1px solid #dce7f1;border-radius:10px;background:#fff;text-align:center;}
-.wf-stat span{color:var(--wf-muted);font-size:8px;font-weight:800;}
-.wf-stat strong{font-size:10px;font-weight:900;white-space:nowrap;}
-.wf-stat small{color:var(--wf-muted);font-size:7px;}
-.wf-stat-add{border-color:#b9e7cc;}.wf-stat-add strong{color:#078244;}
-.wf-stat-deduct{border-color:#f7d1b8;}.wf-stat-deduct strong{color:#c65d20;}
-.wf-stat-balance{border-color:#c3ddf3;}.wf-stat-balance strong{color:var(--wf-primary);}
-.wf-log{padding:13px;}
-.wf-log .wf-section-heading{margin-bottom:10px;}
-.wf-empty-state{display:flex;min-height:102px;flex-direction:column;align-items:center;justify-content:center;gap:7px;margin:0;padding:14px 10px;border:1px dashed #c8def1;border-radius:12px;background:linear-gradient(135deg,#f8fbff,#eff6fd);text-align:center;color:var(--wf-ink);}
-.wf-empty-icon{display:grid;place-items:center;width:38px;height:38px;border-radius:12px;background:var(--wf-orange);color:#fff;box-shadow:0 6px 13px #f9731633;}
-.wf-empty-state strong{font-size:10px;font-weight:900;}
-.wf-empty-state p{max-width:240px;margin:0;color:var(--wf-muted);font-size:9px;line-height:1.6;}
-.wf-load-error{padding:10px;border:1px solid #f1c9c9;border-radius:10px;background:#fff5f5;color:#8d2222;font-size:10px;font-weight:700;}
-.wf-load-error p{margin:0;}
-.wf-load-error button{margin-top:7px;border:0;background:none;color:inherit;font:inherit;text-decoration:underline;cursor:pointer;}
-.wf-transactions{display:flex;flex-direction:column;gap:7px;}
-.wf-transaction{display:flex;align-items:center;gap:8px;padding:9px;border:1px solid #edf1f5;border-radius:10px;background:#fff;}
-.wf-transaction-icon{display:grid;flex:none;place-items:center;width:29px;height:29px;border-radius:8px;}
-.wf-transaction-icon.is-positive{background:#e8f8ef;color:#0d8b4b;}
-.wf-transaction-icon.is-negative{background:#fff0ee;color:#d34435;}
-.wf-transaction-details{display:flex;min-width:0;flex:1;flex-direction:column;gap:3px;}
-.wf-transaction-details strong{overflow:hidden;font-size:9px;font-weight:800;text-overflow:ellipsis;white-space:nowrap;}
-.wf-transaction-details time{color:var(--wf-muted);font-size:8px;}
-.wf-transaction-amount{flex:none;font-size:9px;font-weight:900;}
-.wf-transaction-amount small{font-size:7px;}
-.wf-transaction-amount.is-positive{color:#087b43;}
-.wf-transaction-amount.is-negative{color:#c7352d;}
-.wf-footer{margin:12px 4px 0;color:var(--wf-muted);text-align:center;font-size:9px;font-weight:700;line-height:1.7;}
-@media(min-width:640px){.wf-topbar{margin-inline:-1rem;padding-inline:18px;}.wf-content{padding-inline:8px;}.wf-form,.wf-log{padding:16px;}.wf-field input:not([type=file]),.wf-field select,.wf-amount-wrap input{min-height:40px;font-size:12px;}.wf-field>span:first-child,.wf-label{font-size:11px;}.wf-submit{min-height:42px;font-size:12px;}}
-@media(prefers-reduced-motion:reduce){.wallet-fund-page *{scroll-behavior:auto!important;transition:none!important;}}
+.fd-root{--primary:#0F4C81;--primary2:#1C6FB8;--gold:#D4AF37;--orange:#F97316;--orange2:#FB923C;--ink:#15233B;--ink2:#64748B;--line:#E6EEF6;--ok:#12A150;--ok2:#E3F6EC;--sky:#EAF2FB;--warn:#B45309;--warnbg:#FEF6DC;--warnbd:#F5E08A;box-sizing:border-box;min-height:100dvh;background:linear-gradient(135deg,#EAF3FD,#F5FAFE 60%);color:var(--ink);direction:rtl;font-family:'Tajawal','Cairo',sans-serif;}
+.fd-root,.fd-root *{box-sizing:border-box;}
+.fd-root h1,.fd-root h3,.fd-root p{margin-top:0;}
+.fd-root button,.fd-root input,.fd-root select{font-family:inherit;}
+.fd-wrap{width:100%;max-width:600px;margin:0 auto;padding:0 16px 48px;}
+.fd-topbar{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);box-shadow:0 6px 22px rgba(15,76,129,.06);}
+.fd-topbar-in{max-width:600px;margin:0 auto;padding:11px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.fd-tp-title{display:flex;align-items:center;gap:10px;font-size:16px;font-weight:900;color:var(--primary);}
+.fd-ghost{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:800;color:var(--primary);background:var(--sky);border:1px solid #D7E6F5;border-radius:999px;padding:9px 15px;cursor:pointer;transition:background .2s,transform .2s;}
+.fd-ghost:hover{background:#DCEBFA;transform:translateY(-1px);}
+.fd-greet{margin-top:20px;display:flex;align-items:center;gap:13px;}
+.fd-greet .ava{width:50px;height:50px;border-radius:16px;background:linear-gradient(135deg,var(--primary),var(--primary2));color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;flex:none;box-shadow:0 10px 22px rgba(15,76,129,.26);}
+.fd-greet h1{margin-bottom:0;font-size:clamp(18px,4.5vw,22px);font-weight:900;}
+.fd-greet p{margin:2px 0 0;font-size:12.5px;font-weight:700;color:var(--ink2);}
+.fd-card{margin-top:18px;position:relative;overflow:hidden;border-radius:24px;padding:24px 22px;color:#fff;background:linear-gradient(125deg,#F97316 0%,#FB923C 24%,#2F6FB0 68%,#0F4C81 100%);box-shadow:0 20px 46px rgba(15,76,129,.3),0 10px 22px rgba(249,115,22,.2);}
+.fd-card::before{content:"";position:absolute;inset-inline-end:-40px;top:-60px;width:190px;height:190px;background:rgba(255,255,255,.14);border-radius:50%;pointer-events:none;}
+.fd-card-top{display:flex;align-items:center;justify-content:space-between;gap:12px;position:relative;z-index:1;}
+.fd-card-top .lbl{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:800;opacity:.95;}
+.fd-chip{width:40px;height:29px;border-radius:7px;background:linear-gradient(135deg,#F7D774,#D4AF37);box-shadow:inset 0 1px 2px rgba(255,255,255,.5);position:relative;flex:none;}
+.fd-chip::after{content:"";position:absolute;inset:6px;border:1px solid rgba(255,255,255,.55);border-radius:4px;}
+.fd-bal{position:relative;z-index:1;margin-top:18px;}
+.fd-bal .amt{font-size:clamp(38px,10vw,52px);font-weight:900;line-height:1;letter-spacing:-1px;display:flex;align-items:baseline;gap:8px;}
+.fd-bal .amt .cur{font-size:clamp(17px,4vw,22px);font-weight:800;opacity:.92;}
+.fd-bal .sub{margin-top:9px;font-size:13px;font-weight:700;opacity:.9;display:inline-flex;align-items:center;gap:6px;}
+.fd-bal .sub .dot{width:8px;height:8px;border-radius:50%;background:#7CF2B0;box-shadow:0 0 0 4px rgba(124,242,176,.25);}
+.fd-card-error{margin:8px 0 0;color:#fff;font-size:11px;font-weight:700;}
+.fd-notice{margin-top:18px;background:var(--warnbg);border:1.5px solid var(--warnbd);border-radius:18px;padding:16px 18px;display:flex;align-items:flex-start;gap:13px;box-shadow:0 8px 22px rgba(180,83,9,.08);}
+.fd-notice .ic{width:42px;height:42px;border-radius:12px;background:#FCEFC0;color:var(--warn);border:1px solid var(--warnbd);display:flex;align-items:center;justify-content:center;flex:none;font-size:20px;font-weight:900;}
+.fd-notice .tx{font-size:13px;font-weight:800;color:#7A4A08;line-height:1.85;}
+.fd-login-alert{margin:12px 0 0;padding:12px;border:1px solid var(--warnbd);border-radius:12px;background:var(--warnbg);color:#7A4A08;font-size:12px;font-weight:800;line-height:1.7;}
+.fd-form{margin-top:18px;background:#fff;border:1px solid var(--line);border-radius:22px;padding:20px;box-shadow:0 14px 34px rgba(15,76,129,.07);}
+.fd-form h3,.fd-log h3{display:flex;align-items:center;gap:9px;margin:0 0 16px;font-size:16px;font-weight:900;}
+.fd-form h3 .ic,.fd-log h3 .ic{width:34px;height:34px;border-radius:10px;background:var(--sky);color:var(--primary);display:flex;align-items:center;justify-content:center;flex:none;}
+.fd-field{margin-bottom:15px;}
+.fd-field>label:first-child{display:block;font-size:12.5px;font-weight:800;color:var(--ink2);margin-bottom:7px;}
+.fd-field label .req{color:var(--orange);}
+.fd-input,.fd-select{width:100%;font-size:14.5px;font-weight:800;color:var(--ink);background:#F8FBFE;border:1.5px solid var(--line);border-radius:13px;padding:13px 15px;transition:border-color .18s,background .18s;}
+.fd-input:focus,.fd-select:focus{outline:none;border-color:var(--primary2);background:#fff;box-shadow:0 0 0 3px rgba(28,111,184,.1);}
+.fd-input::placeholder{color:#9FB2C8;font-weight:700;}
+.fd-input.amt-in{font-size:20px;font-weight:900;letter-spacing:-.5px;}
+.fd-amtwrap{position:relative;}
+.fd-amtwrap .cu{position:absolute;inset-inline-start:15px;top:50%;transform:translateY(-50%);font-size:13px;font-weight:900;color:var(--ink2);pointer-events:none;}
+.fd-amtwrap .amt-in{padding-inline-start:46px;}
+.fd-select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%2364748B' stroke-width='2.3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:left 15px center;padding-inline-start:40px;cursor:pointer;}
+.fd-file{display:flex;align-items:center;gap:12px;border:1.5px dashed #C9DCEF;border-radius:13px;padding:13px 15px;background:#F8FBFE;cursor:pointer;transition:border-color .18s,background .18s;}
+.fd-file:hover{border-color:var(--primary2);background:#fff;}
+.fd-file .fic{width:40px;height:40px;border-radius:11px;background:var(--sky);color:var(--primary);display:flex;align-items:center;justify-content:center;flex:none;}
+.fd-file-copy{display:flex;min-width:0;flex-direction:column;}
+.fd-file .ft{overflow:hidden;font-size:13px;font-weight:800;text-overflow:ellipsis;white-space:nowrap;}
+.fd-file .fs{font-size:11px;font-weight:700;color:var(--ink2);margin-top:2px;}
+.fd-file input{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);clip-path:inset(50%);white-space:nowrap;}
+.fd-file:focus-within{outline:2px solid var(--primary2);outline-offset:2px;}
+.fd-receipt-help{margin:7px 0 0;color:var(--ink2);font-size:10px;font-weight:600;line-height:1.65;}
+.fd-secnote{margin-top:4px;display:flex;align-items:center;gap:7px;font-size:11.5px;font-weight:800;color:var(--ok);background:var(--ok2);border:1px solid #BBE7CC;border-radius:11px;padding:10px 13px;}
+.fd-message{margin:10px 0 0;padding:10px 12px;border-radius:11px;font-size:11px;font-weight:800;line-height:1.7;overflow-wrap:anywhere;}
+.fd-error{background:#fff0f0;color:#a32222;}.fd-success{background:#eaf8ef;color:#126b3c;}
+.fd-submit{width:100%;margin-top:16px;display:inline-flex;align-items:center;justify-content:center;gap:9px;font-size:15px;font-weight:900;color:#fff;background:linear-gradient(135deg,var(--primary),var(--primary2));border:none;border-radius:14px;padding:16px;cursor:pointer;box-shadow:0 12px 26px rgba(15,76,129,.3);transition:transform .18s,filter .18s;}
+.fd-submit:hover:not(:disabled){transform:translateY(-2px);filter:brightness(1.07);}.fd-submit:disabled{opacity:.55;cursor:not-allowed;}
+.fd-stats{margin-top:18px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;}
+.fd-stat{min-width:0;background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px 10px;text-align:center;box-shadow:0 8px 20px rgba(15,76,129,.06);}
+.fd-stat .st-l{font-size:11.5px;font-weight:800;color:var(--ink2);margin-bottom:6px;}
+.fd-stat .st-v{font-size:17px;font-weight:900;letter-spacing:-.5px;white-space:nowrap;}
+.fd-stat .st-v .cu{font-size:11px;font-weight:800;color:var(--ink2);margin-inline-start:2px;}
+.fd-stat.total{border-color:#C4DCF3;}.fd-stat.total .st-v{color:var(--primary);}.fd-stat.paid{border-color:#BBE7CC;}.fd-stat.paid .st-v{color:var(--ok);}.fd-stat.rem{border-color:#FBD3AF;}.fd-stat.rem .st-v{color:var(--orange);}
+.fd-log{margin-top:18px;background:#fff;border:1px solid var(--line);border-radius:22px;padding:20px;box-shadow:0 14px 34px rgba(15,76,129,.07);}
+.fd-log h3{margin-bottom:0;}.fd-empty{margin-top:14px;display:flex;flex-direction:column;align-items:center;gap:11px;text-align:center;padding:26px 10px;border:1.5px dashed #D7E6F5;border-radius:18px;background:linear-gradient(135deg,#F7FBFF,#EFF6FD);}
+.fd-empty .eic{width:62px;height:62px;border-radius:20px;background:var(--orange2);color:#fff;display:flex;align-items:center;justify-content:center;flex:none;box-shadow:0 10px 22px rgba(249,115,22,.25);}
+.fd-empty .et{font-size:15px;font-weight:900;}.fd-empty .es{font-size:12.5px;font-weight:700;color:var(--ink2);max-width:270px;line-height:1.7;}
+.fd-empty-state,.fd-log-error{margin-top:14px;padding:22px 12px;border:1px dashed #D7E6F5;border-radius:14px;background:#F7FBFF;text-align:center;color:var(--ink2);font-size:12px;font-weight:700;}
+.fd-log-error{border-color:#f1c9c9;background:#fff5f5;color:#8d2222;}.fd-log-error p{margin:0;}.fd-log-error button{margin-top:9px;border:0;background:none;color:inherit;font:inherit;font-weight:900;text-decoration:underline;cursor:pointer;}
+.fd-transactions{display:flex;flex-direction:column;gap:9px;margin-top:14px;}.fd-transaction{display:flex;align-items:center;gap:10px;padding:11px;border:1px solid var(--line);border-radius:13px;background:#fff;}
+.fd-tx-icon{width:36px;height:36px;display:grid;place-items:center;border-radius:11px;flex:none;}.fd-tx-icon.positive{background:var(--ok2);color:var(--ok);}.fd-tx-icon.negative{background:#fff0ee;color:#d34435;}
+.fd-tx-info{display:flex;min-width:0;flex:1;flex-direction:column;gap:4px;}.fd-tx-info strong{overflow:hidden;font-size:11px;font-weight:800;text-overflow:ellipsis;white-space:nowrap;}.fd-tx-info time{color:var(--ink2);font-size:10px;}
+.fd-tx-amount{flex:none;font-size:11px;font-weight:900;}.fd-tx-amount small{font-size:9px;}.fd-tx-amount.positive{color:var(--ok);}.fd-tx-amount.negative{color:#c7352d;}
+.fd-footer{margin:22px 0 0;text-align:center;font-size:12px;font-weight:700;color:var(--ink2);line-height:1.8;}
+@media(max-width:420px){.fd-wrap{padding-inline:12px;}.fd-topbar-in{padding-inline:12px;}.fd-card{padding:20px 18px;}.fd-stats{gap:8px;}.fd-stat{padding:14px 5px;}.fd-stat .st-v{font-size:14px;}.fd-stat .st-l{font-size:10px;}.fd-form,.fd-log{padding:16px;}}
+@media(prefers-reduced-motion:reduce){.fd-root *{transition:none!important;scroll-behavior:auto!important;}}
 `;
