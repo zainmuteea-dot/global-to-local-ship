@@ -29,14 +29,23 @@ type Tx = {
   created_at: string;
 };
 
-const PAYMENT_METHODS = [
-  "الكريمي جوال / حاسب",
-  "ون كاش OneCash",
-  "فلوسك Floosak",
-  "جوالي Jawali",
-  "جيب Jeeb",
-  "حوالة النجم",
-] as const;
+  const PAYMENT_METHODS = [
+    "الكريمي جوال / حاسب",
+    "ون كاش OneCash",
+    "فلوسك Floosak",
+    "جوالي Jawali",
+    "جيب Jeeb",
+    "حوالة النجم",
+  ] as const;
+
+  const PAYMENT_METHOD_DETAILS = [
+    { value: PAYMENT_METHODS[0], label: "الكريمي", mark: "ك", className: "bg-violet-600" },
+    { value: PAYMENT_METHODS[1], label: "ون كاش", mark: "ون", className: "bg-orange-500" },
+    { value: PAYMENT_METHODS[2], label: "فلوسك", mark: "ف", className: "bg-cyan-500" },
+    { value: PAYMENT_METHODS[3], label: "جوالي", mark: "ج", className: "bg-indigo-600" },
+    { value: PAYMENT_METHODS[4], label: "جيب", mark: "ج", className: "bg-emerald-600" },
+    { value: PAYMENT_METHODS[5], label: "حوالة النجم", mark: "ن", className: "bg-sky-600" },
+  ] as const;
 const MAX_RECEIPT_BYTES = 2 * 1024 * 1024;
 
 function WalletPage() {
@@ -280,23 +289,30 @@ function WalletPage() {
           </div>
         </section>
 
-        <section aria-label="وسائل الشحن" className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            disabled={!user}
-            onClick={() => choosePaymentMethod("الكريمي جوال / حاسب")}
-            className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-l from-[#0F4C81] to-[#287FC4] px-2.5 py-2.5 text-xs font-extrabold text-white shadow-md shadow-sky-900/15 transition hover:brightness-105 disabled:opacity-50"
-          >
-            <Wallet className="size-4" /> شحن عبر الكريمي
-          </button>
-          <button
-            type="button"
-            disabled={!user}
-            onClick={() => choosePaymentMethod("ون كاش OneCash")}
-            className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-l from-orange-500 to-orange-400 px-2.5 py-2.5 text-xs font-extrabold text-white shadow-md shadow-orange-700/15 transition hover:brightness-105 disabled:opacity-50"
-          >
-            <Wallet className="size-4" /> شحن عبر ون كاش
-          </button>
+        <section aria-label="وسائل الشحن" className="space-y-2">
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-sm font-black text-slate-900">اختر محفظة الشحن</h3>
+            <span className="text-[10px] font-bold text-slate-500">اضغط لاختيار الطريقة</span>
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {PAYMENT_METHOD_DETAILS.map((method) => {
+              const selected = paymentMethod === method.value;
+              return (
+                <button
+                  key={method.value}
+                  type="button"
+                  disabled={!user}
+                  aria-pressed={selected}
+                  onClick={() => choosePaymentMethod(method.value)}
+                  className={`flex min-h-[68px] items-center gap-2 rounded-2xl border bg-white px-3 py-2 text-right shadow-sm transition hover:-translate-y-0.5 hover:border-orange-300 disabled:opacity-50 ${selected ? "border-orange-400 ring-2 ring-orange-100" : "border-slate-200"}`}
+                >
+                  <span className={`grid size-10 shrink-0 place-items-center rounded-xl text-xs font-black text-white shadow-sm ${method.className}`} aria-hidden="true">{method.mark}</span>
+                  <span className="min-w-0 flex-1 text-xs font-black text-slate-900">{method.label}</span>
+                  <span className={`grid size-4 place-items-center rounded-full border text-[10px] ${selected ? "border-orange-500 bg-orange-500 text-white" : "border-slate-300 text-transparent"}`} aria-hidden="true">✓</span>
+                </button>
+              );
+            })}
+          </div>
         </section>
 
         {!user && (
