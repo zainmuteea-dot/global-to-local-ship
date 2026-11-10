@@ -1,1 +1,5 @@
 project_id = "swucokpmgwbicktwdxtq"
+
+# Keep Supabase's gateway JWT verification enabled for this function.
+[functions.wallet-topup-proof]
+verify_jwt = true

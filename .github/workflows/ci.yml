@@ -36,6 +36,9 @@ jobs:
       - name: TypeScript check
         run: npx tsc --noEmit
 
+      - name: Run tests
+        run: npm test
+
   build:
     name: Production build
     runs-on: ubuntu-latest

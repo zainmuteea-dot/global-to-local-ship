@@ -317,13 +317,21 @@ function PaymentsPage() {
     setTopupProofPreview(null);
     setTopupsError("");
     try {
-      // The bucket stays private; Storage RLS authorizes staff before issuing a short-lived link.
-      const { data, error } = await supabase.storage
-        .from("wallet-transfer-proofs")
-        .createSignedUrl(request.proof_path, 300);
+      // The server authenticates the caller and checks staff role for each image request.
+      // No signed Storage URL is created or returned to the browser.
+      const { data, error, response } = await supabase.functions.invoke<Blob>("wallet-topup-proof", {
+        body: { request_id: request.id },
+      });
       if (error) throw error;
-      if (!data?.signedUrl) throw new Error("تعذر إنشاء رابط مؤقت للسند.");
-      setTopupProofPreview(data.signedUrl);
+      if (!(data instanceof Blob) || data.size === 0) {
+        throw new Error("تعذر استلام صورة السند من الخادم.");
+      }
+      const imageType = response?.headers.get("X-Image-Content-Type");
+      if (!["image/jpeg", "image/png", "image/webp"].includes(imageType ?? "")) {
+        throw new Error("نوع صورة السند المستلمة غير صالح.");
+      }
+      const imageBlob = new Blob([data], { type: imageType ?? "" });
+      setTopupProofPreview(URL.createObjectURL(imageBlob));
     } catch (cause) {
       console.error("Could not open wallet top-up proof", cause);
       setTopupsError("تعذر عرض السند أو لا تملك صلاحية الوصول إليه.");
@@ -331,6 +339,14 @@ function PaymentsPage() {
       setTopupProofLoadingId(null);
     }
   };
+
+  // Revoke the local blob URL when the preview changes or the page unmounts.
+  useEffect(() => {
+    const objectUrl = topupProofPreview;
+    return () => {
+      if (objectUrl?.startsWith("blob:")) URL.revokeObjectURL(objectUrl);
+    };
+  }, [topupProofPreview]);
 
   const load = useCallback(async () => {
     const requestSequence = ++loadSequenceRef.current;
@@ -974,7 +990,7 @@ function PaymentsPage() {
               ))}
             </div>
           )}
-          <p className="mt-3 text-[11px] leading-6 text-slate-500">السند محفوظ في bucket خاص، ويُعرض عبر رابط مؤقت لخمس دقائق بعد تحقق صلاحيات التخزين.</p>
+          <p className="mt-3 text-[11px] leading-6 text-slate-500">السند محفوظ في bucket خاص؛ يتحقق الخادم من صلاحية الموظف عند كل طلب عرض، ولا يُنشأ رابط تخزين قابل للمشاركة.</p>
         </section>
 
         <section>
