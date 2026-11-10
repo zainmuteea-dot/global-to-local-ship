@@ -30,6 +30,19 @@ type PaymentRecord = Payment & {
 
 type PaymentFilter = PaymentStatus | "partial" | "all";
 
+type WalletTopupReview = {
+  id: string;
+  user_id: string;
+  amount: number;
+  currency: string;
+  payment_method: string;
+  sender_phone: string;
+  note: string | null;
+  proof_path: string;
+  status: string;
+  created_at: string;
+};
+
 export const AUTO_REFRESH_SECONDS = 30;
 const PAGE_SIZE = 10;
 
@@ -227,6 +240,11 @@ function PaymentsPage() {
   const [success, setSuccess] = useState("");
   const [preview, setPreview] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [topupReviews, setTopupReviews] = useState<WalletTopupReview[]>([]);
+  const [topupsLoading, setTopupsLoading] = useState(false);
+  const [topupsError, setTopupsError] = useState("");
+  const [topupProofPreview, setTopupProofPreview] = useState<string | null>(null);
+  const [topupProofLoadingId, setTopupProofLoadingId] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
   // يعرض شاشة التحميل الكاملة عند أول تحميل فقط.
@@ -263,6 +281,56 @@ function PaymentsPage() {
       setErr("تعذر تفعيل الصوت. جرّب الضغط على زر تفعيل الصوت مرة أخرى.");
     }
   }, []);
+
+  const loadWalletTopups = useCallback(async () => {
+    setTopupsLoading(true);
+    setTopupsError("");
+    try {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError || !authData.user) throw new Error("تعذر التحقق من جلسة الموظف.");
+
+      const [adminRole, staffRole] = await Promise.all([
+        supabase.rpc("has_role", { _user_id: authData.user.id, _role: "admin" }),
+        supabase.rpc("has_role", { _user_id: authData.user.id, _role: "staff" }),
+      ]);
+      if (adminRole.error || staffRole.error) throw new Error("تعذر التحقق من صلاحية مراجعة طلبات الشحن.");
+      if (!adminRole.data && !staffRole.data) throw new Error("هذه القائمة متاحة للموظفين المخوّلين فقط.");
+
+      // RLS still enforces staff access; the explicit role check is an additional UI guard.
+      const { data, error } = await (supabase as any).from("wallet_topup_requests")
+        .select("id,user_id,amount,currency,payment_method,sender_phone,note,proof_path,status,created_at")
+        .eq("status", "pending_review")
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      setTopupReviews((data ?? []) as WalletTopupReview[]);
+    } catch (cause) {
+      console.error("Could not load wallet top-up reviews", cause);
+      setTopupsError(cause instanceof Error ? cause.message : "تعذر تحميل طلبات الشحن.");
+    } finally {
+      setTopupsLoading(false);
+    }
+  }, []);
+
+  const openWalletTopupProof = async (request: WalletTopupReview) => {
+    setTopupProofLoadingId(request.id);
+    setTopupProofPreview(null);
+    setTopupsError("");
+    try {
+      // The bucket stays private; Storage RLS authorizes staff before issuing a short-lived link.
+      const { data, error } = await supabase.storage
+        .from("wallet-transfer-proofs")
+        .createSignedUrl(request.proof_path, 300);
+      if (error) throw error;
+      if (!data?.signedUrl) throw new Error("تعذر إنشاء رابط مؤقت للسند.");
+      setTopupProofPreview(data.signedUrl);
+    } catch (cause) {
+      console.error("Could not open wallet top-up proof", cause);
+      setTopupsError("تعذر عرض السند أو لا تملك صلاحية الوصول إليه.");
+    } finally {
+      setTopupProofLoadingId(null);
+    }
+  };
 
   const load = useCallback(async () => {
     const requestSequence = ++loadSequenceRef.current;
@@ -553,13 +621,26 @@ function PaymentsPage() {
       )
       .subscribe();
 
-    const intervalId = window.setInterval(() => void load(), AUTO_REFRESH_SECONDS * 1000);
+    const topupChannel = supabase
+      .channel("wallet_topup_requests_staff_refresh")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "wallet_topup_requests" },
+        () => void loadWalletTopups(),
+      )
+      .subscribe();
+    void loadWalletTopups();
+    const intervalId = window.setInterval(() => {
+      void load();
+      void loadWalletTopups();
+    }, AUTO_REFRESH_SECONDS * 1000);
 
     return () => {
       window.clearInterval(intervalId);
       void supabase.removeChannel(channel);
+      void supabase.removeChannel(topupChannel);
     };
-  }, [load]);
+  }, [load, loadWalletTopups]);
 
   // احتفظ بسياق الصوت أثناء تبديل الفلاتر والصفحات، وأغلقه عند مغادرة الصفحة فقط.
   useEffect(() => {
@@ -855,6 +936,46 @@ function PaymentsPage() {
             </button>
           </div>
         )}
+
+        <section className="rounded-2xl border border-amber-200 bg-white p-4 shadow-sm">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-lg font-black text-[#0A2540]">طلبات شحن المحفظة قيد المراجعة</h2>
+              <p className="mt-1 text-xs text-slate-500">عرض للموظفين المخوّلين فقط. لا يعتمد هذا القسم الطلبات ولا يضيف رصيدًا.</p>
+            </div>
+            <button type="button" onClick={() => void loadWalletTopups()} disabled={topupsLoading} className="rounded-xl bg-[#0F4C81] px-4 py-2 text-xs font-bold text-white disabled:opacity-60">
+              {topupsLoading ? "جارٍ التحديث…" : "تحديث الطلبات"}
+            </button>
+          </div>
+          {topupsError && <p role="alert" className="mb-3 rounded-lg bg-red-50 p-3 text-xs font-bold text-red-700">{topupsError}</p>}
+          {topupsLoading && topupReviews.length === 0 ? (
+            <p role="status" className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">جارٍ تحميل طلبات الشحن…</p>
+          ) : topupReviews.length === 0 ? (
+            <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">لا توجد طلبات شحن معلّقة للمراجعة.</p>
+          ) : (
+            <div className="space-y-3">
+              {topupReviews.map((request) => (
+                <article key={request.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <strong className="text-sm text-[#0A2540]">{fmt(Number(request.amount))} {request.currency === "YER" ? "ر.ي" : request.currency}</strong>
+                    <span className="rounded-full bg-amber-100 px-3 py-1 text-[11px] font-black text-amber-800">قيد المراجعة</span>
+                  </div>
+                  <div className="mt-2 grid gap-1 text-xs text-slate-600 sm:grid-cols-2">
+                    <span>وسيلة الدفع: <b>{request.payment_method}</b></span>
+                    <span>رقم المرسل: <bdi dir="ltr">{request.sender_phone}</bdi></span>
+                    <span>معرّف الطلب: <bdi dir="ltr">{request.id}</bdi></span>
+                    <span>تاريخ الإرسال: {new Date(request.created_at).toLocaleString("ar-u-nu-latn")}</span>
+                    {request.note && <span className="sm:col-span-2">الملاحظة: {request.note}</span>}
+                  </div>
+                  <button type="button" onClick={() => void openWalletTopupProof(request)} disabled={topupProofLoadingId === request.id} className="mt-3 rounded-lg border border-sky-200 bg-white px-3 py-2 text-xs font-bold text-[#0F4C81] disabled:opacity-60">
+                    {topupProofLoadingId === request.id ? "جارٍ فتح السند…" : "عرض سند التحويل"}
+                  </button>
+                </article>
+              ))}
+            </div>
+          )}
+          <p className="mt-3 text-[11px] leading-6 text-slate-500">السند محفوظ في bucket خاص، ويُعرض عبر رابط مؤقت لخمس دقائق بعد تحقق صلاحيات التخزين.</p>
+        </section>
 
         <section>
           <h2 className="mb-1 text-lg font-black text-[#0A2540]">ملخص الصفحة الحالية</h2>
@@ -1182,6 +1303,15 @@ function PaymentsPage() {
           )}
         </section>
       </div>
+
+      {topupProofPreview && (
+        <div role="presentation" onClick={() => setTopupProofPreview(null)} className="fixed inset-0 z-[60] grid place-items-center bg-black/70 p-4">
+          <div role="dialog" aria-modal="true" aria-label="معاينة سند شحن المحفظة" onClick={(event) => event.stopPropagation()} className="relative max-h-[92vh] max-w-full rounded-2xl bg-white p-3 shadow-xl">
+            <button type="button" onClick={() => setTopupProofPreview(null)} className="mb-3 rounded-lg bg-slate-100 px-3 py-2 text-sm font-bold">إغلاق المعاينة</button>
+            <img src={topupProofPreview} alt="سند تحويل شحن المحفظة" className="max-h-[80vh] max-w-full rounded-xl object-contain" />
+          </div>
+        </div>
+      )}
 
       {preview && (
         <div
