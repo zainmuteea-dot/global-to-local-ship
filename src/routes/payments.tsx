@@ -285,6 +285,7 @@ function PaymentsPage() {
   const [preview, setPreview] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [topupReviews, setTopupReviews] = useState<WalletTopupReview[]>([]);
+  const [showWalletTopups, setShowWalletTopups] = useState(false);
   const [topupsLoading, setTopupsLoading] = useState(false);
   const [topupsError, setTopupsError] = useState("");
   const [topupProofPreview, setTopupProofPreview] = useState<string | null>(null);
@@ -1045,54 +1046,6 @@ function PaymentsPage() {
           </div>
         )}
 
-        <section className="rounded-2xl border border-amber-200 bg-white p-4 shadow-sm">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <h2 className="text-lg font-black text-[#0A2540]">طلبات شحن المحفظة قيد المراجعة</h2>
-              <p className="mt-1 text-xs text-slate-500">للموظفين المخوّلين: تحقّق من إيداع الحوالة والسند قبل الاعتماد. الاعتماد يضيف الرصيد مرة واحدة.</p>
-            </div>
-            <button type="button" onClick={() => void loadWalletTopups()} disabled={topupsLoading} className="rounded-xl bg-[#0F4C81] px-4 py-2 text-xs font-bold text-white disabled:opacity-60">
-              {topupsLoading ? "جارٍ التحديث…" : "تحديث الطلبات"}
-            </button>
-          </div>
-          {topupsError && <p role="alert" className="mb-3 rounded-lg bg-red-50 p-3 text-xs font-bold text-red-700">{topupsError}</p>}
-          {topupsLoading && topupReviews.length === 0 ? (
-            <p role="status" className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">جارٍ تحميل طلبات الشحن…</p>
-          ) : topupReviews.length === 0 ? (
-            <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">لا توجد طلبات شحن معلّقة للمراجعة.</p>
-          ) : (
-            <div className="space-y-3">
-              {topupReviews.map((request) => (
-                <article key={request.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <strong className="text-sm text-[#0A2540]">{fmt(Number(request.amount))} {request.currency === "YER" ? "ر.ي" : request.currency}</strong>
-                    <span className="rounded-full bg-amber-100 px-3 py-1 text-[11px] font-black text-amber-800">قيد المراجعة</span>
-                  </div>
-                  <div className="mt-2 grid gap-1 text-xs text-slate-600 sm:grid-cols-2">
-                    <span>وسيلة الدفع: <b>{request.payment_method}</b></span>
-                    <span>رقم المرسل: <bdi dir="ltr">{request.sender_phone}</bdi></span>
-                    <span>معرّف الطلب: <bdi dir="ltr">{request.id}</bdi></span>
-                    <span>تاريخ الإرسال: {new Date(request.created_at).toLocaleString("ar-u-nu-latn")}</span>
-                    {request.note && <span className="sm:col-span-2">الملاحظة: {request.note}</span>}
-                  </div>
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <button type="button" onClick={() => void openWalletTopupProof(request)} disabled={topupProofLoadingId === request.id || topupReviewBusyId !== null} className="rounded-lg border border-sky-200 bg-white px-3 py-2 text-xs font-bold text-[#0F4C81] disabled:opacity-60">
-                      {topupProofLoadingId === request.id ? "جارٍ فتح السند…" : "عرض سند التحويل"}
-                    </button>
-                    <button type="button" onClick={() => void reviewWalletTopup(request, "approved")} disabled={topupReviewBusyId !== null || topupsLoading} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-black text-white hover:bg-emerald-700 disabled:cursor-wait disabled:opacity-60">
-                      {topupReviewBusyId === request.id ? "جارٍ التنفيذ…" : "اعتماد وإضافة الرصيد"}
-                    </button>
-                    <button type="button" onClick={() => void reviewWalletTopup(request, "rejected")} disabled={topupReviewBusyId !== null || topupsLoading} className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-black text-red-700 hover:bg-red-100 disabled:cursor-wait disabled:opacity-60">
-                      رفض الطلب
-                    </button>
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
-          <p className="mt-3 text-[11px] leading-6 text-slate-500">السند محفوظ في bucket خاص؛ يتحقق الخادم من صلاحية الموظف عند كل طلب عرض واعتماد. الاعتماد ذري ومشروط ببقاء الطلب معلّقًا، ولا يضيف الرصيد أكثر من مرة.</p>
-        </section>
-
         <section>
           <h2 className="mb-1 text-lg font-black text-[#0A2540]">ملخص الصفحة الحالية</h2>
           <p className="mb-3 text-xs text-slate-500">
@@ -1210,6 +1163,72 @@ function PaymentsPage() {
               </div>
             </div>
           </div>
+
+          <div className="mt-4 border-t border-slate-100 pt-3">
+            <button
+              type="button"
+              aria-expanded={showWalletTopups}
+              aria-controls="wallet-topup-review-panel"
+              onClick={() => setShowWalletTopups((shown) => !shown)}
+              className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-black transition-colors ${showWalletTopups ? "border-amber-500 bg-amber-600 text-white" : "border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100"}`}
+            >
+              <span>{showWalletTopups ? "إخفاء" : "طلبات شحن المحفظة قيد المراجعة"}</span>
+              <span className={`min-w-6 rounded-full px-2 py-0.5 text-center ${showWalletTopups ? "bg-white/20" : "bg-amber-200 text-amber-950"}`}>
+                {topupsLoading && topupReviews.length === 0 ? "…" : topupReviews.length}
+              </span>
+              <span aria-hidden="true">{showWalletTopups ? "▲" : "▼"}</span>
+            </button>
+          </div>
+
+          {showWalletTopups && (
+            <section id="wallet-topup-review-panel" className="mt-3 rounded-xl border border-amber-200 bg-amber-50/40 p-3" aria-label="مراجعة طلبات شحن المحفظة">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h2 className="text-sm font-black text-[#0A2540]">مراجعة طلبات شحن المحفظة</h2>
+                  <p className="mt-1 text-[11px] text-slate-500">تحقّق من وصول الحوالة والسند قبل الاعتماد؛ الاعتماد يضيف الرصيد مرة واحدة.</p>
+                </div>
+                <button type="button" onClick={() => void loadWalletTopups()} disabled={topupsLoading} className="rounded-lg bg-[#0F4C81] px-3 py-2 text-xs font-bold text-white disabled:opacity-60">
+                  {topupsLoading ? "جارٍ التحديث…" : "تحديث الطلبات"}
+                </button>
+              </div>
+              {topupsError && <p role="alert" className="mb-3 rounded-lg bg-red-50 p-3 text-xs font-bold text-red-700">{topupsError}</p>}
+              {topupsLoading && topupReviews.length === 0 ? (
+                <p role="status" className="rounded-lg bg-white p-3 text-sm text-slate-500">جارٍ تحميل طلبات الشحن…</p>
+              ) : topupReviews.length === 0 ? (
+                <p className="rounded-lg bg-white p-3 text-sm text-slate-500">لا توجد طلبات شحن معلّقة للمراجعة.</p>
+              ) : (
+                <div className="space-y-2">
+                  {topupReviews.map((request) => (
+                    <article key={request.id} className="rounded-lg border border-slate-200 bg-white p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <strong className="text-sm text-[#0A2540]">{fmt(Number(request.amount))} {request.currency === "YER" ? "ر.ي" : request.currency}</strong>
+                        <span className="rounded-full bg-amber-100 px-3 py-1 text-[11px] font-black text-amber-800">قيد المراجعة</span>
+                      </div>
+                      <div className="mt-2 grid gap-1 text-xs text-slate-600 sm:grid-cols-2">
+                        <span>وسيلة الدفع: <b>{request.payment_method}</b></span>
+                        <span>رقم المرسل: <bdi dir="ltr">{request.sender_phone}</bdi></span>
+                        <span>معرّف الطلب: <bdi dir="ltr">{request.id}</bdi></span>
+                        <span>تاريخ الإرسال: {new Date(request.created_at).toLocaleString("ar-u-nu-latn")}</span>
+                        {request.note && <span className="sm:col-span-2">الملاحظة: {request.note}</span>}
+                      </div>
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <button type="button" onClick={() => void openWalletTopupProof(request)} disabled={topupProofLoadingId === request.id || topupReviewBusyId !== null} className="rounded-lg border border-sky-200 bg-white px-3 py-2 text-xs font-bold text-[#0F4C81] disabled:opacity-60">
+                          {topupProofLoadingId === request.id ? "جارٍ فتح السند…" : "عرض سند التحويل"}
+                        </button>
+                        <button type="button" onClick={() => void reviewWalletTopup(request, "approved")} disabled={topupReviewBusyId !== null || topupsLoading} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-black text-white hover:bg-emerald-700 disabled:cursor-wait disabled:opacity-60">
+                          {topupReviewBusyId === request.id ? "جارٍ التنفيذ…" : "اعتماد وإضافة الرصيد"}
+                        </button>
+                        <button type="button" onClick={() => void reviewWalletTopup(request, "rejected")} disabled={topupReviewBusyId !== null || topupsLoading} className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-black text-red-700 hover:bg-red-100 disabled:cursor-wait disabled:opacity-60">
+                          رفض الطلب
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+              <p className="mt-3 text-[11px] leading-5 text-slate-500">السند يبقى في التخزين الخاص؛ يتحقق الخادم من الصلاحية عند كل عرض، والاعتماد ذري ولا يضيف الرصيد أكثر من مرة.</p>
+            </section>
+          )}
           <p className="mt-3 text-xs text-slate-500" aria-live="polite">
             الصفحة الحالية: {filteredRows.length} سجل • إجمالي النتائج: {totalCount}
             {refreshing && hasLoadedOnceRef.current ? " • يجري التحديث في الخلفية" : ""}
