@@ -54,6 +54,15 @@ type WalletTopup = {
 };
 
 const PAYMENT_METHODS = ["الكريمي", "ون كاش", "فلوسك", "جوالي", "جيب", "حوالة النجم"] as const;
+
+const PAYMENT_METHOD_DETAILS = [
+  { value: "الكريمي", label: "الكريمي", mark: "ك", tone: "karimi" },
+  { value: "ون كاش", label: "ون كاش", mark: "ون", tone: "onecash" },
+  { value: "فلوسك", label: "فلوسك", mark: "ف", tone: "flo" },
+  { value: "جوالي", label: "جوالي", mark: "ج", tone: "jawali" },
+  { value: "جيب", label: "جيب", mark: "ج", tone: "jeeb" },
+  { value: "حوالة النجم", label: "حوالة النجم", mark: "ن", tone: "najm" },
+] as const;
 const RECIPIENT_NAME = "زين العابدين مطيع حاتم الوصابي";
 const RECIPIENT_NUMBER = "772399744";
 const RECEIPT_BUCKET = "wallet-transfer-proofs";
@@ -566,11 +575,11 @@ function WalletPage() {
                 <button type="button" className="fd-method-close" onClick={() => setMethodPickerOpen(false)} aria-label="إغلاق طرق الدفع"><X size={18} /></button>
               </header>
               <div className="fd-method-grid" role="group" aria-label="طريقة الدفع">
-                {PAYMENT_METHODS.map((method) => (
-                  <button key={method} type="button" className={`fd-method-option ${paymentMethod === method ? "selected" : ""}`} aria-pressed={paymentMethod === method} onClick={() => { setPaymentMethod(method); setShowTopupForm(true); setMethodPickerOpen(false); window.setTimeout(() => document.getElementById("topup-form")?.scrollIntoView({ behavior: "smooth", block: "start" }), 80); }}>
+                {PAYMENT_METHOD_DETAILS.map((method) => (
+                  <button key={method.value} type="button" className={`fd-method-option ${paymentMethod === method.value ? "selected" : ""}`} aria-pressed={paymentMethod === method.value} onClick={() => { setPaymentMethod(method.value); setShowTopupForm(true); setMethodPickerOpen(false); window.setTimeout(() => document.getElementById("topup-form")?.scrollIntoView({ behavior: "smooth", block: "start" }), 80); }}>
                     <span className="fd-method-radio" aria-hidden="true" />
-                    <span className="fd-method-mark" aria-hidden="true">{method.slice(0, 1)}</span>
-                    <strong>{method}</strong>
+                    <span className={`fd-method-logo ${method.tone}`} aria-hidden="true"><span>{method.mark}</span></span>
+                    <strong>{method.label}</strong>
                   </button>
                 ))}
               </div>
@@ -823,10 +832,12 @@ const WALLET_STYLE = `
 .fd-root .fd-method-option.selected{border-color:#a64f1d;background:#fff7ed;box-shadow:0 0 0 2px rgba(166,79,29,.08);}
 .fd-root .fd-method-radio{width:21px;height:21px;border:1px solid #e2cdb9;border-radius:50%;background:#fff;}
 .fd-root .fd-method-option.selected .fd-method-radio{border:6px solid #a64f1d;}
-.fd-root .fd-method-mark{width:40px;height:40px;display:grid;place-items:center;border:1px solid #eadbc9;border-radius:12px;background:#fff;color:#a64f1d;font-size:18px;font-weight:900;box-shadow:0 3px 8px rgba(117,74,34,.06);}
+.fd-root .fd-method-logo{width:42px;height:42px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.8);border-radius:13px;color:#fff;font-size:13px;font-weight:1000;box-shadow:0 4px 12px rgba(117,74,34,.14);}
+.fd-root .fd-method-logo span{display:grid;place-items:center;min-width:24px;height:24px;border:2px solid rgba(255,255,255,.78);border-radius:8px;line-height:1;}
+.fd-root .fd-method-logo.karimi{background:linear-gradient(145deg,#7141c8,#4f2598);}.fd-root .fd-method-logo.onecash{background:linear-gradient(145deg,#ff8a19,#ef4e0c);}.fd-root .fd-method-logo.flo{background:linear-gradient(145deg,#19d5ec,#007cc7);}.fd-root .fd-method-logo.jawali{background:linear-gradient(145deg,#ffbd19,#25318f);}.fd-root .fd-method-logo.jeeb{background:linear-gradient(145deg,#2d9387,#12645d);}.fd-root .fd-method-logo.najm{background:linear-gradient(145deg,#9dcc36,#6a9f16);}
 .fd-root .fd-method-option strong{font-size:12px;font-weight:900;}
 @keyframes fd-sheet-in{from{opacity:.5;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
 @media(min-width:700px){.fd-root .fd-method-overlay{align-items:center}.fd-root .fd-method-dialog{border-radius:24px}}
-@media(max-width:480px){.fd-root .fd-wrap{max-width:472px;padding:14px 12px 28px}.fd-root .fd-topbar-in{max-width:472px;min-height:54px;padding:8px 12px}.fd-root .fd-tp-title{font-size:15px}.fd-root .fd-card{min-height:86px;padding:14px}.fd-root .fd-add-button{width:48px;height:48px}.fd-root .fd-bal .amt{font-size:29px}.fd-root .fd-stat{padding:11px 5px}.fd-root .fd-stat .st-l{font-size:9px}.fd-root .fd-stat .st-v{font-size:14px}.fd-root .fd-log{padding:13px}.fd-root .fd-method-dialog{padding:9px 12px 16px}.fd-root .fd-method-option{min-height:72px;grid-template-columns:20px 36px 1fr;gap:7px;padding:9px;border-radius:16px}.fd-root .fd-method-radio{width:18px;height:18px}.fd-root .fd-method-mark{width:35px;height:35px;border-radius:10px}.fd-root .fd-method-option strong{font-size:11px}}
+@media(max-width:480px){.fd-root .fd-wrap{max-width:472px;padding:14px 12px 28px}.fd-root .fd-topbar-in{max-width:472px;min-height:54px;padding:8px 12px}.fd-root .fd-tp-title{font-size:15px}.fd-root .fd-card{min-height:86px;padding:14px}.fd-root .fd-add-button{width:48px;height:48px}.fd-root .fd-bal .amt{font-size:29px}.fd-root .fd-stat{padding:11px 5px}.fd-root .fd-stat .st-l{font-size:9px}.fd-root .fd-stat .st-v{font-size:14px}.fd-root .fd-log{padding:13px}.fd-root .fd-method-dialog{padding:9px 12px 16px}.fd-root .fd-method-option{min-height:72px;grid-template-columns:20px 36px 1fr;gap:7px;padding:9px;border-radius:16px}.fd-root .fd-method-radio{width:18px;height:18px}.fd-root .fd-method-logo{width:35px;height:35px;border-radius:10px}.fd-root .fd-method-logo span{min-width:20px;height:20px;border-radius:6px;font-size:11px}.fd-root .fd-method-option strong{font-size:11px}}
 
 `;

@@ -204,30 +204,42 @@ function OrdersPage() {
           .ot-empty { padding:18px; border:1px dashed var(--ot-line); border-radius:16px; background:white; }
           .ot-footer { margin:17px 0 4px; text-align:center; color:var(--ot-muted); font-size:11px; font-weight:700; }
           @media (max-width:640px) {
-            .ot-intro { align-items:flex-start; }
+            .ot-intro { align-items:flex-start; gap:12px; margin-bottom:14px; }
             .ot-intro > div:first-child { flex:1 1 100%; }
-            .ot-top-actions { width:100%; justify-content:space-between; }
-            .ot-new { flex:1 1 auto; min-height:42px; }
-            .ot-count { flex:0 1 auto; text-align:center; }
-            .ot-card { padding:13px; border-radius:16px; }
-            .ot-head { align-items:center; flex-wrap:wrap; gap:9px; }
+            .ot-intro h2 { font-size:21px; }
+            .ot-intro p { font-size:12px; line-height:1.7; }
+            .ot-top-actions { width:100%; justify-content:space-between; gap:8px; }
+            .ot-new { flex:1 1 auto; min-height:44px; }
+            .ot-count { flex:0 1 auto; text-align:center; padding:8px 10px; }
+            .ot-card { padding:12px; border-radius:16px; }
+            .ot-list { gap:12px; }
+            .ot-head { align-items:center; flex-wrap:wrap; gap:8px; }
             .ot-order-info { flex:1 1 180px; }
-            .ot-head-status { flex-direction:row; align-items:center; justify-content:space-between; flex:1 1 100%; }
+            .ot-head-status { flex-direction:row; align-items:center; justify-content:space-between; flex:1 1 100%; padding-inline-start:48px; }
             .ot-order-number { font-size:14px; }
-            .ot-order-meta { font-size:10px; }
-            .ot-package { width:39px; height:39px; }
-            .ot-steps { flex-direction:column; align-items:stretch; margin:7px 0 0; }
-            .ot-step { display:flex; flex-direction:row; align-items:flex-start; gap:11px; min-height:44px; text-align:right; }
-            .ot-step:not(:first-child)::before { top:-9px; right:16px; width:3px; height:18px; }
-            .ot-step.is-done:not(:first-child)::before { background:var(--ot-green); }
-            .ot-step.is-current:not(:first-child)::before { background:var(--ot-green); }
-            .ot-step:first-child::before { display:none; }
-            .ot-node { flex:none; width:33px; height:33px; }
-            .ot-step-label { margin:7px 0 0; padding:0; font-size:12px; }
-            .ot-current-dot { width:10px; height:10px; }
-            .ot-now { margin-top:12px; }
-            .ot-track-link { min-height:44px; font-size:13px; }
+            .ot-order-meta { font-size:10px; line-height:1.5; }
+            .ot-package { width:38px; height:38px; }
+            .ot-status { padding:5px 9px; }
+            .ot-now { margin:11px 0 10px; padding:9px; }
+            .ot-pin { width:32px; height:32px; }
             .ot-current-stage { font-size:12px; }
+            .ot-steps { flex-direction:row; align-items:flex-start; width:100%; min-width:0; overflow-x:auto; overscroll-behavior-x:contain; margin:8px 0 0; padding:8px 2px 12px; scrollbar-width:thin; scrollbar-color:#cbd5e1 transparent; }
+            .ot-step { display:flex; flex:0 0 72px; flex-direction:column; align-items:center; gap:0; min-height:0; text-align:center; }
+            .ot-step:not(:first-child)::before { top:15px; right:50%; width:100%; height:3px; }
+            .ot-step.is-done:not(:first-child)::before { background:var(--ot-green); }
+            .ot-step.is-current:not(:first-child)::before { background:linear-gradient(90deg,var(--ot-orange),var(--ot-green)); }
+            .ot-step:first-child::before { display:none; }
+            .ot-node { flex:none; width:32px; height:32px; }
+            .ot-step-label { width:100%; margin:7px 0 0; padding:0 2px; font-size:9px; line-height:1.45; }
+            .ot-current-dot { width:10px; height:10px; }
+            .ot-track-link { min-height:44px; margin-top:10px; font-size:13px; }
+            .ot-footer { font-size:10px; line-height:1.7; }
+          }
+          @media (max-width:360px) {
+            .ot-card { padding:10px; }
+            .ot-intro h2 { font-size:19px; }
+            .ot-count { font-size:11px; }
+            .ot-step { flex-basis:64px; }
           }
           @media (prefers-reduced-motion:reduce) {
             .orders-tracker *, .orders-tracker *::before { scroll-behavior:auto !important; animation-duration:.01ms !important; animation-iteration-count:1 !important; }
