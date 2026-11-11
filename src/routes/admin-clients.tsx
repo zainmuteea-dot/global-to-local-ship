@@ -76,11 +76,19 @@ const UI_STATUS_TO_DATABASE: Record<OrderStatus, string> = {
 type CurrencyCode = "USD" | "YER" | "SAR";
 type CurrencyMoney = Partial<Record<CurrencyCode | "UNKNOWN", number | null>>;
 
-const CURRENCIES: Array<{ code: CurrencyCode; label: string; suffix: string }> = [
-  { code: "USD", label: "دولار أمريكي", suffix: "USD" },
-  { code: "YER", label: "ريال يمني", suffix: "ر.ي" },
-  { code: "SAR", label: "ريال سعودي", suffix: "ر.س" },
+const CURRENCIES: Array<{ code: CurrencyCode; label: string }> = [
+  { code: "USD", label: "دولار أمريكي" },
+  { code: "YER", label: "ريال يمني" },
+  { code: "SAR", label: "ريال سعودي" },
 ];
+
+// أسعار ثابتة للعرض فقط، بحسب السعر المعتمد في صفحة الطلبات.
+// لا تغيّر هذه التحويلات القيم الأصلية المحفوظة في قاعدة البيانات.
+const DISPLAY_YER_RATES: Record<CurrencyCode, number> = {
+  YER: 1,
+  SAR: 140,
+  USD: 535,
+};
 
 function toNullableNumber(value: unknown): number | null {
   if (value === null || value === undefined || value === "") return null;
@@ -98,28 +106,38 @@ function normalizeCurrency(value: unknown): CurrencyCode | null {
   return null;
 }
 
-function formatMoney(value: number | null | undefined): string {
-  return value === null || value === undefined ? "غير مسجل" : value.toLocaleString("en-US");
+function formatMoney(value: number): string {
+  return value.toLocaleString("en-US", { maximumFractionDigits: 2 });
 }
 
-function formatCurrency(value: number | null | undefined, currency: CurrencyCode): string {
-  const meta = CURRENCIES.find((item) => item.code === currency)!;
-  return value === null || value === undefined
-    ? "غير مسجل"
-    : `${formatMoney(value)} ${meta.suffix}`;
-}
-
+/** يعرض المبالغ بعملة يمنية واحدة، من غير تعديل القيمة الأصلية. */
 function formatBreakdown(values: CurrencyMoney | null | undefined): string {
-  const entries = CURRENCIES.filter(({ code }) =>
+  const knownEntries = CURRENCIES.filter(({ code }) =>
     Object.prototype.hasOwnProperty.call(values ?? {}, code),
-  ).map(({ code, label }) => {
-    const amount = values![code];
-    return typeof amount === "number" ? formatCurrency(amount, code) : `${label}: غير مكتمل`;
-  });
-  if (Object.prototype.hasOwnProperty.call(values ?? {}, "UNKNOWN")) {
-    entries.push("غير مكتمل: العملة غير محددة");
+  );
+  const hasUnknownCurrency = Object.prototype.hasOwnProperty.call(values ?? {}, "UNKNOWN");
+  if (!knownEntries.length && !hasUnknownCurrency) return "ما في مبلغ مسجل";
+
+  const numericEntries = knownEntries.filter(
+    ({ code }) => typeof values?.[code] === "number",
+  );
+  const hasMissingAmounts = numericEntries.length !== knownEntries.length;
+  const isIncomplete = hasMissingAmounts || hasUnknownCurrency;
+  const knownTotalYer = numericEntries.reduce((total, { code }) => {
+    const amount = values?.[code];
+    return total + (typeof amount === "number" ? amount * DISPLAY_YER_RATES[code] : 0);
+  }, 0);
+
+  const result: string[] = [];
+  if (numericEntries.length) {
+    result.push(
+      `${isIncomplete ? "المبلغ المعروف: " : ""}${formatMoney(knownTotalYer)} ر.ي`,
+    );
   }
-  return entries.length ? entries.join(" · ") : "غير مسجل";
+  if (hasMissingAmounts) result.push("في مبالغ ناقصة، ما نقدر نحسبها كاملة");
+  if (hasUnknownCurrency) result.push("وفي مبلغ ما تحددت عملته");
+  if (!result.length) return "في مبالغ مالية ناقصة";
+  return result.join(" · ");
 }
 
 function aggregateMoney(
@@ -784,9 +802,9 @@ export function AdminOperationsDashboard({
           className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-xs leading-6 text-sky-900"
           role="note"
         >
-          تُقرأ المبالغ من أعمدة الطلبات المالية، وتُعرض مجاميع USD وYER وSAR منفصلة دون تحويل
-          بينها. إذا تعذّر تحديد عملة المدفوع أو الربح، أو كانت القيمة ناقصة، فستظهر كغير مكتملة بدل
-          نسبتها إلى عملة تخمينية.
+          كل المبالغ تظهر هنا بالريال اليمني. للتحويل للعرض بس: الريال السعودي نحسبه بـ140 ريال يمني،
+          والدولار بـ535 ريال يمني. بيانات القاعدة ما تتغير، وإذا العملة مش معروفة أو المبلغ ناقص بنوضح
+          هذا بدل ما نخمن.
         </div>
         {feedback && (
           <div
@@ -838,7 +856,7 @@ export function AdminOperationsDashboard({
               className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#F97316] to-[#EA580C] hover:from-[#EA580C] text-white text-xs font-black shadow-md shadow-orange-500/25 transition flex items-center gap-1.5 cursor-pointer active:scale-95"
             >
               <PlusCircle className="w-4 h-4" />
-              <span>+ شحنة جديدة</span>
+              <span>+ طلب شحن جديد</span>
             </button>
 
             <button
@@ -866,7 +884,7 @@ export function AdminOperationsDashboard({
               }`}
             >
               <Users className="w-4 h-4 text-orange-400" />
-              <span>العملاء المجمعين حسب آخر 9 أرقام ({groupedClients.length})</span>
+              <span>العملاء المجمّعين حسب آخر 9 أرقام ({groupedClients.length})</span>
             </button>
 
             <button
@@ -878,7 +896,7 @@ export function AdminOperationsDashboard({
               }`}
             >
               <Package className="w-4 h-4 text-sky-400" />
-              <span>سجل الشحنات الفردية ({orders.length})</span>
+              <span>كل الشحنات ({orders.length})</span>
             </button>
           </div>
 
@@ -896,7 +914,7 @@ export function AdminOperationsDashboard({
           <div className="rounded-2xl p-4 sm:p-5 bg-gradient-to-br from-rose-50 to-red-100/70 border-2 border-red-300 shadow-sm relative overflow-hidden transition hover:shadow-md">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-black text-red-700 bg-red-200/80 px-2 py-0.5 rounded-full border border-red-300">
-                المتبقي (Remaining)
+                باقي (المتبقي)
               </span>
               <div className="w-9 h-9 rounded-xl bg-red-600 text-white flex items-center justify-center shadow-xs">
                 <AlertCircle className="w-5 h-5 text-white" />
@@ -905,12 +923,12 @@ export function AdminOperationsDashboard({
             <div className="min-h-16 text-base sm:text-lg font-black text-red-600 font-mono tracking-tight leading-relaxed break-words mb-1">
               {formatBreakdown(summaryTotals.sumRemaining)}
             </div>
-            <div className="text-xs font-black text-red-950">إجمالي المبالغ المتبقية</div>
-            <div className="text-[10px] text-red-700 mt-0.5">المبالغ المسجلة مفصولة حسب العملة</div>
+            <div className="text-xs font-black text-red-950">إجمالي اللي باقي على العملاء</div>
+            <div className="text-[10px] text-red-700 mt-0.5">المبالغ معروضة بالريال اليمني</div>
             <div className="mt-2 pt-2 border-t border-red-200/80 text-[10px] font-bold text-red-700 flex items-center justify-between">
               <span>sum(remaining)</span>
               <span>
-                {groupedClients.filter((c) => hasPositiveMoney(c.remaining)).length} عميل مدين
+                {groupedClients.filter((c) => hasPositiveMoney(c.remaining)).length} عميل عليه باقي
               </span>
             </div>
           </div>
@@ -919,7 +937,7 @@ export function AdminOperationsDashboard({
           <div className="rounded-2xl p-4 sm:p-5 bg-gradient-to-br from-emerald-50 to-green-100/70 border-2 border-emerald-300 shadow-sm relative overflow-hidden transition hover:shadow-md">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-black text-emerald-800 bg-emerald-200/80 px-2 py-0.5 rounded-full border border-emerald-300">
-                المدفوع (Paid)
+                المدفوع
               </span>
               <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs">
                 <CheckCircle2 className="w-5 h-5 text-white" />
@@ -928,13 +946,13 @@ export function AdminOperationsDashboard({
             <div className="min-h-16 text-base sm:text-lg font-black text-emerald-600 font-mono tracking-tight leading-relaxed break-words mb-1">
               {formatBreakdown(summaryTotals.sumPaid)}
             </div>
-            <div className="text-xs font-black text-emerald-950">إجمالي المبالغ المدفوعة</div>
+            <div className="text-xs font-black text-emerald-950">إجمالي اللي دفعوه العملاء</div>
             <div className="text-[10px] text-emerald-700 mt-0.5">
-              المبالغ المسجلة مفصولة حسب العملة
+              المبالغ معروضة بالريال اليمني
             </div>
             <div className="mt-2 pt-2 border-t border-emerald-200/80 text-[10px] font-bold text-emerald-700 flex items-center justify-between">
               <span>sum(paid)</span>
-              <span>حسب السجلات المتاحة</span>
+              <span>حسب البيانات المسجلة</span>
             </div>
           </div>
 
@@ -942,7 +960,7 @@ export function AdminOperationsDashboard({
           <div className="rounded-2xl p-4 sm:p-5 bg-slate-900 border-2 border-slate-950 text-white shadow-md relative overflow-hidden transition hover:shadow-lg">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-black text-slate-200 bg-slate-800 px-2 py-0.5 rounded-full border border-slate-700">
-                التكلفة (Cost)
+                التكلفة
               </span>
               <div className="w-9 h-9 rounded-xl bg-slate-800 text-white flex items-center justify-center shadow-xs border border-slate-700">
                 <Package className="w-5 h-5 text-orange-400" />
@@ -951,9 +969,9 @@ export function AdminOperationsDashboard({
             <div className="min-h-16 text-base sm:text-lg font-black text-white font-mono tracking-tight leading-relaxed break-words mb-1">
               {formatBreakdown(summaryTotals.sumCost)}
             </div>
-            <div className="text-xs font-black text-slate-100">إجمالي التكلفة الشاملة</div>
+            <div className="text-xs font-black text-slate-100">إجمالي التكلفة المسجلة</div>
             <div className="text-[10px] text-slate-400 mt-0.5">
-              المبالغ المسجلة مفصولة حسب العملة
+              المبالغ معروضة بالريال اليمني
             </div>
             <div className="mt-2 pt-2 border-t border-slate-800 text-[10px] font-bold text-slate-300 flex items-center justify-between">
               <span>sum(total_cost)</span>
@@ -965,7 +983,7 @@ export function AdminOperationsDashboard({
           <div className="rounded-2xl p-4 sm:p-5 bg-gradient-to-br from-sky-50 to-blue-100/80 border-2 border-sky-300 shadow-sm relative overflow-hidden transition hover:shadow-md">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-black text-sky-800 bg-sky-200/80 px-2 py-0.5 rounded-full border border-sky-300">
-                الربح (Profit)
+                الربح
               </span>
               <div className="w-9 h-9 rounded-xl bg-[#0284C7] text-white flex items-center justify-center shadow-xs">
                 <TrendingUp className="w-5 h-5 text-white" />
@@ -974,11 +992,11 @@ export function AdminOperationsDashboard({
             <div className="min-h-16 text-base sm:text-lg font-black text-[#0284C7] font-mono tracking-tight leading-relaxed break-words mb-1">
               {formatBreakdown(summaryTotals.sumProfit)}
             </div>
-            <div className="text-xs font-black text-sky-950">صافي أرباح الوساطة</div>
-            <div className="text-[10px] text-sky-700 mt-0.5">المبالغ المسجلة مفصولة حسب العملة</div>
+            <div className="text-xs font-black text-sky-950">الربح المسجل</div>
+            <div className="text-[10px] text-sky-700 mt-0.5">المبالغ معروضة بالريال اليمني</div>
             <div className="mt-2 pt-2 border-t border-sky-200/80 text-[10px] font-bold text-sky-700 flex items-center justify-between">
               <span>sum(profit)</span>
-              <span>حسب السجلات المتاحة</span>
+              <span>حسب البيانات المسجلة</span>
             </div>
           </div>
         </div>
@@ -992,7 +1010,7 @@ export function AdminOperationsDashboard({
             {/* شريط الفلاتر للعملاء */}
             <div className="bg-white p-3 rounded-xl border border-sky-200/90 shadow-sm flex flex-wrap items-center justify-between gap-3 text-xs">
               <div className="flex items-center gap-1.5">
-                <span className="text-slate-500 font-bold">تصفية الحسابات:</span>
+                <span className="text-slate-500 font-bold">فلترة العملاء:</span>
                 <button
                   onClick={() => setClientFilterType("all")}
                   className={`px-3 py-1.5 rounded-lg font-bold cursor-pointer transition ${
@@ -1011,7 +1029,7 @@ export function AdminOperationsDashboard({
                       : "bg-red-50 text-red-700 hover:bg-red-100"
                   }`}
                 >
-                  <span>عليه متبقي</span>
+                  <span>عليه باقي</span>
                   <span className="text-[10px] bg-white/20 px-1 rounded">
                     {groupedClients.filter((c) => hasPositiveMoney(c.remaining)).length}
                   </span>
@@ -1024,7 +1042,7 @@ export function AdminOperationsDashboard({
                       : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
                   }`}
                 >
-                  <span>مسدد بالكامل</span>
+                  <span>مسدد كامل</span>
                   <span className="text-[10px] bg-white/20 px-1 rounded">
                     {groupedClients.filter((c) => isFullyPaid(c.remaining)).length}
                   </span>
@@ -1032,8 +1050,7 @@ export function AdminOperationsDashboard({
               </div>
 
               <div className="text-slate-500 text-xs font-mono">
-                عرض: <span className="font-bold text-[#0A2540]">{filteredClients.length}</span> عميل
-                مجمّع
+                المعروض: <span className="font-bold text-[#0A2540]">{filteredClients.length}</span> عميل
               </div>
             </div>
 
@@ -1043,13 +1060,13 @@ export function AdminOperationsDashboard({
                 <table className="w-full text-right text-xs">
                   <thead className="bg-gradient-to-r from-[#F0F7FF] via-[#E0F2FE] to-[#F0F7FF] border-b border-sky-200 text-[#0F4C81] font-black">
                     <tr>
-                      <th className="py-3.5 px-4">العميل والمدينة (name / city)</th>
-                      <th className="py-3.5 px-4">رقم الهاتف (آخر 9 أرقام - phone)</th>
-                      <th className="py-3.5 px-4 text-center">الطلبات (count)</th>
-                      <th className="py-3.5 px-4 text-left">التكلفة (total_cost)</th>
-                      <th className="py-3.5 px-4 text-left">المدفوع (paid)</th>
-                      <th className="py-3.5 px-4 text-left">المتبقي (remaining)</th>
-                      <th className="py-3.5 px-4 text-left">الربح (profit)</th>
+                      <th className="py-3.5 px-4">اسم العميل والمدينة</th>
+                      <th className="py-3.5 px-4">رقم الهاتف (آخر 9 أرقام)</th>
+                      <th className="py-3.5 px-4 text-center">عدد الطلبات</th>
+                      <th className="py-3.5 px-4 text-left">التكلفة</th>
+                      <th className="py-3.5 px-4 text-left">المدفوع</th>
+                      <th className="py-3.5 px-4 text-left">الباقي</th>
+                      <th className="py-3.5 px-4 text-left">الربح</th>
                       <th className="py-3.5 px-4 text-center">الإجراءات</th>
                     </tr>
                   </thead>
@@ -1057,7 +1074,7 @@ export function AdminOperationsDashboard({
                     {filteredClients.length === 0 ? (
                       <tr>
                         <td colSpan={8} className="py-12 text-center text-slate-400">
-                          لا يوجد عملاء مطابقين لمعايير البحث.
+                          ما لقينا عملاء يطابقوا البحث.
                         </td>
                       </tr>
                     ) : (
@@ -1235,7 +1252,7 @@ export function AdminOperationsDashboard({
                   <thead className="bg-gradient-to-r from-[#F0F7FF] to-[#E0F2FE] border-b border-sky-200 text-[#0F4C81] font-black">
                     <tr>
                       <th className="py-4 px-4">رقم الطلب</th>
-                      <th className="py-4 px-4">العميل والمدينة (name / city)</th>
+                      <th className="py-4 px-4">اسم العميل والمدينة</th>
                       <th className="py-4 px-4">رقم الهاتف (phone)</th>
                       <th className="py-4 px-4">رقم التتبع</th>
                       <th className="py-4 px-4 text-center">حالة الشحنة</th>
@@ -1460,7 +1477,7 @@ export function AdminOperationsDashboard({
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full p-5 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between border-b pb-3">
-              <h3 className="font-black text-sm text-[#0A2540]">كشف حساب مالي للعميل</h3>
+              <h3 className="font-black text-sm text-[#0A2540]">كشف حساب العميل</h3>
               <button
                 onClick={() => setStatementClient(null)}
                 className="p-1 rounded hover:bg-slate-100 cursor-pointer"
