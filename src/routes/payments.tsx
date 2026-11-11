@@ -245,6 +245,7 @@ function PaymentsPage() {
   const [topupsError, setTopupsError] = useState("");
   const [topupProofPreview, setTopupProofPreview] = useState<string | null>(null);
   const [topupProofLoadingId, setTopupProofLoadingId] = useState<string | null>(null);
+  const [topupReviewBusyId, setTopupReviewBusyId] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
   // يعرض شاشة التحميل الكاملة عند أول تحميل فقط.
@@ -311,6 +312,53 @@ function PaymentsPage() {
       setTopupsLoading(false);
     }
   }, []);
+
+  const reviewWalletTopup = async (request: WalletTopupReview, decision: "approved" | "rejected") => {
+    const isApproval = decision === "approved";
+    const amount = Number(request.amount);
+    const actionText = isApproval ? "اعتماد" : "رفض";
+
+    if (request.status !== "pending_review") {
+      setTopupsError("هذا الطلب لم يعد قيد المراجعة. حدّث القائمة للتحقق من حالته.");
+      return;
+    }
+    if (!Number.isSafeInteger(amount) || amount <= 0) {
+      setTopupsError("مبلغ طلب الشحن غير صالح؛ لم يتم تغيير الحالة أو إضافة رصيد.");
+      return;
+    }
+    if (!window.confirm(`هل تحققت من إيداع ${fmt(amount)} ${request.currency === "YER" ? "ر.ي" : request.currency} عبر ${request.payment_method}؟
+
+سيؤدي الاعتماد إلى إضافة المبلغ للمحفظة مرة واحدة. متابعة ${actionText} الطلب؟`)) {
+      return;
+    }
+
+    setTopupReviewBusyId(request.id);
+    setTopupsError("");
+    setSuccess("");
+    try {
+      // The database function checks the staff role again and atomically changes
+      // the pending request plus (for approval only) inserts one wallet transaction.
+      const { data, error } = await (supabase as any).rpc("review_wallet_topup", {
+        _request_id: request.id,
+        _decision: decision,
+      });
+      if (error) throw new Error(error.message || `تعذر ${actionText} طلب الشحن.`);
+      if (!data || data.success !== true || data.decision !== decision) {
+        throw new Error("لم يؤكد الخادم إتمام المراجعة؛ حدّث الطلب قبل إعادة المحاولة.");
+      }
+
+      setSuccess(isApproval
+        ? `تم اعتماد شحن ${fmt(amount)} ر.ي وإضافته إلى المحفظة مرة واحدة.`
+        : `تم رفض طلب الشحن بمبلغ ${fmt(amount)} ر.ي دون إضافة رصيد.`);
+      setTopupReviews((current) => current.filter((item) => item.id !== request.id));
+      void loadWalletTopups();
+    } catch (cause) {
+      console.error("تعذرت مراجعة طلب شحن المحفظة:", cause);
+      setTopupsError(cause instanceof Error ? cause.message : `تعذر ${actionText} طلب الشحن.`);
+    } finally {
+      setTopupReviewBusyId(null);
+    }
+  };
 
   const openWalletTopupProof = async (request: WalletTopupReview) => {
     setTopupProofLoadingId(request.id);
@@ -957,7 +1005,7 @@ function PaymentsPage() {
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <div>
               <h2 className="text-lg font-black text-[#0A2540]">طلبات شحن المحفظة قيد المراجعة</h2>
-              <p className="mt-1 text-xs text-slate-500">عرض للموظفين المخوّلين فقط. لا يعتمد هذا القسم الطلبات ولا يضيف رصيدًا.</p>
+              <p className="mt-1 text-xs text-slate-500">للموظفين المخوّلين: تحقّق من إيداع الحوالة والسند قبل الاعتماد. الاعتماد يضيف الرصيد مرة واحدة.</p>
             </div>
             <button type="button" onClick={() => void loadWalletTopups()} disabled={topupsLoading} className="rounded-xl bg-[#0F4C81] px-4 py-2 text-xs font-bold text-white disabled:opacity-60">
               {topupsLoading ? "جارٍ التحديث…" : "تحديث الطلبات"}
@@ -983,14 +1031,22 @@ function PaymentsPage() {
                     <span>تاريخ الإرسال: {new Date(request.created_at).toLocaleString("ar-u-nu-latn")}</span>
                     {request.note && <span className="sm:col-span-2">الملاحظة: {request.note}</span>}
                   </div>
-                  <button type="button" onClick={() => void openWalletTopupProof(request)} disabled={topupProofLoadingId === request.id} className="mt-3 rounded-lg border border-sky-200 bg-white px-3 py-2 text-xs font-bold text-[#0F4C81] disabled:opacity-60">
-                    {topupProofLoadingId === request.id ? "جارٍ فتح السند…" : "عرض سند التحويل"}
-                  </button>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <button type="button" onClick={() => void openWalletTopupProof(request)} disabled={topupProofLoadingId === request.id || topupReviewBusyId !== null} className="rounded-lg border border-sky-200 bg-white px-3 py-2 text-xs font-bold text-[#0F4C81] disabled:opacity-60">
+                      {topupProofLoadingId === request.id ? "جارٍ فتح السند…" : "عرض سند التحويل"}
+                    </button>
+                    <button type="button" onClick={() => void reviewWalletTopup(request, "approved")} disabled={topupReviewBusyId !== null || topupsLoading} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-black text-white hover:bg-emerald-700 disabled:cursor-wait disabled:opacity-60">
+                      {topupReviewBusyId === request.id ? "جارٍ التنفيذ…" : "اعتماد وإضافة الرصيد"}
+                    </button>
+                    <button type="button" onClick={() => void reviewWalletTopup(request, "rejected")} disabled={topupReviewBusyId !== null || topupsLoading} className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-black text-red-700 hover:bg-red-100 disabled:cursor-wait disabled:opacity-60">
+                      رفض الطلب
+                    </button>
+                  </div>
                 </article>
               ))}
             </div>
           )}
-          <p className="mt-3 text-[11px] leading-6 text-slate-500">السند محفوظ في bucket خاص؛ يتحقق الخادم من صلاحية الموظف عند كل طلب عرض، ولا يُنشأ رابط تخزين قابل للمشاركة.</p>
+          <p className="mt-3 text-[11px] leading-6 text-slate-500">السند محفوظ في bucket خاص؛ يتحقق الخادم من صلاحية الموظف عند كل طلب عرض واعتماد. الاعتماد ذري ومشروط ببقاء الطلب معلّقًا، ولا يضيف الرصيد أكثر من مرة.</p>
         </section>
 
         <section>
