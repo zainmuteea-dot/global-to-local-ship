@@ -204,8 +204,9 @@ function mapDatabaseOrder(row: any): OrderItem {
       ? { UNKNOWN: null }
       : {};
   const quotedTotal = toNullableNumber(row.quote_total);
+  // لا نستبدل السعر الأصلي بالتكلفة المحاسبية عند غياب السعر؛ فهما قيمتان مختلفتان.
   const originalPrice: CurrencyMoney =
-    currency && quotedTotal !== null ? { [currency]: quotedTotal } : totalCost;
+    currency && quotedTotal !== null ? { [currency]: quotedTotal } : {};
 
   return {
     id,
