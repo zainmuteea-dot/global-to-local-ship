@@ -46,6 +46,50 @@ type WalletTopupReview = {
 export const AUTO_REFRESH_SECONDS = 30;
 const PAGE_SIZE = 10;
 
+/** Extracts the safe Arabic error returned by the proof Edge Function. */
+export async function getWalletProofErrorMessage(cause: unknown): Promise<string> {
+  const errorObject = typeof cause === "object" && cause !== null
+    ? cause as { context?: unknown; name?: unknown; message?: unknown }
+    : null;
+  const response = errorObject?.context instanceof Response ? errorObject.context : null;
+
+  if (response) {
+    let serverMessage = "";
+    try {
+      const body = await response.clone().json() as { error?: unknown };
+      if (typeof body.error === "string") serverMessage = body.error.trim();
+    } catch {
+      // The edge gateway may return a non-JSON body when the function is unavailable.
+    }
+
+    if (response.status === 401) {
+      return "انتهت جلسة الدخول أو تعذّر التحقق منها. سجّل الخروج ثم ادخل مجددًا بحساب الموظف.";
+    }
+    if (response.status === 403) {
+      return "الحساب الحالي لا يملك صلاحية admin أو staff لعرض السند. لم أغيّر صلاحيات الحساب.";
+    }
+    if (response.status === 404) {
+      return serverMessage || "لم يُعثر على طلب الشحن أو ملف السند في التخزين الخاص. تحقق من وجود الملف ومساره.";
+    }
+    if (response.status === 409) {
+      return serverMessage || "الطلب لم يعد قيد المراجعة. حدّث القائمة قبل محاولة عرض السند.";
+    }
+    if (response.status === 413 || response.status === 415) {
+      return serverMessage || "ملف السند حجمه أو نوعه غير مدعوم.";
+    }
+    if (response.status >= 500) {
+      return serverMessage || "تعذر على الخادم التحقق من الصلاحية أو قراءة السند. راجع سجلات دالة wallet-topup-proof في Supabase.";
+    }
+    if (serverMessage) return `تعذر عرض السند: ${serverMessage}`;
+  }
+
+  const errorName = typeof errorObject?.name === "string" ? errorObject.name : "";
+  if (errorName === "FunctionsFetchError" || errorName === "FunctionsRelayError") {
+    return "تعذر الاتصال بدالة عرض السند. تحقق من اتصال الإنترنت ومن نشر wallet-topup-proof في مشروع Supabase المتصل بالموقع.";
+  }
+  return "تعذر استلام صورة السند. حدّث الصفحة، وإذا تكرر الخطأ فتحقق من نشر دالة wallet-topup-proof ومشروع Supabase المرتبط.";
+}
+
 export function matchesPeriod(createdAt: string, period: Period, now: Date): boolean {
   const created = new Date(createdAt);
 
@@ -382,7 +426,7 @@ function PaymentsPage() {
       setTopupProofPreview(URL.createObjectURL(imageBlob));
     } catch (cause) {
       console.error("Could not open wallet top-up proof", cause);
-      setTopupsError("تعذر عرض السند أو لا تملك صلاحية الوصول إليه.");
+      setTopupsError(await getWalletProofErrorMessage(cause));
     } finally {
       setTopupProofLoadingId(null);
     }
