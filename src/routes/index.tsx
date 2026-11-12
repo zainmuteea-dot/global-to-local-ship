@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import React, { useState, useEffect } from "react";
 import {
   Bell,
@@ -13,6 +13,7 @@ import {
   Search,
   ShieldCheck,
   ShoppingBag,
+  Store,
   ShoppingCart,
   Sparkles,
   Star,
@@ -971,6 +972,15 @@ export function HomePage() {
             اطلب الآن
           </button>
         </form>
+      </section>
+
+      <section className="mx-auto flex w-full max-w-2xl flex-col gap-3 px-4 pt-4 sm:flex-row">
+        <Link to="/marketplace" className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/10 px-5 py-3.5 text-sm font-bold text-white shadow-lg backdrop-blur-md transition hover:bg-white/20">
+          <ShoppingBag aria-hidden="true" className="size-4" /> تصفح سوق التجار المحليين
+        </Link>
+        <Link to="/merchant" className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border border-orange-300/40 bg-orange-500/15 px-5 py-3.5 text-sm font-bold text-white shadow-lg backdrop-blur-md transition hover:bg-orange-500/25">
+          <Store aria-hidden="true" className="size-4" /> بوابة التاجر
+        </Link>
       </section>
 
       {/* 🌟 خطوات الشراء الـ 5 */}
