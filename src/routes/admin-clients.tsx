@@ -170,6 +170,69 @@ function resolveOrderCurrency(row: any, costs: CurrencyMoney): CurrencyCode | nu
   return known.length === 1 ? (known[0]?.code ?? null) : null;
 }
 
+/** يجمع الدفعات المعتمدة لكل طلب عبر payments.order_id = orders.id. */
+async function fetchApprovedPaymentsByOrder(orderRows: any[]): Promise<Map<string, CurrencyMoney>> {
+  const orderIds = Array.from(
+    new Set(orderRows.map((row) => String(row.id ?? "")).filter(Boolean)),
+  );
+  const paidByOrderId = new Map<string, CurrencyMoney>();
+
+  // المبالغ الصفرية هنا تعني أنه لا توجد دفعات معتمدة مسجلة لذلك الطلب.
+  for (const row of orderRows) {
+    const id = String(row.id ?? "");
+    const costs: CurrencyMoney = {
+      USD: toNullableNumber(row.total_cost_usd),
+      YER: toNullableNumber(row.total_cost_yer),
+      SAR: toNullableNumber(row.total_cost_sar),
+    };
+    const code = resolveOrderCurrency(row, costs);
+    paidByOrderId.set(id, code ? { [code]: 0 } : {});
+  }
+
+  if (!orderIds.length) return paidByOrderId;
+
+  const db = supabase as any;
+  const pageSize = 1000;
+  for (let start = 0; start < orderIds.length; start += 100) {
+    const idChunk = orderIds.slice(start, start + 100);
+    for (let offset = 0; ; offset += pageSize) {
+      const { data, error } = await db
+        .from("payments")
+        .select("id, order_id, amount, currency")
+        .in("order_id", idChunk)
+        .eq("status", "approved")
+        .order("order_id", { ascending: true })
+        .order("id", { ascending: true })
+        .range(offset, offset + pageSize - 1);
+
+      if (error) throw error;
+
+      for (const payment of data ?? []) {
+        const orderId = String(payment.order_id ?? "");
+        if (!paidByOrderId.has(orderId)) continue;
+        const current = paidByOrderId.get(orderId) ?? {};
+        const code = normalizeCurrency(payment.currency);
+        const amount = toNullableNumber(payment.amount);
+
+        if (!code) {
+          paidByOrderId.set(orderId, { ...current, UNKNOWN: null });
+        } else if (amount === null || current[code] === null) {
+          paidByOrderId.set(orderId, { ...current, [code]: null });
+        } else {
+          paidByOrderId.set(orderId, {
+            ...current,
+            [code]: (current[code] ?? 0) + amount,
+          });
+        }
+      }
+
+      if ((data ?? []).length < pageSize) break;
+    }
+  }
+
+  return paidByOrderId;
+}
+
 function mapDatabaseOrder(row: any): OrderItem {
   const id = String(row.id);
   const trackingCode = String(row.tracking_code || row.order_number || `SC-${id.slice(0, 8)}`);
@@ -480,12 +543,19 @@ export function AdminOperationsDashboard({
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setOrders((data || []).map(mapDatabaseOrder));
+      const orderRows = data || [];
+      const paidByOrderId = await fetchApprovedPaymentsByOrder(orderRows);
+      setOrders(
+        orderRows.map((row) => {
+          const order = mapDatabaseOrder(row);
+          return { ...order, paid: paidByOrderId.get(order.id) ?? {} };
+        }),
+      );
     } catch (error) {
       setOrders([]);
       setFeedback({
         type: "error",
-        message: `تعذر تحميل الطلبات من قاعدة البيانات: ${getErrorMessage(error)}`,
+        message: `تعذر تحميل الطلبات والدفعات المعتمدة من قاعدة البيانات: ${getErrorMessage(error)}`,
       });
     } finally {
       setLoading(false);
@@ -539,9 +609,11 @@ export function AdminOperationsDashboard({
 
       if (error) throw error;
       if (!data) throw new Error("لم يُحدّث أي طلب. تحقق من صلاحيتك أو من وجود الطلب.");
-      const updatedOrder = mapDatabaseOrder(data);
+      const mappedOrder = mapDatabaseOrder(data);
       setOrders((previous) =>
-        previous.map((order) => (order.id === orderId ? updatedOrder : order)),
+        previous.map((order) =>
+          order.id === orderId ? { ...mappedOrder, paid: order.paid } : order,
+        ),
       );
       setFeedback({ type: "success", message: "تم تحديث حالة الطلب وحفظها." });
     } catch (error) {
@@ -946,13 +1018,13 @@ export function AdminOperationsDashboard({
             <div className="min-h-16 text-base sm:text-lg font-black text-emerald-600 font-mono tracking-tight leading-relaxed break-words mb-1">
               {formatBreakdown(summaryTotals.sumPaid)}
             </div>
-            <div className="text-xs font-black text-emerald-950">إجمالي اللي دفعوه العملاء</div>
+            <div className="text-xs font-black text-emerald-950">إجمالي الدفعات المعتمدة</div>
             <div className="text-[10px] text-emerald-700 mt-0.5">
               المبالغ معروضة بالريال اليمني
             </div>
             <div className="mt-2 pt-2 border-t border-emerald-200/80 text-[10px] font-bold text-emerald-700 flex items-center justify-between">
-              <span>sum(paid)</span>
-              <span>حسب البيانات المسجلة</span>
+              <span>دفعات معتمدة</span>
+              <span>من payments عبر order_id</span>
             </div>
           </div>
 
