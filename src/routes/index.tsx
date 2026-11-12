@@ -31,6 +31,7 @@ import {
   Send,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useSiteTickerMessages } from "@/hooks/use-site-ticker-messages";
 import HeroFlipping from "@/components/HeroFlipping";
 import BestBackground from "@/components/BestBackground";
 import StepsBest from "@/components/StepsBest";
@@ -394,6 +395,9 @@ export const QuickSidebar: React.FC<{
    3. HomePage: المكون الرئيسي لصفحة البداية بالهوية الجديدة
    ========================================================================= */
 export function HomePage() {
+  const tickerQuery = useSiteTickerMessages("home_guest");
+  const fallbackWelcomeMessages = [{ id: "welcome-fallback", message: "مرحبًا بكم في السوق الشامل، تمتعوا بتجربة تسوق عالمية مميزة", badge: "أهلًا بكم", href: null }];
+  const welcomeMessages = tickerQuery.loading || tickerQuery.error ? fallbackWelcomeMessages : tickerQuery.messages;
   const [user, setUser] = useState<any>(null);
   const [authResolved, setAuthResolved] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -681,16 +685,20 @@ export function HomePage() {
 }
 `}</style>
       <BestBackground />
-      {authResolved && !user && (
+      {authResolved && !user && welcomeMessages.length > 0 && (
         <div
           className="als-welcome-marquee relative z-40 overflow-hidden border-b border-sky-300/25 bg-gradient-to-r from-[#0A2540] via-[#0F4C81] to-[#0A2540] px-3 py-2 text-sky-50 shadow-sm"
           role="status"
-          aria-label="مرحبًا بكم في السوق الشامل، تمتعوا بتجربة تسوق عالمية مميزة"
+          aria-label={welcomeMessages.map((item) => item.message).join(". ")}
           dir="ltr"
         >
           <div className="als-welcome-track" aria-hidden="true">
-            <span className="als-welcome-item" dir="rtl">مرحبًا بكم في السوق الشامل، تمتعوا بتجربة تسوق عالمية مميزة</span>
-            <span className="als-welcome-item" dir="rtl">مرحبًا بكم في السوق الشامل، تمتعوا بتجربة تسوق عالمية مميزة</span>
+            {[...welcomeMessages, ...welcomeMessages].map((item, index) => (
+              <span className="als-welcome-item" dir="rtl" key={`${item.id}-${index}`}>
+                {item.badge && <strong className="ml-2 text-orange-200">{item.badge}</strong>}
+                {item.href ? <a href={item.href} className="hover:text-orange-200">{item.message}</a> : item.message}
+              </span>
+            ))}
           </div>
         </div>
       )}
