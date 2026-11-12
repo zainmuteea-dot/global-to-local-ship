@@ -53,6 +53,10 @@ function ClientDailyPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [customerNames, setCustomerNames] = useState<string[]>([]);
+  const [customerNamesLoading, setCustomerNamesLoading] = useState(false);
+  const [customerNamesError, setCustomerNamesError] = useState("");
+  const [customerPickerOpen, setCustomerPickerOpen] = useState(false);
   const [form, setForm] = useState({
     customerName: "",
     kind: "قبض" as EntryKind,
@@ -64,6 +68,10 @@ function ClientDailyPage() {
 
   const db = supabase as any;
   const canViewEntries = viewPermission.allowed || managePermission.allowed;
+  const matchingCustomerNames = useMemo(() => {
+    const query = form.customerName.trim().toLocaleLowerCase();
+    return customerNames.filter((name) => !query || name.toLocaleLowerCase().includes(query));
+  }, [customerNames, form.customerName]);
 
   const loadEntries = async () => {
     setLoading(true);
@@ -95,6 +103,61 @@ function ClientDailyPage() {
   useEffect(() => {
     if (!viewPermission.loading && !managePermission.loading && canViewEntries) void loadEntries();
   }, [viewPermission.loading, viewPermission.allowed, managePermission.loading, managePermission.allowed]);
+
+  useEffect(() => {
+    if (viewPermission.loading || managePermission.loading || !managePermission.allowed) return;
+
+    let active = true;
+    const loadAllPages = async (table: string, columns: string) => {
+      const pageSize = 500;
+      const rows: any[] = [];
+      for (let from = 0; ; from += pageSize) {
+        const { data, error: queryError } = await db
+          .from(table)
+          .select(columns)
+          .range(from, from + pageSize - 1);
+        if (queryError) throw queryError;
+        const page = data ?? [];
+        rows.push(...page);
+        if (page.length < pageSize) return rows;
+      }
+    };
+
+    async function loadCustomerNames() {
+      setCustomerNamesLoading(true);
+      setCustomerNamesError("");
+      try {
+        const [profiles, roles] = await Promise.all([
+          loadAllPages("profiles", "id,full_name"),
+          loadAllPages("user_roles", "user_id,role"),
+        ]);
+        const staffIds = new Set(
+          roles
+            .filter((row: { user_id: string; role: string }) => row.role === "admin" || row.role === "staff")
+            .map((row: { user_id: string }) => row.user_id),
+        );
+        const names = Array.from(
+          new Set(
+            profiles
+              .filter((profile: { id: string }) => !staffIds.has(profile.id))
+              .map((profile: { full_name: string | null }) => profile.full_name?.trim() ?? "")
+              .filter((name: string) => name.length > 0),
+          ),
+        ).sort((a, b) => a.localeCompare(b, "ar"));
+        if (active) setCustomerNames(names);
+      } catch (cause) {
+        console.error("تعذر تحميل أسماء العملاء:", cause);
+        if (active) setCustomerNamesError("تعذر تحميل قائمة الأسماء. يمكنك كتابة اسم العميل يدويًا.");
+      } finally {
+        if (active) setCustomerNamesLoading(false);
+      }
+    }
+
+    void loadCustomerNames();
+    return () => {
+      active = false;
+    };
+  }, [viewPermission.loading, managePermission.loading, managePermission.allowed]);
 
   const totalsByCurrency = useMemo(() => {
     const totals: Record<Currency, { receipt: number; payment: number }> = {
@@ -226,9 +289,64 @@ function ClientDailyPage() {
           <form onSubmit={addEntry} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="mb-4 flex items-center gap-2 font-extrabold"><Plus size={18} /> قيد جديد</h2>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <label className="space-y-1 text-sm font-bold">اسم العميل
-                <input required maxLength={200} value={form.customerName} onChange={(e) => setForm({ ...form, customerName: e.target.value })} className="h-11 w-full rounded-xl border border-slate-200 px-3 font-normal" placeholder="اكتب اسم العميل" />
-              </label>
+              <div className="space-y-1 text-sm font-bold">
+                <label htmlFor="client-daily-customer-name">اسم العميل</label>
+                <div className="relative">
+                  <input
+                    id="client-daily-customer-name"
+                    required
+                    maxLength={200}
+                    value={form.customerName}
+                    onFocus={() => setCustomerPickerOpen(true)}
+                    onBlur={() => window.setTimeout(() => setCustomerPickerOpen(false), 120)}
+                    onChange={(event) => {
+                      setForm({ ...form, customerName: event.target.value });
+                      setCustomerPickerOpen(true);
+                    }}
+                    aria-autocomplete="list"
+                    aria-expanded={customerPickerOpen}
+                    aria-controls="client-daily-customer-options"
+                    className="h-11 w-full rounded-xl border border-slate-200 px-3 font-normal"
+                    placeholder="اضغط لعرض أسماء العملاء أو اكتب للبحث"
+                  />
+                  {customerPickerOpen && (
+                    <div
+                      id="client-daily-customer-options"
+                      role="listbox"
+                      aria-label="أسماء العملاء"
+                      className="absolute inset-x-0 top-full z-30 mt-1 max-h-64 overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-lg"
+                    >
+                      {customerNamesLoading ? (
+                        <div className="px-3 py-2 text-sm font-normal text-slate-500">جارٍ تحميل أسماء العملاء…</div>
+                      ) : customerNamesError ? (
+                        <div className="px-3 py-2 text-sm font-normal text-amber-700">{customerNamesError}</div>
+                      ) : matchingCustomerNames.length > 0 ? (
+                        matchingCustomerNames.map((name) => (
+                          <button
+                            key={name}
+                            type="button"
+                            role="option"
+                            aria-selected={form.customerName === name}
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => {
+                              setForm({ ...form, customerName: name });
+                              setCustomerPickerOpen(false);
+                            }}
+                            className="block w-full rounded-lg px-3 py-2 text-right text-sm font-normal hover:bg-slate-100 focus:bg-slate-100 focus:outline-none"
+                          >
+                            {name}
+                          </button>
+                        ))
+                      ) : customerNames.length === 0 ? (
+                        <div className="px-3 py-2 text-sm font-normal text-slate-500">لا توجد أسماء عملاء متاحة؛ يمكنك كتابة الاسم يدويًا.</div>
+                      ) : (
+                        <div className="px-3 py-2 text-sm font-normal text-slate-500">ما لقينا اسمًا مطابقًا. تقدر تكتب الاسم يدويًا.</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs font-normal text-slate-500">تظهر أسماء حسابات العملاء المسموح لحسابك بقراءتها.</p>
+              </div>
               <label className="space-y-1 text-sm font-bold">نوع القيد
                 <select value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value as EntryKind })} className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 font-normal"><option value="قبض">قبض</option><option value="صرف">صرف</option></select>
               </label>
