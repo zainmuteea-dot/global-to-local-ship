@@ -523,7 +523,7 @@ export default function AdminOperationsPage() {
   };
 
   const deleteVoucher = async (voucher: VoucherRow) => {
-    if (!window.confirm(`حذف السند بمبلغ ${voucher.amount} ${voucher.currency} نهائياً؟`)) return;
+    if (!window.confirm(`حذف السند بم��لغ ${voucher.amount} ${voucher.currency} نهائياً؟`)) return;
     setDeletingVoucherId(voucher.id);
     const { data, error } = await supabase
       .from("finance_vouchers")
@@ -905,7 +905,7 @@ export default function AdminOperationsPage() {
     const totalCostYER = hasValidOriginalPrice ? Math.round(originalPriceSAR * 142) : undefined;
 
     // السعر المدخل في نموذج الإدارة موسوم بـ SAR. نخزن الأصل كما هو،
-    // ونحفظ مقابله بالريال اليمني حسب معامل التحويل المستخدم في صفحة الطلبات.
+    // ونحفظ مقابله بالريال اليمني ح��ب معامل التحويل المستخدم في صفحة الطلبات.
     const orderCode = String(newOrder.orderNumber ?? "").trim();
     if (!orderCode) {
       setStatusNotice({
@@ -1205,6 +1205,14 @@ export default function AdminOperationsPage() {
           >
             <Store className="size-4" />
             <span>إدارة بوابات المتاجر</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => window.location.assign("/admin/merchants")}
+            className="flex min-w-0 items-center gap-2 rounded-xl bg-[#161616] px-2 py-3 text-[11px] leading-5 sm:flex-none sm:px-3 sm:text-xs font-bold text-white transition hover:bg-[#2c2419]"
+          >
+            <Store className="size-4" />
+            <span>إدارة سوق التجار</span>
           </button>
 
           <button
@@ -1677,7 +1685,7 @@ export default function AdminOperationsPage() {
               className="hidden min-w-0 rounded-2xl border border-sky-100 bg-white shadow-xs 2xl:block"
             >
               <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-                <h2 className="font-black text-sm text-[#0A2540]">الطلبات والشحنات</h2>
+                <h2 className="font-black text-sm text-[#0A2540]">الطلب��ت والشحنات</h2>
                 <span className="text-xs text-slate-500">{filteredOrders.length} نتيجة</span>
               </div>
               <div className="w-full min-w-0 overflow-hidden">

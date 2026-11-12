@@ -6,6 +6,60 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
+type InsertWithRequired<Row, Required extends keyof Row> = Pick<Row, Required> & Partial<Omit<Row, Required>>
+
+type MerchantStoreRow = {
+  id: string
+  owner_id: string
+  name: string
+  description: string
+  contact_phone: string
+  city: string
+  status: "active" | "suspended"
+  commission_rate: number
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+type MerchantProductRow = {
+  id: string
+  store_id: string
+  title: string
+  description: string
+  category: string
+  price: number
+  currency: "YER" | "SAR" | "USD"
+  stock: number
+  image_path: string
+  status: "draft" | "pending_review" | "approved" | "rejected" | "archived"
+  review_note: string | null
+  created_at: string
+  updated_at: string
+}
+
+type MerchantOrderRow = {
+  id: string
+  customer_id: string | null
+  store_id: string
+  product_id: string
+  product_title: string
+  quantity: number
+  unit_price: number
+  currency: "YER" | "SAR" | "USD"
+  commission_rate: number
+  total_amount: number
+  commission_amount: number
+  seller_amount: number
+  customer_name: string
+  customer_phone: string
+  customer_city: string
+  delivery_address: string
+  status: "pending" | "confirmed" | "preparing" | "ready" | "delivered" | "cancelled"
+  created_at: string
+  updated_at: string
+}
+
 export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
@@ -96,6 +150,40 @@ export type Database = {
           source?: string
           voucher_type?: string
         }
+        Relationships: []
+      }
+      merchant_orders: {
+        Row: MerchantOrderRow
+        Insert: InsertWithRequired<
+          MerchantOrderRow,
+          | "store_id"
+          | "product_id"
+          | "product_title"
+          | "quantity"
+          | "unit_price"
+          | "currency"
+          | "commission_rate"
+          | "total_amount"
+          | "commission_amount"
+          | "seller_amount"
+          | "customer_name"
+          | "customer_phone"
+          | "customer_city"
+          | "delivery_address"
+        >
+        Update: Partial<MerchantOrderRow>
+        Relationships: []
+      }
+      merchant_products: {
+        Row: MerchantProductRow
+        Insert: InsertWithRequired<MerchantProductRow, "store_id" | "title" | "price" | "image_path">
+        Update: Partial<MerchantProductRow>
+        Relationships: []
+      }
+      merchant_stores: {
+        Row: MerchantStoreRow
+        Insert: InsertWithRequired<MerchantStoreRow, "owner_id" | "name" | "contact_phone">
+        Update: Partial<MerchantStoreRow>
         Relationships: []
       }
       notification_reads: {

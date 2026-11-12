@@ -35,6 +35,8 @@ import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as InsuranceAmountsRouteImport } from './routes/insurance-amounts'
 import { Route as InventoryRouteImport } from './routes/inventory'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as MarketplaceRouteImport } from './routes/marketplace'
+import { Route as MerchantRouteImport } from './routes/merchant'
 import { Route as MerchantReportsRouteImport } from './routes/merchant-reports'
 import { Route as MyAccountRouteImport } from './routes/my-account'
 import { Route as NewOrderRouteImport } from './routes/new-order'
@@ -59,6 +61,7 @@ import { Route as AccountInvoicesRouteImport } from './routes/account/invoices'
 import { Route as AccountOrdersRouteImport } from './routes/account/orders'
 import { Route as AccountProfileRouteImport } from './routes/account/profile'
 import { Route as AccountWalletRouteImport } from './routes/account/wallet'
+import { Route as AdminMerchantsRouteImport } from './routes/admin/merchants'
 import { Route as AdminOfferCardsRouteImport } from './routes/admin/offer-cards'
 import { Route as AdminOffersRouteImport } from './routes/admin/offers'
 import { Route as AdminSheinSyncRouteImport } from './routes/admin/shein-sync'
@@ -201,6 +204,16 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MarketplaceRoute = MarketplaceRouteImport.update({
+  id: '/marketplace',
+  path: '/marketplace',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MerchantRoute = MerchantRouteImport.update({
+  id: '/merchant',
+  path: '/merchant',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MerchantReportsRoute = MerchantReportsRouteImport.update({
   id: '/merchant-reports',
   path: '/merchant-reports',
@@ -321,6 +334,11 @@ const AccountWalletRoute = AccountWalletRouteImport.update({
   path: '/account/wallet',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminMerchantsRoute = AdminMerchantsRouteImport.update({
+  id: '/merchants',
+  path: '/merchants',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminOfferCardsRoute = AdminOfferCardsRouteImport.update({
   id: '/offer-cards',
   path: '/offer-cards',
@@ -404,6 +422,8 @@ export interface FileRoutesByFullPath {
   '/insurance-amounts': typeof InsuranceAmountsRoute
   '/inventory': typeof InventoryRoute
   '/login': typeof LoginRoute
+  '/marketplace': typeof MarketplaceRoute
+  '/merchant': typeof MerchantRoute
   '/merchant-reports': typeof MerchantReportsRoute
   '/my-account': typeof MyAccountRoute
   '/new-order': typeof NewOrderRoute
@@ -428,6 +448,7 @@ export interface FileRoutesByFullPath {
   '/account/orders': typeof AccountOrdersRoute
   '/account/profile': typeof AccountProfileRoute
   '/account/wallet': typeof AccountWalletRoute
+  '/admin/merchants': typeof AdminMerchantsRoute
   '/admin/offer-cards': typeof AdminOfferCardsRoute
   '/admin/offers': typeof AdminOffersRoute
   '/admin/shein-sync': typeof AdminSheinSyncRoute
@@ -467,6 +488,8 @@ export interface FileRoutesByTo {
   '/insurance-amounts': typeof InsuranceAmountsRoute
   '/inventory': typeof InventoryRoute
   '/login': typeof LoginRoute
+  '/marketplace': typeof MarketplaceRoute
+  '/merchant': typeof MerchantRoute
   '/merchant-reports': typeof MerchantReportsRoute
   '/my-account': typeof MyAccountRoute
   '/new-order': typeof NewOrderRoute
@@ -491,6 +514,7 @@ export interface FileRoutesByTo {
   '/account/orders': typeof AccountOrdersRoute
   '/account/profile': typeof AccountProfileRoute
   '/account/wallet': typeof AccountWalletRoute
+  '/admin/merchants': typeof AdminMerchantsRoute
   '/admin/offer-cards': typeof AdminOfferCardsRoute
   '/admin/offers': typeof AdminOffersRoute
   '/admin/shein-sync': typeof AdminSheinSyncRoute
@@ -531,6 +555,8 @@ export interface FileRoutesById {
   '/insurance-amounts': typeof InsuranceAmountsRoute
   '/inventory': typeof InventoryRoute
   '/login': typeof LoginRoute
+  '/marketplace': typeof MarketplaceRoute
+  '/merchant': typeof MerchantRoute
   '/merchant-reports': typeof MerchantReportsRoute
   '/my-account': typeof MyAccountRoute
   '/new-order': typeof NewOrderRoute
@@ -555,6 +581,7 @@ export interface FileRoutesById {
   '/account/orders': typeof AccountOrdersRoute
   '/account/profile': typeof AccountProfileRoute
   '/account/wallet': typeof AccountWalletRoute
+  '/admin/merchants': typeof AdminMerchantsRoute
   '/admin/offer-cards': typeof AdminOfferCardsRoute
   '/admin/offers': typeof AdminOffersRoute
   '/admin/shein-sync': typeof AdminSheinSyncRoute
@@ -596,6 +623,8 @@ export interface FileRouteTypes {
     | '/insurance-amounts'
     | '/inventory'
     | '/login'
+    | '/marketplace'
+    | '/merchant'
     | '/merchant-reports'
     | '/my-account'
     | '/new-order'
@@ -620,6 +649,7 @@ export interface FileRouteTypes {
     | '/account/orders'
     | '/account/profile'
     | '/account/wallet'
+    | '/admin/merchants'
     | '/admin/offer-cards'
     | '/admin/offers'
     | '/admin/shein-sync'
@@ -659,6 +689,8 @@ export interface FileRouteTypes {
     | '/insurance-amounts'
     | '/inventory'
     | '/login'
+    | '/marketplace'
+    | '/merchant'
     | '/merchant-reports'
     | '/my-account'
     | '/new-order'
@@ -683,6 +715,7 @@ export interface FileRouteTypes {
     | '/account/orders'
     | '/account/profile'
     | '/account/wallet'
+    | '/admin/merchants'
     | '/admin/offer-cards'
     | '/admin/offers'
     | '/admin/shein-sync'
@@ -722,6 +755,8 @@ export interface FileRouteTypes {
     | '/insurance-amounts'
     | '/inventory'
     | '/login'
+    | '/marketplace'
+    | '/merchant'
     | '/merchant-reports'
     | '/my-account'
     | '/new-order'
@@ -746,6 +781,7 @@ export interface FileRouteTypes {
     | '/account/orders'
     | '/account/profile'
     | '/account/wallet'
+    | '/admin/merchants'
     | '/admin/offer-cards'
     | '/admin/offers'
     | '/admin/shein-sync'
@@ -786,6 +822,8 @@ export interface RootRouteChildren {
   InsuranceAmountsRoute: typeof InsuranceAmountsRoute
   InventoryRoute: typeof InventoryRoute
   LoginRoute: typeof LoginRoute
+  MarketplaceRoute: typeof MarketplaceRoute
+  MerchantRoute: typeof MerchantRoute
   MerchantReportsRoute: typeof MerchantReportsRoute
   MyAccountRoute: typeof MyAccountRoute
   NewOrderRoute: typeof NewOrderRoute
@@ -1001,6 +1039,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/marketplace': {
+      id: '/marketplace'
+      path: '/marketplace'
+      fullPath: '/marketplace'
+      preLoaderRoute: typeof MarketplaceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/merchant': {
+      id: '/merchant'
+      path: '/merchant'
+      fullPath: '/merchant'
+      preLoaderRoute: typeof MerchantRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/merchant-reports': {
       id: '/merchant-reports'
       path: '/merchant-reports'
@@ -1169,6 +1221,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccountWalletRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/merchants': {
+      id: '/admin/merchants'
+      path: '/merchants'
+      fullPath: '/admin/merchants'
+      preLoaderRoute: typeof AdminMerchantsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/offer-cards': {
       id: '/admin/offer-cards'
       path: '/offer-cards'
@@ -1250,6 +1309,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AdminRouteChildren {
+  AdminMerchantsRoute: typeof AdminMerchantsRoute
   AdminOfferCardsRoute: typeof AdminOfferCardsRoute
   AdminOffersRoute: typeof AdminOffersRoute
   AdminSheinSyncRoute: typeof AdminSheinSyncRoute
@@ -1258,6 +1318,7 @@ interface AdminRouteChildren {
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminMerchantsRoute: AdminMerchantsRoute,
   AdminOfferCardsRoute: AdminOfferCardsRoute,
   AdminOffersRoute: AdminOffersRoute,
   AdminSheinSyncRoute: AdminSheinSyncRoute,
@@ -1306,6 +1367,8 @@ const rootRouteChildren: RootRouteChildren = {
   InsuranceAmountsRoute: InsuranceAmountsRoute,
   InventoryRoute: InventoryRoute,
   LoginRoute: LoginRoute,
+  MarketplaceRoute: MarketplaceRoute,
+  MerchantRoute: MerchantRoute,
   MerchantReportsRoute: MerchantReportsRoute,
   MyAccountRoute: MyAccountRoute,
   NewOrderRoute: NewOrderRoute,
