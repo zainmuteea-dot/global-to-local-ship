@@ -103,7 +103,7 @@ type SystemNotification = {
   user_id: string | null;
   title: string;
   message: string | null;
-  type: string;
+  type: string | null;
   created_at: string;
   sent_by?: string | null;
   href?: string | null;
