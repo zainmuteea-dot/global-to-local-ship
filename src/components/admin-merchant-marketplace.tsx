@@ -109,12 +109,20 @@ function CreateStoreForm({ onCreated }: { onCreated: () => void }) {
       _contact_phone: form.phone.trim(),
       _city: form.city.trim(),
     });
+    if (error) { setBusy(false); setMessage("تعذر إنشاء المتجر. قد يكون للمستخدم متجر مسجل بالفعل."); return; }
+    const { error: notificationError } = await db.from("notifications").insert({
+      user_id: selected.user_id,
+      title: "مبروك، تم منحك علامة تاجر.",
+      body: 'الآن تقدر تضيف منتجات متجرك وصورها من زر "أضف منتج". منتجاتك بتظهر للزبائن بعد ما تعتمدها الإدارة.',
+      kind: "account",
+      href: "/merchant?view=add-product",
+      is_active: true,
+    });
     setBusy(false);
-    if (error) { setMessage("تعذر إنشاء المتجر. قد يكون للمستخدم متجر مسجل بالفعل."); return; }
     setSelected(null);
     setSearch("");
     setForm({ name: "", phone: "", city: "" });
-    setMessage("تم تسجيل المتجر بنجاح.");
+    setMessage(notificationError ? "تم تسجيل المتجر، لكن تعذر إرسال إشعار التاجر. يمكن للتاجر البدء من لوحة المتجر." : "تم تسجيل المتجر وإرسال إشعار منح صفة التاجر.");
     onCreated();
   }
 

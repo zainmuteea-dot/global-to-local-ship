@@ -12,12 +12,19 @@ import { formatMoney, loadMarketplace, type MarketplaceProduct } from "@/lib/mer
 
 const db = supabase as any;
 
+async function loadMyMerchantStore() {
+  const { data, error } = await db.rpc("merchant_get_my_store");
+  if (error) throw error;
+  return Array.isArray(data) ? data[0] ?? null : data;
+}
+
 export function MerchantMarketplace() {
   const { user } = useSession(false);
   const { data: products = [], error, isLoading, mutate } = useSWR("merchant-marketplace", loadMarketplace, {
     revalidateOnFocus: true,
     dedupingInterval: 20_000,
   });
+  const { data: myStore } = useSWR(user ? ["merchant-my-store", user.id] : null, loadMyMerchantStore);
   const [search, setSearch] = useState("");
   const [selectedStoreId, setSelectedStoreId] = useState(() => {
     if (typeof window === "undefined") return "";
@@ -75,9 +82,20 @@ export function MerchantMarketplace() {
                 عرض كل المتاجر
               </Link>
             )}
-            <Link to="/merchant" className="inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold transition-colors hover:bg-muted">
-              <Store aria-hidden="true" className="size-4" /> بوابة التاجر
-            </Link>
+            {selectedStoreId && myStore?.id === selectedStoreId ? (
+              <>
+                <Link to="/merchant" className="inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold transition-colors hover:bg-muted">
+                  <Store aria-hidden="true" className="size-4" /> لوحة متجري
+                </Link>
+                <a href="/merchant?view=add-product" className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
+                  <Package aria-hidden="true" className="size-4" /> + أضف منتج
+                </a>
+              </>
+            ) : (
+              <Link to="/merchant" className="inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold transition-colors hover:bg-muted">
+                <Store aria-hidden="true" className="size-4" /> بوابة التاجر
+              </Link>
+            )}
           </div>
         </div>
         <div className="mt-7 flex flex-col gap-3 sm:flex-row">
