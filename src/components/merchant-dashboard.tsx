@@ -1,6 +1,6 @@
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import useSWR from "swr";
-import { BadgeCheck, ImagePlus, PackagePlus, Store, Truck } from "lucide-react";
+import { BadgeCheck, Camera, ImagePlus, PackagePlus, Store, Truck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -167,6 +167,8 @@ function ProductForm({ store, onCreated, presetCategory }: { store: MerchantStor
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [formElement, setFormElement] = useState<HTMLFormElement | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
+  const galleryInputRef = useRef<HTMLInputElement | null>(null);
 
   function resetForm() {
     setForm({ title: "", description: "", category: presetCategory ?? "", price: "", currency: "YER", stock: "1" });
@@ -276,7 +278,20 @@ function ProductForm({ store, onCreated, presetCategory }: { store: MerchantStor
         <Field label="السعر"><Input required type="number" min="0.01" step="0.01" value={form.price} onChange={(event) => setForm({ ...form, price: event.target.value })} /></Field>
         <Field label="العملة"><select value={form.currency} onChange={(event) => setForm({ ...form, currency: event.target.value })} className="h-9 rounded-md border border-input bg-background px-3 text-sm"><option value="YER">ريال يمني (YER)</option><option value="SAR">ريال سعودي (SAR)</option><option value="USD">دولار (USD)</option></select></Field>
         <Field label="الكمية المتاحة"><Input required type="number" min="0" max="1000000" step="1" value={form.stock} onChange={(event) => setForm({ ...form, stock: event.target.value })} /></Field>
-        <Field label="صورة المنتج"><Input required={!draftImagePath} type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={(event) => setImage(event.target.files?.[0] ?? null)} className="h-auto min-h-9 py-2" /></Field>
+        <div className="grid gap-1.5 text-sm font-medium">
+          <span>صورة المنتج</span>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" disabled={busy || store.status !== "active"} onClick={() => cameraInputRef.current?.click()}>
+              <Camera aria-hidden="true" className="ml-2 size-4" />التقاط صورة بالكاميرا
+            </Button>
+            <Button type="button" variant="outline" disabled={busy || store.status !== "active"} onClick={() => galleryInputRef.current?.click()}>
+              <ImagePlus aria-hidden="true" className="ml-2 size-4" />اختيار من الصور
+            </Button>
+          </div>
+          <input ref={cameraInputRef} type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={(event) => setImage(event.target.files?.[0] ?? null)} className="sr-only" tabIndex={-1} aria-label="التقاط صورة المنتج بالكاميرا" />
+          <input ref={galleryInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setImage(event.target.files?.[0] ?? null)} className="sr-only" tabIndex={-1} aria-label="اختيار صورة المنتج من الصور" />
+          <span className="text-xs font-normal text-muted-foreground">{image?.name ?? (draftImagePath ? "صورة المسودة محفوظة" : "لم يتم اختيار صورة بعد")}. JPG أو PNG أو WebP، بحد أقصى 6 ميجابايت.</span>
+        </div>
         <Field label="وصف المنتج" className="sm:col-span-2"><Textarea maxLength={1200} rows={3} value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></Field>
         {message && <p role="status" className="text-sm text-muted-foreground sm:col-span-2">{message}</p>}
         <p className="flex items-center gap-2 text-xs text-muted-foreground sm:col-span-2"><ImagePlus aria-hidden="true" className="size-4" /> JPG أو PNG أو WebP، بحد أقصى 6 ميجابايت. على الهاتف يمكنك التقاط صورة بالكاميرا.</p>
