@@ -140,67 +140,128 @@ function StoreProfile({ store, onSaved }: { store: MerchantStorePrivate; onSaved
 function ProductForm({ store, onCreated }: { store: MerchantStorePrivate; onCreated: () => void }) {
   const [form, setForm] = useState({ title: "", description: "", category: "", price: "", currency: "YER", stock: "1" });
   const [image, setImage] = useState<File | null>(null);
+  const [draftId, setDraftId] = useState<string | null>(null);
+  const [draftImagePath, setDraftImagePath] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [formElement, setFormElement] = useState<HTMLFormElement | null>(null);
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!image || store.status !== "active") return;
-    if (!image.type.startsWith("image/") || image.size > 6 * 1024 * 1024) {
+  function resetForm() {
+    setForm({ title: "", description: "", category: "", price: "", currency: "YER", stock: "1" });
+    setImage(null);
+    setDraftId(null);
+    setDraftImagePath(null);
+    if (formElement) formElement.reset();
+  }
+
+  async function persist(mode: "draft" | "submit") {
+    if (!formElement?.reportValidity()) return;
+    if (store.status !== "active") return;
+    if (!image && !draftImagePath) {
+      setMessage("اختر صورة للمنتج قبل الحفظ.");
+      return;
+    }
+    if (image && (!["image/jpeg", "image/png", "image/webp"].includes(image.type) || image.size > 6 * 1024 * 1024)) {
       setMessage("اختر صورة JPG أو PNG أو WebP لا يتجاوز حجمها 6 ميجابايت.");
       return;
     }
-    setBusy(true);
-    setMessage("");
-    const extension = image.name.split(".").pop()?.toLowerCase() || "jpg";
-    const imagePath = `${store.id}/${crypto.randomUUID()}.${extension}`;
-    const { error: uploadError } = await supabase.storage.from("merchant-product-images").upload(imagePath, image, { contentType: image.type, upsert: false });
-    if (uploadError) {
-      setBusy(false);
-      setMessage("تعذر رفع الصورة. تأكد من نوعها وحجمها ثم أعد المحاولة.");
+    const price = Number(form.price);
+    const stock = Number(form.stock);
+    if (!Number.isFinite(price) || price <= 0 || !Number.isInteger(stock) || stock < 0 || stock > 1_000_000) {
+      setMessage("تحقق من السعر والكمية المدخلة.");
       return;
     }
 
-    const { data, error: insertError } = await db.from("merchant_products").insert({
+    setBusy(true);
+    setMessage("");
+    let imagePath = draftImagePath;
+    let uploadedPath: string | null = null;
+
+    if (image) {
+      const extension = image.type === "image/png" ? "png" : image.type === "image/webp" ? "webp" : "jpg";
+      imagePath = `${store.id}/${crypto.randomUUID()}.${extension}`;
+      uploadedPath = imagePath;
+      const { error: uploadError } = await supabase.storage
+        .from("merchant-product-images")
+        .upload(imagePath, image, { contentType: image.type, upsert: false });
+      if (uploadError) {
+        setBusy(false);
+        setMessage("تعذر رفع الصورة. تأكد من نوعها وحجمها ثم أعد المحاولة.");
+        return;
+      }
+    }
+
+    const values = {
       store_id: store.id,
       title: form.title.trim(),
       description: form.description.trim(),
       category: form.category.trim(),
-      price: Number(form.price),
+      price,
       currency: form.currency,
-      stock: Number(form.stock),
+      stock,
       image_path: imagePath,
-    }).select("id").single();
+    };
 
-    if (insertError) {
-      await supabase.storage.from("merchant-product-images").remove([imagePath]);
+    let productId = draftId;
+    if (productId) {
+      const { error } = await db.from("merchant_products").update(values).eq("id", productId).eq("store_id", store.id);
+      if (error) {
+        if (uploadedPath) await supabase.storage.from("merchant-product-images").remove([uploadedPath]);
+        setBusy(false);
+        setMessage("تعذر تحديث المسودة. لم يتغير المنتج المحفوظ.");
+        return;
+      }
+    } else {
+      const { data, error } = await db.from("merchant_products").insert(values).select("id").single();
+      if (error || !data) {
+        if (uploadedPath) await supabase.storage.from("merchant-product-images").remove([uploadedPath]);
+        setBusy(false);
+        setMessage("تعذر حفظ المنتج. تحقق من البيانات ثم أعد المحاولة.");
+        return;
+      }
+      productId = data.id as string;
+    }
+
+    setDraftId(productId);
+    setDraftImagePath(imagePath);
+    setImage(null);
+    onCreated();
+
+    if (mode === "draft") {
       setBusy(false);
-      setMessage("تعذر حفظ المنتج. تحقق من السعر والمخزون ثم أعد المحاولة.");
+      setMessage("حُفظ المنتج كمسودة. يمكنك العودة لإكماله أو إرساله للمراجعة.");
       return;
     }
 
-    const { error: submitError } = await db.rpc("merchant_submit_product", { _product_id: data.id });
+    const { error: submitError } = await db.rpc("merchant_submit_product", { _product_id: productId });
     setBusy(false);
-    setForm({ title: "", description: "", category: "", price: "", currency: "YER", stock: "1" });
-    setImage(null);
+    if (submitError) {
+      setMessage("حُفظت المسودة، لكن تعذر إرسالها للمراجعة. أعد المحاولة لاحقًا.");
+      return;
+    }
+
+    resetForm();
+    setMessage("تم إرسال المنتج إلى الإدارة للمراجعة.");
     onCreated();
-    setMessage(submitError ? "تم حفظ المنتج كمسودة؛ تعذرت إرساله للمراجعة." : "تم إرسال المنتج إلى الإدارة للمراجعة.");
   }
 
   return (
     <Card className="rounded-2xl">
-      <CardHeader><CardTitle className="flex items-center gap-2"><PackagePlus aria-hidden="true" className="size-5 text-primary" /> إضافة منتج</CardTitle><CardDescription>يلزم اعتماد الإدارة قبل ظهور المنتج للعملاء.</CardDescription></CardHeader>
-      <CardContent><form onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
+      <CardHeader><CardTitle className="flex items-center gap-2"><PackagePlus aria-hidden="true" className="size-5 text-primary" /> إضافة منتج</CardTitle><CardDescription>احفظ المنتج كمسودة أو أرسله للمراجعة؛ لن يظهر للعملاء قبل اعتماد الإدارة.</CardDescription></CardHeader>
+      <CardContent><form ref={setFormElement} onSubmit={(event) => { event.preventDefault(); void persist("submit"); }} className="grid gap-3 sm:grid-cols-2">
         <Field label="اسم المنتج"><Input required minLength={2} maxLength={120} value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} /></Field>
         <Field label="التصنيف"><Input maxLength={60} value={form.category} onChange={(event) => setForm({ ...form, category: event.target.value })} placeholder="مثال: عطور" /></Field>
         <Field label="السعر"><Input required type="number" min="0.01" step="0.01" value={form.price} onChange={(event) => setForm({ ...form, price: event.target.value })} /></Field>
         <Field label="العملة"><select value={form.currency} onChange={(event) => setForm({ ...form, currency: event.target.value })} className="h-9 rounded-md border border-input bg-background px-3 text-sm"><option value="YER">ريال يمني (YER)</option><option value="SAR">ريال سعودي (SAR)</option><option value="USD">دولار (USD)</option></select></Field>
         <Field label="الكمية المتاحة"><Input required type="number" min="0" max="1000000" step="1" value={form.stock} onChange={(event) => setForm({ ...form, stock: event.target.value })} /></Field>
-        <Field label="صورة المنتج"><Input required type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setImage(event.target.files?.[0] ?? null)} className="h-auto min-h-9 py-2" /></Field>
+        <Field label="صورة المنتج"><Input required={!draftImagePath} type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={(event) => setImage(event.target.files?.[0] ?? null)} className="h-auto min-h-9 py-2" /></Field>
         <Field label="وصف المنتج" className="sm:col-span-2"><Textarea maxLength={1200} rows={3} value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></Field>
         {message && <p role="status" className="text-sm text-muted-foreground sm:col-span-2">{message}</p>}
-        <p className="flex items-center gap-2 text-xs text-muted-foreground sm:col-span-2"><ImagePlus aria-hidden="true" className="size-4" /> JPG أو PNG أو WebP، بحد أقصى 6 ميجابايت.</p>
-        <Button type="submit" disabled={busy || !image || store.status !== "active"} className="sm:col-span-2">{busy ? "جارٍ حفظ المنتج…" : "إرسال للمراجعة"}</Button>
+        <p className="flex items-center gap-2 text-xs text-muted-foreground sm:col-span-2"><ImagePlus aria-hidden="true" className="size-4" /> JPG أو PNG أو WebP، بحد أقصى 6 ميجابايت. على الهاتف يمكنك التقاط صورة بالكاميرا.</p>
+        <div className="flex flex-wrap gap-2 sm:col-span-2">
+          <Button type="button" variant="outline" disabled={busy || store.status !== "active"} onClick={() => void persist("draft")}>{busy ? "جارٍ الحفظ…" : "حفظ كمسودة"}</Button>
+          <Button type="submit" disabled={busy || store.status !== "active"}>{busy ? "جارٍ الحفظ…" : draftId ? "إرسال المسودة للمراجعة" : "إرسال للمراجعة"}</Button>
+        </div>
       </form></CardContent>
     </Card>
   );
