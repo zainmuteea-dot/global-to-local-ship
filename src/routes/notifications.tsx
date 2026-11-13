@@ -110,6 +110,14 @@ type SystemNotification = {
   is_active: boolean;
 };
 
+function normalizeSystemNotification(row: any): SystemNotification {
+  return {
+    ...row,
+    message: row?.message ?? row?.body ?? null,
+    type: row?.type ?? row?.kind ?? "system",
+  } as SystemNotification;
+}
+
 const ADMIN_ONLY_NOTIFICATION_KINDS = new Set(["new_payment_submitted"]);
 const CUSTOMER_NOTIFICATION_PAGE_SIZE = 50;
 
@@ -260,7 +268,7 @@ function CustomerNotificationsPage({
       setHasMoreNotifications(false);
       const [notificationsResult, readsResult] = await Promise.all([
         (supabase.from("notifications") as any)
-          .select("id,user_id,title,message,type,created_at,sent_by,href,is_active")
+          .select("id,user_id,title,message:body,type:kind,created_at,sent_by,href,is_active")
           .or(`and(user_id.is.null,is_active.eq.true),user_id.eq.${userId}`)
           .order("created_at", { ascending: false })
           .order("id", { ascending: false })
@@ -314,7 +322,7 @@ function CustomerNotificationsPage({
 
     const upsertCustomerNotification = (payload: any) => {
       if (!active) return;
-      const notification = payload.new as SystemNotification;
+      const notification = normalizeSystemNotification(payload.new);
       if (!notification?.id) return;
 
       if (!isVisibleToCustomer(notification)) {
@@ -368,7 +376,7 @@ function CustomerNotificationsPage({
         `and(user_id.eq.${userId},created_at.lt.${cursor.createdAt}),` +
         `and(user_id.eq.${userId},created_at.eq.${cursor.createdAt},id.lt.${cursor.id})`;
       const { data, error: loadError } = await (supabase.from("notifications") as any)
-        .select("id,user_id,title,message,type,created_at,sent_by,href,is_active")
+        .select("id,user_id,title,message:body,type:kind,created_at,sent_by,href,is_active")
         .or(cursorFilter)
         .order("created_at", { ascending: false })
         .order("id", { ascending: false })
@@ -895,7 +903,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
             .limit(500),
           (supabase.from("notifications") as any)
             .select(
-              "id,user_id,title,message,type,created_at,sent_by,href,is_active",
+              "id,user_id,title,message:body,type:kind,created_at,sent_by,href,is_active",
             )
             .order("created_at", { ascending: false })
             .limit(100),
@@ -971,7 +979,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "notifications" },
         (payload) => {
-          const notification = payload.new as SystemNotification;
+          const notification = normalizeSystemNotification(payload.new);
           if (notification.user_id !== null && notification.user_id !== userId)
             return;
           setNotifications((current) =>
@@ -1004,7 +1012,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
         .limit(500),
       (supabase.from("notifications") as any)
         .select(
-          "id,user_id,title,message,type,created_at,sent_by,href,is_active",
+          "id,user_id,title,message:body,type:kind,created_at,sent_by,href,is_active",
         )
         .order("created_at", { ascending: false })
         .limit(100),
@@ -1119,11 +1127,11 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
       .insert({
         user_id: null,
         title,
-        message,
-        type: draftType,
+        body: message,
+        kind: draftType,
         is_active: true,
       })
-      .select("id,user_id,title,message,type,created_at,sent_by,href,is_active")
+      .select("id,user_id,title,message:body,type:kind,created_at,sent_by,href,is_active")
       .single();
     setSending(false);
 

@@ -1,5 +1,6 @@
 import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import useSWR from "swr";
+import { Link } from "@tanstack/react-router";
 import { BadgeCheck, Camera, ImagePlus, PackagePlus, Store, Truck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,7 @@ async function loadMyOrders(storeId: string) {
 
 export function MerchantDashboard() {
   const { user, loading: authLoading } = useSession();
+  const addProductMode = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("view") === "add-product";
   const { data: store, isLoading: storeLoading, error: storeError, mutate: mutateStore } = useSWR(
     user ? ["merchant-my-store", user.id] : null,
     loadMyStore,
@@ -79,11 +81,21 @@ export function MerchantDashboard() {
     );
   }
 
+  if (addProductMode) {
+    return (
+      <main dir="rtl" className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 py-8 sm:px-6 lg:px-8">
+        <Link to="/merchant" className="w-fit text-sm font-semibold text-primary hover:underline">العودة إلى لوحة متجري</Link>
+        <header><Badge variant="secondary">{store.name}</Badge><h1 className="mt-3 text-3xl font-bold">إضافة منتج</h1><p className="mt-2 text-muted-foreground">أضف صورة واضحة ووصفًا وسعرًا وكمية. سيظهر المنتج للزبائن بعد اعتماد الإدارة.</p></header>
+        <ProductForm store={store} onCreated={() => void mutateProducts()} />
+      </main>
+    );
+  }
+
   return (
     <main dir="rtl" className="mx-auto flex w-full max-w-7xl flex-col gap-7 px-4 py-8 sm:px-6 lg:px-8">
       <header className="flex flex-col justify-between gap-4 rounded-3xl border bg-card p-6 shadow-sm sm:flex-row sm:items-center sm:p-8">
         <div><Badge variant={store.status === "active" ? "secondary" : "destructive"}>{store.status === "active" ? "المتجر نشط" : "المتجر موقوف"}</Badge><h1 className="mt-3 text-3xl font-bold">مرحبًا بك في {store.name}</h1><p className="mt-2 text-muted-foreground">أدر منتجاتك وطلباتك من مكان واحد.</p></div>
-        <div className="rounded-2xl bg-muted/60 px-5 py-4 text-sm"><p className="text-muted-foreground">عمولة المنصة</p><p className="mt-1 text-2xl font-bold">{(Number(store.commission_rate) * 100).toLocaleString("ar-YE")}٪</p></div>
+        <div className="flex flex-wrap items-center gap-3"><div className="rounded-2xl bg-muted/60 px-5 py-4 text-sm"><p className="text-muted-foreground">عمولة المنصة</p><p className="mt-1 text-2xl font-bold">{(Number(store.commission_rate) * 100).toLocaleString("ar-YE")}٪</p></div><Button asChild disabled={store.status !== "active"}><a href="/merchant?view=add-product"><PackagePlus aria-hidden="true" className="ml-2 size-4" />أضف منتج</a></Button></div>
       </header>
 
       <section className="grid gap-3 sm:grid-cols-3" aria-label="ملخص المتجر">
@@ -162,6 +174,11 @@ function StoreProfile({ store, onSaved }: { store: MerchantStorePrivate; onSaved
 function ProductForm({ store, onCreated, presetCategory }: { store: MerchantStorePrivate; onCreated: () => void; presetCategory?: string }) {
   const [form, setForm] = useState({ title: "", description: "", category: presetCategory ?? "", price: "", currency: "YER", stock: "1" });
   const [image, setImage] = useState<File | null>(null);
+  const [selectedImagePath, setSelectedImagePath] = useState<string | null>(null);
+  const [uploadedImagePath, setUploadedImagePath] = useState<string | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageUploadMessage, setImageUploadMessage] = useState("");
   const [draftId, setDraftId] = useState<string | null>(null);
   const [draftImagePath, setDraftImagePath] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -173,20 +190,63 @@ function ProductForm({ store, onCreated, presetCategory }: { store: MerchantStor
   function resetForm() {
     setForm({ title: "", description: "", category: presetCategory ?? "", price: "", currency: "YER", stock: "1" });
     setImage(null);
+    setSelectedImagePath(null);
+    setUploadedImagePath(null);
+    if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+    setImagePreviewUrl(null);
+    setImageUploadMessage("");
     setDraftId(null);
     setDraftImagePath(null);
     if (formElement) formElement.reset();
   }
 
+  async function handleImageSelection(file: File | undefined) {
+    if (!file) return;
+    setMessage("");
+    setImageUploadMessage("");
+    if (!["image/jpeg", "image/png"].includes(file.type) || file.size >= 6 * 1024 * 1024) {
+      setImage(null);
+      setSelectedImagePath(null);
+      if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+      setImagePreviewUrl(null);
+      setImageUploadMessage("ارفع صورة JPG أو PNG أقل من 6 ميجابايت.");
+      return;
+    }
+    const previousTemporaryPath = uploadedImagePath;
+    setSelectedImagePath(null);
+    setImage(file);
+    if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+    setImagePreviewUrl(URL.createObjectURL(file));
+    setUploadingImage(true);
+    setImageUploadMessage("جارٍ رفع الصورة…");
+    const extension = file.type === "image/png" ? "png" : "jpg";
+    const imagePath = `${store.id}/${crypto.randomUUID()}.${extension}`;
+    const { error: uploadError } = await supabase.storage
+      .from("merchant-product-images")
+      .upload(imagePath, file, { contentType: file.type, upsert: false });
+    setUploadingImage(false);
+    if (uploadError) {
+      setImage(null);
+      setImageUploadMessage("تعذر رفع الصورة. تأكد من نوعها وحجمها ثم أعد المحاولة.");
+      return;
+    }
+    setSelectedImagePath(imagePath);
+    setUploadedImagePath(imagePath);
+    if (previousTemporaryPath && previousTemporaryPath !== draftImagePath) {
+      await supabase.storage.from("merchant-product-images").remove([previousTemporaryPath]);
+    }
+    setImageUploadMessage("تم رفع الصورة بنجاح، وستظهر في عرض المنتج بعد الاعتماد");
+  }
+
   async function persist(mode: "draft" | "submit") {
     if (!formElement?.reportValidity()) return;
     if (store.status !== "active") return;
-    if (!image && !draftImagePath) {
-      setMessage("اختر صورة للمنتج قبل الحفظ.");
+    if (uploadingImage) {
+      setMessage("انتظر اكتمال رفع الصورة.");
       return;
     }
-    if (image && (!["image/jpeg", "image/png", "image/webp"].includes(image.type) || image.size > 6 * 1024 * 1024)) {
-      setMessage("اختر صورة JPG أو PNG أو WebP لا يتجاوز حجمها 6 ميجابايت.");
+    if (!selectedImagePath && !draftImagePath) {
+      setMessage("اختر صورة للمنتج قبل الحفظ.");
       return;
     }
     const price = Number(form.price);
@@ -198,21 +258,11 @@ function ProductForm({ store, onCreated, presetCategory }: { store: MerchantStor
 
     setBusy(true);
     setMessage("");
-    let imagePath = draftImagePath;
-    let uploadedPath: string | null = null;
-
-    if (image) {
-      const extension = image.type === "image/png" ? "png" : image.type === "image/webp" ? "webp" : "jpg";
-      imagePath = `${store.id}/${crypto.randomUUID()}.${extension}`;
-      uploadedPath = imagePath;
-      const { error: uploadError } = await supabase.storage
-        .from("merchant-product-images")
-        .upload(imagePath, image, { contentType: image.type, upsert: false });
-      if (uploadError) {
-        setBusy(false);
-        setMessage("تعذر رفع الصورة. تأكد من نوعها وحجمها ثم أعد المحاولة.");
-        return;
-      }
+    const imagePath = selectedImagePath ?? draftImagePath;
+    if (!imagePath) {
+      setBusy(false);
+      setMessage("اختر صورة للمنتج قبل الحفظ.");
+      return;
     }
 
     const values = {
@@ -230,15 +280,16 @@ function ProductForm({ store, onCreated, presetCategory }: { store: MerchantStor
     if (productId) {
       const { error } = await db.from("merchant_products").update(values).eq("id", productId).eq("store_id", store.id);
       if (error) {
-        if (uploadedPath) await supabase.storage.from("merchant-product-images").remove([uploadedPath]);
         setBusy(false);
         setMessage("تعذر تحديث المسودة. لم يتغير المنتج المحفوظ.");
         return;
       }
+      if (draftImagePath && draftImagePath !== imagePath) {
+        await supabase.storage.from("merchant-product-images").remove([draftImagePath]);
+      }
     } else {
       const { data, error } = await db.from("merchant_products").insert(values).select("id").single();
       if (error || !data) {
-        if (uploadedPath) await supabase.storage.from("merchant-product-images").remove([uploadedPath]);
         setBusy(false);
         setMessage("تعذر حفظ المنتج. تحقق من البيانات ثم أعد المحاولة.");
         return;
@@ -248,7 +299,11 @@ function ProductForm({ store, onCreated, presetCategory }: { store: MerchantStor
 
     setDraftId(productId);
     setDraftImagePath(imagePath);
+    setSelectedImagePath(null);
+    setUploadedImagePath(null);
     setImage(null);
+    if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+    setImagePreviewUrl(null);
     onCreated();
 
     if (mode === "draft") {
@@ -280,24 +335,27 @@ function ProductForm({ store, onCreated, presetCategory }: { store: MerchantStor
         <Field label="الكمية المتاحة"><Input required type="number" min="0" max="1000000" step="1" value={form.stock} onChange={(event) => setForm({ ...form, stock: event.target.value })} /></Field>
         <div className="grid gap-1.5 text-sm font-medium">
           <span>صورة المنتج</span>
+          <span className="text-xs font-normal text-muted-foreground">ارفع صورة واضحة للمنتج - JPG أو PNG - أقل من 6 ميجابايت</span>
           <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" disabled={busy || store.status !== "active"} onClick={() => cameraInputRef.current?.click()}>
+            <Button type="button" variant="outline" disabled={busy || uploadingImage || store.status !== "active"} onClick={() => cameraInputRef.current?.click()}>
               <Camera aria-hidden="true" className="ml-2 size-4" />التقاط صورة بالكاميرا
             </Button>
-            <Button type="button" variant="outline" disabled={busy || store.status !== "active"} onClick={() => galleryInputRef.current?.click()}>
+            <Button type="button" variant="outline" disabled={busy || uploadingImage || store.status !== "active"} onClick={() => galleryInputRef.current?.click()}>
               <ImagePlus aria-hidden="true" className="ml-2 size-4" />اختيار من الصور
             </Button>
           </div>
-          <input ref={cameraInputRef} type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={(event) => setImage(event.target.files?.[0] ?? null)} className="sr-only" tabIndex={-1} aria-label="التقاط صورة المنتج بالكاميرا" />
-          <input ref={galleryInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setImage(event.target.files?.[0] ?? null)} className="sr-only" tabIndex={-1} aria-label="اختيار صورة المنتج من الصور" />
-          <span className="text-xs font-normal text-muted-foreground">{image?.name ?? (draftImagePath ? "صورة المسودة محفوظة" : "لم يتم اختيار صورة بعد")}. JPG أو PNG أو WebP، بحد أقصى 6 ميجابايت.</span>
+          <input ref={cameraInputRef} type="file" accept="image/jpeg,image/png" capture="environment" onChange={(event) => { void handleImageSelection(event.target.files?.[0]); event.currentTarget.value = ""; }} className="sr-only" tabIndex={-1} aria-label="التقاط صورة المنتج بالكاميرا" />
+          <input ref={galleryInputRef} type="file" accept="image/jpeg,image/png" onChange={(event) => { void handleImageSelection(event.target.files?.[0]); event.currentTarget.value = ""; }} className="sr-only" tabIndex={-1} aria-label="اختيار صورة المنتج من الصور" />
+          {imagePreviewUrl && <img src={imagePreviewUrl} alt="معاينة صورة المنتج" className="mt-2 h-36 w-full rounded-xl border object-cover" />}
+          {imageUploadMessage && <span role="status" className={`text-xs font-medium ${selectedImagePath ? "text-primary" : "text-muted-foreground"}`}>{imageUploadMessage}</span>}
+          {image?.name && <span className="text-xs font-normal text-muted-foreground">{image.name}</span>}
         </div>
         <Field label="وصف المنتج" className="sm:col-span-2"><Textarea maxLength={1200} rows={3} value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></Field>
         {message && <p role="status" className="text-sm text-muted-foreground sm:col-span-2">{message}</p>}
-        <p className="flex items-center gap-2 text-xs text-muted-foreground sm:col-span-2"><ImagePlus aria-hidden="true" className="size-4" /> JPG أو PNG أو WebP، بحد أقصى 6 ميجابايت. على الهاتف يمكنك التقاط صورة بالكاميرا.</p>
+        <p className="flex items-center gap-2 text-xs text-muted-foreground sm:col-span-2"><ImagePlus aria-hidden="true" className="size-4" /> على الهاتف يمكنك التقاط الصورة مباشرة بالكاميرا، ولن تظهر للزبائن إلا بعد اعتماد الإدارة.</p>
         <div className="flex flex-wrap gap-2 sm:col-span-2">
           <Button type="button" variant="outline" disabled={busy || store.status !== "active"} onClick={() => void persist("draft")}>{busy ? "جارٍ الحفظ…" : "حفظ كمسودة"}</Button>
-          <Button type="submit" disabled={busy || store.status !== "active"}>{busy ? "جارٍ الحفظ…" : draftId ? "إرسال المسودة للمراجعة" : "إرسال للمراجعة"}</Button>
+          <Button type="submit" disabled={busy || uploadingImage || store.status !== "active"}>{busy ? "جارٍ الحفظ…" : draftId ? "إرسال المسودة للمراجعة" : "إرسال للمراجعة"}</Button>
         </div>
       </form></CardContent>
     </Card>
