@@ -56,8 +56,13 @@ export function MerchantDashboard() {
     ([, storeId]) => loadMyOrders(storeId),
   );
 
-  const delivered = orders.filter((order) => order.status === "delivered");
-  const revenue = delivered.reduce((sum, order) => sum + Number(order.seller_amount), 0);
+  const deliveredInYER = orders.filter(
+    (order) => order.status === "delivered" && order.currency === "YER",
+  );
+  const sellerShareInYER = deliveredInYER.reduce(
+    (sum, order) => sum + Number(order.seller_amount),
+    0,
+  );
   const pendingOrders = orders.filter((order) => !["delivered", "cancelled"].includes(order.status)).length;
 
   if (authLoading || storeLoading) {
@@ -84,7 +89,7 @@ export function MerchantDashboard() {
       <section className="grid gap-3 sm:grid-cols-3" aria-label="ملخص المتجر">
         <Metric icon={<PackagePlus aria-hidden="true" />} label="المنتجات" value={products.length.toLocaleString("ar-YE")} />
         <Metric icon={<Truck aria-hidden="true" />} label="الطلبات النشطة" value={pendingOrders.toLocaleString("ar-YE")} />
-        <Metric icon={<BadgeCheck aria-hidden="true" />} label="مستحقات الطلبات المسلّمة" value={formatMoney(revenue, "YER")} />
+        <Metric icon={<BadgeCheck aria-hidden="true" />} label="حصة التاجر من الطلبات المسلّمة بالريال اليمني" value={formatMoney(sellerShareInYER, "YER")} />
       </section>
 
       {store.status === "suspended" && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">المتجر موقوف مؤقتًا. يمكنك الاطلاع على بياناتك، لكن الإضافة والطلبات الجديدة غير متاحة.</p>}
