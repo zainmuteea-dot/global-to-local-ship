@@ -125,6 +125,14 @@ type StorefrontProduct = {
   site_name: string;
 };
 
+type MerchantStorefront = {
+  id: string;
+  name: string;
+  description: string | null;
+  city: string | null;
+  status: "active" | "suspended";
+};
+
 type StorefrontOfferCard = {
   id: string;
   title: string;
@@ -318,6 +326,22 @@ const CUSTOMER_STOREFRONT_CSS = `
 .pr-store .sh-icon{position:relative;z-index:1;width:96px;height:96px;display:block;padding:8px;box-sizing:border-box;background:#fff;border:1px solid #EFE3C2;border-radius:18px;box-shadow:0 7px 18px rgba(27,20,8,.08);filter:drop-shadow(0 5px 10px rgba(27,20,8,.12));transition:transform .3s ease,box-shadow .3s ease}
 .pr-store:hover .sh-icon{transform:scale(1.05);box-shadow:0 12px 25px rgba(27,20,8,.13)}
 .pr-store-name{position:relative;z-index:1;color:#6B5B33;font-size:15px;font-weight:900;letter-spacing:.4px}.pr-store-go{position:absolute;top:12px;left:14px;z-index:2;color:#B8912A;font-size:18px;opacity:0;transition:opacity .2s ease}.pr-store:hover .pr-store-go,.pr-store:focus-visible .pr-store-go{opacity:1}
+.pr-merchant-section{position:relative;z-index:1;max-width:1240px;margin:42px auto 0;padding:0 22px}
+.pr-merchant-heading{text-align:center;margin:0 0 20px}
+.pr-merchant-heading h2{margin:0;color:var(--ink);font-size:clamp(22px,3vw,32px);font-weight:900}
+.pr-merchant-heading p{margin:8px 0 0;color:var(--muted);font-size:14px;font-weight:700;line-height:1.8}
+.pr-merchant-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:16px}
+.pr-merchant-card{position:relative;display:flex;min-height:176px;flex-direction:column;align-items:flex-start;justify-content:space-between;gap:12px;overflow:hidden;border:1px solid rgba(212,175,55,.55);border-radius:18px;background:linear-gradient(145deg,#fff,#fffaf0);padding:22px;text-decoration:none;color:var(--ink);box-shadow:0 8px 24px rgba(27,20,8,.06);transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease}
+.pr-merchant-card:before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(260px 160px at 100% 0%,rgba(212,175,55,.18),transparent 72%)}
+.pr-merchant-card:hover{transform:translateY(-3px);border-color:#D4AF37;box-shadow:0 16px 32px rgba(184,145,42,.16)}
+.pr-merchant-card:focus-visible{outline:3px solid #8B671C;outline-offset:4px}
+.pr-merchant-top,.pr-merchant-bottom{position:relative;z-index:1;width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.pr-merchant-mark{display:grid;width:48px;height:48px;flex:none;place-items:center;border-radius:15px;background:linear-gradient(135deg,#B8912A,#E8C766);color:#241b08;font-size:24px;box-shadow:0 6px 14px rgba(184,145,42,.2)}
+.pr-merchant-city{color:var(--muted);font-size:12px;font-weight:800}
+.pr-merchant-title{position:relative;z-index:1;margin:0;font-size:19px;font-weight:900;line-height:1.5}
+.pr-merchant-description{position:relative;z-index:1;margin:4px 0 0;color:#706344;font-size:13px;font-weight:600;line-height:1.75}
+.pr-merchant-cta{display:inline-flex;align-items:center;gap:8px;color:#8B671C;font-size:13px;font-weight:900}
+.pr-merchant-state{grid-column:1/-1;border:1px dashed rgba(184,145,42,.45);border-radius:14px;background:rgba(255,255,255,.7);padding:18px;text-align:center;color:var(--muted);font-size:13px;font-weight:700;line-height:1.8}
 .pr-banners{position:relative;z-index:1;max-width:1240px;margin:34px auto 0;padding:0 22px;display:flex;flex-wrap:wrap;align-items:stretch;justify-content:center;gap:22px}
 .pr-banner{position:relative;min-height:220px;overflow:hidden;border-radius:18px;padding:36px;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:14px;text-align:right;text-decoration:none;transition:transform .25s ease,box-shadow .25s ease}.pr-banner:hover{transform:translateY(-3px)}
 .pr-sale{background:linear-gradient(135deg,#F8BBD0,#F5A6BF);color:#7A2140;box-shadow:0 16px 40px rgba(248,187,208,.48)}.pr-sale:before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(400px 220px at 88% 10%,rgba(255,255,255,.6),transparent 60%),radial-gradient(300px 200px at 10% 100%,rgba(255,255,255,.35),transparent 60%)}
@@ -335,6 +359,7 @@ const CUSTOMER_STOREFRONT_CSS = `
   .pr-topbar-note{color:var(--muted);font-size:13px;font-weight:700}
   .pr-topbar-actions{display:flex;align-items:center;gap:14px}.pr-cart-link{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border:1px solid rgba(212,175,55,.45);border-radius:999px;background:#fff;color:#3B2E12;text-decoration:none;font-size:12px;font-weight:900;white-space:nowrap;box-shadow:0 4px 12px rgba(27,20,8,.06)}.pr-cart-link:hover{border-color:#D4AF37;background:#FFFBF5}.pr-cart-count{display:grid;min-width:22px;height:22px;place-items:center;border-radius:999px;background:#D4AF37;color:#1B1408;font-size:11px;font-weight:900}
   @media(max-width:720px){.pr-topbar-actions{gap:8px}.pr-topbar-note{display:none}.pr-cart-link{padding:9px 11px;font-size:11px}}
+@media(max-width:720px){.pr-merchant-section{margin-top:32px;padding:0 14px}.pr-merchant-grid{grid-template-columns:1fr}.pr-merchant-card{min-height:155px;padding:18px}}
 .pr-footer{position:relative;z-index:1;margin-top:54px;border-top:1px solid rgba(212,175,55,.34);background:rgba(255,255,255,.68)}
 .pr-footer-inner{max-width:1240px;min-height:68px;margin:0 auto;padding:16px 22px;display:flex;align-items:center;justify-content:space-between;gap:12px;color:var(--muted);font-size:12px;font-weight:700}
 .pr-footer-brand{color:#3B2E12;font-weight:900;letter-spacing:.3px}
@@ -348,6 +373,9 @@ function CustomerStorefront() {
   const [links, setLinks] = useState<Record<string, string>>({});
   const [visibility, setVisibility] = useState<Record<string, boolean>>({});
   const [offerCards, setOfferCards] = useState<StorefrontOfferCard[]>(DEFAULT_OFFER_CARDS);
+  const [merchantStores, setMerchantStores] = useState<MerchantStorefront[]>([]);
+  const [merchantStoresLoading, setMerchantStoresLoading] = useState(true);
+  const [merchantStoresError, setMerchantStoresError] = useState("");
   const [cartCount, setCartCount] = useState(0);
 
   useEffect(() => {
@@ -375,6 +403,33 @@ function CustomerStorefront() {
       setLinks({});
       setVisibility({});
     }
+  }, []);
+
+  useEffect(() => {
+    let isCurrent = true;
+
+    const loadMerchantStores = async () => {
+      const { data, error } = await db
+        .from("merchant_stores")
+        .select("id,name,description,city,status")
+        .eq("status", "active")
+        .order("name", { ascending: true });
+
+      if (!isCurrent) return;
+      if (error) {
+        setMerchantStoresError("تعذر تحميل متاجر التجار حاليًا.");
+        setMerchantStores([]);
+      } else {
+        setMerchantStores((data ?? []) as MerchantStorefront[]);
+        setMerchantStoresError("");
+      }
+      setMerchantStoresLoading(false);
+    };
+
+    void loadMerchantStores();
+    return () => {
+      isCurrent = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -478,6 +533,43 @@ function CustomerStorefront() {
             </a>
           );
         })}
+      </section>
+
+      <section className="pr-merchant-section" aria-labelledby="pr-merchant-heading">
+        <div className="pr-merchant-heading">
+          <h2 id="pr-merchant-heading">متاجر التجار المحليين</h2>
+          <p>تصفح المتاجر المحلية والمنتجات التي اعتمدتها الإدارة.</p>
+        </div>
+        <div className="pr-merchant-grid">
+          {merchantStoresLoading ? (
+            <div className="pr-merchant-state" role="status">جارٍ تحميل المتاجر...</div>
+          ) : merchantStoresError ? (
+            <div className="pr-merchant-state" role="status">{merchantStoresError}</div>
+          ) : merchantStores.length === 0 ? (
+            <div className="pr-merchant-state">لا توجد متاجر نشطة للعرض حاليًا.</div>
+          ) : (
+            merchantStores.map((store) => (
+              <a
+                key={store.id}
+                className="pr-merchant-card"
+                href={`/marketplace?store=${encodeURIComponent(store.id)}`}
+                aria-label={`تصفح منتجات متجر ${store.name}`}
+              >
+                <div className="pr-merchant-top">
+                  <span className="pr-merchant-mark" aria-hidden="true">🏪</span>
+                  {store.city && <span className="pr-merchant-city">{store.city}</span>}
+                </div>
+                <div>
+                  <h3 className="pr-merchant-title">{store.name}</h3>
+                  {store.description && <p className="pr-merchant-description">{store.description}</p>}
+                </div>
+                <div className="pr-merchant-bottom">
+                  <span className="pr-merchant-cta">تصفح المنتجات <span aria-hidden="true">←</span></span>
+                </div>
+              </a>
+            ))
+          )}
+        </div>
       </section>
 
       {visibleOfferCards.length > 0 && (
