@@ -28,7 +28,7 @@ export const Route = createFileRoute("/account/wallet")({
   head: () => ({
     meta: [
       { title: "محفظتي — السوق الشامل" },
-      { name: "description", content: "رصيدك وطلبات شحن الرصيد في السوق الشامل." },
+      { name: "description", content: "رصيدك وطلبات شحن وسحب الرصيد في السوق الشامل." },
     ],
   }),
   component: WalletPage,
@@ -52,6 +52,20 @@ type WalletTopup = {
   status: string;
   created_at: string;
   reviewed_at: string | null;
+};
+
+type WalletWithdrawal = {
+  id: string;
+  amount: number;
+  currency: string;
+  destination_method: string;
+  destination_details: string;
+  note: string | null;
+  review_note: string | null;
+  status: "pending_review" | "approved" | "rejected" | "paid";
+  created_at: string;
+  reviewed_at: string | null;
+  paid_at: string | null;
 };
 
 const PAYMENT_METHODS = ["الكريمي", "ون كاش", "فلوسك", "جوالي", "جيب", "حوالة النجم"] as const;
@@ -89,6 +103,16 @@ function WalletPage() {
   const [topups, setTopups] = useState<WalletTopup[]>([]);
   const [topupsLoading, setTopupsLoading] = useState(true);
   const [topupsError, setTopupsError] = useState("");
+  const [withdrawals, setWithdrawals] = useState<WalletWithdrawal[]>([]);
+  const [withdrawalsLoading, setWithdrawalsLoading] = useState(true);
+  const [withdrawalsError, setWithdrawalsError] = useState("");
+  const [withdrawalAmount, setWithdrawalAmount] = useState("");
+  const [withdrawalMethod, setWithdrawalMethod] = useState("");
+  const [withdrawalDetails, setWithdrawalDetails] = useState("");
+  const [withdrawalNote, setWithdrawalNote] = useState("");
+  const [withdrawalSaving, setWithdrawalSaving] = useState(false);
+  const [withdrawalError, setWithdrawalError] = useState("");
+  const [withdrawalSuccess, setWithdrawalSuccess] = useState("");
   const [proofPreview, setProofPreview] = useState<{ id: string; url: string } | null>(null);
   const [proofLoadingId, setProofLoadingId] = useState<string | null>(null);
   const [proofError, setProofError] = useState("");
@@ -168,18 +192,46 @@ function WalletPage() {
     }
   }, [user]);
 
+  const loadWithdrawals = useCallback(async () => {
+    if (!user) {
+      setWithdrawals([]);
+      setWithdrawalsLoading(false);
+      setWithdrawalsError("");
+      return;
+    }
+    setWithdrawalsLoading(true);
+    setWithdrawalsError("");
+    try {
+      const { data, error: loadError } = await (supabase as any)
+        .from("wallet_withdrawal_requests")
+        .select("id,amount,currency,destination_method,destination_details,note,review_note,status,created_at,reviewed_at,paid_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (loadError) throw loadError;
+      setWithdrawals((data ?? []) as WalletWithdrawal[]);
+    } catch (cause) {
+      console.error("Could not load wallet withdrawal requests", cause);
+      setWithdrawalsError("تعذر تحميل طلبات السحب. أعد المحاولة لاحقًا.");
+    } finally {
+      setWithdrawalsLoading(false);
+    }
+  }, [user]);
+
   useEffect(() => {
     if (!user) {
       setSenderPhone("");
       setProofPreview(null);
       void loadTransactions();
       void loadTopups();
+      void loadWithdrawals();
       return;
     }
     setSenderPhone(String(user.user_metadata?.["phone"] ?? ""));
     void loadTransactions();
     void loadTopups();
-  }, [user, loadTransactions, loadTopups]);
+    void loadWithdrawals();
+  }, [user, loadTransactions, loadTopups, loadWithdrawals]);
 
   useEffect(() => {
     return () => { if (receiptPreview) URL.revokeObjectURL(receiptPreview); };
@@ -332,6 +384,54 @@ function WalletPage() {
     }
   };
 
+  const submitWithdrawal = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setWithdrawalError("");
+    setWithdrawalSuccess("");
+    if (!user) {
+      setWithdrawalError("سجّل الدخول أولًا لإرسال طلب سحب.");
+      return;
+    }
+    const parsedAmount = Number(withdrawalAmount);
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0 || parsedAmount > 100000000) {
+      setWithdrawalError("أدخل مبلغًا صحيحًا أكبر من صفر.");
+      return;
+    }
+    if (withdrawalMethod.trim().length < 2 || withdrawalDetails.trim().length < 5) {
+      setWithdrawalError("أدخل وسيلة الاستلام وتفاصيلها بشكل صحيح.");
+      return;
+    }
+
+    setWithdrawalSaving(true);
+    try {
+      const { data, error: insertError } = await (supabase as any)
+        .from("wallet_withdrawal_requests")
+        .insert({
+          user_id: user.id,
+          amount: parsedAmount,
+          currency: "YER",
+          destination_method: withdrawalMethod.trim(),
+          destination_details: withdrawalDetails.trim(),
+          note: withdrawalNote.trim() || null,
+          status: "pending_review",
+        })
+        .select("id")
+        .single();
+      if (insertError) throw insertError;
+      setWithdrawalSuccess(`تم استلام طلب السحب ${String(data?.id ?? "").slice(0, 8)} للمراجعة. لم يُخصم المبلغ ولم يُحجز من رصيدك.`);
+      setWithdrawalAmount("");
+      setWithdrawalDetails("");
+      setWithdrawalNote("");
+      void loadWithdrawals();
+    } catch (cause) {
+      console.error("Withdrawal request save failed", cause);
+      const message = cause instanceof Error ? cause.message : "تعذر حفظ الطلب.";
+      setWithdrawalError(`تعذر حفظ طلب السحب: ${message}`);
+    } finally {
+      setWithdrawalSaving(false);
+    }
+  };
+
   return (
     <div className="fd-root" dir="rtl" lang="ar">
       <style>{WALLET_STYLE}</style>
@@ -362,6 +462,58 @@ function WalletPage() {
             {transactionsError && <p className="fd-card-error">تعذر التحقق من الرصيد؛ أعد المحاولة من سجل العمليات.</p>}
           </div>
         </section>
+
+        <section className="fd-topup-panel" aria-label="إنشاء طلب سحب">
+          <h3><span className="ic"><ArrowUpRight size={18} aria-hidden="true" /></span> طلب سحب</h3>
+          <p className="fd-receipt-help">إرسال الطلب لا يخصم الرصيد ولا يحجزه. تراجع الإدارة الطلب، ويُنفّذ الصرف يدويًا خارج المحفظة بعد الاعتماد.</p>
+          {!user && <p className="fd-login-alert" role="alert">سجّل الدخول لإرسال طلب سحب.</p>}
+          <form onSubmit={submitWithdrawal} className="fd-form">
+            <div className="fd-field">
+              <label htmlFor="wallet-withdrawal-amount">المبلغ المطلوب (ر.ي) <span className="req">*</span></label>
+              <input id="wallet-withdrawal-amount" className="fd-input" type="number" min="0.01" max="100000000" step="0.01" inputMode="decimal" required value={withdrawalAmount} onChange={(event) => setWithdrawalAmount(event.target.value)} placeholder="أدخل المبلغ" />
+            </div>
+            <div className="fd-field">
+              <label htmlFor="wallet-withdrawal-method">وسيلة الاستلام <span className="req">*</span></label>
+              <input id="wallet-withdrawal-method" className="fd-input" type="text" required minLength={2} maxLength={80} value={withdrawalMethod} onChange={(event) => setWithdrawalMethod(event.target.value)} placeholder="مثال: حوالة أو محفظة إلكترونية" />
+            </div>
+            <div className="fd-field">
+              <label htmlFor="wallet-withdrawal-details">بيانات الاستلام <span className="req">*</span></label>
+              <textarea id="wallet-withdrawal-details" className="fd-input fd-textarea" required minLength={5} maxLength={500} rows={3} value={withdrawalDetails} onChange={(event) => setWithdrawalDetails(event.target.value)} placeholder="اكتب رقم الحساب أو المحفظة واسم المستلم فقط" />
+            </div>
+            <div className="fd-field">
+              <label htmlFor="wallet-withdrawal-note">ملاحظة (اختياري)</label>
+              <textarea id="wallet-withdrawal-note" className="fd-input fd-textarea" maxLength={500} rows={2} value={withdrawalNote} onChange={(event) => setWithdrawalNote(event.target.value)} placeholder="معلومة تساعد الإدارة في المراجعة" />
+            </div>
+            {withdrawalError && <p className="fd-message fd-error" role="alert">{withdrawalError}</p>}
+            {withdrawalSuccess && <p className="fd-message fd-success" role="status">{withdrawalSuccess}</p>}
+            <button className="fd-submit" type="submit" disabled={withdrawalSaving || !user}>
+              <ArrowUpRight size={18} aria-hidden="true" />{withdrawalSaving ? "جارٍ الإرسال…" : "إرسال طلب السحب للمراجعة"}
+            </button>
+          </form>
+        </section>
+
+        {(withdrawals.length > 0 || withdrawalsLoading || withdrawalsError) && (
+          <section className="fd-log" aria-label="طلبات السحب السابقة">
+            <div className="fd-topups-heading">
+              <h3><span className="ic"><List size={18} aria-hidden="true" /></span> طلباتي للسحب</h3>
+              <button type="button" className="fd-topups-refresh" onClick={() => void loadWithdrawals()} disabled={withdrawalsLoading}>{withdrawalsLoading ? "جارٍ التحديث…" : "تحديث"}</button>
+            </div>
+            {withdrawalsError ? <div className="fd-log-error" role="alert"><p>{withdrawalsError}</p><button type="button" onClick={() => void loadWithdrawals()}>إعادة المحاولة</button></div> : withdrawalsLoading ? <p className="fd-empty-state" role="status">جارٍ تحميل طلبات السحب…</p> : withdrawals.length === 0 ? <div className="fd-empty-state">لا توجد طلبات سحب بعد.</div> : (
+              <div className="fd-topup-list">
+                {withdrawals.map((request) => (
+                  <article key={request.id} className="fd-topup-row">
+                    <div className="fd-topup-details">
+                      <div className="fd-topup-title"><strong>{Number(request.amount).toLocaleString("en-US")} ر.ي</strong><span className={`fd-topup-status ${request.status === "paid" ? "approved" : request.status === "rejected" ? "rejected" : "pending"}`}>{request.status === "pending_review" ? "قيد المراجعة" : request.status === "approved" ? "معتمد للصرف يدويًا" : request.status === "rejected" ? "مرفوض" : "تم تسجيل الصرف يدويًا"}</span></div>
+                      <span>وسيلة الاستلام: {request.destination_method}</span>
+                      <time dateTime={request.created_at}>{new Date(request.created_at).toLocaleString("ar-u-nu-latn")}</time>
+                      {request.review_note && <span className="fd-topup-note">ملاحظة الإدارة: {request.review_note}</span>}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
 
         {showTopupForm && (
           <section className="fd-topup-panel" aria-label="إضافة رصيد">
@@ -591,7 +743,7 @@ function WalletPage() {
 
 
         )}
-        <p className="fd-footer">تُراجع جميع طلبات الشحن قبل اعتمادها. تأكّد من المبلغ وسند التحويل قبل الإرسال.</p>
+        <p className="fd-footer">تُراجع طلبات الشحن والسحب يدويًا. طلب السحب لا يغيّر رصيد المحفظة ولا يحجزه؛ الصرف اليدوي لا يُسجّل تلقائيًا في سجل الرصيد.</p>
 
         {methodPickerOpen && (
           <div className="fd-method-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setMethodPickerOpen(false); }}>
