@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link } from "@tanstack/react-router";
 import useSWR from "swr";
 import { MapPin, Package, Search, ShoppingBag, Store } from "lucide-react";
@@ -19,13 +19,34 @@ export function MerchantMarketplace() {
     dedupingInterval: 20_000,
   });
   const [search, setSearch] = useState("");
+  const [selectedStoreId, setSelectedStoreId] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return new URLSearchParams(window.location.search).get("store")?.trim() ?? "";
+  });
   const [selected, setSelected] = useState<MarketplaceProduct | null>(null);
 
-  const categories = useMemo(
-    () => [...new Set(products.map((product) => product.category).filter(Boolean))],
-    [products],
+  // Keep the store filter in sync when a customer navigates back/forward.
+  useEffect(() => {
+    const syncStoreFromUrl = () => {
+      setSelectedStoreId(new URLSearchParams(window.location.search).get("store")?.trim() ?? "");
+    };
+    window.addEventListener("popstate", syncStoreFromUrl);
+    return () => window.removeEventListener("popstate", syncStoreFromUrl);
+  }, []);
+
+  const selectedStoreName = useMemo(
+    () => products.find((product) => product.store.id === selectedStoreId)?.store.name ?? "",
+    [products, selectedStoreId],
   );
-  const visibleProducts = products.filter((product) => {
+  const storeProducts = useMemo(
+    () => selectedStoreId ? products.filter((product) => product.store.id === selectedStoreId) : products,
+    [products, selectedStoreId],
+  );
+  const categories = useMemo(
+    () => [...new Set(storeProducts.map((product) => product.category).filter(Boolean))],
+    [storeProducts],
+  );
+  const visibleProducts = storeProducts.filter((product) => {
     const term = search.trim().toLocaleLowerCase();
     return !term || [product.title, product.description, product.category, product.store.name, product.store.city]
       .join(" ")
@@ -39,12 +60,25 @@ export function MerchantMarketplace() {
         <div className="grid gap-8 md:grid-cols-[1fr_auto] md:items-end">
           <div className="max-w-2xl">
             <Badge variant="secondary" className="mb-4">السوق المحلي</Badge>
-            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">منتجات من تجار السوق الشامل</h1>
-            <p className="mt-3 text-muted-foreground">اكتشف منتجات التجار المحليين واطلبها مباشرة. الدفع نقدًا عند الاستلام.</p>
+            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+              {selectedStoreId ? (selectedStoreName ? `منتجات ${selectedStoreName}` : "منتجات المتجر") : "منتجات من تجار السوق الشامل"}
+            </h1>
+            <p className="mt-3 text-muted-foreground">
+              {selectedStoreId
+                ? "تصفح المنتجات التي اعتمدتها الإدارة لهذا المتجر."
+                : "اكتشف منتجات التجار المحليين واطلبها مباشرة. الدفع نقدًا عند الاستلام."}
+            </p>
           </div>
-          <Link to="/merchant" className="inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold transition-colors hover:bg-muted">
-            <Store aria-hidden="true" className="size-4" /> بوابة التاجر
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            {selectedStoreId && (
+              <Link to="/marketplace" onClick={() => setSelectedStoreId("")} className="inline-flex items-center justify-center rounded-xl border px-4 py-3 text-sm font-semibold transition-colors hover:bg-muted">
+                عرض كل المتاجر
+              </Link>
+            )}
+            <Link to="/merchant" className="inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold transition-colors hover:bg-muted">
+              <Store aria-hidden="true" className="size-4" /> بوابة التاجر
+            </Link>
+          </div>
         </div>
         <div className="mt-7 flex flex-col gap-3 sm:flex-row">
           <label className="relative flex-1">
@@ -69,7 +103,10 @@ export function MerchantMarketplace() {
         <div className="mb-4 flex items-end justify-between gap-4">
           <div>
             <h2 id="marketplace-products-heading" className="text-xl font-bold">المنتجات المعتمدة</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{products.length.toLocaleString("ar-YE")} منتج متاح</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {storeProducts.length.toLocaleString("ar-YE")} منتج معتمد متاح
+              {selectedStoreId && selectedStoreName ? ` في ${selectedStoreName}` : ""}
+            </p>
           </div>
         </div>
         {isLoading ? (
@@ -81,8 +118,16 @@ export function MerchantMarketplace() {
         ) : visibleProducts.length === 0 ? (
           <Card><CardContent className="flex flex-col items-center gap-3 py-12 text-center">
             <Package aria-hidden="true" className="size-9 text-muted-foreground" />
-            <p className="font-semibold">لا توجد منتجات مطابقة</p>
-            <p className="text-sm text-muted-foreground">جرّب كلمة بحث أخرى أو عُد إلى كل المنتجات.</p>
+            <p className="font-semibold">
+              {selectedStoreId && storeProducts.length === 0
+                ? "لا توجد منتجات معتمدة لهذا المتجر حاليًا"
+                : "لا توجد منتجات مطابقة"}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {selectedStoreId && storeProducts.length === 0
+                ? "ستظهر المنتجات هنا بعد اعتمادها من الإدارة."
+                : "جرّب كلمة بحث أخرى أو عُد إلى كل المنتجات."}
+            </p>
           </CardContent></Card>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
