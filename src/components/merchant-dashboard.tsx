@@ -103,6 +103,23 @@ export function MerchantDashboard() {
         <ProductInventory products={products} error={productsError} onSaved={() => void mutateProducts()} active={store.status === "active"} />
         <MerchantOrders orders={orders} error={ordersError} onStatusChanged={() => { void mutateOrders(); void mutateProducts(); }} />
       </section>
+
+      <section aria-labelledby="merchant-shisha-heading" className="grid gap-6 rounded-3xl border border-primary/20 bg-primary/[0.03] p-4 sm:p-6 lg:grid-cols-[0.9fr_1.1fr]">
+        <div className="lg:col-span-2">
+          <Badge variant="secondary" className="mb-2">قسم خاص</Badge>
+          <h2 id="merchant-shisha-heading" className="text-2xl font-bold">معسلات المتجر</h2>
+          <p className="mt-2 text-sm text-muted-foreground">أضف معسلات ومنتجات الشيشة وتابع الكمية والسعر وحالة المراجعة. لن تظهر المنتجات للعملاء قبل اعتماد الإدارة.</p>
+        </div>
+        <ProductForm store={store} onCreated={() => void mutateProducts()} presetCategory="معسلات" />
+        <ProductInventory
+          products={products.filter(isShishaProduct)}
+          error={productsError}
+          onSaved={() => void mutateProducts()}
+          active={store.status === "active"}
+          title="معسلات ومنتجات الشيشة"
+          description="تظهر هنا المنتجات المصنفة كمعسل أو شيشة؛ عدّل السعر والكمية، وتابع اعتماد الإدارة قبل النشر."
+        />
+      </section>
     </main>
   );
 }
@@ -142,8 +159,8 @@ function StoreProfile({ store, onSaved }: { store: MerchantStorePrivate; onSaved
   );
 }
 
-function ProductForm({ store, onCreated }: { store: MerchantStorePrivate; onCreated: () => void }) {
-  const [form, setForm] = useState({ title: "", description: "", category: "", price: "", currency: "YER", stock: "1" });
+function ProductForm({ store, onCreated, presetCategory }: { store: MerchantStorePrivate; onCreated: () => void; presetCategory?: string }) {
+  const [form, setForm] = useState({ title: "", description: "", category: presetCategory ?? "", price: "", currency: "YER", stock: "1" });
   const [image, setImage] = useState<File | null>(null);
   const [draftId, setDraftId] = useState<string | null>(null);
   const [draftImagePath, setDraftImagePath] = useState<string | null>(null);
@@ -152,7 +169,7 @@ function ProductForm({ store, onCreated }: { store: MerchantStorePrivate; onCrea
   const [formElement, setFormElement] = useState<HTMLFormElement | null>(null);
 
   function resetForm() {
-    setForm({ title: "", description: "", category: "", price: "", currency: "YER", stock: "1" });
+    setForm({ title: "", description: "", category: presetCategory ?? "", price: "", currency: "YER", stock: "1" });
     setImage(null);
     setDraftId(null);
     setDraftImagePath(null);
@@ -200,7 +217,7 @@ function ProductForm({ store, onCreated }: { store: MerchantStorePrivate; onCrea
       store_id: store.id,
       title: form.title.trim(),
       description: form.description.trim(),
-      category: form.category.trim(),
+      category: presetCategory ?? form.category.trim(),
       price,
       currency: form.currency,
       stock,
@@ -252,10 +269,10 @@ function ProductForm({ store, onCreated }: { store: MerchantStorePrivate; onCrea
 
   return (
     <Card className="rounded-2xl">
-      <CardHeader><CardTitle className="flex items-center gap-2"><PackagePlus aria-hidden="true" className="size-5 text-primary" /> إضافة منتج</CardTitle><CardDescription>احفظ المنتج كمسودة أو أرسله للمراجعة؛ لن يظهر للعملاء قبل اعتماد الإدارة.</CardDescription></CardHeader>
+      <CardHeader><CardTitle className="flex items-center gap-2"><PackagePlus aria-hidden="true" className="size-5 text-primary" /> {presetCategory ? "إضافة معسل أو منتج شيشة" : "إضافة منتج"}</CardTitle><CardDescription>{presetCategory ? "احفظ المعسل كمسودة أو أرسله لمراجعة الإدارة؛ التصنيف يضبط تلقائيًا إلى معسلات." : "احفظ المنتج كمسودة أو أرسله للمراجعة؛ لن يظهر للعملاء قبل اعتماد الإدارة."}</CardDescription></CardHeader>
       <CardContent><form ref={setFormElement} onSubmit={(event) => { event.preventDefault(); void persist("submit"); }} className="grid gap-3 sm:grid-cols-2">
         <Field label="اسم المنتج"><Input required minLength={2} maxLength={120} value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} /></Field>
-        <Field label="التصنيف"><Input maxLength={60} value={form.category} onChange={(event) => setForm({ ...form, category: event.target.value })} placeholder="مثال: عطور" /></Field>
+        {!presetCategory && <Field label="التصنيف"><Input maxLength={60} value={form.category} onChange={(event) => setForm({ ...form, category: event.target.value })} placeholder="مثال: عطور" /></Field>}
         <Field label="السعر"><Input required type="number" min="0.01" step="0.01" value={form.price} onChange={(event) => setForm({ ...form, price: event.target.value })} /></Field>
         <Field label="العملة"><select value={form.currency} onChange={(event) => setForm({ ...form, currency: event.target.value })} className="h-9 rounded-md border border-input bg-background px-3 text-sm"><option value="YER">ريال يمني (YER)</option><option value="SAR">ريال سعودي (SAR)</option><option value="USD">دولار (USD)</option></select></Field>
         <Field label="الكمية المتاحة"><Input required type="number" min="0" max="1000000" step="1" value={form.stock} onChange={(event) => setForm({ ...form, stock: event.target.value })} /></Field>
@@ -272,11 +289,16 @@ function ProductForm({ store, onCreated }: { store: MerchantStorePrivate; onCrea
   );
 }
 
-function ProductInventory({ products, error, onSaved, active }: { products: (MerchantProduct & { image_url: string | null })[]; error?: Error; onSaved: () => void; active: boolean }) {
+function isShishaProduct(product: MerchantProduct) {
+  const searchable = `${product.category} ${product.title}`.trim().toLowerCase();
+  return /معسل|شيشة|ارجيلة|أرجيلة/.test(searchable);
+}
+
+function ProductInventory({ products, error, onSaved, active, title = "إدارة المنتجات", description = "غيّر السعر والمخزون مباشرة. تعديل وصف أو صورة منتج منشور يعيده للمراجعة." }: { products: (MerchantProduct & { image_url: string | null })[]; error?: Error; onSaved: () => void; active: boolean; title?: string; description?: string }) {
   if (error) return <Card className="rounded-2xl"><CardContent className="py-8 text-sm text-destructive">تعذر تحميل المنتجات.</CardContent></Card>;
   return (
     <Card className="rounded-2xl">
-      <CardHeader><CardTitle>إدارة المنتجات</CardTitle><CardDescription>غيّر السعر والمخزون مباشرة. تعديل وصف أو صورة منتج منشور يعيده للمراجعة.</CardDescription></CardHeader>
+      <CardHeader><CardTitle>{title}</CardTitle><CardDescription>{description}</CardDescription></CardHeader>
       <CardContent className="grid gap-3">
         {products.length === 0 ? <p className="rounded-xl bg-muted/50 p-6 text-center text-sm text-muted-foreground">لم تضف منتجات بعد.</p> : products.map((product) => <InventoryRow key={product.id} product={product} onSaved={onSaved} active={active} />)}
       </CardContent>
