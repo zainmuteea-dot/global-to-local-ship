@@ -43,6 +43,19 @@ type WalletTopupReview = {
   created_at: string;
 };
 
+type WalletWithdrawalReview = {
+  id: string;
+  user_id: string;
+  amount: number;
+  currency: string;
+  destination_method: string;
+  destination_details: string;
+  note: string | null;
+  review_note: string | null;
+  status: "pending_review" | "approved" | "rejected" | "paid";
+  created_at: string;
+};
+
 export const AUTO_REFRESH_SECONDS = 30;
 const PAGE_SIZE = 10;
 
@@ -291,6 +304,11 @@ function PaymentsPage() {
   const [topupProofPreview, setTopupProofPreview] = useState<string | null>(null);
   const [topupProofLoadingId, setTopupProofLoadingId] = useState<string | null>(null);
   const [topupReviewBusyId, setTopupReviewBusyId] = useState<string | null>(null);
+  const [withdrawalReviews, setWithdrawalReviews] = useState<WalletWithdrawalReview[]>([]);
+  const [showWalletWithdrawals, setShowWalletWithdrawals] = useState(false);
+  const [withdrawalsLoading, setWithdrawalsLoading] = useState(false);
+  const [withdrawalsError, setWithdrawalsError] = useState("");
+  const [withdrawalBusyId, setWithdrawalBusyId] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
   // يعرض شاشة التحميل الكاملة عند أول تحميل فقط.
@@ -357,6 +375,85 @@ function PaymentsPage() {
       setTopupsLoading(false);
     }
   }, []);
+
+  const loadWalletWithdrawals = useCallback(async () => {
+    setWithdrawalsLoading(true);
+    setWithdrawalsError("");
+    try {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError || !authData.user) throw new Error("تعذر التحقق من جلسة الموظف.");
+      const [adminRole, staffRole] = await Promise.all([
+        supabase.rpc("has_role", { _user_id: authData.user.id, _role: "admin" }),
+        supabase.rpc("has_role", { _user_id: authData.user.id, _role: "staff" }),
+      ]);
+      if (adminRole.error || staffRole.error) throw new Error("تعذر التحقق من صلاحية مراجعة طلبات السحب.");
+      if (!adminRole.data && !staffRole.data) throw new Error("هذه القائمة متاحة للموظفين المخوّلين فقط.");
+      const { data, error } = await (supabase as any).from("wallet_withdrawal_requests")
+        .select("id,user_id,amount,currency,destination_method,destination_details,note,review_note,status,created_at")
+        .in("status", ["pending_review", "approved"])
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      setWithdrawalReviews((data ?? []) as WalletWithdrawalReview[]);
+    } catch (cause) {
+      console.error("Could not load wallet withdrawal reviews", cause);
+      setWithdrawalsError(cause instanceof Error ? cause.message : "تعذر تحميل طلبات السحب.");
+    } finally {
+      setWithdrawalsLoading(false);
+    }
+  }, []);
+
+  const reviewWalletWithdrawal = async (request: WalletWithdrawalReview, decision: "approved" | "rejected") => {
+    if (request.status !== "pending_review") {
+      setWithdrawalsError("هذا الطلب لم يعد قيد المراجعة. حدّث القائمة.");
+      return;
+    }
+    const note = decision === "rejected" ? window.prompt("سبب الرفض (اختياري، حتى 500 حرف):", "") : null;
+    if (decision === "rejected" && note === null) return;
+    const action = decision === "approved" ? "اعتماد" : "رفض";
+    if (!window.confirm(`هل راجعت بيانات المستلم ومبلغ ${fmt(Number(request.amount))} ر.ي؟
+
+${action} الطلب فقط، ولن يتغير رصيد المحفظة أو يُنفّذ تحويل تلقائي.`)) return;
+    setWithdrawalBusyId(request.id);
+    setWithdrawalsError("");
+    try {
+      const { data, error } = await (supabase as any).rpc("review_wallet_withdrawal", {
+        _request_id: request.id,
+        _decision: decision,
+        _review_note: note,
+      });
+      if (error) throw error;
+      if (!data || data.success !== true || data.decision !== decision) throw new Error("لم يؤكد الخادم إتمام المراجعة؛ حدّث القائمة.");
+      setSuccess(decision === "approved" ? "تم اعتماد الطلب للمراجعة النهائية والصرف اليدوي؛ لم يتغير الرصيد." : "تم رفض طلب السحب؛ لم يتغير الرصيد.");
+      void loadWalletWithdrawals();
+    } catch (cause) {
+      console.error("تعذرت مراجعة طلب السحب:", cause);
+      setWithdrawalsError(cause instanceof Error ? cause.message : "تعذرت مراجعة طلب السحب.");
+    } finally {
+      setWithdrawalBusyId(null);
+    }
+  };
+
+  const markWalletWithdrawalPaid = async (request: WalletWithdrawalReview) => {
+    if (request.status !== "approved") return;
+    if (!window.confirm(`لا تستخدم هذا الإجراء إلا بعد إتمام التحويل يدويًا خارج التطبيق إلى بيانات المستلم.
+
+سيُسجّل الطلب كمدفوع فقط، دون خصم من wallet_transactions أو تنفيذ تحويل. هل تم التحويل يدويًا؟`)) return;
+    setWithdrawalBusyId(request.id);
+    setWithdrawalsError("");
+    try {
+      const { data, error } = await (supabase as any).rpc("mark_wallet_withdrawal_paid", { _request_id: request.id });
+      if (error) throw error;
+      if (!data || data.success !== true || data.status !== "paid") throw new Error("لم يؤكد الخادم تسجيل الصرف؛ حدّث القائمة.");
+      setSuccess("تم تسجيل أن التحويل اليدوي اكتمل. لم يُخصم الرصيد تلقائيًا.");
+      void loadWalletWithdrawals();
+    } catch (cause) {
+      console.error("تعذر تسجيل صرف طلب السحب:", cause);
+      setWithdrawalsError(cause instanceof Error ? cause.message : "تعذر تسجيل الصرف اليدوي.");
+    } finally {
+      setWithdrawalBusyId(null);
+    }
+  };
 
   const reviewWalletTopup = async (request: WalletTopupReview, decision: "approved" | "rejected") => {
     const isApproval = decision === "approved";
@@ -730,6 +827,12 @@ function PaymentsPage() {
       )
       .subscribe();
 
+    const withdrawalChannel = supabase
+      .channel("wallet_withdrawal_requests_staff_refresh")
+      .on("postgres_changes", { event: "*", schema: "public", table: "wallet_withdrawal_requests" }, () => void loadWalletWithdrawals())
+      .subscribe();
+    void loadWalletWithdrawals();
+
     const topupChannel = supabase
       .channel("wallet_topup_requests_staff_refresh")
       .on(
@@ -742,14 +845,16 @@ function PaymentsPage() {
     const intervalId = window.setInterval(() => {
       void load();
       void loadWalletTopups();
+      void loadWalletWithdrawals();
     }, AUTO_REFRESH_SECONDS * 1000);
 
     return () => {
       window.clearInterval(intervalId);
       void supabase.removeChannel(channel);
       void supabase.removeChannel(topupChannel);
+      void supabase.removeChannel(withdrawalChannel);
     };
-  }, [load, loadWalletTopups]);
+  }, [load, loadWalletTopups, loadWalletWithdrawals]);
 
   // احتفظ بسياق الصوت أثناء تبديل الفلاتر والصفحات، وأغلقه عند مغادرة الصفحة فقط.
   useEffect(() => {
@@ -1229,6 +1334,36 @@ function PaymentsPage() {
               <p className="mt-3 text-[11px] leading-5 text-slate-500">السند يبقى في التخزين الخاص؛ يتحقق الخادم من الصلاحية عند كل عرض، والاعتماد ذري ولا يضيف الرصيد أكثر من مرة.</p>
             </section>
           )}
+          <div className="mt-3 border-t border-slate-100 pt-3">
+            <button type="button" aria-expanded={showWalletWithdrawals} aria-controls="wallet-withdrawal-review-panel" onClick={() => setShowWalletWithdrawals((shown) => !shown)} className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-black transition-colors ${showWalletWithdrawals ? "border-sky-600 bg-sky-700 text-white" : "border-sky-200 bg-sky-50 text-sky-900 hover:bg-sky-100"}`}>
+              <span>{showWalletWithdrawals ? "إخفاء" : "طلبات سحب المحفظة"}</span>
+              <span className={`min-w-6 rounded-full px-2 py-0.5 text-center ${showWalletWithdrawals ? "bg-white/20" : "bg-sky-200 text-sky-950"}`}>{withdrawalsLoading && withdrawalReviews.length === 0 ? "…" : withdrawalReviews.length}</span>
+              <span aria-hidden="true">{showWalletWithdrawals ? "▲" : "▼"}</span>
+            </button>
+          </div>
+
+          {showWalletWithdrawals && (
+            <section id="wallet-withdrawal-review-panel" className="mt-3 rounded-xl border border-sky-200 bg-sky-50/40 p-3" aria-label="مراجعة طلبات سحب المحفظة">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <div><h2 className="text-sm font-black text-[#0A2540]">مراجعة طلبات سحب المحفظة</h2><p className="mt-1 text-[11px] text-slate-500">الاعتماد لا يخصم الرصيد ولا ينفذ تحويلًا. استخدم «تسجيل الصرف اليدوي» فقط بعد إتمام التحويل خارج التطبيق.</p></div>
+                <button type="button" onClick={() => void loadWalletWithdrawals()} disabled={withdrawalsLoading} className="rounded-lg bg-[#0F4C81] px-3 py-2 text-xs font-bold text-white disabled:opacity-60">{withdrawalsLoading ? "جارٍ التحديث…" : "تحديث الطلبات"}</button>
+              </div>
+              {withdrawalsError && <p role="alert" className="mb-3 rounded-lg bg-red-50 p-3 text-xs font-bold text-red-700">{withdrawalsError}</p>}
+              {withdrawalsLoading && withdrawalReviews.length === 0 ? <p role="status" className="rounded-lg bg-white p-3 text-sm text-slate-500">جارٍ تحميل طلبات السحب…</p> : withdrawalReviews.length === 0 ? <p className="rounded-lg bg-white p-3 text-sm text-slate-500">لا توجد طلبات معلقة أو معتمدة للصرف.</p> : (
+                <div className="space-y-2">
+                  {withdrawalReviews.map((request) => (
+                    <article key={request.id} className="rounded-lg border border-slate-200 bg-white p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2"><strong className="text-sm text-[#0A2540]">{fmt(Number(request.amount))} ر.ي</strong><span className={`rounded-full px-3 py-1 text-[11px] font-black ${request.status === "approved" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>{request.status === "approved" ? "معتمد، بانتظار الصرف اليدوي" : "قيد المراجعة"}</span></div>
+                      <div className="mt-2 grid gap-1 text-xs text-slate-600 sm:grid-cols-2"><span>وسيلة الاستلام: <b>{request.destination_method}</b></span><span>معرّف العميل: <bdi dir="ltr">{request.user_id}</bdi></span><span className="sm:col-span-2 break-all">بيانات الاستلام: <bdi>{request.destination_details}</bdi></span><span>تاريخ الطلب: {new Date(request.created_at).toLocaleString("ar-u-nu-latn")}</span>{request.note && <span className="sm:col-span-2">ملاحظة العميل: {request.note}</span>}{request.review_note && <span className="sm:col-span-2">ملاحظة المراجعة: {request.review_note}</span>}</div>
+                      <div className="mt-3 flex flex-wrap items-center gap-2">{request.status === "pending_review" && <><button type="button" onClick={() => void reviewWalletWithdrawal(request, "approved")} disabled={withdrawalBusyId !== null || withdrawalsLoading} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-black text-white disabled:opacity-60">{withdrawalBusyId === request.id ? "جارٍ التنفيذ…" : "اعتماد للمراجعة اليدوية"}</button><button type="button" onClick={() => void reviewWalletWithdrawal(request, "rejected")} disabled={withdrawalBusyId !== null || withdrawalsLoading} className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-black text-red-700 disabled:opacity-60">رفض الطلب</button></>}{request.status === "approved" && <button type="button" onClick={() => void markWalletWithdrawalPaid(request)} disabled={withdrawalBusyId !== null || withdrawalsLoading} className="rounded-lg bg-sky-700 px-3 py-2 text-xs font-black text-white disabled:opacity-60">{withdrawalBusyId === request.id ? "جارٍ التنفيذ…" : "تسجيل الصرف اليدوي بعد التحويل"}</button>}</div>
+                    </article>
+                  ))}
+                </div>
+              )}
+              <p className="mt-3 text-[11px] leading-5 text-slate-500">يظهر رقم الحساب للموظفين المخوّلين فقط. اعتماد الطلب أو تسجيل الصرف لا يغيّر wallet_transactions؛ تحقّق يدويًا من الرصيد والبيانات قبل الدفع.</p>
+            </section>
+          )}
+
           <p className="mt-3 text-xs text-slate-500" aria-live="polite">
             الصفحة الحالية: {filteredRows.length} سجل • إجمالي النتائج: {totalCount}
             {refreshing && hasLoadedOnceRef.current ? " • يجري التحديث في الخلفية" : ""}
