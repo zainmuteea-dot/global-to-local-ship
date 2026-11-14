@@ -90,10 +90,7 @@ export async function getSignedProductImage(path: string): Promise<string | null
       .from("merchant-product-images")
       .createSignedUrl(path, 3600);
     if (error) {
-      console.warn("[merchant-marketplace] product image signing failed", {
-        code: error.code,
-        message: error.message,
-      });
+      console.warn("[merchant-marketplace] product image signing failed", error.message);
       return null;
     }
     return data.signedUrl;
