@@ -264,12 +264,6 @@ export function LoginPage() {
         }
 
         user = data.user;
-        const { error: profileError } = await supabase.from("profiles").upsert({
-          id: user.id,
-          full_name: trimmedName,
-          phone,
-        });
-        if (profileError) throw profileError;
       } else if (accountType === "staff") {
         const email = identifier.trim().toLowerCase();
         if (!email || !email.includes("@")) {
