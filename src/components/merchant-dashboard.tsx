@@ -282,8 +282,24 @@ function ProductForm({ store, onCreated, presetCategory }: { store: MerchantStor
     } else {
       const { data, error } = await db.from("merchant_products").insert(values).select("id").single();
       if (error || !data) {
+        const issue = error as {
+          code?: string;
+          message?: string;
+          details?: string;
+          hint?: string;
+        } | null;
+        console.error("[merchant-marketplace] product insert failed", {
+          code: issue?.code,
+          message: issue?.message,
+          details: issue?.details,
+          hint: issue?.hint,
+        });
         setBusy(false);
-        setMessage("تعذر حفظ المنتج. تحقق من البيانات ثم أعد المحاولة.");
+        setMessage(
+          error
+            ? `تعذر حفظ المنتج (الرمز ${issue?.code ?? "غير متوفر"}): ${issue?.message ?? "خطأ غير معروف"}`
+            : "تعذر حفظ المنتج: لم تُرجع قاعدة البيانات رقم المنتج. لا تعاود الإرسال قبل التحقق من قائمة المنتجات.",
+        );
         return;
       }
       productId = data.id as string;
