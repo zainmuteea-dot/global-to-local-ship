@@ -75,11 +75,33 @@ export const orderStatusLabels: Record<MerchantOrder["status"], string> = {
   cancelled: "ملغي",
 };
 
+function logMarketplaceError(stage: string, error: unknown) {
+  const issue = error as { code?: string; message?: string; hint?: string } | null;
+  console.error(`[merchant-marketplace] ${stage} failed`, {
+    code: issue?.code,
+    message: issue?.message ?? String(error),
+    hint: issue?.hint,
+  });
+}
+
 export async function getSignedProductImage(path: string): Promise<string | null> {
-  const { data, error } = await supabase.storage
-    .from("merchant-product-images")
-    .createSignedUrl(path, 3600);
-  return error ? null : data.signedUrl;
+  try {
+    const { data, error } = await supabase.storage
+      .from("merchant-product-images")
+      .createSignedUrl(path, 3600);
+    if (error) {
+      console.warn("[merchant-marketplace] product image signing failed", {
+        code: error.code,
+        message: error.message,
+      });
+      return null;
+    }
+    return data.signedUrl;
+  } catch (error) {
+    // A storage/network failure for one image must not hide every approved product.
+    logMarketplaceError("product image signing", error);
+    return null;
+  }
 }
 
 export async function loadMarketplace(): Promise<MarketplaceProduct[]> {
@@ -89,7 +111,10 @@ export async function loadMarketplace(): Promise<MarketplaceProduct[]> {
     .eq("status", "approved")
     .gt("stock", 0)
     .order("created_at", { ascending: false });
-  if (error) throw error;
+  if (error) {
+    logMarketplaceError("approved products query", error);
+    throw error;
+  }
   if (!rows?.length) return [];
 
   const storeIds = [...new Set(rows.map((row: MerchantProduct) => row.store_id))];
@@ -98,7 +123,10 @@ export async function loadMarketplace(): Promise<MarketplaceProduct[]> {
     .select("id,name,contact_phone,city")
     .in("id", storeIds)
     .eq("status", "active");
-  if (storeError) throw storeError;
+  if (storeError) {
+    logMarketplaceError("active stores query", storeError);
+    throw storeError;
+  }
 
   const storeById = new Map<string, MarketplaceProduct["store"]>(
     (stores ?? []).map((store: MarketplaceProduct["store"]) => [store.id, store]),
