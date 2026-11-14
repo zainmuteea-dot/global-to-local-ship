@@ -354,17 +354,11 @@ export function LoginPage() {
         }
         user = data.user;
       }
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("full_name, phone")
-        .eq("id", user.id)
-        .maybeSingle();
-
+      // بيانات الاسم والهاتف محفوظة في Auth metadata؛ لا نحتاج استعلام profiles من المتصفح.
       const resolvedName =
-        profile?.full_name || user.user_metadata?.["full_name"] || fullName.trim();
+        user.user_metadata?.["full_name"] || fullName.trim();
       const resolvedPhone =
-        profile?.phone || user.user_metadata?.["phone"] || normalizePhoneE164(identifier);
+        user.user_metadata?.["phone"] || normalizePhoneE164(identifier);
 
       localStorage.setItem("alsouk_customer_logged_in", "true");
       localStorage.setItem(
