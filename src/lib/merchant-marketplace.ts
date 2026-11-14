@@ -2,6 +2,9 @@ import { supabase } from "@/integrations/supabase/client";
 
 const db = supabase as any;
 
+// Existing production schema requires image_path; this store-scoped sentinel represents no uploaded image.
+export const EMPTY_PRODUCT_IMAGE = "__no_image__";
+
 export type MerchantStore = {
   id: string;
   name: string;
@@ -85,6 +88,7 @@ function logMarketplaceError(stage: string, error: unknown) {
 }
 
 export async function getSignedProductImage(path: string): Promise<string | null> {
+  if (!path || path.endsWith(`/${EMPTY_PRODUCT_IMAGE}`)) return null;
   try {
     const { data, error } = await supabase.storage
       .from("merchant-product-images")

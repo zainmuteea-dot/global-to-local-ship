@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useSession } from "@/hooks/use-session";
 import { supabase } from "@/integrations/supabase/client";
 import {
+  EMPTY_PRODUCT_IMAGE,
   formatDate,
   formatMoney,
   getSignedProductImage,
@@ -204,12 +205,12 @@ function ProductForm({ store, onCreated, presetCategory }: { store: MerchantStor
     if (!file) return;
     setMessage("");
     setImageUploadMessage("");
-    if (!["image/jpeg", "image/png"].includes(file.type) || file.size >= 6 * 1024 * 1024) {
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 6 * 1024 * 1024) {
       setImage(null);
       setSelectedImagePath(null);
       if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
       setImagePreviewUrl(null);
-      setImageUploadMessage("ارفع صورة JPG أو PNG أقل من 6 ميجابايت.");
+      setImageUploadMessage("ارفع صورة JPG أو PNG أو WebP بحجم لا يتجاوز 6 ميجابايت.");
       return;
     }
     const previousTemporaryPath = uploadedImagePath;
@@ -219,7 +220,7 @@ function ProductForm({ store, onCreated, presetCategory }: { store: MerchantStor
     setImagePreviewUrl(URL.createObjectURL(file));
     setUploadingImage(true);
     setImageUploadMessage("جارٍ رفع الصورة…");
-    const extension = file.type === "image/png" ? "png" : "jpg";
+    const extension = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
     const imagePath = `${store.id}/${crypto.randomUUID()}.${extension}`;
     const { error: uploadError } = await supabase.storage
       .from("merchant-product-images")
@@ -245,11 +246,7 @@ function ProductForm({ store, onCreated, presetCategory }: { store: MerchantStor
       setMessage("انتظر اكتمال رفع الصورة.");
       return;
     }
-    if (!selectedImagePath && !draftImagePath) {
-      setMessage("اختر صورة للمنتج قبل الحفظ.");
-      return;
-    }
-    const price = Number(form.price);
+     const price = Number(form.price);
     const stock = Number(form.stock);
     if (!Number.isFinite(price) || price <= 0 || !Number.isInteger(stock) || stock < 0 || stock > 1_000_000) {
       setMessage("تحقق من السعر والكمية المدخلة.");
@@ -258,12 +255,7 @@ function ProductForm({ store, onCreated, presetCategory }: { store: MerchantStor
 
     setBusy(true);
     setMessage("");
-    const imagePath = selectedImagePath ?? draftImagePath;
-    if (!imagePath) {
-      setBusy(false);
-      setMessage("اختر صورة للمنتج قبل الحفظ.");
-      return;
-    }
+    const imagePath = selectedImagePath ?? draftImagePath ?? `${store.id}/${EMPTY_PRODUCT_IMAGE}`;
 
     const values = {
       store_id: store.id,
@@ -335,7 +327,7 @@ function ProductForm({ store, onCreated, presetCategory }: { store: MerchantStor
         <Field label="الكمية المتاحة"><Input required type="number" min="0" max="1000000" step="1" value={form.stock} onChange={(event) => setForm({ ...form, stock: event.target.value })} /></Field>
         <div className="grid gap-1.5 text-sm font-medium">
           <span>صورة المنتج</span>
-          <span className="text-xs font-normal text-muted-foreground">ارفع صورة واضحة للمنتج - JPG أو PNG - أقل من 6 ميجابايت</span>
+          <span className="text-xs font-normal text-muted-foreground">ارفع صورة واضحة للمنتج - JPG أو PNG أو WebP - بحد أقصى 6 ميجابايت. الصورة اختيارية.</span>
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="outline" disabled={busy || uploadingImage || store.status !== "active"} onClick={() => cameraInputRef.current?.click()}>
               <Camera aria-hidden="true" className="ml-2 size-4" />التقاط صورة بالكاميرا
@@ -344,8 +336,8 @@ function ProductForm({ store, onCreated, presetCategory }: { store: MerchantStor
               <ImagePlus aria-hidden="true" className="ml-2 size-4" />اختيار من الصور
             </Button>
           </div>
-          <input ref={cameraInputRef} type="file" accept="image/jpeg,image/png" capture="environment" onChange={(event) => { void handleImageSelection(event.target.files?.[0]); event.currentTarget.value = ""; }} className="sr-only" tabIndex={-1} aria-label="التقاط صورة المنتج بالكاميرا" />
-          <input ref={galleryInputRef} type="file" accept="image/jpeg,image/png" onChange={(event) => { void handleImageSelection(event.target.files?.[0]); event.currentTarget.value = ""; }} className="sr-only" tabIndex={-1} aria-label="اختيار صورة المنتج من الصور" />
+          <input ref={cameraInputRef} type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={(event) => { void handleImageSelection(event.target.files?.[0]); event.currentTarget.value = ""; }} className="sr-only" tabIndex={-1} aria-label="التقاط صورة المنتج بالكاميرا" />
+          <input ref={galleryInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { void handleImageSelection(event.target.files?.[0]); event.currentTarget.value = ""; }} className="sr-only" tabIndex={-1} aria-label="اختيار صورة المنتج من الصور" />
           {imagePreviewUrl && <img src={imagePreviewUrl} alt="معاينة صورة المنتج" className="mt-2 h-36 w-full rounded-xl border object-cover" />}
           {imageUploadMessage && <span role="status" className={`text-xs font-medium ${selectedImagePath ? "text-primary" : "text-muted-foreground"}`}>{imageUploadMessage}</span>}
           {image?.name && <span className="text-xs font-normal text-muted-foreground">{image.name}</span>}

@@ -161,13 +161,20 @@ export function MerchantMarketplace() {
 }
 
 function ProductCard({ product, onOrder }: { product: MarketplaceProduct; onOrder: () => void }) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const imageUrl = imageFailed ? null : product.image_url;
+
   return (
     <Card className="overflow-hidden rounded-2xl border-border/80 transition-shadow hover:shadow-md">
       <div className="aspect-[4/3] overflow-hidden bg-muted">
-        {product.image_url ? (
-          <img src={product.image_url} alt={product.title} className="size-full object-cover" loading="lazy" />
+        {imageUrl ? (
+          <img src={imageUrl} alt={product.title} className="size-full object-cover" loading="lazy" onError={() => setImageFailed(true)} />
         ) : (
-          <div className="flex size-full items-center justify-center text-muted-foreground"><Package aria-hidden="true" className="size-10" /></div>
+          <div className="flex size-full flex-col items-center justify-center gap-2 bg-muted text-center text-muted-foreground">
+            <Package aria-hidden="true" className="size-10" />
+            <span className="text-xs">صورة المنتج غير متاحة</span>
+            <span className="max-w-[90%] truncate text-xs">{product.store.name}</span>
+          </div>
         )}
       </div>
       <CardHeader className="gap-2 pb-2">

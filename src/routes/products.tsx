@@ -1,4 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
+import useSWR from "swr";
+import { useSession } from "@/hooks/use-session";
 import { createFileRoute, Outlet, useLocation, Link } from "@tanstack/react-router";
 import { readCart } from "@/lib/extension-cart";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,6 +8,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { readableTextOn, resolveCardColors, safeImageUrl } from "@/lib/offer-card-style";
 
 const db = supabase as any;
+
+async function loadCurrentMerchantStore() {
+  const { data, error } = await db.rpc("merchant_get_my_store");
+  if (error) throw error;
+  return Array.isArray(data) ? data[0] ?? null : data;
+}
 
 /** Allow only legacy offer routes or a safe internal custom-offer route. */
 function safeOfferPath(value: unknown): string {
@@ -341,6 +349,9 @@ const CUSTOMER_STOREFRONT_CSS = `
 .pr-merchant-title{position:relative;z-index:1;margin:0;font-size:19px;font-weight:900;line-height:1.5}
 .pr-merchant-description{position:relative;z-index:1;margin:4px 0 0;color:#706344;font-size:13px;font-weight:600;line-height:1.75}
 .pr-merchant-cta{display:inline-flex;align-items:center;gap:8px;color:#8B671C;font-size:13px;font-weight:900}
+.pr-merchant-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+.pr-merchant-action{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid rgba(139,103,28,.3);border-radius:10px;background:#fff;padding:9px 12px;color:#765712;font-size:12px;font-weight:900;text-decoration:none;transition:background .2s,color .2s}
+.pr-merchant-action:hover{background:#8B671C;color:#fff}
 .pr-merchant-state{grid-column:1/-1;border:1px dashed rgba(184,145,42,.45);border-radius:14px;background:rgba(255,255,255,.7);padding:18px;text-align:center;color:var(--muted);font-size:13px;font-weight:700;line-height:1.8}
 .pr-banners{position:relative;z-index:1;max-width:1240px;margin:34px auto 0;padding:0 22px;display:flex;flex-wrap:wrap;align-items:stretch;justify-content:center;gap:22px}
 .pr-banner{position:relative;min-height:220px;overflow:hidden;border-radius:18px;padding:36px;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:14px;text-align:right;text-decoration:none;transition:transform .25s ease,box-shadow .25s ease}.pr-banner:hover{transform:translateY(-3px)}
@@ -370,6 +381,11 @@ const CUSTOMER_STOREFRONT_CSS = `
 `;
 
 function CustomerStorefront() {
+  const { user } = useSession(false);
+  const { data: currentMerchantStore } = useSWR(
+    user ? ["merchant-my-store", user.id] : null,
+    loadCurrentMerchantStore,
+  );
   const [links, setLinks] = useState<Record<string, string>>({});
   const [visibility, setVisibility] = useState<Record<string, boolean>>({});
   const [offerCards, setOfferCards] = useState<StorefrontOfferCard[]>(DEFAULT_OFFER_CARDS);
@@ -549,12 +565,7 @@ function CustomerStorefront() {
             <div className="pr-merchant-state">لا توجد متاجر نشطة للعرض حاليًا.</div>
           ) : (
             merchantStores.map((store) => (
-              <a
-                key={store.id}
-                className="pr-merchant-card"
-                href={`/marketplace?store=${encodeURIComponent(store.id)}`}
-                aria-label={`تصفح منتجات متجر ${store.name}`}
-              >
+              <article key={store.id} className="pr-merchant-card">
                 <div className="pr-merchant-top">
                   <span className="pr-merchant-mark" aria-hidden="true">🏪</span>
                   {store.city && <span className="pr-merchant-city">{store.city}</span>}
@@ -564,9 +575,15 @@ function CustomerStorefront() {
                   {store.description && <p className="pr-merchant-description">{store.description}</p>}
                 </div>
                 <div className="pr-merchant-bottom">
-                  <span className="pr-merchant-cta">تصفح المنتجات <span aria-hidden="true">←</span></span>
+                  <a className="pr-merchant-cta" href={`/marketplace?store=${encodeURIComponent(store.id)}`} aria-label={`تصفح منتجات متجر ${store.name}`}>تصفح المنتجات <span aria-hidden="true">←</span></a>
+                  {currentMerchantStore?.id === store.id && (
+                    <div className="pr-merchant-actions" aria-label={`إدارة متجر ${store.name}`}>
+                      <a className="pr-merchant-action" href="/merchant">لوحة متجري</a>
+                      <a className="pr-merchant-action" href="/merchant?view=add-product">+ أضف منتج</a>
+                    </div>
+                  )}
                 </div>
-              </a>
+              </article>
             ))
           )}
         </div>
