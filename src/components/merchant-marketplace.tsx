@@ -132,7 +132,10 @@ export function MerchantMarketplace() {
             {Array.from({ length: 8 }, (_, index) => <div key={index} className="h-72 animate-pulse rounded-2xl bg-muted" />)}
           </div>
         ) : error ? (
-          <Card><CardContent className="py-10 text-center text-sm text-destructive">تعذر تحميل المنتجات الآن. حاول تحديث الصفحة.</CardContent></Card>
+          <Card><CardContent className="flex flex-col items-center gap-3 py-10 text-center text-sm">
+            <p className="text-destructive">تعذر تحميل المنتجات الآن. حاول مرة أخرى.</p>
+            <Button type="button" variant="outline" onClick={() => void mutate()}>إعادة المحاولة</Button>
+          </CardContent></Card>
         ) : visibleProducts.length === 0 ? (
           <Card><CardContent className="flex flex-col items-center gap-3 py-12 text-center">
             <Package aria-hidden="true" className="size-9 text-muted-foreground" />
