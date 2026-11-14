@@ -547,6 +547,19 @@ export type Database = {
         }
         Returns: boolean
       }
+      merchant_get_my_store: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          name: string
+          description: string
+          contact_phone: string
+          city: string
+          status: string
+          commission_rate: number
+          created_at: string
+        }[]
+      }
       track_order:
         | {
             Args: { _code: string }

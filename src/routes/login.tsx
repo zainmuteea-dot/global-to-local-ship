@@ -216,7 +216,7 @@ function getSafeCustomerReturnPath(): string {
    ========================================================================= */
 export function LoginPage() {
   const [mode, setMode] = useState<"login" | "signup">("login");
-  const [accountType, setAccountType] = useState<"customer" | "staff">("customer");
+  const [accountType, setAccountType] = useState<"customer" | "staff" | "merchant">("customer");
   const [identifier, setIdentifier] = useState("");
   const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
@@ -321,6 +321,34 @@ export function LoginPage() {
 
         window.location.replace(safeRedirect);
         return;
+      } else if (accountType === "merchant") {
+        const phone = normalizePhoneE164(identifier);
+        const { data, error } = await supabase.auth.signInWithPassword({
+          phone,
+          password,
+        });
+        if (error || !data.user) {
+          throw new Error("رقم الهاتف أو كلمة المرور غير صحيحة.");
+        }
+
+        const { data: stores, error: storeError } = await supabase.rpc("merchant_get_my_store");
+        if (storeError) {
+          await supabase.auth.signOut();
+          throw new Error("تعذر التحقق من ربط المتجر. حاول لاحقًا أو تواصل مع الإدارة.");
+        }
+
+        const store = Array.isArray(stores) ? stores[0] : stores;
+        if (!store) {
+          await supabase.auth.signOut();
+          throw new Error("لا يوجد متجر مرتبط بهذا الحساب. تواصل مع الإدارة لربط حسابك بمتجرك.");
+        }
+        if (store.status !== "active") {
+          await supabase.auth.signOut();
+          throw new Error("المتجر غير نشط حاليًا. تواصل مع الإدارة.");
+        }
+
+        window.location.replace("/merchant");
+        return;
       } else {
         const phone = normalizePhoneE164(identifier);
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -371,7 +399,7 @@ export function LoginPage() {
   const handleForgotPassword = async () => {
     setErrorMessage("");
 
-    if (accountType === "customer") {
+    if (accountType !== "staff") {
       let phone: string;
       try {
         phone = normalizePhoneE164(identifier);
@@ -494,7 +522,9 @@ export function LoginPage() {
             <label className="block text-[11px] font-bold text-[#0F4C81] mb-1">
               {mode === "login" && accountType === "staff"
                 ? "البريد الإلكتروني للموظف *"
-                : "رقم الهاتف المحلي *"}
+                : accountType === "merchant" && mode === "login"
+                  ? "رقم هاتف التاجر *"
+                  : "رقم الهاتف المحلي *"}
             </label>
             <div className="relative">
               <input
@@ -554,7 +584,7 @@ export function LoginPage() {
                 disabled={loading}
                 className="text-xs font-bold text-[#0284C7] hover:text-[#0F4C81] hover:underline cursor-pointer disabled:opacity-50"
               >
-                {accountType === "customer"
+                {accountType !== "staff"
                   ? "نسيت كلمة المرور؟ تواصل مع الإدارة عبر واتساب"
                   : "نسيت كلمة المرور؟ أرسل رابطًا إلى بريد الموظف"}
               </button>
@@ -619,6 +649,24 @@ export function LoginPage() {
                   className={`size-2 rounded-full ${accountType === "staff" ? "bg-orange-400" : "bg-slate-300"}`}
                 />
                 <span>موظفين</span>
+              </button>
+            )}
+
+            {mode === "login" && (
+              <button
+                type="button"
+                onClick={() => setAccountType("merchant")}
+                className={`px-4 py-1.5 rounded-full text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                  accountType === "merchant"
+                    ? "bg-[#0F4C81] text-white shadow-sm ring-2 ring-sky-300/40"
+                    : "bg-white text-slate-700 border border-sky-200 hover:bg-sky-50"
+                }`}
+                aria-pressed={accountType === "merchant"}
+              >
+                <span
+                  className={`size-2 rounded-full ${accountType === "merchant" ? "bg-orange-400" : "bg-slate-300"}`}
+                />
+                <span>تاجر</span>
               </button>
             )}
           </div>
