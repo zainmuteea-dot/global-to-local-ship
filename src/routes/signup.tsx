@@ -163,17 +163,6 @@ export function SignupPage() {
         return;
       }
 
-      // تُحفَظ بيانات الملف أيضًا عبر trigger المستخدم عند إنشاء الحساب؛ هذا upsert يحدّث الاسم والهاتف.
-      const { error: profileError } = await supabase.from("profiles").upsert({
-        id: data.user.id,
-        full_name: trimmedName,
-        phone: normalizedPhone,
-      });
-      if (profileError) {
-        // لا نوقف الدخول: بيانات الاسم والهاتف موجودة كذلك في user_metadata.
-        console.error("تعذر تحديث ملف العميل:", profileError.message);
-      }
-
       sessionStorage.setItem("sc_name", trimmedName);
       sessionStorage.setItem("sc_phone", normalizedPhone);
       sessionStorage.setItem("sc_role", "client");
