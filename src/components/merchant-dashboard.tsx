@@ -239,7 +239,7 @@ function ProductForm({ store, onCreated, presetCategory }: { store: MerchantStor
     setImageUploadMessage("تم رفع الصورة بنجاح، وستظهر في عرض المنتج بعد الاعتماد");
   }
 
-  async function persist(mode: "draft" | "submit") {
+  async function persist() {
     if (!formElement?.reportValidity()) return;
     if (store.status !== "active") return;
     if (uploadingImage) {
@@ -273,7 +273,7 @@ function ProductForm({ store, onCreated, presetCategory }: { store: MerchantStor
       const { error } = await db.from("merchant_products").update(values).eq("id", productId).eq("store_id", store.id);
       if (error) {
         setBusy(false);
-        setMessage("تعذر تحديث المسودة. لم يتغير المنتج المحفوظ.");
+        setMessage("تعذر تحديث المنتج. لم يتغير المنتج المحفوظ.");
         return;
       }
       if (draftImagePath && draftImagePath !== imagePath) {
@@ -314,28 +314,22 @@ function ProductForm({ store, onCreated, presetCategory }: { store: MerchantStor
     setImagePreviewUrl(null);
     onCreated();
 
-    if (mode === "draft") {
-      setBusy(false);
-      setMessage("حُفظ المنتج كمسودة. يمكنك العودة لإكماله أو إرساله للمراجعة.");
-      return;
-    }
-
     const { error: submitError } = await db.rpc("merchant_submit_product", { _product_id: productId });
     setBusy(false);
     if (submitError) {
-      setMessage("حُفظت المسودة، لكن تعذر إرسالها للمراجعة. أعد المحاولة لاحقًا.");
+      setMessage("تم حفظ المنتج، لكن تعذر إرساله للمراجعة. أعد المحاولة لاحقًا.");
       return;
     }
 
     resetForm();
-    setMessage("تم إرسال المنتج إلى الإدارة للمراجعة.");
+    setMessage("تم الإرسال بنجاح. المنتج بانتظار اعتماد الإدارة.");
     onCreated();
   }
 
   return (
     <Card className="rounded-2xl">
-      <CardHeader><CardTitle className="flex items-center gap-2"><PackagePlus aria-hidden="true" className="size-5 text-primary" /> {presetCategory ? "إضافة معسل أو منتج شيشة" : "إضافة منتج"}</CardTitle><CardDescription>{presetCategory ? "احفظ المعسل كمسودة أو أرسله لمراجعة الإدارة؛ التصنيف يضبط تلقائيًا إلى معسلات." : "احفظ المنتج كمسودة أو أرسله للمراجعة؛ لن يظهر للعملاء قبل اعتماد الإدارة."}</CardDescription></CardHeader>
-      <CardContent><form ref={setFormElement} onSubmit={(event) => { event.preventDefault(); void persist("submit"); }} className="grid gap-3 sm:grid-cols-2">
+      <CardHeader><CardTitle className="flex items-center gap-2"><PackagePlus aria-hidden="true" className="size-5 text-primary" /> {presetCategory ? "إضافة معسل أو منتج شيشة" : "إضافة منتج"}</CardTitle><CardDescription>{presetCategory ? "أرسل المعسل لمراجعة الإدارة؛ التصنيف يضبط تلقائيًا إلى معسلات." : "أرسل المنتج للمراجعة؛ لن يظهر للعملاء قبل اعتماد الإدارة."}</CardDescription></CardHeader>
+      <CardContent><form ref={setFormElement} onSubmit={(event) => { event.preventDefault(); void persist(); }} className="grid gap-3 sm:grid-cols-2">
         <Field label="اسم المنتج"><Input required minLength={2} maxLength={120} value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} /></Field>
         {!presetCategory && <Field label="التصنيف"><Input maxLength={60} value={form.category} onChange={(event) => setForm({ ...form, category: event.target.value })} placeholder="مثال: عطور" /></Field>}
         <Field label="السعر"><Input required type="number" min="0.01" step="0.01" value={form.price} onChange={(event) => setForm({ ...form, price: event.target.value })} /></Field>
@@ -362,8 +356,7 @@ function ProductForm({ store, onCreated, presetCategory }: { store: MerchantStor
         {message && <p role="status" className="text-sm text-muted-foreground sm:col-span-2">{message}</p>}
         <p className="flex items-center gap-2 text-xs text-muted-foreground sm:col-span-2"><ImagePlus aria-hidden="true" className="size-4" /> على الهاتف يمكنك التقاط الصورة مباشرة بالكاميرا، ولن تظهر للزبائن إلا بعد اعتماد الإدارة.</p>
         <div className="flex flex-wrap gap-2 sm:col-span-2">
-          <Button type="button" variant="outline" disabled={busy || store.status !== "active"} onClick={() => void persist("draft")}>{busy ? "جارٍ الحفظ…" : "حفظ كمسودة"}</Button>
-          <Button type="submit" disabled={busy || uploadingImage || store.status !== "active"}>{busy ? "جارٍ الحفظ…" : draftId ? "إرسال المسودة للمراجعة" : "إرسال للمراجعة"}</Button>
+          <Button type="submit" disabled={busy || uploadingImage || store.status !== "active"}>{busy ? "جارٍ الإرسال…" : "إرسال للمراجعة"}</Button>
         </div>
       </form></CardContent>
     </Card>
