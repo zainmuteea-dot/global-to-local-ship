@@ -13,6 +13,9 @@ export type MerchantStore = {
   city: string;
   status: "active" | "suspended";
   created_at: string;
+  store_image_path: string | null;
+  store_image_fit: "cover" | "contain";
+  store_image_position: "left" | "center" | "right";
 };
 
 export type MerchantStorePrivate = MerchantStore & {
@@ -26,6 +29,9 @@ export type MerchantProduct = {
   description: string;
   category: string;
   price: number;
+  old_price: number | null;
+  discount_percent: number | null;
+  sku: string | null;
   currency: "YER" | "SAR" | "USD";
   stock: number;
   image_path: string;
@@ -58,7 +64,16 @@ export type MerchantOrder = {
 
 export type MarketplaceProduct = MerchantProduct & {
   image_url: string | null;
-  store: Pick<MerchantStore, "id" | "name" | "contact_phone" | "city">;
+  store: Pick<
+    MerchantStore,
+    | "id"
+    | "name"
+    | "contact_phone"
+    | "city"
+    | "store_image_path"
+    | "store_image_fit"
+    | "store_image_position"
+  > & { image_url: string | null };
 };
 
 export const productStatusLabels: Record<MerchantProduct["status"], string> = {
@@ -108,7 +123,9 @@ export async function getSignedProductImage(path: string): Promise<string | null
 export async function loadMarketplace(): Promise<MarketplaceProduct[]> {
   const { data: rows, error } = await db
     .from("merchant_products")
-    .select("id,store_id,title,description,category,price,currency,stock,image_path,status,created_at,updated_at")
+    .select(
+      "id,store_id,title,description,category,price,old_price,discount_percent,sku,currency,stock,image_path,status,created_at,updated_at",
+    )
     .eq("status", "approved")
     .gt("stock", 0)
     .order("created_at", { ascending: false });
@@ -121,7 +138,7 @@ export async function loadMarketplace(): Promise<MarketplaceProduct[]> {
   const storeIds = [...new Set(rows.map((row: MerchantProduct) => row.store_id))];
   const { data: stores, error: storeError } = await db
     .from("merchant_stores")
-    .select("id,name,contact_phone,city")
+    .select("id,name,contact_phone,city,store_image_path,store_image_fit,store_image_position")
     .in("id", storeIds)
     .eq("status", "active");
   if (storeError) {
@@ -130,10 +147,25 @@ export async function loadMarketplace(): Promise<MarketplaceProduct[]> {
   }
 
   const storeById = new Map<string, MarketplaceProduct["store"]>(
-    (stores ?? []).map((store: MarketplaceProduct["store"]) => [store.id, store]),
+    await Promise.all(
+      (stores ?? []).map(
+        async (store: Omit<MarketplaceProduct["store"], "image_url">) =>
+          [
+            store.id,
+            {
+              ...store,
+              image_url: store.store_image_path
+                ? await getSignedProductImage(store.store_image_path)
+                : null,
+            },
+          ] as const,
+      ),
+    ),
   );
   const visibleRows = (rows as MerchantProduct[]).filter((row) => storeById.has(row.store_id));
-  const signedImages = await Promise.all(visibleRows.map((row) => getSignedProductImage(row.image_path)));
+  const signedImages = await Promise.all(
+    visibleRows.map((row) => getSignedProductImage(row.image_path)),
+  );
 
   return visibleRows.map((row, index) => ({
     ...row,

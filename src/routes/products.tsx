@@ -139,6 +139,10 @@ type MerchantStorefront = {
   description: string | null;
   city: string | null;
   status: "active" | "suspended";
+  store_image_path: string | null;
+  store_image_fit: "cover" | "contain";
+  store_image_position: "left" | "center" | "right";
+  store_image_url: string | null;
 };
 
 type StorefrontOfferCard = {
@@ -431,7 +435,7 @@ function CustomerStorefront() {
     const loadMerchantStores = async () => {
       const { data, error } = await db
         .from("merchant_stores")
-        .select("id,name,description,city,status")
+        .select("id,name,description,city,status,store_image_path,store_image_fit,store_image_position")
         .eq("status", "active")
         .order("name", { ascending: true });
 
@@ -440,15 +444,28 @@ function CustomerStorefront() {
         setMerchantStoresError("تعذر تحميل متاجر التجار حاليًا.");
         setMerchantStores([]);
       } else {
-        setMerchantStores((data ?? []) as MerchantStorefront[]);
+        const rows = (data ?? []) as Omit<MerchantStorefront, "store_image_url">[];
+        const storesWithImages = await Promise.all(rows.map(async (store) => {
+          let store_image_url: string | null = null;
+          if (store.store_image_path) {
+            const { data: signedImage } = await supabase.storage.from("merchant-product-images").createSignedUrl(store.store_image_path, 3600);
+            store_image_url = signedImage?.signedUrl ?? null;
+          }
+          return { ...store, store_image_url };
+        }));
+        if (!isCurrent) return;
+        setMerchantStores(storesWithImages);
         setMerchantStoresError("");
       }
       setMerchantStoresLoading(false);
     };
 
+    const refreshMerchantStores = () => { void loadMerchantStores(); };
     void loadMerchantStores();
+    window.addEventListener("merchant-store-updated", refreshMerchantStores);
     return () => {
       isCurrent = false;
+      window.removeEventListener("merchant-store-updated", refreshMerchantStores);
     };
   }, []);
 
@@ -594,7 +611,17 @@ function CustomerStorefront() {
             merchantStores.map((store) => (
               <article key={store.id} className="pr-merchant-card">
                 <div className="pr-merchant-top">
-                  <span className="pr-merchant-mark" aria-hidden="true">🏪</span>
+                  {store.store_image_url ? (
+                    <img
+                      className="pr-merchant-mark pr-merchant-store-image"
+                      src={store.store_image_url}
+                      alt={`صورة متجر ${store.name}`}
+                      style={{ objectFit: store.store_image_fit, objectPosition: store.store_image_position }}
+                      loading="lazy"
+                    />
+                  ) : (
+                    <span className="pr-merchant-mark" aria-hidden="true">🏪</span>
+                  )}
                   {store.city && <span className="pr-merchant-city">{store.city}</span>}
                 </div>
                 <div>

@@ -390,6 +390,16 @@ function ProductCard({
           <span className="text-base font-extrabold text-[#d77a32] sm:text-lg">
             {formatMoney(Number(product.price), product.currency)}
           </span>
+          {product.old_price != null && product.old_price > product.price && (
+            <span className="text-xs font-semibold text-[#9a8a75] line-through">
+              {formatMoney(Number(product.old_price), product.currency)}
+            </span>
+          )}
+          {product.discount_percent != null && product.discount_percent > 0 && (
+            <span className="rounded-full bg-[#fff0e8] px-2 py-0.5 text-[10px] font-extrabold text-[#c65c2d]">
+              خصم {product.discount_percent}٪
+            </span>
+          )}
         </div>
         <button
           type="button"
@@ -427,7 +437,7 @@ function QuickViewDialog({
 
   if (!product) return null;
   const imageUrl = product.image_url;
-  const itemNumber = product.id;
+  const itemNumber = product.sku?.trim() || product.id;
 
   const copyItemNumber = async () => {
     try {
@@ -480,9 +490,16 @@ function QuickViewDialog({
                 <span className="text-xl font-extrabold text-[#d77a32]">
                   {formatMoney(Number(product.price), product.currency)}
                 </span>
-                <span className="rounded-full bg-[#f3eee5] px-3 py-1 text-xs font-semibold text-[#76654e]">
-                  السعر الحالي
-                </span>
+                {product.old_price != null && product.old_price > product.price && (
+                  <span className="text-sm font-semibold text-[#9a8a75] line-through">
+                    {formatMoney(Number(product.old_price), product.currency)}
+                  </span>
+                )}
+                {product.discount_percent != null && product.discount_percent > 0 && (
+                  <span className="rounded-full bg-[#fff0e8] px-3 py-1 text-xs font-extrabold text-[#c65c2d]">
+                    خصم {product.discount_percent}٪
+                  </span>
+                )}
               </div>
             </div>
 

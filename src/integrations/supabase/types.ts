@@ -20,6 +20,9 @@ type MerchantStoreRow = {
   created_by: string | null
   created_at: string
   updated_at: string
+  store_image_path: string | null
+  store_image_fit: "cover" | "contain"
+  store_image_position: "left" | "center" | "right"
 }
 
 type MerchantProductRow = {
@@ -29,6 +32,9 @@ type MerchantProductRow = {
   description: string
   category: string
   price: number
+  old_price: number | null
+  discount_percent: number | null
+  sku: string | null
   currency: "YER" | "SAR" | "USD"
   stock: number
   image_path: string
@@ -569,6 +575,9 @@ export type Database = {
           status: string
           commission_rate: number
           created_at: string
+          store_image_path: string | null
+          store_image_fit: "cover" | "contain"
+          store_image_position: "left" | "center" | "right"
         }[]
       }
       track_order:
