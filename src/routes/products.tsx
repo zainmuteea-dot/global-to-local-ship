@@ -361,15 +361,18 @@ const CUSTOMER_STOREFRONT_CSS = `
 .pr-banner h2{position:relative;z-index:1;margin:2px 0;font-size:clamp(24px,3vw,36px);font-weight:900}.pr-banner p{position:relative;z-index:1;max-width:430px;margin:0;font-size:15px;font-weight:700;line-height:1.9;opacity:.88}.pr-cta{position:relative;z-index:1;display:inline-flex;align-items:center;gap:10px;margin-top:3px;border-radius:999px;background:#fff;color:#E0447D;padding:12px 24px;font-size:14px;font-weight:900;box-shadow:0 10px 24px rgba(224,68,125,.2)}.pr-exclusive .pr-cta{background:linear-gradient(135deg,#B8912A,#D4AF37 45%,#F1DA8E);color:#1B1408;box-shadow:0 10px 26px rgba(212,175,55,.28)}
 /* شريط علوي وسفلي متناسقان مع هوية المتجر */
 .pr-topbar{position:sticky;top:0;z-index:50;width:100%;background:rgba(255,255,255,.94);border-bottom:1px solid rgba(212,175,55,.34);box-shadow:0 4px 18px rgba(27,20,8,.045);backdrop-filter:blur(12px)}
-.pr-topbar-inner{max-width:1240px;min-height:70px;margin:0 auto;padding:12px 22px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.pr-topbar-inner{max-width:1240px;min-height:70px;margin:0 auto;padding:12px 22px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:16px}
+.pr-logo{justify-self:start}
+.pr-section-nav{justify-self:center}
+.pr-topbar-actions{justify-self:end}
 .pr-logo{display:inline-flex;align-items:center;gap:11px;color:var(--ink)}
 .pr-logo-mark{width:40px;height:40px;display:grid;place-items:center;flex:none;border-radius:13px;background:linear-gradient(135deg,#B8912A,#D4AF37 48%,#F1DA8E);color:#1B1408;font-size:17px;font-weight:900;box-shadow:0 5px 14px rgba(184,145,42,.22)}
 .pr-logo-copy{display:flex;flex-direction:column;gap:2px}
 .pr-logo-copy strong{font-size:13px;letter-spacing:.7px;font-weight:900;color:#3B2E12}
 .pr-logo-copy small{font-size:11px;font-weight:700;color:var(--muted)}
   .pr-topbar-note{color:var(--muted);font-size:13px;font-weight:700}
-  .pr-topbar-actions{display:flex;align-items:center;gap:10px}.pr-section-nav{display:flex;align-items:center;gap:8px}.pr-section-nav button{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:9px 14px;border:1px solid rgba(212,175,55,.65);border-radius:999px;background:linear-gradient(135deg,#1B1408,#33260D);color:#F1DA8E;font:inherit;font-size:12px;font-weight:900;white-space:nowrap;cursor:pointer;box-shadow:0 4px 12px rgba(27,20,8,.12);transition:transform .18s ease,background .18s ease,box-shadow .18s ease}.pr-section-nav button:hover{transform:translateY(-1px);background:linear-gradient(135deg,#3B2E12,#1B1408);box-shadow:0 7px 16px rgba(27,20,8,.18)}.pr-section-nav button:focus-visible{outline:3px solid #D4AF37;outline-offset:3px}.pr-cart-link{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border:1px solid rgba(212,175,55,.45);border-radius:999px;background:#fff;color:#3B2E12;text-decoration:none;font-size:12px;font-weight:900;white-space:nowrap;box-shadow:0 4px 12px rgba(27,20,8,.06)}.pr-cart-link:hover{border-color:#D4AF37;background:#FFFBF5}.pr-cart-count{display:grid;min-width:22px;height:22px;place-items:center;border-radius:999px;background:#D4AF37;color:#1B1408;font-size:11px;font-weight:900}
-  @media(max-width:720px){.pr-topbar-inner{min-height:unset;flex-wrap:wrap;justify-content:center;gap:8px;padding:9px 12px}.pr-logo{justify-content:center}.pr-topbar-actions{width:100%;justify-content:center;gap:6px}.pr-topbar-note{display:none}.pr-section-nav{flex:1;justify-content:center;gap:6px}.pr-section-nav button{flex:1;min-height:38px;padding:8px 7px;font-size:11px}.pr-cart-link{padding:9px 10px;font-size:10px}}
+  .pr-topbar-actions{display:flex;align-items:center;gap:10px}.pr-section-nav{display:flex;align-items:center;justify-content:center;gap:10px}.pr-section-nav button{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:11px 26px;border:1px solid #D4AF37;border-radius:999px;background:#fff;color:#3B2E12;font:inherit;font-size:15px;font-weight:900;white-space:nowrap;cursor:pointer;box-shadow:0 5px 15px rgba(27,20,8,.1);transition:transform .18s ease,background .18s ease,box-shadow .18s ease}.pr-section-nav .pr-tab-international{background:linear-gradient(135deg,#B8912A,#D4AF37 48%,#F1DA8E);color:#1B1408}.pr-section-nav button.is-active{background:linear-gradient(135deg,#3B2E12,#1B1408);color:#F1DA8E;box-shadow:0 7px 18px rgba(27,20,8,.22)}.pr-section-nav button:hover{transform:translateY(-1px);box-shadow:0 7px 16px rgba(27,20,8,.18)}.pr-section-nav button:focus-visible{outline:3px solid #D4AF37;outline-offset:3px}.pr-cart-link{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border:1px solid rgba(212,175,55,.45);border-radius:999px;background:#fff;color:#3B2E12;text-decoration:none;font-size:12px;font-weight:900;white-space:nowrap;box-shadow:0 4px 12px rgba(27,20,8,.06)}.pr-cart-link:hover{border-color:#D4AF37;background:#FFFBF5}.pr-cart-count{display:grid;min-width:22px;height:22px;place-items:center;border-radius:999px;background:#D4AF37;color:#1B1408;font-size:11px;font-weight:900}
+  @media(max-width:720px){.pr-topbar-inner{min-height:unset;display:flex;flex-direction:column;align-items:stretch;gap:8px;padding:9px 12px}.pr-logo{justify-content:center}.pr-section-nav{width:100%;gap:8px}.pr-topbar-actions{width:100%;justify-content:center;gap:6px}.pr-topbar-note{display:none}.pr-section-nav button{flex:1;min-height:42px;padding:8px 7px;font-size:12px}.pr-cart-link{padding:9px 10px;font-size:10px}}
 @media(max-width:720px){.pr-merchant-section{margin-top:32px;padding:0 14px}.pr-merchant-grid{grid-template-columns:1fr}.pr-merchant-card{min-height:155px;padding:18px}}
 .pr-footer{position:relative;z-index:1;margin-top:54px;border-top:1px solid rgba(212,175,55,.34);background:rgba(255,255,255,.68)}
 .pr-footer-inner{max-width:1240px;min-height:68px;margin:0 auto;padding:16px 22px;display:flex;align-items:center;justify-content:space-between;gap:12px;color:var(--muted);font-size:12px;font-weight:700}
@@ -393,6 +396,7 @@ function CustomerStorefront() {
   const [merchantStoresLoading, setMerchantStoresLoading] = useState(true);
   const [merchantStoresError, setMerchantStoresError] = useState("");
   const [cartCount, setCartCount] = useState(0);
+  const [activeTab, setActiveTab] = useState<"international" | "local" | null>(null);
 
   useEffect(() => {
     const syncCartCount = () => setCartCount(readCart().length);
@@ -510,12 +514,22 @@ function CustomerStorefront() {
               <small>السوق الشامل</small>
             </span>
           </div>
+          <nav className="pr-section-nav" aria-label="إظهار أقسام السوق">
+            <button
+              type="button"
+              className={`pr-tab-button pr-tab-international${activeTab === "international" ? " is-active" : ""}`}
+              aria-pressed={activeTab === "international"}
+              onClick={() => setActiveTab((current) => current === "international" ? null : "international")}
+            >منتجات دولية</button>
+            <button
+              type="button"
+              className={`pr-tab-button pr-tab-local${activeTab === "local" ? " is-active" : ""}`}
+              aria-pressed={activeTab === "local"}
+              onClick={() => setActiveTab((current) => current === "local" ? null : "local")}
+            >متاجر محلية</button>
+          </nav>
           <div className="pr-topbar-actions">
             <span className="pr-topbar-note">تسوقك العالمي في مكان واحد</span>
-            <nav className="pr-section-nav" aria-label="التنقل السريع بين أقسام السوق">
-              <button type="button" onClick={() => document.getElementById("store-links")?.scrollIntoView({ behavior: "smooth", block: "start" })}>منتجات دولية</button>
-              <button type="button" onClick={() => document.getElementById("merchant-stores")?.scrollIntoView({ behavior: "smooth", block: "start" })}>متاجر محلية</button>
-            </nav>
             <Link to="/cart" className="pr-cart-link" aria-label="فتح سلة السوق الشامل">
               <ShoppingCart size={18} aria-hidden="true" />
               <span>سلة السوق الشامل</span>
@@ -525,13 +539,20 @@ function CustomerStorefront() {
         </div>
       </div>
 
-      <header className="pr-head">
-        <h1 className="pr-title">السوق الشامل <span className="grad">منتجات دولية</span></h1>
-        <p className="pr-sub">كل منتجاتك العالمية في مكان واحد • تسوق الآن من أشهر المتاجر</p>
-        <div className="pr-divider" aria-hidden="true"><i /><b /><i /></div>
-      </header>
+      {activeTab !== null && (
+        <header className="pr-head">
+          <h1 className="pr-title">
+            السوق الشامل <span className="grad">{activeTab === "international" ? "منتجات دولية" : "متاجر محلية"}</span>
+          </h1>
+          <p className="pr-sub">
+            {activeTab === "international" ? "كل منتجاتك العالمية في مكان واحد • تسوق الآن من أشهر المتاجر" : "تصفح المتاجر المحلية والمنتجات التي اعتمدتها الإدارة."}
+          </p>
+          <div className="pr-divider" aria-hidden="true"><i /><b /><i /></div>
+        </header>
+      )}
 
-      <section id="store-links" className="pr-stores" aria-label="بوابات المتاجر العالمية" style={{ scrollMarginTop: "112px" }}>
+      {activeTab === "international" && (
+      <section id="store-links" className="pr-stores" aria-label="بوابات المتاجر العالمية">
         {visibleIconStores.map(({ id, name, from, to, ink, Glyph }) => {
           const store = INTERNATIONAL_STORES.find((item) => item.id === id);
           const url = getExternalStoreUrl(id, store?.fallback ?? "https://www.google.com");
@@ -554,8 +575,10 @@ function CustomerStorefront() {
           );
         })}
       </section>
+      )}
 
-      <section id="merchant-stores" className="pr-merchant-section" aria-labelledby="pr-merchant-heading" style={{ scrollMarginTop: "112px" }}>
+      {activeTab === "local" && (
+      <section id="merchant-stores" className="pr-merchant-section" aria-labelledby="pr-merchant-heading">
         <div className="pr-merchant-heading">
           <h2 id="pr-merchant-heading">متاجر التجار المحليين</h2>
           <p>تصفح المتاجر المحلية والمنتجات التي اعتمدتها الإدارة.</p>
@@ -592,8 +615,9 @@ function CustomerStorefront() {
           )}
         </div>
       </section>
+      )}
 
-      {visibleOfferCards.length > 0 && (
+      {activeTab === "international" && visibleOfferCards.length > 0 && (
         <section className="pr-banners" aria-label="العروض المميزة">
           {visibleOfferCards.map((card) => {
             const exclusive = card.theme === "exclusive";
@@ -637,12 +661,14 @@ function CustomerStorefront() {
         </section>
       )}
 
-      <footer className="pr-footer">
-        <div className="pr-footer-inner">
-          <span className="pr-footer-brand">YOUR GLOBAL SHOPPER · السوق الشامل</span>
-          <span>تسوق عالمي أسهل، من مكان واحد</span>
-        </div>
-      </footer>
+      {activeTab !== null && (
+        <footer className="pr-footer">
+          <div className="pr-footer-inner">
+            <span className="pr-footer-brand">YOUR GLOBAL SHOPPER · السوق الشامل</span>
+            <span>تسوق عالمي أسهل، من مكان واحد</span>
+          </div>
+        </footer>
+      )}
     </main>
   );
 }
