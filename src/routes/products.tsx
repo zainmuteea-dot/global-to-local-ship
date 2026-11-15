@@ -360,7 +360,7 @@ const CUSTOMER_STOREFRONT_CSS = `
 .pr-banner-img{position:absolute;top:0;bottom:0;left:0;width:45%;height:100%;object-fit:cover;pointer-events:none;-webkit-mask-image:linear-gradient(to left,transparent,#000 45%);mask-image:linear-gradient(to left,transparent,#000 45%)}.pr-has-img h2,.pr-has-img p{max-width:56%}@media(max-width:720px){.pr-banner.pr-has-img{padding-top:190px}.pr-banner-img{width:100%;height:170px;bottom:auto;-webkit-mask-image:linear-gradient(to top,transparent,#000 40%);mask-image:linear-gradient(to top,transparent,#000 40%)}.pr-has-img h2,.pr-has-img p{max-width:none}}.pr-banner-icon{position:absolute;top:16px;left:22px;z-index:1;font-size:48px;opacity:.65;pointer-events:none}.pr-badge{position:relative;z-index:1;display:inline-flex;align-items:center;border-radius:999px;background:#fff;color:#E0447D;padding:8px 18px;font-size:15px;font-weight:900;box-shadow:0 6px 16px rgba(224,68,125,.18)}
 .pr-banner h2{position:relative;z-index:1;margin:2px 0;font-size:clamp(24px,3vw,36px);font-weight:900}.pr-banner p{position:relative;z-index:1;max-width:430px;margin:0;font-size:15px;font-weight:700;line-height:1.9;opacity:.88}.pr-cta{position:relative;z-index:1;display:inline-flex;align-items:center;gap:10px;margin-top:3px;border-radius:999px;background:#fff;color:#E0447D;padding:12px 24px;font-size:14px;font-weight:900;box-shadow:0 10px 24px rgba(224,68,125,.2)}.pr-exclusive .pr-cta{background:linear-gradient(135deg,#B8912A,#D4AF37 45%,#F1DA8E);color:#1B1408;box-shadow:0 10px 26px rgba(212,175,55,.28)}
 /* شريط علوي وسفلي متناسقان مع هوية المتجر */
-.pr-topbar{position:relative;z-index:2;width:100%;background:rgba(255,255,255,.88);border-bottom:1px solid rgba(212,175,55,.34);box-shadow:0 4px 18px rgba(27,20,8,.045);backdrop-filter:blur(12px)}
+.pr-topbar{position:sticky;top:0;z-index:50;width:100%;background:rgba(255,255,255,.94);border-bottom:1px solid rgba(212,175,55,.34);box-shadow:0 4px 18px rgba(27,20,8,.045);backdrop-filter:blur(12px)}
 .pr-topbar-inner{max-width:1240px;min-height:70px;margin:0 auto;padding:12px 22px;display:flex;align-items:center;justify-content:space-between;gap:16px}
 .pr-logo{display:inline-flex;align-items:center;gap:11px;color:var(--ink)}
 .pr-logo-mark{width:40px;height:40px;display:grid;place-items:center;flex:none;border-radius:13px;background:linear-gradient(135deg,#B8912A,#D4AF37 48%,#F1DA8E);color:#1B1408;font-size:17px;font-weight:900;box-shadow:0 5px 14px rgba(184,145,42,.22)}
@@ -368,14 +368,14 @@ const CUSTOMER_STOREFRONT_CSS = `
 .pr-logo-copy strong{font-size:13px;letter-spacing:.7px;font-weight:900;color:#3B2E12}
 .pr-logo-copy small{font-size:11px;font-weight:700;color:var(--muted)}
   .pr-topbar-note{color:var(--muted);font-size:13px;font-weight:700}
-  .pr-topbar-actions{display:flex;align-items:center;gap:14px}.pr-cart-link{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border:1px solid rgba(212,175,55,.45);border-radius:999px;background:#fff;color:#3B2E12;text-decoration:none;font-size:12px;font-weight:900;white-space:nowrap;box-shadow:0 4px 12px rgba(27,20,8,.06)}.pr-cart-link:hover{border-color:#D4AF37;background:#FFFBF5}.pr-cart-count{display:grid;min-width:22px;height:22px;place-items:center;border-radius:999px;background:#D4AF37;color:#1B1408;font-size:11px;font-weight:900}
-  @media(max-width:720px){.pr-topbar-actions{gap:8px}.pr-topbar-note{display:none}.pr-cart-link{padding:9px 11px;font-size:11px}}
+  .pr-topbar-actions{display:flex;align-items:center;gap:10px}.pr-section-nav{display:flex;align-items:center;gap:8px}.pr-section-nav button{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:9px 14px;border:1px solid rgba(212,175,55,.65);border-radius:999px;background:linear-gradient(135deg,#1B1408,#33260D);color:#F1DA8E;font:inherit;font-size:12px;font-weight:900;white-space:nowrap;cursor:pointer;box-shadow:0 4px 12px rgba(27,20,8,.12);transition:transform .18s ease,background .18s ease,box-shadow .18s ease}.pr-section-nav button:hover{transform:translateY(-1px);background:linear-gradient(135deg,#3B2E12,#1B1408);box-shadow:0 7px 16px rgba(27,20,8,.18)}.pr-section-nav button:focus-visible{outline:3px solid #D4AF37;outline-offset:3px}.pr-cart-link{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border:1px solid rgba(212,175,55,.45);border-radius:999px;background:#fff;color:#3B2E12;text-decoration:none;font-size:12px;font-weight:900;white-space:nowrap;box-shadow:0 4px 12px rgba(27,20,8,.06)}.pr-cart-link:hover{border-color:#D4AF37;background:#FFFBF5}.pr-cart-count{display:grid;min-width:22px;height:22px;place-items:center;border-radius:999px;background:#D4AF37;color:#1B1408;font-size:11px;font-weight:900}
+  @media(max-width:720px){.pr-topbar-inner{min-height:unset;flex-wrap:wrap;justify-content:center;gap:8px;padding:9px 12px}.pr-logo{justify-content:center}.pr-topbar-actions{width:100%;justify-content:center;gap:6px}.pr-topbar-note{display:none}.pr-section-nav{flex:1;justify-content:center;gap:6px}.pr-section-nav button{flex:1;min-height:38px;padding:8px 7px;font-size:11px}.pr-cart-link{padding:9px 10px;font-size:10px}}
 @media(max-width:720px){.pr-merchant-section{margin-top:32px;padding:0 14px}.pr-merchant-grid{grid-template-columns:1fr}.pr-merchant-card{min-height:155px;padding:18px}}
 .pr-footer{position:relative;z-index:1;margin-top:54px;border-top:1px solid rgba(212,175,55,.34);background:rgba(255,255,255,.68)}
 .pr-footer-inner{max-width:1240px;min-height:68px;margin:0 auto;padding:16px 22px;display:flex;align-items:center;justify-content:space-between;gap:12px;color:var(--muted);font-size:12px;font-weight:700}
 .pr-footer-brand{color:#3B2E12;font-weight:900;letter-spacing:.3px}
 @media(max-width:1080px){.pr-stores{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media(max-width:720px){.pr-topbar-inner{min-height:62px;padding:10px 14px}.pr-logo-mark{width:36px;height:36px}.pr-logo-copy strong{font-size:11px}.pr-logo-copy small{font-size:10px}.pr-topbar-note{max-width:125px;font-size:11px;text-align:left}.pr-head{padding-top:38px}.pr-stores{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding:0 14px}.pr-store{height:200px;padding:18px 12px}.pr-store .sh-icon{width:88px;height:88px}.pr-banners{gap:16px;padding:0 14px}.pr-banner{min-height:220px;padding:28px 22px}.pr-footer{margin-top:38px}.pr-footer-inner{min-height:60px;padding:14px;flex-direction:column;justify-content:center;gap:5px;text-align:center;font-size:11px}}
+@media(max-width:720px){.pr-logo-mark{width:36px;height:36px}.pr-logo-copy strong{font-size:11px}.pr-logo-copy small{font-size:10px}.pr-head{padding-top:38px}.pr-stores{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding:0 14px}.pr-store{height:200px;padding:18px 12px}.pr-store .sh-icon{width:88px;height:88px}.pr-banners{gap:16px;padding:0 14px}.pr-banner{min-height:220px;padding:28px 22px}.pr-footer{margin-top:38px}.pr-footer-inner{min-height:60px;padding:14px;flex-direction:column;justify-content:center;gap:5px;text-align:center;font-size:11px}}
 @media(prefers-reduced-motion:reduce){.pr-store,.pr-store .sh-icon,.pr-banner{transition:none}}
 
 `;
@@ -512,6 +512,10 @@ function CustomerStorefront() {
           </div>
           <div className="pr-topbar-actions">
             <span className="pr-topbar-note">تسوقك العالمي في مكان واحد</span>
+            <nav className="pr-section-nav" aria-label="التنقل السريع بين أقسام السوق">
+              <button type="button" onClick={() => document.getElementById("store-links")?.scrollIntoView({ behavior: "smooth", block: "start" })}>منتجات دولية</button>
+              <button type="button" onClick={() => document.getElementById("merchant-stores")?.scrollIntoView({ behavior: "smooth", block: "start" })}>متاجر محلية</button>
+            </nav>
             <Link to="/cart" className="pr-cart-link" aria-label="فتح سلة السوق الشامل">
               <ShoppingCart size={18} aria-hidden="true" />
               <span>سلة السوق الشامل</span>
@@ -527,7 +531,7 @@ function CustomerStorefront() {
         <div className="pr-divider" aria-hidden="true"><i /><b /><i /></div>
       </header>
 
-      <section id="store-links" className="pr-stores" aria-label="بوابات المتاجر العالمية">
+      <section id="store-links" className="pr-stores" aria-label="بوابات المتاجر العالمية" style={{ scrollMarginTop: "112px" }}>
         {visibleIconStores.map(({ id, name, from, to, ink, Glyph }) => {
           const store = INTERNATIONAL_STORES.find((item) => item.id === id);
           const url = getExternalStoreUrl(id, store?.fallback ?? "https://www.google.com");
@@ -551,7 +555,7 @@ function CustomerStorefront() {
         })}
       </section>
 
-      <section className="pr-merchant-section" aria-labelledby="pr-merchant-heading">
+      <section id="merchant-stores" className="pr-merchant-section" aria-labelledby="pr-merchant-heading" style={{ scrollMarginTop: "112px" }}>
         <div className="pr-merchant-heading">
           <h2 id="pr-merchant-heading">متاجر التجار المحليين</h2>
           <p>تصفح المتاجر المحلية والمنتجات التي اعتمدتها الإدارة.</p>
