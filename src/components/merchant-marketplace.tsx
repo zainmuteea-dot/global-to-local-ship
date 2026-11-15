@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import useSWR from "swr";
 import { MapPin, Package, Search, ShoppingBag, Store } from "lucide-react";
@@ -9,11 +9,10 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
 import { formatMoney, loadMarketplace, type MarketplaceProduct } from "@/lib/merchant-marketplace";
-
-const db = supabase as any;
+import { addMerchantProductToCart, isMerchantCartItem, readCart, writeCart, type CartItem } from "@/lib/extension-cart";
 
 async function loadMyMerchantStore() {
-  const { data, error } = await db.rpc("merchant_get_my_store");
+  const { data, error } = await supabase.rpc("merchant_get_my_store");
   if (error) throw error;
   return Array.isArray(data) ? data[0] ?? null : data;
 }
@@ -30,7 +29,27 @@ export function MerchantMarketplace() {
     if (typeof window === "undefined") return "";
     return new URLSearchParams(window.location.search).get("store")?.trim() ?? "";
   });
-  const [selected, setSelected] = useState<MarketplaceProduct | null>(null);
+  const [cartCount, setCartCount] = useState(0);
+  const [addedProductTitle, setAddedProductTitle] = useState("");
+
+  useEffect(() => {
+    const syncCart = () => setCartCount(readCart().reduce((sum, item) => sum + (isMerchantCartItem(item) ? item.quantity : 1), 0));
+    syncCart();
+    window.addEventListener("alshamel-cart-updated", syncCart);
+    window.addEventListener("storage", syncCart);
+    return () => {
+      window.removeEventListener("alshamel-cart-updated", syncCart);
+      window.removeEventListener("storage", syncCart);
+    };
+  }, []);
+
+  const addProductToCart = (product: MarketplaceProduct) => {
+    const current: CartItem[] = readCart();
+    const next = addMerchantProductToCart(current, product);
+    writeCart(next);
+    setAddedProductTitle(product.title);
+    setCartCount(next.reduce((sum, item) => sum + (isMerchantCartItem(item) ? item.quantity : 1), 0));
+  };
 
   // Keep the store filter in sync when a customer navigates back/forward.
   useEffect(() => {
@@ -77,6 +96,9 @@ export function MerchantMarketplace() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <Link to="/cart" className="inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold transition-colors hover:bg-muted">
+              <ShoppingBag aria-hidden="true" className="size-4" /> السلة ({cartCount})
+            </Link>
             {selectedStoreId && (
               <Link to="/marketplace" onClick={() => setSelectedStoreId("")} className="inline-flex items-center justify-center rounded-xl border px-4 py-3 text-sm font-semibold transition-colors hover:bg-muted">
                 عرض كل المتاجر
@@ -113,8 +135,11 @@ export function MerchantMarketplace() {
         </div>
       </section>
 
-      {selected && (
-        <OrderPanel product={selected} userId={user?.id ?? null} onClose={() => setSelected(null)} onPlaced={() => { setSelected(null); void mutate(); }} />
+      {addedProductTitle && (
+        <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/30 bg-primary/5 p-4 text-sm">
+          <p className="font-semibold">تمت إضافة «{addedProductTitle}» إلى السلة.</p>
+          <Link to="/cart" className="rounded-xl bg-primary px-4 py-2 font-bold text-primary-foreground">عرض السلة ({cartCount})</Link>
+        </div>
       )}
 
       <section aria-labelledby="marketplace-products-heading">
@@ -152,7 +177,7 @@ export function MerchantMarketplace() {
           </CardContent></Card>
         ) : (
           <div className="grid grid-cols-2 gap-3 min-[480px]:grid-cols-3 sm:gap-4 xl:grid-cols-4">
-            {visibleProducts.map((product) => <ProductCard key={product.id} product={product} onOrder={() => setSelected(product)} />)}
+            {visibleProducts.map((product) => <ProductCard key={product.id} product={product} onOrder={() => addProductToCart(product)} />)}
           </div>
         )}
       </section>
@@ -222,77 +247,9 @@ function ProductCard({ product, onOrder }: { product: MarketplaceProduct; onOrde
 
       <CardFooter className="px-3 pb-3 pt-0 sm:px-4">
         <Button type="button" size="sm" className="w-full text-xs sm:text-sm" onClick={onOrder} disabled={product.stock < 1}>
-          <ShoppingBag data-icon="inline-start" aria-hidden="true" className="size-4" /> اطلب الآن
+          <ShoppingBag data-icon="inline-start" aria-hidden="true" className="size-4" /> أضف للسلة
         </Button>
       </CardFooter>
-    </Card>
-  );
-}
-
-function OrderPanel({ product, userId, onClose, onPlaced }: {
-  product: MarketplaceProduct;
-  userId: string | null;
-  onClose: () => void;
-  onPlaced: () => void;
-}) {
-  const [busy, setBusy] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [success, setSuccess] = useState(false);
-  const [form, setForm] = useState({ name: "", phone: "", city: product.store.city, address: "", quantity: 1 });
-
-  async function submitOrder(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!userId) return;
-    setBusy(true);
-    setErrorMessage("");
-    const { error } = await db.rpc("merchant_create_order", {
-      _product_id: product.id,
-      _quantity: form.quantity,
-      _customer_name: form.name,
-      _customer_phone: form.phone,
-      _customer_city: form.city,
-      _delivery_address: form.address,
-    });
-    setBusy(false);
-    if (error) {
-      setErrorMessage(error.message?.includes("insufficient stock") ? "الكمية المطلوبة غير متوفرة." : "تعذر إرسال الطلب. راجع بياناتك وحاول مجددًا.");
-      return;
-    }
-    setSuccess(true);
-  }
-
-  return (
-    <Card className="border-primary/30 bg-primary/5" aria-labelledby="order-panel-heading">
-      <CardHeader className="flex flex-row items-start justify-between gap-4">
-        <div><CardTitle id="order-panel-heading">طلب {product.title}</CardTitle><CardDescription className="mt-1">السعر {formatMoney(Number(product.price), product.currency)} · الدفع عند الاستلام</CardDescription></div>
-        <Button type="button" variant="ghost" size="sm" onClick={onClose}>إغلاق</Button>
-      </CardHeader>
-      <CardContent>
-        {success ? (
-          <div role="status" className="flex flex-col gap-3">
-            <p className="font-semibold text-primary">تم تسجيل طلبك بنجاح. سيتواصل معك المتجر لتأكيد التسليم.</p>
-            <Button type="button" onClick={onPlaced}>تم</Button>
-          </div>
-        ) : !userId ? (
-          <div className="flex flex-col items-start gap-3">
-            <p className="text-sm text-muted-foreground">سجّل الدخول أولًا لإتمام الطلب ومتابعته.</p>
-            <Button asChild><Link to="/login">تسجيل الدخول</Link></Button>
-          </div>
-        ) : (
-          <form onSubmit={submitOrder} className="grid gap-4 sm:grid-cols-2">
-            <label className="grid gap-1.5 text-sm font-medium">الاسم<input required minLength={2} maxLength={100} autoComplete="name" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} className="h-10 rounded-lg border bg-background px-3" /></label>
-            <label className="grid gap-1.5 text-sm font-medium">رقم الهاتف<input required minLength={7} maxLength={24} autoComplete="tel" inputMode="tel" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} className="h-10 rounded-lg border bg-background px-3" /></label>
-            <label className="grid gap-1.5 text-sm font-medium">المدينة<input required minLength={2} maxLength={80} autoComplete="address-level2" value={form.city} onChange={(event) => setForm({ ...form, city: event.target.value })} className="h-10 rounded-lg border bg-background px-3" /></label>
-            <label className="grid gap-1.5 text-sm font-medium">الكمية<input required type="number" min={1} max={Math.min(product.stock, 100)} value={form.quantity} onChange={(event) => setForm({ ...form, quantity: Number(event.target.value) })} className="h-10 rounded-lg border bg-background px-3" /></label>
-            <label className="grid gap-1.5 text-sm font-medium sm:col-span-2">عنوان التوصيل<textarea required minLength={5} maxLength={300} rows={2} autoComplete="street-address" value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} className="rounded-lg border bg-background px-3 py-2" /></label>
-            {errorMessage && <p role="alert" className="text-sm text-destructive sm:col-span-2">{errorMessage}</p>}
-            <div className="flex items-center justify-between gap-4 sm:col-span-2">
-              <p className="text-sm text-muted-foreground">الإجمالي: <strong className="text-foreground">{formatMoney(Number(product.price) * form.quantity, product.currency)}</strong></p>
-              <Button type="submit" disabled={busy}>{busy ? "جارٍ إرسال الطلب…" : "تأكيد الطلب"}</Button>
-            </div>
-          </form>
-        )}
-      </CardContent>
     </Card>
   );
 }

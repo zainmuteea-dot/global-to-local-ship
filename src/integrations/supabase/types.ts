@@ -547,6 +547,17 @@ export type Database = {
         }
         Returns: boolean
       }
+      merchant_create_order: {
+        Args: {
+          _product_id: string
+          _quantity: number
+          _customer_name: string
+          _customer_phone: string
+          _customer_city: string
+          _delivery_address: string
+        }
+        Returns: string
+      }
       merchant_get_my_store: {
         Args: Record<PropertyKey, never>
         Returns: {
