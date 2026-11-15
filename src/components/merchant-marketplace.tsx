@@ -128,7 +128,7 @@ export function MerchantMarketplace() {
           </div>
         </div>
         {isLoading ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" aria-label="جارٍ تحميل المنتجات">
+          <div className="grid grid-cols-2 gap-3 min-[480px]:grid-cols-3 sm:gap-4 xl:grid-cols-4" aria-label="جارٍ تحميل المنتجات">
             {Array.from({ length: 8 }, (_, index) => <div key={index} className="h-72 animate-pulse rounded-2xl bg-muted" />)}
           </div>
         ) : error ? (
@@ -151,7 +151,7 @@ export function MerchantMarketplace() {
             </p>
           </CardContent></Card>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 min-[480px]:grid-cols-3 sm:gap-4 xl:grid-cols-4">
             {visibleProducts.map((product) => <ProductCard key={product.id} product={product} onOrder={() => setSelected(product)} />)}
           </div>
         )}
@@ -165,34 +165,64 @@ function ProductCard({ product, onOrder }: { product: MarketplaceProduct; onOrde
   const imageUrl = imageFailed ? null : product.image_url;
 
   return (
-    <Card className="overflow-hidden rounded-2xl border-border/80 transition-shadow hover:shadow-md">
-      <div className="aspect-[4/3] overflow-hidden bg-muted">
+    <Card className="group flex h-full flex-col overflow-hidden rounded-2xl border-border/70 bg-card shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg">
+      <div className="relative aspect-[4/5] overflow-hidden bg-muted">
         {imageUrl ? (
-          <img src={imageUrl} alt={product.title} className="size-full object-cover" loading="lazy" onError={() => setImageFailed(true)} />
+          <img
+            src={imageUrl}
+            alt={product.title}
+            className="size-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+            loading="lazy"
+            onError={() => setImageFailed(true)}
+          />
         ) : (
           <div className="flex size-full flex-col items-center justify-center gap-2 bg-muted text-center text-muted-foreground">
-            <Package aria-hidden="true" className="size-10" />
+            <Package aria-hidden="true" className="size-9" />
             <span className="text-xs">صورة المنتج غير متاحة</span>
             <span className="max-w-[90%] truncate text-xs">{product.store.name}</span>
           </div>
         )}
-      </div>
-      <CardHeader className="gap-2 pb-2">
-        <div className="flex items-center justify-between gap-2">
-          {product.category ? <Badge variant="secondary">{product.category}</Badge> : <span />}
-          <span className="text-xs text-muted-foreground">متبقي {product.stock.toLocaleString("ar-YE")}</span>
+        <div className="absolute inset-x-2 top-2 flex items-start justify-between gap-1.5">
+          {product.category ? (
+            <Badge className="max-w-[65%] truncate rounded-full border border-white/70 bg-white/95 text-[10px] font-semibold text-foreground shadow-sm hover:bg-white">
+              {product.category}
+            </Badge>
+          ) : <span />}
+          <Badge className="shrink-0 rounded-full border border-white/70 bg-white/95 text-[10px] font-semibold text-emerald-700 shadow-sm hover:bg-white">
+            متوفر
+          </Badge>
         </div>
-        <CardTitle className="line-clamp-1 text-base">{product.title}</CardTitle>
-        <CardDescription className="line-clamp-2 min-h-10">{product.description || "منتج من أحد متاجر السوق الشامل"}</CardDescription>
+        <div className="absolute bottom-2 right-2 rounded-full bg-black/65 px-2.5 py-1 text-[10px] font-medium text-white backdrop-blur-sm">
+          متبقي {product.stock.toLocaleString("ar-YE")}
+        </div>
+      </div>
+
+      <CardHeader className="gap-1.5 px-3 pb-2 pt-3 sm:px-4">
+        <CardTitle className="line-clamp-2 min-h-10 text-sm leading-5 sm:text-base">{product.title}</CardTitle>
+        <CardDescription className="line-clamp-2 min-h-9 text-xs leading-4 sm:text-sm">
+          {product.description || "منتج من أحد متاجر السوق الشامل"}
+        </CardDescription>
       </CardHeader>
-      <CardContent className="flex flex-col gap-2 pt-0">
-        <p className="text-lg font-bold text-primary">{formatMoney(Number(product.price), product.currency)}</p>
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground"><Store aria-hidden="true" className="size-3.5" /><span>{product.store.name}</span></div>
-        {product.store.city && <div className="flex items-center gap-1.5 text-xs text-muted-foreground"><MapPin aria-hidden="true" className="size-3.5" /><span>{product.store.city}</span></div>}
+
+      <CardContent className="flex flex-1 flex-col gap-2 px-3 pb-3 pt-0 sm:px-4">
+        <p className="text-base font-extrabold text-primary sm:text-lg">{formatMoney(Number(product.price), product.currency)}</p>
+        <div className="mt-auto grid gap-1 border-t border-border/60 pt-2">
+          <div className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+            <Store aria-hidden="true" className="size-3.5 shrink-0" />
+            <span className="truncate">{product.store.name}</span>
+          </div>
+          {product.store.city && (
+            <div className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+              <MapPin aria-hidden="true" className="size-3.5 shrink-0" />
+              <span className="truncate">{product.store.city}</span>
+            </div>
+          )}
+        </div>
       </CardContent>
-      <CardFooter>
-        <Button type="button" className="w-full" onClick={onOrder} disabled={product.stock < 1}>
-          <ShoppingBag data-icon="inline-start" aria-hidden="true" /> اطلب الآن
+
+      <CardFooter className="px-3 pb-3 pt-0 sm:px-4">
+        <Button type="button" size="sm" className="w-full text-xs sm:text-sm" onClick={onOrder} disabled={product.stock < 1}>
+          <ShoppingBag data-icon="inline-start" aria-hidden="true" className="size-4" /> اطلب الآن
         </Button>
       </CardFooter>
     </Card>
