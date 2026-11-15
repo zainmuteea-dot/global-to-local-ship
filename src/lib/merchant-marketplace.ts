@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { productImageVariantPath, type ProductImageWidth } from "@/lib/merchant-product-images";
 
 const db = supabase as any;
 
@@ -102,12 +103,23 @@ function logMarketplaceError(stage: string, error: unknown) {
   });
 }
 
-export async function getSignedProductImage(path: string): Promise<string | null> {
+export async function getSignedProductImage(
+  path: string,
+  width?: ProductImageWidth,
+): Promise<string | null> {
   if (!path || path.endsWith(`/${EMPTY_PRODUCT_IMAGE}`)) return null;
+  const variantPath = width ? productImageVariantPath(path, width) : null;
+  const imagePath = variantPath ?? path;
   try {
     const { data, error } = await supabase.storage
       .from("merchant-product-images")
-      .createSignedUrl(path, 3600);
+      .createSignedUrl(
+        imagePath,
+        3600,
+        !variantPath && width
+          ? { transform: { width, resize: "contain", quality: 78 } }
+          : undefined,
+      );
     if (error) {
       console.warn("[merchant-marketplace] product image signing failed", error.message);
       return null;
@@ -164,7 +176,7 @@ export async function loadMarketplace(): Promise<MarketplaceProduct[]> {
   );
   const visibleRows = (rows as MerchantProduct[]).filter((row) => storeById.has(row.store_id));
   const signedImages = await Promise.all(
-    visibleRows.map((row) => getSignedProductImage(row.image_path)),
+    visibleRows.map((row) => getSignedProductImage(row.image_path, 400)),
   );
 
   return visibleRows.map((row, index) => ({

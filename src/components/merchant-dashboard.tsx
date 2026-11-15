@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useSession } from "@/hooks/use-session";
+import { createProductWebpVariants, productImageVariantPaths } from "@/lib/merchant-product-images";
 import { supabase } from "@/integrations/supabase/client";
 import {
   EMPTY_PRODUCT_IMAGE,
@@ -33,7 +34,7 @@ async function loadMyProducts(storeId: string) {
   const { data, error } = await db.from("merchant_products").select("*").eq("store_id", storeId).order("created_at", { ascending: false });
   if (error) throw error;
   const products = (data ?? []) as MerchantProduct[];
-  const images = await Promise.all(products.map((product) => getSignedProductImage(product.image_path)));
+  const images = await Promise.all(products.map((product) => getSignedProductImage(product.image_path, 400)));
   return products.map((product, index) => ({ ...product, image_url: images[index] ?? null }));
 }
 
@@ -469,25 +470,46 @@ function ProductForm({
     if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
     setImagePreviewUrl(URL.createObjectURL(file));
     setUploadingImage(true);
-    setImageUploadMessage("جارٍ رفع الصورة…");
-    const extension =
-      file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
-    const imagePath = `${store.id}/${crypto.randomUUID()}.${extension}`;
-    const { error: uploadError } = await supabase.storage
-      .from("merchant-product-images")
-      .upload(imagePath, file, { contentType: file.type, upsert: false });
-    setUploadingImage(false);
-    if (uploadError) {
+    setImageUploadMessage("جارٍ ضغط الصورة وإنشاء نسختي WebP…");
+    let uploadedPaths: string[] = [];
+    try {
+      const variants = await createProductWebpVariants(file);
+      const basePath = `${store.id}/${crypto.randomUUID()}`;
+      for (const variant of variants) {
+        const variantPath = `${basePath}-${variant.width}.webp`;
+        const { error: uploadError } = await supabase.storage
+          .from("merchant-product-images")
+          .upload(variantPath, variant.file, {
+            contentType: "image/webp",
+            cacheControl: "31536000",
+            upsert: false,
+          });
+        if (uploadError) throw uploadError;
+        uploadedPaths.push(variantPath);
+      }
+      const fullVariantPath = `${basePath}-1200.webp`;
+      setSelectedImagePath(fullVariantPath);
+      setUploadedImagePath(fullVariantPath);
+      if (previousTemporaryPath && previousTemporaryPath !== draftImagePath) {
+        const previousVariants = productImageVariantPaths(previousTemporaryPath);
+        await supabase.storage
+          .from("merchant-product-images")
+          .remove(previousVariants ?? [previousTemporaryPath]);
+      }
+      setImageUploadMessage("تم ضغط الصورة ورفع نسختي WebP (400px و1200px) بنجاح.");
+    } catch (error) {
+      if (uploadedPaths.length) {
+        await supabase.storage.from("merchant-product-images").remove(uploadedPaths);
+      }
       setImage(null);
-      setImageUploadMessage("تعذر رفع الصورة. تأكد من نوعها وحجمها ثم أعد المحاولة.");
-      return;
+      setImageUploadMessage(
+        error instanceof Error && error.message.includes("200 KB")
+          ? "تعذر ضغط الصورة إلى أقل من 200 كيلوبايت. جرّب صورة أصغر أو أوضح."
+          : "تعذر تجهيز الصورة أو رفع نسختي WebP. أعد المحاولة بصورة JPG أو PNG أو WebP.",
+      );
+    } finally {
+      setUploadingImage(false);
     }
-    setSelectedImagePath(imagePath);
-    setUploadedImagePath(imagePath);
-    if (previousTemporaryPath && previousTemporaryPath !== draftImagePath) {
-      await supabase.storage.from("merchant-product-images").remove([previousTemporaryPath]);
-    }
-    setImageUploadMessage("تم رفع الصورة بنجاح، وستظهر في عرض المنتج بعد الاعتماد");
   }
 
   async function persist() {
@@ -548,7 +570,9 @@ function ProductForm({
         return;
       }
       if (draftImagePath && draftImagePath !== imagePath) {
-        await supabase.storage.from("merchant-product-images").remove([draftImagePath]);
+        await supabase.storage
+          .from("merchant-product-images")
+          .remove(productImageVariantPaths(draftImagePath) ?? [draftImagePath]);
       }
     } else {
       const { data, error } = await db

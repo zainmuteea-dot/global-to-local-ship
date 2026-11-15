@@ -6,6 +6,7 @@ import {
   Copy,
   Eye,
   MapPin,
+  LoaderCircle,
   Minus,
   Package,
   Plus,
@@ -24,7 +25,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
-import { formatMoney, loadMarketplace, type MarketplaceProduct } from "@/lib/merchant-marketplace";
+import {
+  formatMoney,
+  getSignedProductImage,
+  loadMarketplace,
+  type MarketplaceProduct,
+} from "@/lib/merchant-marketplace";
 import {
   addMerchantProductToCart,
   isMerchantCartItem,
@@ -338,19 +344,38 @@ function ProductCard({
   onQuickView: () => void;
 }) {
   const [imageFailed, setImageFailed] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
   const imageUrl = imageFailed ? null : product.image_url;
+
+  useEffect(() => {
+    setImageFailed(false);
+    setImageLoaded(false);
+  }, [product.id]);
 
   return (
     <article className="group flex h-full flex-col overflow-hidden rounded-[1.45rem] border border-[#eee5d7] bg-white shadow-[0_5px_20px_rgba(67,45,22,0.07)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_14px_32px_rgba(67,45,22,0.13)]">
       <div className="relative aspect-[4/4.2] overflow-hidden bg-[#f3eee5] p-2.5 sm:p-3">
         {imageUrl ? (
-          <img
-            src={imageUrl}
-            alt={product.title}
-            className="size-full rounded-[1rem] object-contain transition-transform duration-500 group-hover:scale-[1.025]"
-            loading="lazy"
-            onError={() => setImageFailed(true)}
-          />
+          <>
+            {!imageLoaded && (
+              <div
+                aria-label="جارٍ تحميل صورة المنتج"
+                role="progressbar"
+                className="absolute inset-2.5 z-[1] flex items-center justify-center rounded-[1rem] bg-[#eee7da]"
+              >
+                <LoaderCircle aria-hidden="true" className="size-6 animate-spin text-[#9a896f]" />
+              </div>
+            )}
+            <img
+              src={imageUrl}
+              alt={product.title}
+              className={`size-full rounded-[1rem] object-contain transition-[opacity,transform] duration-500 group-hover:scale-[1.025] ${imageLoaded ? "opacity-100" : "opacity-0 blur-sm"}`}
+              loading="lazy"
+              decoding="async"
+              onLoad={() => setImageLoaded(true)}
+              onError={() => setImageFailed(true)}
+            />
+          </>
         ) : (
           <div className="flex size-full flex-col items-center justify-center gap-2 rounded-[1rem] bg-[#eee7da] text-center text-[#9a896f]">
             <Package aria-hidden="true" className="size-10" />
@@ -429,14 +454,33 @@ function QuickViewDialog({
 }) {
   const [quantity, setQuantity] = useState(1);
   const [copied, setCopied] = useState(false);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imageLoading, setImageLoading] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
 
   useEffect(() => {
     setQuantity(1);
     setCopied(false);
-  }, [product?.id]);
+    setImageUrl(null);
+    setImageFailed(false);
+    if (!product || !open) {
+      setImageLoading(false);
+      return;
+    }
+
+    let active = true;
+    setImageLoading(true);
+    void getSignedProductImage(product.image_path, 1200).then((url) => {
+      if (!active) return;
+      setImageUrl(url);
+      if (!url) setImageLoading(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, [product?.id, open]);
 
   if (!product) return null;
-  const imageUrl = product.image_url;
   const itemNumber = product.sku?.trim() || product.id;
 
   const copyItemNumber = async () => {
@@ -460,7 +504,12 @@ function QuickViewDialog({
           <div className="relative overflow-hidden rounded-[1.5rem] bg-[#f2ede4]">
             <div className="aspect-[16/9] max-h-[42vh] w-full">
               {imageUrl ? (
-                <img src={imageUrl} alt={product.title} className="size-full object-contain" />
+                <img
+                  src={imageUrl}
+                  alt={product.title}
+                  className="size-full object-contain"
+                  decoding="async"
+                />
               ) : (
                 <div className="flex size-full items-center justify-center text-[#a18e71]">
                   <Package aria-hidden="true" className="size-14" />
