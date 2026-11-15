@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import useSWR from "swr";
 import { Link } from "@tanstack/react-router";
 import { BadgeCheck, Camera, ImagePlus, PackagePlus, Store, Truck } from "lucide-react";
@@ -142,38 +142,275 @@ function Metric({ icon, label, value }: { icon: ReactNode; label: string; value:
 }
 
 function StoreProfile({ store, onSaved }: { store: MerchantStorePrivate; onSaved: () => void }) {
-  const [form, setForm] = useState({ name: store.name, description: store.description, contact_phone: store.contact_phone, city: store.city });
+  const [form, setForm] = useState({
+    name: store.name,
+    description: store.description,
+    contact_phone: store.contact_phone,
+    city: store.city,
+  });
+  const [storeImagePath, setStoreImagePath] = useState<string | null>(
+    store.store_image_path ?? null,
+  );
+  const [storeImageFile, setStoreImageFile] = useState<File | null>(null);
+  const [storeImagePreview, setStoreImagePreview] = useState<string | null>(null);
+  const [storeImageFit, setStoreImageFit] = useState<"cover" | "contain">(
+    store.store_image_fit ?? "cover",
+  );
+  const [storeImagePosition, setStoreImagePosition] = useState<"left" | "center" | "right">(
+    store.store_image_position ?? "center",
+  );
+  const [savedStoreImageUrl, setSavedStoreImageUrl] = useState<string | null>(null);
+  const storeImageInput = useRef<HTMLInputElement | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    if (storeImagePath) {
+      void getSignedProductImage(storeImagePath).then((url) => {
+        if (active) setSavedStoreImageUrl(url);
+      });
+    } else {
+      setSavedStoreImageUrl(null);
+    }
+    return () => {
+      active = false;
+    };
+  }, [storeImagePath]);
+
+  function selectStoreImage(file?: File) {
+    if (!file) return;
+    if (
+      ["image/jpeg", "image/png", "image/webp"].includes(file.type) === false ||
+      file.size > 6 * 1024 * 1024
+    ) {
+      setMessage("اختر صورة JPG أو PNG أو WebP بحجم لا يتجاوز 6 ميجابايت.");
+      return;
+    }
+    if (storeImagePreview) URL.revokeObjectURL(storeImagePreview);
+    setStoreImageFile(file);
+    setStoreImagePreview(URL.createObjectURL(file));
+    setMessage("");
+  }
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
     setMessage("");
-    const { error } = await db.from("merchant_stores").update(form).eq("id", store.id);
+    let nextImagePath = storeImagePath;
+    let uploadedPath: string | null = null;
+    if (storeImageFile) {
+      const extension =
+        storeImageFile.type === "image/png"
+          ? "png"
+          : storeImageFile.type === "image/webp"
+            ? "webp"
+            : "jpg";
+      uploadedPath = `${store.id}/store/${crypto.randomUUID()}.${extension}`;
+      const { error: uploadError } = await supabase.storage
+        .from("merchant-product-images")
+        .upload(uploadedPath, storeImageFile, { contentType: storeImageFile.type, upsert: false });
+      if (uploadError) {
     setBusy(false);
-    if (error) { setMessage("تعذر حفظ بيانات المتجر."); return; }
-    setMessage("تم حفظ بيانات المتجر.");
+        setMessage("تعذر رفع الصورة. تأكد من نوعها وحجمها ثم أعد المحاولة.");
+        return;
+      }
+      nextImagePath = uploadedPath;
+    }
+    const { error } = await db
+      .from("merchant_stores")
+      .update({
+        ...form,
+        store_image_path: nextImagePath,
+        store_image_fit: storeImageFit,
+        store_image_position: storeImagePosition,
+      })
+      .eq("id", store.id);
+    setBusy(false);
+    if (error) {
+      if (uploadedPath)
+        await supabase.storage.from("merchant-product-images").remove([uploadedPath]);
+      setMessage("تعذر حفظ بيانات المتجر. لم يتم تغيير الصورة الحالية.");
+      return;
+    }
+    if (store.store_image_path && store.store_image_path !== nextImagePath) {
+      await supabase.storage.from("merchant-product-images").remove([store.store_image_path]);
+    }
+    setStoreImagePath(nextImagePath);
+    setStoreImageFile(null);
+    if (storeImagePreview) URL.revokeObjectURL(storeImagePreview);
+    setStoreImagePreview(null);
+    setMessage("تم حفظ بيانات المتجر وصورته.");
+    window.dispatchEvent(new Event("merchant-store-updated"));
     onSaved();
   }
 
   return (
     <Card className="rounded-2xl">
-      <CardHeader><CardTitle>بيانات المتجر</CardTitle><CardDescription>هذه المعلومات تظهر للعملاء في السوق.</CardDescription></CardHeader>
-      <CardContent><form onSubmit={save} className="grid gap-3">
-        <Field label="اسم المتجر"><Input required minLength={2} maxLength={100} value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></Field>
-        <Field label="رقم التواصل"><Input required minLength={7} maxLength={24} inputMode="tel" value={form.contact_phone} onChange={(event) => setForm({ ...form, contact_phone: event.target.value })} /></Field>
-        <Field label="المدينة"><Input maxLength={80} value={form.city} onChange={(event) => setForm({ ...form, city: event.target.value })} /></Field>
-        <Field label="نبذة قصيرة"><Textarea maxLength={1000} rows={3} value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></Field>
-        {message && <p role="status" className="text-sm text-muted-foreground">{message}</p>}
-        <Button type="submit" disabled={busy || store.status !== "active"}>{busy ? "جارٍ الحفظ…" : "حفظ بيانات المتجر"}</Button>
-      </form></CardContent>
+      <CardHeader>
+        <CardTitle>بيانات المتجر</CardTitle>
+        <CardDescription>هذه المعلومات تظهر للعملاء في السوق.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={save} className="grid gap-3">
+          <Field label="اسم المتجر">
+            <Input
+              required
+              minLength={2}
+              maxLength={100}
+              value={form.name}
+              onChange={(event) => setForm({ ...form, name: event.target.value })}
+            />
+          </Field>
+          <Field label="رقم التواصل">
+            <Input
+              required
+              minLength={7}
+              maxLength={24}
+              inputMode="tel"
+              value={form.contact_phone}
+              onChange={(event) => setForm({ ...form, contact_phone: event.target.value })}
+            />
+          </Field>
+          <Field label="المدينة">
+            <Input
+              maxLength={80}
+              value={form.city}
+              onChange={(event) => setForm({ ...form, city: event.target.value })}
+            />
+          </Field>
+          <Field label="نبذة قصيرة">
+            <Textarea
+              maxLength={1000}
+              rows={3}
+              value={form.description}
+              onChange={(event) => setForm({ ...form, description: event.target.value })}
+            />
+          </Field>
+          <div className="grid gap-3 rounded-xl border p-3 sm:col-span-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="font-semibold">صورة المتجر</p>
+                <p className="text-xs text-muted-foreground">
+                  JPG أو PNG أو WebP، بحد أقصى 6 ميجابايت.
+                </p>
+              </div>
+              <input
+                ref={storeImageInput}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="sr-only"
+                aria-label="اختيار صورة المتجر"
+                onChange={(event) => {
+                  selectStoreImage(event.currentTarget.files?.[0]);
+                  event.currentTarget.value = "";
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                disabled={busy || store.status !== "active"}
+                onClick={() => storeImageInput.current?.click()}
+              >
+                رفع صورة المتجر
+              </Button>
+            </div>
+            {storeImagePreview || savedStoreImageUrl ? (
+              <div className="flex min-h-36 items-center justify-center overflow-hidden rounded-xl bg-muted p-2">
+                <img
+                  src={storeImagePreview ?? savedStoreImageUrl ?? ""}
+                  alt="معاينة صورة المتجر"
+                  className="h-36 w-full rounded-lg"
+                  style={{ objectFit: storeImageFit, objectPosition: storeImagePosition }}
+                />
+              </div>
+            ) : (
+              <div className="flex h-36 items-center justify-center rounded-xl bg-muted text-sm text-muted-foreground">
+                تظهر الأيقونة الافتراضية إذا لم تُرفع صورة
+              </div>
+            )}
+            {storeImageFile && (
+              <p className="text-xs text-muted-foreground">{storeImageFile.name}</p>
+            )}
+            {storeImagePath && (
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-fit text-destructive"
+                disabled={busy}
+                onClick={() => {
+                  setStoreImagePath(null);
+                  setSavedStoreImageUrl(null);
+                  setStoreImageFile(null);
+                  if (storeImagePreview) URL.revokeObjectURL(storeImagePreview);
+                  setStoreImagePreview(null);
+                }}
+              >
+                إزالة صورة المتجر
+              </Button>
+            )}
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="grid gap-1 text-xs font-medium">
+                طريقة عرض الصورة
+                <select
+                  value={storeImageFit}
+                  onChange={(event) => setStoreImageFit(event.target.value as "cover" | "contain")}
+                  className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  <option value="cover">تغطية (Cover)</option>
+                  <option value="contain">احتواء (Contain)</option>
+                </select>
+              </label>
+              <label className="grid gap-1 text-xs font-medium">
+                موضع الصورة
+                <select
+                  value={storeImagePosition}
+                  onChange={(event) =>
+                    setStoreImagePosition(event.target.value as "left" | "center" | "right")
+                  }
+                  className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  <option value="left">يسار</option>
+                  <option value="center">وسط</option>
+                  <option value="right">يمين</option>
+                </select>
+              </label>
+            </div>
+          </div>
+          {message && (
+            <p role="status" className="text-sm text-muted-foreground">
+              {message}
+            </p>
+          )}
+          <Button type="submit" disabled={busy || store.status !== "active"}>
+            {busy ? "جارٍ الحفظ…" : "حفظ بيانات المتجر"}
+          </Button>
+        </form>
+      </CardContent>
     </Card>
   );
 }
 
-function ProductForm({ store, onCreated, presetCategory }: { store: MerchantStorePrivate; onCreated: () => void; presetCategory?: string }) {
-  const [form, setForm] = useState({ title: "", description: "", category: presetCategory ?? "", price: "", currency: "YER", stock: "1" });
+function ProductForm({
+  store,
+  onCreated,
+  presetCategory,
+}: {
+  store: MerchantStorePrivate;
+  onCreated: () => void;
+  presetCategory?: string;
+}) {
+  const [form, setForm] = useState({
+    title: "",
+    description: "",
+    category: presetCategory ?? "",
+    price: "",
+    oldPrice: "",
+    discountPercent: "",
+    sku: "",
+    currency: "YER",
+    stock: "1",
+  });
   const [image, setImage] = useState<File | null>(null);
   const [selectedImagePath, setSelectedImagePath] = useState<string | null>(null);
   const [uploadedImagePath, setUploadedImagePath] = useState<string | null>(null);
@@ -189,7 +426,17 @@ function ProductForm({ store, onCreated, presetCategory }: { store: MerchantStor
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
 
   function resetForm() {
-    setForm({ title: "", description: "", category: presetCategory ?? "", price: "", currency: "YER", stock: "1" });
+    setForm({
+      title: "",
+      description: "",
+      category: presetCategory ?? "",
+      price: "",
+      oldPrice: "",
+      discountPercent: "",
+      sku: "",
+      currency: "YER",
+      stock: "1",
+    });
     setImage(null);
     setSelectedImagePath(null);
     setUploadedImagePath(null);
@@ -205,7 +452,10 @@ function ProductForm({ store, onCreated, presetCategory }: { store: MerchantStor
     if (!file) return;
     setMessage("");
     setImageUploadMessage("");
-    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 6 * 1024 * 1024) {
+    if (
+      !["image/jpeg", "image/png", "image/webp"].includes(file.type) ||
+      file.size > 6 * 1024 * 1024
+    ) {
       setImage(null);
       setSelectedImagePath(null);
       if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
@@ -220,7 +470,8 @@ function ProductForm({ store, onCreated, presetCategory }: { store: MerchantStor
     setImagePreviewUrl(URL.createObjectURL(file));
     setUploadingImage(true);
     setImageUploadMessage("جارٍ رفع الصورة…");
-    const extension = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
+    const extension =
+      file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
     const imagePath = `${store.id}/${crypto.randomUUID()}.${extension}`;
     const { error: uploadError } = await supabase.storage
       .from("merchant-product-images")
@@ -247,9 +498,22 @@ function ProductForm({ store, onCreated, presetCategory }: { store: MerchantStor
       return;
     }
      const price = Number(form.price);
+    const oldPrice = form.oldPrice.trim() ? Number(form.oldPrice) : null;
+    const discountPercent = form.discountPercent.trim() ? Number(form.discountPercent) : null;
     const stock = Number(form.stock);
-    if (!Number.isFinite(price) || price <= 0 || !Number.isInteger(stock) || stock < 0 || stock > 1_000_000) {
-      setMessage("تحقق من السعر والكمية المدخلة.");
+    if (
+      !Number.isFinite(price) ||
+      price <= 0 ||
+      !Number.isInteger(stock) ||
+      stock < 0 ||
+      stock > 1_000_000 ||
+      (oldPrice !== null && (!Number.isFinite(oldPrice) || oldPrice <= price)) ||
+      (discountPercent !== null &&
+        (!Number.isInteger(discountPercent) || discountPercent < 1 || discountPercent > 99))
+    ) {
+      setMessage(
+        "تحقق من السعر السابق والخصم والكمية. يجب أن يكون السعر السابق أعلى من السعر الحالي.",
+      );
       return;
     }
 
@@ -263,6 +527,9 @@ function ProductForm({ store, onCreated, presetCategory }: { store: MerchantStor
       description: form.description.trim(),
       category: presetCategory ?? form.category.trim(),
       price,
+      old_price: oldPrice,
+      discount_percent: discountPercent,
+      sku: form.sku.trim() || null,
       currency: form.currency,
       stock,
       image_path: imagePath,
@@ -270,7 +537,11 @@ function ProductForm({ store, onCreated, presetCategory }: { store: MerchantStor
 
     let productId = draftId;
     if (productId) {
-      const { error } = await db.from("merchant_products").update(values).eq("id", productId).eq("store_id", store.id);
+      const { error } = await db
+        .from("merchant_products")
+        .update(values)
+        .eq("id", productId)
+        .eq("store_id", store.id);
       if (error) {
         setBusy(false);
         setMessage("تعذر تحديث المنتج. لم يتغير المنتج المحفوظ.");
@@ -280,7 +551,11 @@ function ProductForm({ store, onCreated, presetCategory }: { store: MerchantStor
         await supabase.storage.from("merchant-product-images").remove([draftImagePath]);
       }
     } else {
-      const { data, error } = await db.from("merchant_products").insert(values).select("id").single();
+      const { data, error } = await db
+        .from("merchant_products")
+        .insert(values)
+        .select("id")
+        .single();
       if (error || !data) {
         const issue = error as {
           code?: string;
@@ -314,7 +589,9 @@ function ProductForm({ store, onCreated, presetCategory }: { store: MerchantStor
     setImagePreviewUrl(null);
     onCreated();
 
-    const { error: submitError } = await db.rpc("merchant_submit_product", { _product_id: productId });
+    const { error: submitError } = await db.rpc("merchant_submit_product", {
+      _product_id: productId,
+    });
     setBusy(false);
     if (submitError) {
       setMessage("تم حفظ المنتج، لكن تعذر إرساله للمراجعة. أعد المحاولة لاحقًا.");
@@ -328,37 +605,196 @@ function ProductForm({ store, onCreated, presetCategory }: { store: MerchantStor
 
   return (
     <Card className="rounded-2xl">
-      <CardHeader><CardTitle className="flex items-center gap-2"><PackagePlus aria-hidden="true" className="size-5 text-primary" /> {presetCategory ? "إضافة معسل أو منتج شيشة" : "إضافة منتج"}</CardTitle><CardDescription>{presetCategory ? "أرسل المعسل لمراجعة الإدارة؛ التصنيف يضبط تلقائيًا إلى معسلات." : "أرسل المنتج للمراجعة؛ لن يظهر للعملاء قبل اعتماد الإدارة."}</CardDescription></CardHeader>
-      <CardContent><form ref={setFormElement} onSubmit={(event) => { event.preventDefault(); void persist(); }} className="grid gap-3 sm:grid-cols-2">
-        <Field label="اسم المنتج"><Input required minLength={2} maxLength={120} value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} /></Field>
-        {!presetCategory && <Field label="التصنيف"><Input maxLength={60} value={form.category} onChange={(event) => setForm({ ...form, category: event.target.value })} placeholder="مثال: عطور" /></Field>}
-        <Field label="السعر"><Input required type="number" min="0.01" step="0.01" value={form.price} onChange={(event) => setForm({ ...form, price: event.target.value })} /></Field>
-        <Field label="العملة"><select value={form.currency} onChange={(event) => setForm({ ...form, currency: event.target.value })} className="h-9 rounded-md border border-input bg-background px-3 text-sm"><option value="YER">ريال يمني (YER)</option><option value="SAR">ريال سعودي (SAR)</option><option value="USD">دولار (USD)</option></select></Field>
-        <Field label="الكمية المتاحة"><Input required type="number" min="0" max="1000000" step="1" value={form.stock} onChange={(event) => setForm({ ...form, stock: event.target.value })} /></Field>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <PackagePlus aria-hidden="true" className="size-5 text-primary" />{" "}
+          {presetCategory ? "إضافة معسل أو منتج شيشة" : "إضافة منتج"}
+        </CardTitle>
+        <CardDescription>
+          {presetCategory
+            ? "أرسل المعسل لمراجعة الإدارة؛ التصنيف يضبط تلقائيًا إلى معسلات."
+            : "أرسل المنتج للمراجعة؛ لن يظهر للعملاء قبل اعتماد الإدارة."}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form
+          ref={setFormElement}
+          onSubmit={(event) => {
+            event.preventDefault();
+            void persist();
+          }}
+          className="grid gap-3 sm:grid-cols-2"
+        >
+          <Field label="اسم المنتج">
+            <Input
+              required
+              minLength={2}
+              maxLength={120}
+              value={form.title}
+              onChange={(event) => setForm({ ...form, title: event.target.value })}
+            />
+          </Field>
+          {!presetCategory && (
+            <Field label="التصنيف">
+              <Input
+                maxLength={60}
+                value={form.category}
+                onChange={(event) => setForm({ ...form, category: event.target.value })}
+                placeholder="مثال: عطور"
+              />
+            </Field>
+          )}
+          <Field label="السعر">
+            <Input
+              required
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={form.price}
+              onChange={(event) => setForm({ ...form, price: event.target.value })}
+            />
+          </Field>
+          <Field label="السعر السابق (اختياري)">
+            <Input
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={form.oldPrice}
+              onChange={(event) => setForm({ ...form, oldPrice: event.target.value })}
+            />
+          </Field>
+          <Field label="نسبة الخصم ٪ (اختياري)">
+            <Input
+              type="number"
+              min="1"
+              max="99"
+              step="1"
+              value={form.discountPercent}
+              onChange={(event) => setForm({ ...form, discountPercent: event.target.value })}
+            />
+          </Field>
+          <Field label="رقم الصنف (اختياري)">
+            <Input
+              maxLength={80}
+              value={form.sku}
+              onChange={(event) => setForm({ ...form, sku: event.target.value })}
+            />
+          </Field>
+          <Field label="العملة">
+            <select
+              value={form.currency}
+              onChange={(event) => setForm({ ...form, currency: event.target.value })}
+              className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+            >
+              <option value="YER">ريال يمني (YER)</option>
+              <option value="SAR">ريال سعودي (SAR)</option>
+              <option value="USD">دولار (USD)</option>
+            </select>
+          </Field>
+          <Field label="الكمية المتاحة">
+            <Input
+              required
+              type="number"
+              min="0"
+              max="1000000"
+              step="1"
+              value={form.stock}
+              onChange={(event) => setForm({ ...form, stock: event.target.value })}
+            />
+          </Field>
         <div className="grid gap-1.5 text-sm font-medium">
           <span>صورة المنتج</span>
-          <span className="text-xs font-normal text-muted-foreground">ارفع صورة واضحة للمنتج - JPG أو PNG أو WebP - بحد أقصى 6 ميجابايت. الصورة اختيارية.</span>
+            <span className="text-xs font-normal text-muted-foreground">
+              ارفع صورة واضحة للمنتج - JPG أو PNG أو WebP - بحد أقصى 6 ميجابايت. الصورة اختيارية.
+            </span>
           <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" disabled={busy || uploadingImage || store.status !== "active"} onClick={() => cameraInputRef.current?.click()}>
-              <Camera aria-hidden="true" className="ml-2 size-4" />التقاط صورة بالكاميرا
+              <Button
+                type="button"
+                variant="outline"
+                disabled={busy || uploadingImage || store.status !== "active"}
+                onClick={() => cameraInputRef.current?.click()}
+              >
+                <Camera aria-hidden="true" className="ml-2 size-4" />
+                التقاط صورة بالكاميرا
             </Button>
-            <Button type="button" variant="outline" disabled={busy || uploadingImage || store.status !== "active"} onClick={() => galleryInputRef.current?.click()}>
-              <ImagePlus aria-hidden="true" className="ml-2 size-4" />اختيار من الصور
+              <Button
+                type="button"
+                variant="outline"
+                disabled={busy || uploadingImage || store.status !== "active"}
+                onClick={() => galleryInputRef.current?.click()}
+              >
+                <ImagePlus aria-hidden="true" className="ml-2 size-4" />
+                اختيار من الصور
             </Button>
           </div>
-          <input ref={cameraInputRef} type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={(event) => { void handleImageSelection(event.target.files?.[0]); event.currentTarget.value = ""; }} className="sr-only" tabIndex={-1} aria-label="التقاط صورة المنتج بالكاميرا" />
-          <input ref={galleryInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { void handleImageSelection(event.target.files?.[0]); event.currentTarget.value = ""; }} className="sr-only" tabIndex={-1} aria-label="اختيار صورة المنتج من الصور" />
-          {imagePreviewUrl && <img src={imagePreviewUrl} alt="معاينة صورة المنتج" className="mt-2 h-36 w-full rounded-xl border object-cover" />}
-          {imageUploadMessage && <span role="status" className={`text-xs font-medium ${selectedImagePath ? "text-primary" : "text-muted-foreground"}`}>{imageUploadMessage}</span>}
-          {image?.name && <span className="text-xs font-normal text-muted-foreground">{image.name}</span>}
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              capture="environment"
+              onChange={(event) => {
+                void handleImageSelection(event.target.files?.[0]);
+                event.currentTarget.value = "";
+              }}
+              className="sr-only"
+              tabIndex={-1}
+              aria-label="التقاط صورة المنتج بالكاميرا"
+            />
+            <input
+              ref={galleryInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={(event) => {
+                void handleImageSelection(event.target.files?.[0]);
+                event.currentTarget.value = "";
+              }}
+              className="sr-only"
+              tabIndex={-1}
+              aria-label="اختيار صورة المنتج من الصور"
+            />
+            {imagePreviewUrl && (
+              <img
+                src={imagePreviewUrl}
+                alt="معاينة صورة المنتج"
+                className="mt-2 h-36 w-full rounded-xl border object-cover"
+              />
+            )}
+            {imageUploadMessage && (
+              <span
+                role="status"
+                className={`text-xs font-medium ${selectedImagePath ? "text-primary" : "text-muted-foreground"}`}
+              >
+                {imageUploadMessage}
+              </span>
+            )}
+            {image?.name && (
+              <span className="text-xs font-normal text-muted-foreground">{image.name}</span>
+            )}
         </div>
-        <Field label="وصف المنتج" className="sm:col-span-2"><Textarea maxLength={1200} rows={3} value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></Field>
-        {message && <p role="status" className="text-sm text-muted-foreground sm:col-span-2">{message}</p>}
-        <p className="flex items-center gap-2 text-xs text-muted-foreground sm:col-span-2"><ImagePlus aria-hidden="true" className="size-4" /> على الهاتف يمكنك التقاط الصورة مباشرة بالكاميرا، ولن تظهر للزبائن إلا بعد اعتماد الإدارة.</p>
+          <Field label="وصف المنتج" className="sm:col-span-2">
+            <Textarea
+              maxLength={1200}
+              rows={3}
+              value={form.description}
+              onChange={(event) => setForm({ ...form, description: event.target.value })}
+            />
+          </Field>
+          {message && (
+            <p role="status" className="text-sm text-muted-foreground sm:col-span-2">
+              {message}
+            </p>
+          )}
+          <p className="flex items-center gap-2 text-xs text-muted-foreground sm:col-span-2">
+            <ImagePlus aria-hidden="true" className="size-4" /> على الهاتف يمكنك التقاط الصورة
+            مباشرة بالكاميرا، ولن تظهر للزبائن إلا بعد اعتماد الإدارة.
+          </p>
         <div className="flex flex-wrap gap-2 sm:col-span-2">
-          <Button type="submit" disabled={busy || uploadingImage || store.status !== "active"}>{busy ? "جارٍ الإرسال…" : "إرسال للمراجعة"}</Button>
+            <Button type="submit" disabled={busy || uploadingImage || store.status !== "active"}>
+              {busy ? "جارٍ الإرسال…" : "إرسال للمراجعة"}
+            </Button>
         </div>
-      </form></CardContent>
+        </form>
+      </CardContent>
     </Card>
   );
 }
@@ -380,8 +816,23 @@ function ProductInventory({ products, error, onSaved, active, title = "إدار�
   );
 }
 
-function InventoryRow({ product, onSaved, active }: { product: MerchantProduct & { image_url: string | null }; onSaved: () => void; active: boolean }) {
+function InventoryRow({
+  product,
+  onSaved,
+  active,
+}: {
+  product: MerchantProduct & { image_url: string | null };
+  onSaved: () => void;
+  active: boolean;
+}) {
   const [price, setPrice] = useState(String(product.price));
+  const [oldPrice, setOldPrice] = useState(
+    product.old_price == null ? "" : String(product.old_price),
+  );
+  const [discountPercent, setDiscountPercent] = useState(
+    product.discount_percent == null ? "" : String(product.discount_percent),
+  );
+  const [sku, setSku] = useState(product.sku ?? "");
   const [stock, setStock] = useState(String(product.stock));
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -389,17 +840,140 @@ function InventoryRow({ product, onSaved, active }: { product: MerchantProduct &
     event.preventDefault();
     setBusy(true);
     setMessage("");
-    const { error } = await db.from("merchant_products").update({ price: Number(price), stock: Number(stock) }).eq("id", product.id);
+    const currentPrice = Number(price);
+    const previousPrice = oldPrice.trim() ? Number(oldPrice) : null;
+    const discount = discountPercent.trim() ? Number(discountPercent) : null;
+    if (
+      !Number.isFinite(currentPrice) ||
+      currentPrice <= 0 ||
+      (previousPrice !== null &&
+        (!Number.isFinite(previousPrice) || previousPrice <= currentPrice)) ||
+      (discount !== null && (!Number.isInteger(discount) || discount < 1 || discount > 99))
+    ) {
     setBusy(false);
-    if (error) { setMessage("تعذر الحفظ"); return; }
+      setMessage("تحقق من السعر السابق ونسبة الخصم.");
+      return;
+    }
+    const { error } = await db
+      .from("merchant_products")
+      .update({
+        price: currentPrice,
+        old_price: previousPrice,
+        discount_percent: discount,
+        sku: sku.trim() || null,
+        stock: Number(stock),
+      })
+      .eq("id", product.id);
+    setBusy(false);
+    if (error) {
+      setMessage("تعذر الحفظ");
+      return;
+    }
     setMessage("تم الحفظ");
     onSaved();
   }
   return (
-    <form onSubmit={save} className="grid gap-3 rounded-xl border p-3 sm:grid-cols-[auto_1fr_auto] sm:items-center">
-      {product.image_url ? <img src={product.image_url} alt="" className="size-16 rounded-lg object-cover" loading="lazy" /> : <div className="flex size-16 items-center justify-center rounded-lg bg-muted"><ImagePlus aria-hidden="true" className="size-5 text-muted-foreground" /></div>}
-      <div className="min-w-0"><p className="truncate font-semibold">{product.title}</p><div className="mt-1 flex flex-wrap items-center gap-2"><Badge variant={product.status === "approved" ? "secondary" : product.status === "rejected" ? "destructive" : "outline"}>{productStatusLabels[product.status]}</Badge>{product.review_note && <span className="text-xs text-destructive">{product.review_note}</span>}</div><div className="mt-2 grid grid-cols-2 gap-2"><label className="grid gap-1 text-xs text-muted-foreground">السعر<Input type="number" min="0.01" step="0.01" value={price} onChange={(event) => setPrice(event.target.value)} className="h-8" /></label><label className="grid gap-1 text-xs text-muted-foreground">المخزون<Input type="number" min="0" max="1000000" value={stock} onChange={(event) => setStock(event.target.value)} className="h-8" /></label></div></div>
-      <div className="flex flex-col items-start gap-2 sm:items-end"><span className="text-xs text-muted-foreground">{product.currency}</span><Button size="sm" type="submit" variant="outline" disabled={busy || !active}>{busy ? "حفظ…" : "حفظ"}</Button>{message && <span role="status" className="text-xs text-muted-foreground">{message}</span>}</div>
+    <form
+      onSubmit={save}
+      className="grid gap-3 rounded-xl border p-3 sm:grid-cols-[auto_1fr_auto] sm:items-center"
+    >
+      {product.image_url ? (
+        <img
+          src={product.image_url}
+          alt=""
+          className="size-16 rounded-lg object-cover"
+          loading="lazy"
+        />
+      ) : (
+        <div className="flex size-16 items-center justify-center rounded-lg bg-muted">
+          <ImagePlus aria-hidden="true" className="size-5 text-muted-foreground" />
+        </div>
+      )}
+      <div className="min-w-0">
+        <p className="truncate font-semibold">{product.title}</p>
+        <div className="mt-1 flex flex-wrap items-center gap-2">
+          <Badge
+            variant={
+              product.status === "approved"
+                ? "secondary"
+                : product.status === "rejected"
+                  ? "destructive"
+                  : "outline"
+            }
+          >
+            {productStatusLabels[product.status]}
+          </Badge>
+          {product.review_note && (
+            <span className="text-xs text-destructive">{product.review_note}</span>
+          )}
+        </div>
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          <label className="grid gap-1 text-xs text-muted-foreground">
+            السعر
+            <Input
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={price}
+              onChange={(event) => setPrice(event.target.value)}
+              className="h-8"
+            />
+          </label>
+          <label className="grid gap-1 text-xs text-muted-foreground">
+            السعر السابق
+            <Input
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={oldPrice}
+              onChange={(event) => setOldPrice(event.target.value)}
+              className="h-8"
+            />
+          </label>
+          <label className="grid gap-1 text-xs text-muted-foreground">
+            الخصم ٪
+            <Input
+              type="number"
+              min="1"
+              max="99"
+              value={discountPercent}
+              onChange={(event) => setDiscountPercent(event.target.value)}
+              className="h-8"
+            />
+          </label>
+          <label className="grid gap-1 text-xs text-muted-foreground">
+            رقم الصنف
+            <Input
+              maxLength={80}
+              value={sku}
+              onChange={(event) => setSku(event.target.value)}
+              className="h-8"
+            />
+          </label>
+          <label className="grid gap-1 text-xs text-muted-foreground">
+            المخزون
+            <Input
+              type="number"
+              min="0"
+              max="1000000"
+              value={stock}
+              onChange={(event) => setStock(event.target.value)}
+              className="h-8"
+            />
+          </label>
+        </div>
+      </div>
+      <div className="flex flex-col items-start gap-2 sm:items-end">
+        <span className="text-xs text-muted-foreground">{product.currency}</span>
+        <Button size="sm" type="submit" variant="outline" disabled={busy || !active}>
+          {busy ? "حفظ…" : "حفظ"}
+        </Button>
+        {message && (
+          <span role="status" className="text-xs text-muted-foreground">
+            {message}
+          </span>
+        )}
+      </div>
     </form>
   );
 }
