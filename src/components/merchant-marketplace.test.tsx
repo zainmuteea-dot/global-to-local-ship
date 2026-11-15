@@ -17,6 +17,7 @@ vi.mock("@/integrations/supabase/client", () => ({
 }));
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ to, children, ...props }: any) => <a href={to} {...props}>{children}</a>,
+  useNavigate: () => vi.fn(),
 }));
 
 import { MerchantMarketplace } from "./merchant-marketplace";
@@ -62,4 +63,33 @@ describe("MerchantMarketplace retry and product images", () => {
     expect(screen.getByText("صورة المنتج غير متاحة")).toBeTruthy();
     expect(screen.getAllByText("متجر تجريبي").length).toBeGreaterThan(0);
   });
+});
+
+
+it("opens the new quick view with stock controls and product details", () => {
+  mocks.useSWR.mockImplementation((key: unknown) =>
+    key === "merchant-marketplace"
+      ? {
+          data: [{
+            id: "product-quick-view", store_id: "store-1", title: "منتج تجريبي", description: "تفاصيل المنتج",
+            category: "عام", price: 100, currency: "YER", stock: 2, image_path: "store-1/image.jpg",
+            image_url: "https://example.test/product.jpg", status: "approved", created_at: "2026-11-13T12:00:00Z",
+            updated_at: "2026-11-13T12:00:00Z",
+            store: { id: "store-1", name: "متجر تجريبي", city: "صنعاء", contact_phone: "777000000" },
+          }], error: undefined, isLoading: false, mutate: mocks.mutate,
+        }
+      : { data: null, error: undefined, isLoading: false, mutate: vi.fn() },
+  );
+
+  render(<MerchantMarketplace />);
+  fireEvent.click(screen.getByRole("button", { name: "معاينة منتج تجريبي" }));
+
+  expect(screen.getByRole("dialog")).toBeTruthy();
+  expect(screen.getByText("جاهزة فوراً")).toBeTruthy();
+  expect(screen.getByText("رقم الصنف")).toBeTruthy();
+  expect(screen.getAllByText("متجر تجريبي").length).toBeGreaterThan(0);
+  expect(screen.getByText("متوفر (٢)")).toBeTruthy();
+
+  fireEvent.click(screen.getByRole("button", { name: /وصف المنتج/ }));
+  expect(screen.getByText("تفاصيل المنتج")).toBeTruthy();
 });
