@@ -385,6 +385,114 @@ const CUSTOMER_STOREFRONT_CSS = `
 @media(max-width:720px){.pr-logo-mark{width:36px;height:36px}.pr-logo-copy strong{font-size:11px}.pr-logo-copy small{font-size:10px}.pr-head{padding-top:38px}.pr-stores{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding:0 14px}.pr-store{height:200px;padding:18px 12px}.pr-store .sh-icon{width:88px;height:88px}.pr-banners{gap:16px;padding:0 14px}.pr-banner{min-height:220px;padding:28px 22px}.pr-footer{margin-top:38px}.pr-footer-inner{min-height:60px;padding:14px;flex-direction:column;justify-content:center;gap:5px;text-align:center;font-size:11px}}
 @media(prefers-reduced-motion:reduce){.pr-store,.pr-store .sh-icon,.pr-banner{transition:none}}
 
+/* هوية السوق الشامل - مظهر فقط دون تغيير البيانات أو الروابط */
+.pr-page {
+  --navy: #0B3A66;
+  --orange: #F58220;
+  --gold: #FFC531;
+  --cream: #FFF9EF;
+  --ink: #102B45;
+  --muted: #60758A;
+  background: var(--cream);
+  color: var(--ink);
+}
+.pr-page:before {
+  background:
+    radial-gradient(620px 300px at 88% -6%, rgba(255,197,49,.19), transparent 62%),
+    radial-gradient(560px 300px at 4% 2%, rgba(11,58,102,.10), transparent 62%),
+    radial-gradient(700px 380px at 50% 108%, rgba(245,130,32,.08), transparent 62%);
+}
+.pr-topbar {
+  background: rgba(11,58,102,.97);
+  border-bottom: 2px solid var(--orange);
+  box-shadow: 0 8px 24px rgba(11,58,102,.16);
+}
+.pr-logo, .pr-logo-copy strong, .pr-topbar-note { color: #fff; }
+.pr-logo-copy small { color: #DCE8F3; }
+.pr-logo-mark {
+  background: linear-gradient(135deg, var(--gold), var(--orange));
+  color: var(--navy);
+  box-shadow: 0 5px 16px rgba(245,130,32,.32);
+}
+.pr-section-nav .pr-tab-button {
+  border-color: rgba(255,197,49,.55);
+  background: rgba(255,255,255,.10);
+  color: #fff;
+  box-shadow: none;
+}
+.pr-section-nav .pr-tab-button.is-active {
+  border-color: var(--gold);
+  background: linear-gradient(135deg, var(--orange), var(--gold));
+  color: var(--navy);
+  box-shadow: 0 7px 20px rgba(245,130,32,.25);
+}
+.pr-cart-link {
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--orange), var(--gold));
+  color: var(--navy);
+  box-shadow: 0 6px 18px rgba(245,130,32,.25);
+}
+.pr-cart-count { background: var(--navy); color: #fff; }
+.pr-head { padding-top: 46px; }
+.pr-title { color: var(--navy); }
+.pr-title .grad {
+  background: linear-gradient(120deg, var(--orange), #C95D0A 55%, var(--gold));
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+.pr-sub, .pr-merchant-heading p { color: var(--muted); }
+.pr-divider i { background: linear-gradient(90deg, transparent, var(--orange)); }
+.pr-divider i:last-child { background: linear-gradient(270deg, transparent, var(--orange)); }
+.pr-divider b { background: var(--gold); box-shadow: 0 0 14px rgba(255,197,49,.65); }
+.pr-store, .pr-merchant-card {
+  border-color: rgba(11,58,102,.18);
+  border-radius: 20px;
+  background: linear-gradient(145deg, #fff, var(--cream));
+  box-shadow: 0 10px 26px rgba(11,58,102,.08);
+}
+.pr-store:hover, .pr-merchant-card:hover {
+  border-color: var(--orange);
+  box-shadow: 0 16px 32px rgba(11,58,102,.14);
+}
+.pr-store-name, .pr-merchant-title, .pr-merchant-heading h2 { color: var(--navy); }
+.pr-store-go, .pr-merchant-cta { color: var(--orange); }
+.pr-merchant-mark {
+  background: linear-gradient(135deg, var(--navy), #17609A);
+  color: #fff;
+}
+.pr-merchant-action:hover { background: var(--navy); color: #fff; }
+.pr-merchant-state {
+  border-color: rgba(11,58,102,.25);
+  color: var(--muted);
+}
+.pr-footer { border-color: rgba(11,58,102,.16); }
+.pr-footer-brand { color: var(--navy); }
+.pr-section-nav button, .pr-store, .pr-merchant-card, .pr-banner {
+  transition-duration: .24s;
+}
+.pr-head, .pr-stores, .pr-merchant-section, .pr-banners {
+  animation: pr-section-enter .32s ease both;
+}
+.pr-store, .pr-merchant-card { animation: pr-card-enter .3s ease both; }
+.pr-store:nth-child(2), .pr-merchant-card:nth-child(2) { animation-delay: 35ms; }
+.pr-store:nth-child(3), .pr-merchant-card:nth-child(3) { animation-delay: 70ms; }
+.pr-store:nth-child(4), .pr-merchant-card:nth-child(4) { animation-delay: 105ms; }
+.pr-store:nth-child(5), .pr-merchant-card:nth-child(5) { animation-delay: 140ms; }
+.pr-store:nth-child(6), .pr-merchant-card:nth-child(6) { animation-delay: 175ms; }
+@keyframes pr-section-enter {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes pr-card-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pr-head, .pr-stores, .pr-merchant-section, .pr-banners,
+  .pr-store, .pr-merchant-card { animation: none; }
+}
+
+
 `;
 
 function CustomerStorefront() {
@@ -400,7 +508,7 @@ function CustomerStorefront() {
   const [merchantStoresLoading, setMerchantStoresLoading] = useState(true);
   const [merchantStoresError, setMerchantStoresError] = useState("");
   const [cartCount, setCartCount] = useState(0);
-  const [activeTab, setActiveTab] = useState<"international" | "local" | null>(null);
+  const [activeTab, setActiveTab] = useState<"international" | "local" | null>("international");
 
   useEffect(() => {
     const syncCartCount = () => setCartCount(readCart().length);
