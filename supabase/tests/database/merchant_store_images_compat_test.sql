@@ -113,7 +113,7 @@ SET store_image_path = '00000000-0000-4000-8000-000000000201/new-logo.webp',
     store_image_fit = 'contain',
     store_image_position = 'right'
 WHERE id = '00000000-0000-4000-8000-000000000201';
-SELECT is((SELECT store_image_path FROM public.merchant_stores WHERE id = '00000000-0000-4000-8000-000000000201'), '00000000-0000-4000-8000-000000000201/new-logo.webp', 'store owner can update their image settings');
+SELECT is((SELECT store_image_fit || ':' || store_image_position FROM public.merchant_stores WHERE id = '00000000-0000-4000-8000-000000000201'), 'contain:right', 'store owner can update image fit and position');
 SELECT is((SELECT store_image_path FROM public.merchant_stores WHERE id = '00000000-0000-4000-8000-000000000201'), '00000000-0000-4000-8000-000000000201/new-logo.webp', 'updated image path is saved');
 SELECT throws_ok($$UPDATE public.merchant_stores SET store_image_path = 'wrong-folder/logo.webp' WHERE id = '00000000-0000-4000-8000-000000000201'$$, '23514', NULL, 'rejects a path outside the store folder');
 SELECT throws_ok($$UPDATE public.merchant_stores SET store_image_fit = 'stretch' WHERE id = '00000000-0000-4000-8000-000000000201'$$, '23514', NULL, 'rejects an unsupported image fit');
