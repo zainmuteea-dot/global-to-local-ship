@@ -229,9 +229,35 @@ function StoreProfile({ store, onSaved }: { store: MerchantStorePrivate; onSaved
       .eq("id", store.id);
     setBusy(false);
     if (error) {
-      if (uploadedPath)
+      console.error("[merchant-store] extended profile update failed", {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+      });
+      // Keep the basic profile editable while the optional store-image migration is absent.
+      const { error: basicUpdateError } = await db
+        .from("merchant_stores")
+        .update(form)
+        .eq("id", store.id);
+      if (basicUpdateError) {
+        console.error("[merchant-store] basic profile update failed", {
+          code: basicUpdateError.code,
+          message: basicUpdateError.message,
+          details: basicUpdateError.details,
+          hint: basicUpdateError.hint,
+        });
+        if (uploadedPath) {
+          await supabase.storage.from("merchant-product-images").remove([uploadedPath]);
+        }
+        setMessage(`تعذر حفظ بيانات المتجر (الرمز ${basicUpdateError.code ?? "غير متوفر"}). لم تتغير البيانات.`);
+        return;
+      }
+      if (uploadedPath) {
         await supabase.storage.from("merchant-product-images").remove([uploadedPath]);
-      setMessage("تعذر حفظ بيانات المتجر. لم يتم تغيير الصورة الحالية.");
+      }
+      setMessage("تم حفظ بيانات المتجر، لكن لم تُحفظ الصورة لأن تحديث قاعدة البيانات الخاص بصور المتاجر لم يُطبّق بعد.");
+      onSaved();
       return;
     }
     if (store.store_image_path && store.store_image_path !== nextImagePath) {

@@ -433,31 +433,76 @@ function CustomerStorefront() {
     let isCurrent = true;
 
     const loadMerchantStores = async () => {
-      const { data, error } = await db
-        .from("merchant_stores")
-        .select("id,name,description,city,status,store_image_path,store_image_fit,store_image_position")
-        .eq("status", "active")
-        .order("name", { ascending: true });
+      setMerchantStoresLoading(true);
+      try {
+        let { data, error } = await db
+          .from("merchant_stores")
+          .select("id,name,description,city,status,store_image_path,store_image_fit,store_image_position")
+          .eq("status", "active")
+          .order("name", { ascending: true });
 
-      if (!isCurrent) return;
-      if (error) {
-        setMerchantStoresError("تعذر تحميل متاجر التجار حاليًا.");
-        setMerchantStores([]);
-      } else {
-        const rows = (data ?? []) as Omit<MerchantStorefront, "store_image_url">[];
+        let hasStoreImageFields = !error;
+        if (error) {
+          // Store images are optional. Older production schemas still have the core store fields.
+          console.warn("[storefront] optional store-image fields unavailable; retrying core store query", {
+            code: error.code,
+            message: error.message,
+          });
+          const fallback = await db
+            .from("merchant_stores")
+            .select("id,name,description,city,status")
+            .eq("status", "active")
+            .order("name", { ascending: true });
+          data = fallback.data;
+          error = fallback.error;
+          hasStoreImageFields = false;
+        }
+
+        if (!isCurrent) return;
+        if (error) {
+          console.error("[storefront] merchant store query failed", {
+            code: error.code,
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+          });
+          setMerchantStoresError("تعذر تحميل متاجر التجار حاليًا. تحقق من الاتصال أو صلاحيات عرض المتاجر.");
+          setMerchantStores([]);
+          return;
+        }
+
+        const rows = (data ?? []) as Array<Omit<MerchantStorefront, "store_image_url">>;
         const storesWithImages = await Promise.all(rows.map(async (store) => {
+          const storeImagePath = hasStoreImageFields ? store.store_image_path : null;
           let store_image_url: string | null = null;
-          if (store.store_image_path) {
-            const { data: signedImage } = await supabase.storage.from("merchant-product-images").createSignedUrl(store.store_image_path, 3600);
+          if (storeImagePath) {
+            const { data: signedImage, error: imageError } = await supabase.storage
+              .from("merchant-product-images")
+              .createSignedUrl(storeImagePath, 3600);
+            if (imageError) {
+              console.warn("[storefront] store image unavailable", imageError.message);
+            }
             store_image_url = signedImage?.signedUrl ?? null;
           }
-          return { ...store, store_image_url };
+          return {
+            ...store,
+            store_image_path: storeImagePath,
+            store_image_fit: hasStoreImageFields ? store.store_image_fit : "cover",
+            store_image_position: hasStoreImageFields ? store.store_image_position : "center",
+            store_image_url,
+          };
         }));
         if (!isCurrent) return;
         setMerchantStores(storesWithImages);
         setMerchantStoresError("");
+      } catch (error) {
+        if (!isCurrent) return;
+        console.error("[storefront] unexpected merchant store load failure", error);
+        setMerchantStoresError("تعذر تحميل متاجر التجار حاليًا. تحقق من الاتصال ثم أعد المحاولة.");
+        setMerchantStores([]);
+      } finally {
+        if (isCurrent) setMerchantStoresLoading(false);
       }
-      setMerchantStoresLoading(false);
     };
 
     const refreshMerchantStores = () => { void loadMerchantStores(); };
