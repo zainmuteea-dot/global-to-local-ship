@@ -26,7 +26,7 @@ concurrency:
 
 jobs:
   store-image-migration:
-    name: Store image compatibility migration (local Supabase)
+    name: Store image and marketplace migrations (local Supabase)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:

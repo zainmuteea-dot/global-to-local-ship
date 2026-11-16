@@ -108,28 +108,20 @@ RESET ROLE;
 -- Authenticated owner can update only their own active store and the RPC stays owner-scoped.
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000101', true);
 SET LOCAL ROLE authenticated;
-SELECT is((
-  WITH changed AS (
-    UPDATE public.merchant_stores
-    SET store_image_path = '00000000-0000-4000-8000-000000000201/new-logo.webp',
-        store_image_fit = 'contain',
-        store_image_position = 'right'
-    WHERE id = '00000000-0000-4000-8000-000000000201'
-    RETURNING 1
-  ) SELECT count(*) FROM changed
-), 1::bigint, 'store owner can update their image settings');
+UPDATE public.merchant_stores
+SET store_image_path = '00000000-0000-4000-8000-000000000201/new-logo.webp',
+    store_image_fit = 'contain',
+    store_image_position = 'right'
+WHERE id = '00000000-0000-4000-8000-000000000201';
+SELECT is((SELECT store_image_fit || ':' || store_image_position FROM public.merchant_stores WHERE id = '00000000-0000-4000-8000-000000000201'), 'contain:right', 'store owner can update image fit and position');
 SELECT is((SELECT store_image_path FROM public.merchant_stores WHERE id = '00000000-0000-4000-8000-000000000201'), '00000000-0000-4000-8000-000000000201/new-logo.webp', 'updated image path is saved');
 SELECT throws_ok($$UPDATE public.merchant_stores SET store_image_path = 'wrong-folder/logo.webp' WHERE id = '00000000-0000-4000-8000-000000000201'$$, '23514', NULL, 'rejects a path outside the store folder');
 SELECT throws_ok($$UPDATE public.merchant_stores SET store_image_fit = 'stretch' WHERE id = '00000000-0000-4000-8000-000000000201'$$, '23514', NULL, 'rejects an unsupported image fit');
 SELECT throws_ok($$UPDATE public.merchant_stores SET store_image_position = 'top' WHERE id = '00000000-0000-4000-8000-000000000201'$$, '23514', NULL, 'rejects an unsupported image position');
-SELECT is((
-  WITH changed AS (
-    UPDATE public.merchant_stores
-    SET store_image_fit = 'contain'
-    WHERE id = '00000000-0000-4000-8000-000000000202'
-    RETURNING 1
-  ) SELECT count(*) FROM changed
-), 0::bigint, 'store owner cannot update another active store');
+UPDATE public.merchant_stores
+SET store_image_fit = 'contain'
+WHERE id = '00000000-0000-4000-8000-000000000202';
+SELECT is((SELECT store_image_fit FROM public.merchant_stores WHERE id = '00000000-0000-4000-8000-000000000202'), 'cover', 'store owner cannot update another active store');
 SELECT is((SELECT count(*) FROM public.merchant_get_my_store()), 1::bigint, 'own-store RPC returns one owned store');
 SELECT is((SELECT id FROM public.merchant_get_my_store()), '00000000-0000-4000-8000-000000000201'::uuid, 'own-store RPC does not disclose another store');
 

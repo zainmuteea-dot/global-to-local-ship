@@ -6,6 +6,7 @@ import { readCart } from "@/lib/extension-cart";
 import { supabase } from "@/integrations/supabase/client";
 
 import { readableTextOn, resolveCardColors, safeImageUrl } from "@/lib/offer-card-style";
+import { getSignedProductImage } from "@/lib/merchant-marketplace";
 
 const db = supabase as any;
 
@@ -13,6 +14,26 @@ async function loadCurrentMerchantStore() {
   const { data, error } = await db.rpc("merchant_get_my_store");
   if (error) throw error;
   return Array.isArray(data) ? data[0] ?? null : data;
+}
+
+type BestSellingProduct = {
+  product_id: string;
+  store_id: string;
+  title: string;
+  image_path: string;
+  price: number;
+  currency: "YER" | "SAR" | "USD";
+  quantity_sold: number;
+  image_url: string | null;
+};
+
+async function loadBestSellingProducts(): Promise<BestSellingProduct[]> {
+  const { data, error } = await db.rpc("marketplace_get_best_selling_products", { _limit: 12 });
+  if (error) throw error;
+  return Promise.all((data ?? []).map(async (row: Omit<BestSellingProduct, "image_url">) => ({
+    ...row,
+    image_url: await getSignedProductImage(row.image_path, 400),
+  })));
 }
 
 /** Allow only legacy offer routes or a safe internal custom-offer route. */
@@ -385,112 +406,44 @@ const CUSTOMER_STOREFRONT_CSS = `
 @media(max-width:720px){.pr-logo-mark{width:36px;height:36px}.pr-logo-copy strong{font-size:11px}.pr-logo-copy small{font-size:10px}.pr-head{padding-top:38px}.pr-stores{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding:0 14px}.pr-store{height:200px;padding:18px 12px}.pr-store .sh-icon{width:88px;height:88px}.pr-banners{gap:16px;padding:0 14px}.pr-banner{min-height:220px;padding:28px 22px}.pr-footer{margin-top:38px}.pr-footer-inner{min-height:60px;padding:14px;flex-direction:column;justify-content:center;gap:5px;text-align:center;font-size:11px}}
 @media(prefers-reduced-motion:reduce){.pr-store,.pr-store .sh-icon,.pr-banner{transition:none}}
 
-/* هوية السوق الشامل - مظهر فقط دون تغيير البيانات أو الروابط */
-.pr-page {
-  --navy: #0B3A66;
-  --orange: #F58220;
-  --gold: #FFC531;
-  --cream: #FFF9EF;
-  --ink: #102B45;
-  --muted: #60758A;
-  background: var(--cream);
-  color: var(--ink);
-}
-.pr-page:before {
-  background:
-    radial-gradient(620px 300px at 88% -6%, rgba(255,197,49,.19), transparent 62%),
-    radial-gradient(560px 300px at 4% 2%, rgba(11,58,102,.10), transparent 62%),
-    radial-gradient(700px 380px at 50% 108%, rgba(245,130,32,.08), transparent 62%);
-}
-.pr-topbar {
-  background: rgba(11,58,102,.97);
-  border-bottom: 2px solid var(--orange);
-  box-shadow: 0 8px 24px rgba(11,58,102,.16);
-}
-.pr-logo, .pr-logo-copy strong, .pr-topbar-note { color: #fff; }
-.pr-logo-copy small { color: #DCE8F3; }
-.pr-logo-mark {
-  background: linear-gradient(135deg, var(--gold), var(--orange));
-  color: var(--navy);
-  box-shadow: 0 5px 16px rgba(245,130,32,.32);
-}
-.pr-section-nav .pr-tab-button {
-  border-color: rgba(255,197,49,.55);
-  background: rgba(255,255,255,.10);
-  color: #fff;
-  box-shadow: none;
-}
-.pr-section-nav .pr-tab-button.is-active {
-  border-color: var(--gold);
-  background: linear-gradient(135deg, var(--orange), var(--gold));
-  color: var(--navy);
-  box-shadow: 0 7px 20px rgba(245,130,32,.25);
-}
-.pr-cart-link {
-  border-color: transparent;
-  background: linear-gradient(135deg, var(--orange), var(--gold));
-  color: var(--navy);
-  box-shadow: 0 6px 18px rgba(245,130,32,.25);
-}
-.pr-cart-count { background: var(--navy); color: #fff; }
-.pr-head { padding-top: 46px; }
-.pr-title { color: var(--navy); }
-.pr-title .grad {
-  background: linear-gradient(120deg, var(--orange), #C95D0A 55%, var(--gold));
-  -webkit-background-clip: text;
-  background-clip: text;
-}
-.pr-sub, .pr-merchant-heading p { color: var(--muted); }
-.pr-divider i { background: linear-gradient(90deg, transparent, var(--orange)); }
-.pr-divider i:last-child { background: linear-gradient(270deg, transparent, var(--orange)); }
-.pr-divider b { background: var(--gold); box-shadow: 0 0 14px rgba(255,197,49,.65); }
-.pr-store, .pr-merchant-card {
-  border-color: rgba(11,58,102,.18);
-  border-radius: 20px;
-  background: linear-gradient(145deg, #fff, var(--cream));
-  box-shadow: 0 10px 26px rgba(11,58,102,.08);
-}
-.pr-store:hover, .pr-merchant-card:hover {
-  border-color: var(--orange);
-  box-shadow: 0 16px 32px rgba(11,58,102,.14);
-}
-.pr-store-name, .pr-merchant-title, .pr-merchant-heading h2 { color: var(--navy); }
-.pr-store-go, .pr-merchant-cta { color: var(--orange); }
-.pr-merchant-mark {
-  background: linear-gradient(135deg, var(--navy), #17609A);
-  color: #fff;
-}
-.pr-merchant-action:hover { background: var(--navy); color: #fff; }
-.pr-merchant-state {
-  border-color: rgba(11,58,102,.25);
-  color: var(--muted);
-}
-.pr-footer { border-color: rgba(11,58,102,.16); }
-.pr-footer-brand { color: var(--navy); }
-.pr-section-nav button, .pr-store, .pr-merchant-card, .pr-banner {
-  transition-duration: .24s;
-}
-.pr-head, .pr-stores, .pr-merchant-section, .pr-banners {
-  animation: pr-section-enter .32s ease both;
-}
-.pr-store, .pr-merchant-card { animation: pr-card-enter .3s ease both; }
-.pr-store:nth-child(2), .pr-merchant-card:nth-child(2) { animation-delay: 35ms; }
-.pr-store:nth-child(3), .pr-merchant-card:nth-child(3) { animation-delay: 70ms; }
-.pr-store:nth-child(4), .pr-merchant-card:nth-child(4) { animation-delay: 105ms; }
-.pr-store:nth-child(5), .pr-merchant-card:nth-child(5) { animation-delay: 140ms; }
-.pr-store:nth-child(6), .pr-merchant-card:nth-child(6) { animation-delay: 175ms; }
-@keyframes pr-section-enter {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-@keyframes pr-card-enter {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .pr-head, .pr-stores, .pr-merchant-section, .pr-banners,
-  .pr-store, .pr-merchant-card { animation: none; }
-}
+/* هوية واجهة السوق الشامل، مرسومة بالكامل داخل الصفحة دون أصول خارجية */
+.pr-page{--navy:#0B3A66;--orange:#F58220;--gold:#FFC531;--cream:#FFF9EF;--ink:#102B45;--muted:#60758A;background:var(--cream);color:var(--ink);font-family:'Cairo','Tajawal',system-ui,sans-serif;padding-bottom:38px}
+.pr-page:before{background:radial-gradient(620px 300px at 88% -6%,rgba(255,197,49,.16),transparent 62%),radial-gradient(560px 300px at 4% 2%,rgba(11,58,102,.08),transparent 62%),radial-gradient(700px 380px at 50% 108%,rgba(245,130,32,.08),transparent 62%)}
+.pr-page:after{display:none}
+.pr-announcement{position:relative;z-index:51;background:#082F53;color:#F5F9FC;font-size:12px;font-weight:700}
+.pr-announcement-inner{max-width:1240px;min-height:34px;margin:auto;padding:6px 22px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.pr-shipping-note{display:inline-flex;align-items:center;gap:9px}.pr-shipping-note i{width:8px;height:8px;border-radius:50%;background:#38C978;box-shadow:0 0 0 4px rgba(56,201,120,.13);animation:pr-pulse 1.8s ease-in-out infinite}
+.pr-announcement-help{color:#DCE8F3}
+@keyframes pr-pulse{50%{box-shadow:0 0 0 7px rgba(56,201,120,0)}}
+.pr-topbar{position:sticky;top:0;background:rgba(255,255,255,.97);border-bottom:1px solid #E2EAF1;box-shadow:0 5px 18px rgba(11,58,102,.06);backdrop-filter:blur(14px)}
+.pr-topbar-inner{max-width:1240px;min-height:68px;padding:9px 22px;grid-template-columns:1fr auto 1fr;gap:18px}
+.pr-logo{justify-self:start;gap:10px;text-decoration:none}.pr-logo-mark{width:42px;height:42px;border-radius:14px;background:var(--cream);border:1px solid #F3E1C6;color:var(--navy);box-shadow:0 4px 12px rgba(11,58,102,.08)}.pr-logo-mark svg{width:32px;height:32px}
+.pr-logo-copy strong{font-size:15px;letter-spacing:0;color:var(--navy)}.pr-logo-copy small{font-size:10px;font-weight:900;letter-spacing:2.1px;color:var(--orange)}
+.pr-section-nav{gap:4px}.pr-section-nav button{position:relative;min-height:44px;padding:8px 13px;border:0;border-radius:10px;background:transparent;color:#38536E;font-size:13px;font-weight:800;box-shadow:none;transition:color .18s ease,background .18s ease}
+.pr-section-nav button:after{content:"";position:absolute;right:14px;left:14px;bottom:2px;height:2px;border-radius:5px;background:var(--orange);transform:scaleX(0);transform-origin:right;transition:transform .22s ease}
+.pr-section-nav button.is-active{background:#FFF7EF;color:var(--orange);box-shadow:none}.pr-section-nav button.is-active:after{transform:scaleX(1)}.pr-section-nav button:hover{background:#F8FAFC;transform:none;box-shadow:none}.pr-section-nav button:focus-visible{outline:2px solid var(--orange);outline-offset:2px}
+.pr-deals-tab{display:inline-flex;align-items:center;gap:6px}.pr-new-badge{border-radius:999px;background:var(--orange);color:#fff;padding:2px 7px;font-size:9px;font-weight:900}
+.pr-topbar-actions{justify-self:end}.pr-cart-link{padding:9px 13px;border:0;border-radius:12px;background:linear-gradient(135deg,var(--orange),#FF9B25);color:#fff;font-size:12px;box-shadow:0 7px 18px rgba(245,130,32,.22)}.pr-cart-link:hover{border-color:transparent;background:linear-gradient(135deg,#E96D0B,var(--orange))}.pr-cart-count{min-width:20px;height:20px;background:rgba(255,255,255,.25);color:#fff}
+.pr-search-wrap{position:relative;z-index:2;max-width:1100px;min-height:48px;margin:0 auto 26px;padding:0 0 0 0;display:flex;align-items:center;gap:0;border:1.5px solid var(--navy);border-radius:15px;background:#fff;box-shadow:0 4px 12px rgba(11,58,102,.05);overflow:hidden}
+.pr-search-icon{flex:none;margin-inline:14px 4px;color:var(--navy)}.pr-search-input{flex:1;min-width:0;height:46px;border:0;outline:0;background:transparent;padding:0 10px;color:var(--ink);font:inherit;font-size:13px}.pr-search-input::placeholder{color:#8A9BAA}
+.pr-search-category{height:36px;max-width:148px;margin-inline:8px;padding:0 11px;border:1px solid #E2EAF1;border-radius:9px;background:#F7F9FB;color:var(--navy);font:inherit;font-size:12px;font-weight:800}
+.pr-search-submit{align-self:stretch;min-width:72px;border:0;background:linear-gradient(135deg,var(--navy),#14558A);color:#fff;font:inherit;font-size:13px;font-weight:900;cursor:pointer;transition:background .2s ease}.pr-search-submit:hover{background:linear-gradient(135deg,var(--orange),#FF9B25)}
+.pr-hero{position:relative;isolation:isolate;display:grid;grid-template-columns:1.35fr .8fr;align-items:center;gap:20px;max-width:1100px;min-height:280px;margin:0 auto;padding:30px 44px;overflow:hidden;border-radius:25px;background:linear-gradient(115deg,#0B3A66 0%,#124F83 58%,#2169A7 100%);color:#fff;box-shadow:0 20px 42px rgba(11,58,102,.2)}
+.pr-hero:before,.pr-hero:after{content:"";position:absolute;z-index:-1;border-radius:50%;pointer-events:none}.pr-hero:before{width:320px;height:320px;left:-80px;top:-175px;background:radial-gradient(circle,rgba(245,130,32,.33),rgba(245,130,32,0) 70%)}.pr-hero:after{width:280px;height:280px;left:28%;bottom:-220px;background:radial-gradient(circle,rgba(255,197,49,.25),transparent 70%)}
+.pr-hero-copy{position:relative;z-index:1}.pr-hero-badge{display:inline-flex;align-items:center;gap:7px;padding:7px 13px;border:1px solid rgba(255,255,255,.3);border-radius:999px;background:rgba(255,255,255,.13);color:#FFE2A4;font-size:11px;font-weight:900}
+.pr-hero h1{max-width:560px;margin:15px 0 10px;font-size:clamp(26px,3vw,38px);font-weight:900;line-height:1.45}.pr-hero h1 span{background:linear-gradient(100deg,#FFC531,#FFE39A);-webkit-background-clip:text;background-clip:text;color:transparent}.pr-hero p{max-width:560px;margin:0;color:#E0EDF7;font-size:13px;line-height:1.9}
+.pr-hero-actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:18px}.pr-hero-primary,.pr-hero-secondary{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:9px 17px;border-radius:12px;font:inherit;font-size:12px;font-weight:900;cursor:pointer;transition:transform .2s ease,background .2s ease}.pr-hero-primary{border:1px solid transparent;background:linear-gradient(135deg,var(--gold),#FF9B25);color:#163653;box-shadow:0 7px 18px rgba(255,197,49,.22)}.pr-hero-secondary{border:1px solid rgba(255,255,255,.42);background:rgba(255,255,255,.1);color:#fff}.pr-hero-primary:hover,.pr-hero-secondary:hover{transform:translateY(-2px)}
+.pr-hero-art{display:grid;place-items:center;min-width:0}.pr-hero-art svg{width:min(100%,285px);height:auto;filter:drop-shadow(0 12px 18px rgba(0,0,0,.14))}
+.pr-panel{scroll-margin-top:92px}.pr-panel-forward{animation:pr-panel-in-forward .3s cubic-bezier(.2,.75,.25,1) both}.pr-panel-backward{animation:pr-panel-in-backward .3s cubic-bezier(.2,.75,.25,1) both}.pr-head{padding:34px 22px 10px}.pr-brand{background:#fff;border-color:#E5EDF4;color:var(--muted);font-size:11px}.pr-brand .dot{background:var(--orange);box-shadow:0 0 10px rgba(245,130,32,.45)}.pr-title{margin:12px 0 8px;color:var(--navy);font-size:clamp(24px,3vw,32px)}.pr-title .grad{background:linear-gradient(110deg,var(--orange),#D85F0B 60%,var(--gold));-webkit-background-clip:text;background-clip:text}.pr-sub{color:var(--muted);font-size:13px}.pr-divider{margin-top:15px}.pr-divider i{background:linear-gradient(90deg,transparent,var(--orange))}.pr-divider i:last-child{background:linear-gradient(270deg,transparent,var(--orange))}.pr-divider b{background:var(--gold);box-shadow:0 0 12px rgba(255,197,49,.55)}
+.pr-stores{margin:18px auto 0;grid-template-columns:repeat(6,minmax(0,1fr));gap:14px}.pr-store{height:160px;gap:10px;border:1px solid #E4EAF0;border-radius:18px;background:#fff;box-shadow:0 7px 18px rgba(11,58,102,.055);animation:pr-card-in .3s ease both}.pr-store:before{background:radial-gradient(220px 120px at 50% 0%,rgba(245,130,32,.12),transparent 70%)}.pr-store:hover{transform:translateY(-4px);border-color:#F5B06C;box-shadow:0 14px 26px rgba(11,58,102,.12)}.pr-store .sh-icon{width:74px;height:74px;padding:6px;border:0;border-radius:16px}.pr-store-name{color:var(--navy);font-size:13px}.pr-store-go{color:var(--orange)}
+.pr-merchant-section{margin:20px auto 0}.pr-merchant-heading{text-align:right;margin-bottom:15px}.pr-merchant-heading h2{color:var(--navy);font-size:20px}.pr-merchant-heading p{color:var(--muted);font-size:12px}.pr-merchant-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,245px),1fr));gap:14px}.pr-merchant-card{min-height:165px;border:1px solid #E2EAF1;border-radius:18px;background:#fff;box-shadow:0 7px 18px rgba(11,58,102,.055);animation:pr-card-in .3s ease both}.pr-merchant-card:before{background:radial-gradient(250px 130px at 100% 0%,rgba(255,197,49,.13),transparent 72%)}.pr-merchant-card:hover{border-color:#F5B06C;box-shadow:0 14px 28px rgba(11,58,102,.12)}.pr-merchant-mark{background:linear-gradient(135deg,var(--navy),#17609A);color:#fff}.pr-merchant-title{color:var(--navy)}.pr-merchant-description{color:#667B8F}.pr-merchant-cta{color:var(--orange)}.pr-merchant-action{border-color:#D8E2EB;color:var(--navy)}.pr-merchant-action:hover{background:var(--navy);color:white}.pr-merchant-city{color:var(--muted)}.pr-merchant-state{border-color:#D9E3EC;background:#fff;color:var(--muted)}
+.pr-bestseller-grid{align-items:stretch}.pr-bestseller-card{position:relative;display:flex;min-height:300px;flex-direction:column;gap:10px;overflow:hidden;border:1px solid #E2EAF1;border-radius:18px;background:#fff;padding:14px;box-shadow:0 7px 18px rgba(11,58,102,.06);animation:pr-card-in .3s ease both}.pr-best-rank{position:absolute;z-index:1;top:11px;right:11px;display:grid;width:29px;height:29px;place-items:center;border-radius:50%;background:var(--gold);color:var(--navy);font-size:12px;font-weight:900}.pr-best-image{display:grid;height:150px;place-items:center;overflow:hidden;border-radius:13px;background:linear-gradient(145deg,#F5F7F8,var(--cream));color:#7890A4}.pr-best-image img{width:100%;height:100%;object-fit:contain}.pr-best-info h3{margin:0;color:var(--navy);font-size:14px;font-weight:900;line-height:1.6}.pr-best-info p{margin:4px 0;color:var(--muted);font-size:11px;font-weight:700}.pr-best-info strong{color:var(--orange);font-size:14px}.pr-best-link{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto;border-radius:10px;background:#F4F8FB;padding:10px;color:var(--navy);font-size:11px;font-weight:900;text-decoration:none}.pr-best-link:hover{background:#E9F1F7}.pr-retry-button{display:block;margin:12px auto 0;border:1px solid #D8E2EB;border-radius:9px;background:#fff;padding:8px 13px;color:var(--navy);font:inherit;font-size:12px;font-weight:800;cursor:pointer}
+.pr-banners{margin:18px auto 0;gap:14px}.pr-banner{border-radius:20px;animation:pr-card-in .3s ease both}.pr-banner h3{position:relative;z-index:1;margin:2px 0;font-size:clamp(22px,2.7vw,32px);font-weight:900}.pr-sale{background:linear-gradient(135deg,#FFF3E8,#FFE0C7);color:#8B3F0C;box-shadow:0 12px 28px rgba(245,130,32,.12)}.pr-exclusive{background:linear-gradient(135deg,var(--navy),#082F53);color:#FFC531;border-color:rgba(255,197,49,.35);box-shadow:0 12px 28px rgba(11,58,102,.18)}.pr-badge{background:#fff;color:var(--orange);box-shadow:0 5px 14px rgba(11,58,102,.08)}.pr-cta{background:linear-gradient(135deg,var(--orange),#FF9B25);color:#fff;box-shadow:0 8px 20px rgba(245,130,32,.2)}.pr-exclusive .pr-cta{background:linear-gradient(135deg,var(--gold),#FF9B25);color:var(--navy)}
+.pr-footer{margin-top:34px;border-color:#E2EAF1;background:#fff}.pr-footer-inner{color:var(--muted)}.pr-footer-brand{color:var(--navy)}
+@keyframes pr-panel-in-forward{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:translateX(0)}}@keyframes pr-panel-in-backward{from{opacity:0;transform:translateX(-14px)}to{opacity:1;transform:translateX(0)}}@keyframes pr-card-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:900px){.pr-topbar-inner{grid-template-columns:auto 1fr auto;gap:9px}.pr-section-nav{gap:0}.pr-section-nav button{padding-inline:8px;font-size:11px}.pr-logo-copy strong{font-size:13px}.pr-search-wrap,.pr-hero{margin-inline:18px}.pr-stores{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:720px){.pr-announcement-inner{min-height:30px;padding:6px 12px;font-size:10px}.pr-announcement-help{display:none}.pr-topbar-inner{display:flex;flex-direction:column;align-items:stretch;gap:7px;padding:8px 12px}.pr-logo{justify-content:center}.pr-section-nav{width:100%;justify-content:space-between;gap:2px}.pr-section-nav button{flex:1;min-height:39px;padding:7px 4px;font-size:10px;white-space:nowrap}.pr-new-badge{padding:2px 5px;font-size:8px}.pr-topbar-actions{width:100%;justify-content:center}.pr-cart-link{min-height:36px}.pr-search-wrap{min-height:45px;margin:12px 12px 17px;border-radius:12px}.pr-search-icon{width:16px;margin-inline:9px 2px}.pr-search-input{height:43px;padding-inline:6px;font-size:11px}.pr-search-category{max-width:104px;margin-inline:4px;padding-inline:5px;font-size:10px}.pr-search-submit{min-width:52px;font-size:11px}.pr-hero{grid-template-columns:1fr;min-height:0;margin-inline:12px;padding:24px 21px;border-radius:20px}.pr-hero-art{grid-row:1;position:absolute;left:4px;top:18px;width:118px;opacity:.8}.pr-hero-art svg{width:118px}.pr-hero-copy{max-width:100%;padding-top:75px}.pr-hero h1{max-width:100%;font-size:25px}.pr-hero p{font-size:12px}.pr-hero-badge{font-size:10px}.pr-hero-actions{gap:7px}.pr-hero-primary,.pr-hero-secondary{min-height:39px;padding:8px 11px;font-size:10px}.pr-head{padding:27px 15px 8px}.pr-title{font-size:24px}.pr-sub{font-size:12px}.pr-stores{grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;padding:0 12px}.pr-store{height:150px;padding:14px 9px}.pr-store .sh-icon{width:68px;height:68px}.pr-merchant-section{margin-top:22px;padding:0 12px}.pr-merchant-grid{grid-template-columns:1fr}.pr-merchant-card{min-height:150px;padding:17px}.pr-banners{gap:12px;padding:0 12px}.pr-banner{min-height:210px;padding:24px 18px}.pr-panel{scroll-margin-top:150px}.pr-bestseller-card{min-height:280px}.pr-best-image{height:125px}.pr-footer{margin-top:30px}}
+@media(prefers-reduced-motion:reduce){.pr-page *,.pr-page *:before,.pr-page *:after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}}
 
 
 `;
@@ -508,7 +461,27 @@ function CustomerStorefront() {
   const [merchantStoresLoading, setMerchantStoresLoading] = useState(true);
   const [merchantStoresError, setMerchantStoresError] = useState("");
   const [cartCount, setCartCount] = useState(0);
-  const [activeTab, setActiveTab] = useState<"international" | "local" | null>("international");
+  const [activeTab, setActiveTab] = useState<"international" | "local" | "best-sellers" | "deals">("international");
+  const [tabDirection, setTabDirection] = useState<"forward" | "backward">("forward");
+  const selectTab = useCallback((nextTab: typeof activeTab) => {
+    const order = ["international", "local", "best-sellers", "deals"];
+    if (nextTab !== activeTab) {
+      setTabDirection(order.indexOf(nextTab) > order.indexOf(activeTab) ? "forward" : "backward");
+      setActiveTab(nextTab);
+    }
+  }, [activeTab]);
+  const scrollToStorefront = useCallback(() => {
+    document.getElementById("storefront-panel")?.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+      block: "start",
+    });
+  }, []);
+  const [storefrontSearch, setStorefrontSearch] = useState("");
+  const { data: bestSellingProducts = [], isLoading: bestSellingLoading, error: bestSellingError, mutate: mutateBestSellers } = useSWR(
+    activeTab === "best-sellers" ? "marketplace-best-sellers" : null,
+    loadBestSellingProducts,
+    { revalidateOnFocus: true, dedupingInterval: 30_000 },
+  );
 
   useEffect(() => {
     const syncCartCount = () => setCartCount(readCart().length);
@@ -665,6 +638,19 @@ function CustomerStorefront() {
   const visibleOfferCards = offerCards.filter((card) =>
     visibility[card.theme === "exclusive" ? "exclusive" : "discounts"] !== false
   );
+  const searchTerm = storefrontSearch.trim().toLocaleLowerCase();
+  const filteredIconStores = visibleIconStores.filter((store) =>
+    !searchTerm || `${store.name} ${store.id}`.toLocaleLowerCase().includes(searchTerm)
+  );
+  const filteredMerchantStores = merchantStores.filter((store) =>
+    !searchTerm || `${store.name} ${store.city ?? ""} ${store.description ?? ""}`.toLocaleLowerCase().includes(searchTerm)
+  );
+  const filteredBestSellingProducts = bestSellingProducts.filter((product) =>
+    !searchTerm || product.title.toLocaleLowerCase().includes(searchTerm)
+  );
+  const filteredOfferCards = visibleOfferCards.filter((card) =>
+    !searchTerm || `${card.title} ${card.badge} ${card.description}`.toLocaleLowerCase().includes(searchTerm)
+  );
 
   const getExternalStoreUrl = (storeId: string, fallback: string) => {
     const candidate = links[storeId]?.trim();
@@ -675,180 +661,142 @@ function CustomerStorefront() {
     <main dir="rtl" lang="ar" className="pr-page">
       <style dangerouslySetInnerHTML={{ __html: CUSTOMER_STOREFRONT_CSS }} />
 
+      <div className="pr-announcement" role="note">
+        <div className="pr-announcement-inner">
+          <span className="pr-shipping-note"><i aria-hidden="true" />الشحن متاح لجميع مدن اليمن · تسليم خلال 24 ساعة</span>
+          <span className="pr-announcement-help" aria-hidden="true">تسوق بثقة · السوق الشامل</span>
+        </div>
+      </div>
+
       <div className="pr-topbar" role="banner">
         <div className="pr-topbar-inner">
-          <div className="pr-logo" aria-label="الشامل للتسوق">
-            <span className="pr-logo-mark" aria-hidden="true">ش</span>
-            <span className="pr-logo-copy">
-              <strong>YOUR GLOBAL SHOPPER</strong>
-              <small>السوق الشامل</small>
+          <div className="pr-logo" aria-label="السوق الشامل AL SHAMEL">
+            <span className="pr-logo-mark" aria-hidden="true">
+              <svg viewBox="0 0 48 48" role="img" focusable="false">
+                <path d="M8 12h5l4 19h18l5-14H16" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                <circle cx="20" cy="37" r="2.8" fill="currentColor" /><circle cx="33" cy="37" r="2.8" fill="currentColor" />
+                <path d="M34 7l1.5 3.7 4 .4-3 2.5.9 3.9-3.4-2.1-3.4 2.1.9-3.9-3-2.5 4-.4z" fill="#F58220" />
+              </svg>
             </span>
+            <span className="pr-logo-copy"><strong>السوق الشامل</strong><small>AL SHAMEL</small></span>
           </div>
-          <nav className="pr-section-nav" aria-label="إظهار أقسام السوق">
-            <button
-              type="button"
-              className={`pr-tab-button pr-tab-international${activeTab === "international" ? " is-active" : ""}`}
-              aria-pressed={activeTab === "international"}
-              onClick={() => setActiveTab((current) => current === "international" ? null : "international")}
-            >منتجات دولية</button>
-            <button
-              type="button"
-              className={`pr-tab-button pr-tab-local${activeTab === "local" ? " is-active" : ""}`}
-              aria-pressed={activeTab === "local"}
-              onClick={() => setActiveTab((current) => current === "local" ? null : "local")}
-            >متاجر محلية</button>
+          <nav className="pr-section-nav" aria-label="أقسام السوق">
+            <button type="button" className={`pr-tab-button${activeTab === "international" ? " is-active" : ""}`} aria-pressed={activeTab === "international"} onClick={() => selectTab("international")}>منتجات دولية</button>
+            <button type="button" className={`pr-tab-button${activeTab === "local" ? " is-active" : ""}`} aria-pressed={activeTab === "local"} onClick={() => selectTab("local")}>متاجر محلية</button>
+            <button type="button" className={`pr-tab-button${activeTab === "best-sellers" ? " is-active" : ""}`} aria-pressed={activeTab === "best-sellers"} onClick={() => selectTab("best-sellers")}>الأكثر مبيعًا</button>
+            <button type="button" className={`pr-tab-button pr-deals-tab${activeTab === "deals" ? " is-active" : ""}`} aria-pressed={activeTab === "deals"} onClick={() => selectTab("deals")}>العروض<span className="pr-new-badge">جديد</span></button>
           </nav>
           <div className="pr-topbar-actions">
-            <span className="pr-topbar-note">تسوقك العالمي في مكان واحد</span>
-            <Link to="/cart" className="pr-cart-link" aria-label="فتح سلة السوق الشامل">
-              <ShoppingCart size={18} aria-hidden="true" />
-              <span>سلة السوق الشامل</span>
-              {cartCount > 0 && <span className="pr-cart-count">{cartCount}</span>}
+            <Link to="/cart" className="pr-cart-link" aria-label={`سلة المشتريات، ${cartCount} عنصر`}>
+              <ShoppingCart size={17} aria-hidden="true" /><span>سلة المشتريات</span>
+              <span className="pr-cart-count">{cartCount}</span>
             </Link>
           </div>
         </div>
       </div>
 
-      {activeTab !== null && (
+      <div className="pr-search-wrap" role="search">
+        <Search className="pr-search-icon" aria-hidden="true" size={19} />
+        <label className="sr-only" htmlFor="products-storefront-search">ابحث عن منتج أو متجر</label>
+        <input id="products-storefront-search" className="pr-search-input" value={storefrontSearch} onChange={(event) => setStorefrontSearch(event.target.value)} placeholder="ابحث عن منتج، متجر، أو عرض..." />
+        <label className="sr-only" htmlFor="products-storefront-category">كل الأقسام</label>
+        <select id="products-storefront-category" className="pr-search-category" value={activeTab} onChange={(event) => selectTab(event.target.value as typeof activeTab)}>
+          <option value="international">منتجات دولية</option><option value="local">متاجر محلية</option><option value="best-sellers">الأكثر مبيعًا</option><option value="deals">العروض</option>
+        </select>
+        <button type="button" className="pr-search-submit" onClick={scrollToStorefront}>بحث</button>
+      </div>
+
+      <section className="pr-hero" aria-labelledby="pr-hero-title">
+        <div className="pr-hero-copy">
+          <span className="pr-hero-badge"><Sparkles size={14} aria-hidden="true" /> تسوقك العالمي في مكان واحد</span>
+          <h1 id="pr-hero-title">كل ما تحتاجه من <span>العالم</span> يوصلك إلى بابك</h1>
+          <p>تسوق من أشهر المتاجر العالمية والمحلية بسهولة، واكتشف منتجات وعروضًا مختارة بعناية.</p>
+          <div className="pr-hero-actions">
+            <button type="button" className="pr-hero-primary" onClick={() => { selectTab("international"); scrollToStorefront(); }}>ابدأ التسوق <ShoppingBag size={16} aria-hidden="true" /></button>
+            <button type="button" className="pr-hero-secondary" onClick={() => { selectTab("local"); scrollToStorefront(); }}>تصفح المتاجر <ArrowLeft size={16} aria-hidden="true" /></button>
+          </div>
+        </div>
+        <div className="pr-hero-art" aria-hidden="true">
+          <svg viewBox="0 0 300 240" role="img" focusable="false">
+            <circle cx="142" cy="119" r="98" fill="rgba(255,255,255,.06)" />
+            <circle cx="238" cy="48" r="34" fill="rgba(255,197,49,.15)" />
+            <path d="M230 22l4.5 12 13 1.2-9.8 8.2 3 12.8-10.7-6.9-10.8 6.9 3-12.8-9.7-8.2 12.9-1.2z" fill="#FFC531" />
+            <path d="M39 69h18l19 98h112l24-73H69" fill="none" stroke="#73BDF2" strokeWidth="12" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M77 95h142l-19 62H90z" fill="#F58220" />
+            <circle cx="101" cy="184" r="15" fill="#fff" stroke="#73BDF2" strokeWidth="7" /><circle cx="181" cy="184" r="15" fill="#fff" stroke="#73BDF2" strokeWidth="7" />
+            <text x="148" y="143" textAnchor="middle" fontFamily="Cairo, Tajawal, sans-serif" fontSize="39" fontWeight="900" fill="#0B3A66">AS</text>
+          </svg>
+        </div>
+      </section>
+
+      <div className={`pr-panel pr-panel-${tabDirection}`} id="storefront-panel" key={activeTab}>
         <header className="pr-head">
-          <h1 className="pr-title">
-            السوق الشامل <span className="grad">{activeTab === "international" ? "منتجات دولية" : "متاجر محلية"}</span>
-          </h1>
-          <p className="pr-sub">
-            {activeTab === "international" ? "كل منتجاتك العالمية في مكان واحد • تسوق الآن من أشهر المتاجر" : "تصفح المتاجر المحلية والمنتجات التي اعتمدتها الإدارة."}
-          </p>
+          <span className="pr-brand"><i className="dot" /> السوق الشامل · AL SHAMEL</span>
+          <h2 className="pr-title">{activeTab === "international" ? <>تسوّق من أشهر المتاجر <span className="grad">العالمية</span></> : activeTab === "local" ? <>متاجر التجار <span className="grad">المحلية</span></> : activeTab === "best-sellers" ? <>الأكثر <span className="grad">مبيعًا</span></> : <>عروض <span className="grad">مختارة</span></>}</h2>
+          <p className="pr-sub">{activeTab === "international" ? "اطلب من أشهر المتاجر العالمية وتعرّف على خيارات التسوق المتاحة." : activeTab === "local" ? "تصفح المتاجر المحلية والمنتجات التي اعتمدتها الإدارة." : activeTab === "best-sellers" ? "منتجات مرتبة حسب الكميات المسلّمة فعليًا للعملاء." : "اكتشف العروض الحالية من متاجر السوق الشامل."}</p>
           <div className="pr-divider" aria-hidden="true"><i /><b /><i /></div>
         </header>
-      )}
 
-      {activeTab === "international" && (
-      <section id="store-links" className="pr-stores" aria-label="بوابات المتاجر العالمية">
-        {visibleIconStores.map(({ id, name, from, to, ink, Glyph }) => {
-          const store = INTERNATIONAL_STORES.find((item) => item.id === id);
-          const url = getExternalStoreUrl(id, store?.fallback ?? "https://www.google.com");
-          return (
-            <a
-              key={id}
-              className="pr-store"
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={`تسوق من ${name}، يفتح في تبويب جديد`}
-              title={`تسوق من ${name}`}
-            >
-              <span className="pr-store-go" aria-hidden="true">↗</span>
-              <IconShell id={`store-${id}`} from={from} to={to} {...(ink ? { ink } : {})}>
-                <Glyph />
-              </IconShell>
-              <span className="pr-store-name">{name}</span>
-            </a>
-          );
-        })}
-      </section>
-      )}
+        {activeTab === "international" && (
+          filteredIconStores.length ? <section id="store-links" className="pr-stores" aria-label="بوابات المتاجر العالمية">
+            {filteredIconStores.map(({ id, name, from, to, ink, Glyph }, index) => {
+              const store = INTERNATIONAL_STORES.find((item) => item.id === id);
+              const url = getExternalStoreUrl(id, store?.fallback ?? "https://www.google.com");
+              return <a key={id} className="pr-store" style={{ animationDelay: `${index * 45}ms` }} href={url} target="_blank" rel="noopener noreferrer" aria-label={`تسوق من ${name}، يفتح في تبويب جديد`} title={`تسوق من ${name}`}>
+                <span className="pr-store-go" aria-hidden="true">↗</span><IconShell id={`store-${id}`} from={from} to={to} {...(ink ? { ink } : {})}><Glyph /></IconShell><span className="pr-store-name">{name}</span>
+              </a>;
+            })}
+          </section> : <div className="pr-merchant-state">لا توجد متاجر تطابق بحثك.</div>
+        )}
 
-      {activeTab === "local" && (
-      <section id="merchant-stores" className="pr-merchant-section" aria-labelledby="pr-merchant-heading">
-        <div className="pr-merchant-heading">
-          <h2 id="pr-merchant-heading">متاجر التجار المحليين</h2>
-          <p>تصفح المتاجر المحلية والمنتجات التي اعتمدتها الإدارة.</p>
-        </div>
-        <div className="pr-merchant-grid">
-          {merchantStoresLoading ? (
-            <div className="pr-merchant-state" role="status">جارٍ تحميل المتاجر...</div>
-          ) : merchantStoresError ? (
-            <div className="pr-merchant-state" role="status">{merchantStoresError}</div>
-          ) : merchantStores.length === 0 ? (
-            <div className="pr-merchant-state">لا توجد متاجر نشطة للعرض حاليًا.</div>
-          ) : (
-            merchantStores.map((store) => (
-              <article key={store.id} className="pr-merchant-card">
-                <div className="pr-merchant-top">
-                  {store.store_image_url ? (
-                    <img
-                      className="pr-merchant-mark pr-merchant-store-image"
-                      src={store.store_image_url}
-                      alt={`صورة متجر ${store.name}`}
-                      style={{ objectFit: store.store_image_fit, objectPosition: store.store_image_position }}
-                      loading="lazy"
-                    />
-                  ) : (
-                    <span className="pr-merchant-mark" aria-hidden="true">🏪</span>
-                  )}
-                  {store.city && <span className="pr-merchant-city">{store.city}</span>}
-                </div>
-                <div>
-                  <h3 className="pr-merchant-title">{store.name}</h3>
-                  {store.description && <p className="pr-merchant-description">{store.description}</p>}
-                </div>
-                <div className="pr-merchant-bottom">
-                  <a className="pr-merchant-cta" href={`/marketplace?store=${encodeURIComponent(store.id)}`} aria-label={`تصفح منتجات متجر ${store.name}`}>تصفح المنتجات <span aria-hidden="true">←</span></a>
-                  {currentMerchantStore?.id === store.id && (
-                    <div className="pr-merchant-actions" aria-label={`إدارة متجر ${store.name}`}>
-                      <a className="pr-merchant-action" href="/merchant">لوحة متجري</a>
-                      <a className="pr-merchant-action" href="/merchant?view=add-product">+ أضف منتج</a>
-                    </div>
-                  )}
-                </div>
-              </article>
-            ))
-          )}
-        </div>
-      </section>
-      )}
+        {activeTab === "local" && (
+          <section id="merchant-stores" className="pr-merchant-section" aria-labelledby="pr-merchant-heading">
+            <div className="pr-merchant-heading"><h2 id="pr-merchant-heading">متاجر التجار المحليين</h2><p>تصفح المتاجر المحلية والمنتجات التي اعتمدتها الإدارة.</p></div>
+            <div className="pr-merchant-grid">
+              {merchantStoresLoading ? <div className="pr-merchant-state" role="status">جارٍ تحميل المتاجر...</div> : merchantStoresError ? <div className="pr-merchant-state" role="status">{merchantStoresError}</div> : filteredMerchantStores.length === 0 ? <div className="pr-merchant-state">{searchTerm ? "لا توجد متاجر تطابق بحثك." : "لا توجد متاجر نشطة للعرض حاليًا."}</div> : filteredMerchantStores.map((store, index) => (
+                <article key={store.id} className="pr-merchant-card" style={{ animationDelay: `${index * 45}ms` }}>
+                  <div className="pr-merchant-top">{store.store_image_url ? <img className="pr-merchant-mark pr-merchant-store-image" src={store.store_image_url} alt={`صورة متجر ${store.name}`} style={{ objectFit: store.store_image_fit, objectPosition: store.store_image_position }} loading="lazy" /> : <span className="pr-merchant-mark" aria-hidden="true">🏪</span>}{store.city && <span className="pr-merchant-city">{store.city}</span>}</div>
+                  <div><h3 className="pr-merchant-title">{store.name}</h3>{store.description && <p className="pr-merchant-description">{store.description}</p>}</div>
+                  <div className="pr-merchant-bottom"><a className="pr-merchant-cta" href={`/marketplace?store=${encodeURIComponent(store.id)}`} aria-label={`تصفح منتجات متجر ${store.name}`}>تصفح المنتجات <span aria-hidden="true">←</span></a>{currentMerchantStore?.id === store.id && <div className="pr-merchant-actions" aria-label={`إدارة متجر ${store.name}`}><a className="pr-merchant-action" href="/merchant">لوحة متجري</a><a className="pr-merchant-action" href="/merchant?view=add-product">+ أضف منتج</a></div>}</div>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
 
-      {activeTab === "international" && visibleOfferCards.length > 0 && (
-        <section className="pr-banners" aria-label="العروض المميزة">
-          {visibleOfferCards.map((card) => {
-            const exclusive = card.theme === "exclusive";
-            const targetPath = safeOfferPath(card.target_path);
-            const colors = resolveCardColors(card.theme, card);
-            const image = safeImageUrl(card.image_url);
-            const accentStyle = { background: colors.accent_color, color: readableTextOn(colors.accent_color) };
-            return (
-              <a
-                id={card.id}
-                key={card.id}
-                className={`pr-banner ${exclusive ? "pr-exclusive" : "pr-sale"}${image ? " pr-has-img" : ""}`}
-                href={targetPath}
-                aria-label={`تصفح ${card.title}`}
-                style={{
-                  background: `linear-gradient(135deg, ${colors.bg_color}, ${colors.bg_color_2})`,
-                  color: colors.text_color,
-                  boxSizing: "border-box",
-                  width: `${Math.max(240, Math.min(1600, Number(card.card_width_px) || 520))}px`,
-                  maxWidth: "100%",
-                  flex: "0 0 auto",
-                  height: `${Math.max(220, Math.min(900, Number(card.card_height_px) || 300))}px`,
-                  minHeight: 220,
-                }}
-              >
-                {image ? (
-                  <img className="pr-banner-img" src={image} alt="" loading="lazy" />
-                ) : (
-                  <span className="pr-banner-icon" aria-hidden="true">{card.icon || (exclusive ? "👑" : "🌹")}</span>
-                )}
-                {card.badge && <span className="pr-badge" style={accentStyle}>{card.badge}</span>}
-                <h2>{card.title}</h2>
-                {card.description && <p>{card.description}</p>}
-                <span className="pr-cta" style={accentStyle}>
-                  {card.button_label || "تصفح العروض"}
-                  <span aria-hidden="true">←</span>
-                </span>
-              </a>
-            );
-          })}
-        </section>
-      )}
+        {activeTab === "best-sellers" && (
+          <section className="pr-merchant-section" aria-label="المنتجات الأكثر مبيعًا">
+            <div className="pr-merchant-grid pr-bestseller-grid">
+              {bestSellingLoading ? <div className="pr-merchant-state" role="status">جارٍ تحميل المنتجات الأكثر مبيعًا...</div> : bestSellingError ? <div className="pr-merchant-state" role="alert">تعذر تحميل ترتيب المبيعات. تحقق من تطبيق ترحيل عرض الأكثر مبيعًا بعد دمجه.<button type="button" className="pr-retry-button" onClick={() => void mutateBestSellers()}>إعادة المحاولة</button></div> : filteredBestSellingProducts.length === 0 ? <div className="pr-merchant-state">{searchTerm ? "لا توجد منتجات تطابق بحثك." : "لا توجد منتجات مسلّمة كافية لعرض قائمة الأكثر مبيعًا حاليًا."}</div> : filteredBestSellingProducts.map((product, index) => (
+                <article key={product.product_id} className="pr-bestseller-card" style={{ animationDelay: `${index * 45}ms` }}>
+                  <span className="pr-best-rank">{index + 1}</span>
+                  <div className="pr-best-image">{product.image_url ? <img src={product.image_url} alt={product.title} loading="lazy" /> : <ShoppingBag size={34} aria-hidden="true" />}</div>
+                  <div className="pr-best-info"><h3>{product.title}</h3><p>{Number(product.quantity_sold).toLocaleString("ar-YE")} مبيعات مسلّمة</p><strong>{Number(product.price).toLocaleString("ar-YE", { maximumFractionDigits: 2 })} {product.currency}</strong></div>
+                  <a className="pr-best-link" href={`/marketplace?store=${encodeURIComponent(product.store_id)}`}>تسوّق من المتجر <ArrowLeft size={15} aria-hidden="true" /></a>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
 
-      {activeTab !== null && (
-        <footer className="pr-footer">
-          <div className="pr-footer-inner">
-            <span className="pr-footer-brand">YOUR GLOBAL SHOPPER · السوق الشامل</span>
-            <span>تسوق عالمي أسهل، من مكان واحد</span>
-          </div>
-        </footer>
-      )}
+        {activeTab === "deals" && (
+          filteredOfferCards.length ? <section className="pr-banners" aria-label="العروض المميزة">
+            {filteredOfferCards.map((card, index) => {
+              const exclusive = card.theme === "exclusive";
+              const targetPath = safeOfferPath(card.target_path);
+              const colors = resolveCardColors(card.theme, card);
+              const image = safeImageUrl(card.image_url);
+              const accentStyle = { background: colors.accent_color, color: readableTextOn(colors.accent_color) };
+              return <a id={card.id} key={card.id} className={`pr-banner ${exclusive ? "pr-exclusive" : "pr-sale"}${image ? " pr-has-img" : ""}`} style={{ animationDelay: `${index * 45}ms`, background: `linear-gradient(135deg, ${colors.bg_color}, ${colors.bg_color_2})`, color: colors.text_color, boxSizing: "border-box", width: `${Math.max(240, Math.min(1600, Number(card.card_width_px) || 520))}px`, maxWidth: "100%", flex: "0 0 auto", height: `${Math.max(220, Math.min(900, Number(card.card_height_px) || 300))}px`, minHeight: 220 }} href={targetPath} aria-label={`تصفح ${card.title}`}>
+                {image ? <img className="pr-banner-img" src={image} alt="" loading="lazy" /> : <span className="pr-banner-icon" aria-hidden="true">{card.icon || (exclusive ? "👑" : "🌹")}</span>}
+                {card.badge && <span className="pr-badge" style={accentStyle}>{card.badge}</span>}<h3>{card.title}</h3>{card.description && <p>{card.description}</p>}<span className="pr-cta" style={accentStyle}>{card.button_label || "تصفح العروض"}<span aria-hidden="true">←</span></span>
+              </a>;
+            })}
+          </section> : <div className="pr-merchant-state">لا توجد عروض تطابق بحثك.</div>
+        )}
+      </div>
+
+      <footer className="pr-footer"><div className="pr-footer-inner"><span className="pr-footer-brand">AL SHAMEL · السوق الشامل</span><span>تسوق عالمي أسهل، من مكان واحد</span></div></footer>
     </main>
   );
 }
