@@ -28,6 +28,8 @@ cp "$repo_root/supabase/migrations/20261116020000_store_image_fields_compat.sql"
 # Reapplying the same migration checks its compatibility/idempotency guards.
 cp "$repo_root/supabase/migrations/20261116020000_store_image_fields_compat.sql" \
   "$test_root/supabase/migrations/20261116020100_store_image_fields_compat_repeat.sql"
+cp "$repo_root/supabase/migrations/20261116040000_merchant_store_rpc_anon_revoke.sql" \
+  "$test_root/supabase/migrations/20261116040000_merchant_store_rpc_anon_revoke.sql"
 cp "$repo_root/supabase/migrations/20261116030000_marketplace_best_sellers.sql" \
   "$test_root/supabase/migrations/20261116030000_marketplace_best_sellers.sql"
 cp "$repo_root/supabase/tests/database/merchant_store_images_compat_test.sql" \
