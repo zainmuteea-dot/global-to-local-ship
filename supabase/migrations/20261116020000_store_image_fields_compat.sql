@@ -75,9 +75,7 @@ AS $$
   WHERE s.owner_id = auth.uid()
   LIMIT 1;
 $$;
--- Revoke explicit grants as well as PUBLIC defaults; Supabase projects may
--- configure default privileges for anon on newly-created public functions.
-REVOKE ALL ON FUNCTION public.merchant_get_my_store() FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.merchant_get_my_store() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.merchant_get_my_store() TO authenticated;
 
 -- Allow the existing private bucket's signed-image reads for active storefronts.
