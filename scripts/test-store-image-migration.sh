@@ -25,6 +25,8 @@ cp "$repo_root/supabase/tests/fixtures/merchant_store_pre_image_fields.sql" \
   "$test_root/supabase/migrations/20261115000000_merchant_store_pre_image_fields.sql"
 cp "$repo_root/supabase/migrations/20261116020000_store_image_fields_compat.sql" \
   "$test_root/supabase/migrations/20261116020000_store_image_fields_compat.sql"
+cp "$repo_root/supabase/migrations/20261116040000_merchant_store_rpc_anon_revoke.sql" \
+  "$test_root/supabase/migrations/20261116040000_merchant_store_rpc_anon_revoke.sql"
 # Reapplying the same migration checks its compatibility/idempotency guards.
 cp "$repo_root/supabase/migrations/20261116020000_store_image_fields_compat.sql" \
   "$test_root/supabase/migrations/20261116020100_store_image_fields_compat_repeat.sql"
