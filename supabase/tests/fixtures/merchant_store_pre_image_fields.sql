@@ -58,6 +58,22 @@ $$;
 REVOKE ALL ON FUNCTION public.merchant_get_my_store() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.merchant_get_my_store() TO authenticated;
 
+
+-- Minimal marketplace tables used by the isolated best-seller RPC test.
+CREATE TABLE public.merchant_products (
+  id uuid PRIMARY KEY, store_id uuid NOT NULL REFERENCES public.merchant_stores(id),
+  title text NOT NULL, price numeric(12,2) NOT NULL, currency text NOT NULL,
+  image_path text NOT NULL, status text NOT NULL
+);
+CREATE TABLE public.merchant_orders (
+  id uuid PRIMARY KEY, product_id uuid NOT NULL REFERENCES public.merchant_products(id),
+  store_id uuid NOT NULL REFERENCES public.merchant_stores(id), quantity integer NOT NULL, status text NOT NULL,
+  customer_name text NOT NULL DEFAULT 'private customer', customer_phone text NOT NULL DEFAULT '700000000'
+);
+ALTER TABLE public.merchant_products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.merchant_orders ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.merchant_products, public.merchant_orders FROM anon, authenticated;
+
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('merchant-product-images', 'merchant-product-images', false)
 ON CONFLICT (id) DO UPDATE SET public = false;
