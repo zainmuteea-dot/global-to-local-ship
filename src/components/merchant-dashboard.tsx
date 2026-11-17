@@ -145,6 +145,11 @@ const merchantDashboardStyles = `
   }
   .merchant-dashboard-theme .md-products-link .md-card { height: 100%; }
   .merchant-dashboard-theme .md-products-link:focus-visible { outline: 3px solid rgba(245,130,32,.55); outline-offset: 3px; }
+  .merchant-dashboard-theme .md-store-products-summary { min-width: 0; }
+  .merchant-dashboard-theme .md-orders-table th { white-space: nowrap; }
+  .merchant-dashboard-theme .md-orders-table td { vertical-align: middle; }
+  .merchant-dashboard-theme .md-orders-table tbody tr + tr { border-top: 1px solid #E8EEF6; }
+  .merchant-dashboard-theme .md-orders-table tbody tr:hover { background: #F8FAFD; }
   @media (min-width: 1101px) {
     .merchant-dashboard-theme .md-form-area form { grid-template-columns: minmax(0, 1fr) 250px; }
   }
@@ -300,20 +305,42 @@ export function MerchantDashboard() {
           <StoreProfile store={store} onSaved={() => void mutateStore()} />
         </div>
 
-        <section aria-labelledby="merchant-shisha-heading" className="md-section md-shisha-area grid gap-5 rounded-3xl border border-[#0B3A66]/10 bg-white p-4 shadow-sm sm:p-5">
-        <div>
-          <Badge variant="secondary" className="mb-2">قسم خاص</Badge>
-          <h2 id="merchant-shisha-heading" className="text-2xl font-bold">معسلات المتجر</h2>
-          <p className="mt-2 text-sm text-muted-foreground">أضف معسلات ومنتجات الشيشة وتابع الكمية والسعر وحالة المراجعة. لن تظهر المنتجات للعملاء قبل اعتماد الإدارة.</p>
-        </div>
-        <ProductInventory
-          products={products.filter(isShishaProduct)}
-          error={productsError}
-          onSaved={() => void mutateProducts()}
-          active={store.status === "active"}
-          title="معسلات ومنتجات الشيشة"
-          description="تظهر هنا المنتجات المصنفة كمعسل أو شيشة؛ عدّل السعر والكمية، وتابع اعتماد الإدارة قبل النشر."
-        />
+        <section aria-labelledby="merchant-store-products-heading" className="md-section md-shisha-area md-store-products rounded-3xl border border-[#0B3A66]/10 bg-white p-4 shadow-sm sm:p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <Badge variant="secondary" className="mb-2">ملخص المتجر</Badge>
+              <h2 id="merchant-store-products-heading" className="text-lg font-bold">منتجات المتجر</h2>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">إدارة الأسعار والمخزون والمراجعة من قسم واحد عند الحاجة.</p>
+            </div>
+            <PackagePlus aria-hidden="true" className="mt-1 size-5 shrink-0 text-[#0B3A66]" />
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <div className="rounded-xl border border-[#DCE5F2] bg-[#F8FAFD] p-3">
+              <p className="text-xs text-muted-foreground">إجمالي المنتجات</p>
+              <p className="mt-1 font-extrabold text-[#0B3A66]">{products.length.toLocaleString("ar-YE")}</p>
+            </div>
+            <div className="rounded-xl border border-[#DCE5F2] bg-[#F8FAFD] p-3">
+              <p className="text-xs text-muted-foreground">معسلات وشيشة</p>
+              <p className="mt-1 font-extrabold text-[#0B3A66]">{products.filter(isShishaProduct).length.toLocaleString("ar-YE")}</p>
+            </div>
+          </div>
+          <div className="mt-3 grid gap-2" aria-label="معاينة منتجات المتجر">
+            {products.slice(0, 2).map((product) => (
+              <article key={product.id} className="flex min-w-0 items-center gap-3 rounded-xl border border-[#DCE5F2] bg-white p-2.5">
+                <div className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-lg bg-[#F2F6FC]">
+                  {product.image_url ? <img src={product.image_url} alt={product.title} className="size-full object-cover" loading="lazy" /> : <PackagePlus aria-hidden="true" className="size-5 text-[#0B3A66]/50" />}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-[#0B2440]">{product.title}</p>
+                  <p className="mt-1 truncate text-xs text-muted-foreground">{formatMoney(Number(product.price), product.currency)} · {productStatusLabels[product.status]}</p>
+                </div>
+              </article>
+            ))}
+            {products.length === 0 && <p className="rounded-xl border border-dashed border-[#DCE5F2] p-3 text-center text-xs text-muted-foreground">لا توجد منتجات مضافة بعد.</p>}
+          </div>
+          <Button type="button" variant="outline" className="mt-3 min-h-10 w-full border-[#0B3A66]/20 font-semibold text-[#0B3A66] hover:bg-[#0B3A66]/5" onClick={() => setShowProducts(true)}>
+            عرض إدارة المنتجات
+          </Button>
         </section>
       </section>
 
@@ -1251,9 +1278,33 @@ function MerchantOrders({ orders, error, onStatusChanged }: { orders: MerchantOr
   if (error) return <Card className="rounded-2xl"><CardContent className="py-8 text-sm text-destructive">تعذر تحميل الطلبات.</CardContent></Card>;
   return (
     <Card className="md-card rounded-2xl border-[#0B3A66]/10 shadow-sm">
-      <CardHeader><CardTitle>الطلبات</CardTitle><CardDescription>حدّث حالة الطلب بعد التواصل مع العميل.</CardDescription></CardHeader>
-      <CardContent className="md-orders-list grid gap-3">
-        {orders.length === 0 ? <p className="rounded-xl bg-muted/50 p-6 text-center text-sm text-muted-foreground">ستظهر طلبات العملاء هنا.</p> : orders.map((order) => <OrderRow key={order.id} order={order} onChanged={onStatusChanged} />)}
+      <CardHeader className="flex flex-row items-center justify-between gap-3">
+        <div><CardTitle>أحدث الطلبات</CardTitle><CardDescription>راجع التفاصيل وحدّث الحالة بعد التواصل مع العميل.</CardDescription></div>
+        <Badge variant="secondary">{orders.length.toLocaleString("ar-YE")} طلب</Badge>
+      </CardHeader>
+      <CardContent>
+        {orders.length === 0 ? (
+          <p className="rounded-xl bg-muted/50 p-6 text-center text-sm text-muted-foreground">ستظهر طلبات العملاء هنا.</p>
+        ) : (
+          <div className="overflow-x-auto rounded-xl border border-[#DCE5F2]">
+            <table className="md-orders-table w-full min-w-[900px] border-collapse text-right text-sm">
+              <thead className="bg-[#F4F8FD] text-xs text-[#536B82]">
+                <tr>
+                  <th scope="col" className="px-4 py-3 font-semibold">المنتج</th>
+                  <th scope="col" className="px-4 py-3 font-semibold">العميل</th>
+                  <th scope="col" className="px-4 py-3 font-semibold">التوصيل</th>
+                  <th scope="col" className="px-4 py-3 font-semibold">التاريخ</th>
+                  <th scope="col" className="px-4 py-3 font-semibold">الإجمالي</th>
+                  <th scope="col" className="px-4 py-3 font-semibold">الحالة</th>
+                  <th scope="col" className="px-4 py-3 font-semibold">الإجراءات</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.map((order) => <OrderRow key={order.id} order={order} onChanged={onStatusChanged} />)}
+              </tbody>
+            </table>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -1263,9 +1314,9 @@ function OrderRow({ order, onChanged }: { order: MerchantOrder; onChanged: () =>
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const next: Partial<Record<MerchantOrder["status"], { status: MerchantOrder["status"]; label: string }>> = {
-    pending: { status: "confirmed", label: "تأكيد الطلب" },
+    pending: { status: "confirmed", label: "تأكيد" },
     confirmed: { status: "preparing", label: "بدء التجهيز" },
-    preparing: { status: "ready", label: "جاهز للتسليم" },
+    preparing: { status: "ready", label: "جاهز" },
     ready: { status: "delivered", label: "تم التسليم" },
   };
   const action = next[order.status];
@@ -1278,11 +1329,15 @@ function OrderRow({ order, onChanged }: { order: MerchantOrder; onChanged: () =>
     onChanged();
   }
   return (
-    <article className="md-order-row rounded-xl border p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="font-semibold">{order.product_title} <span className="text-muted-foreground">× {order.quantity.toLocaleString("ar-YE")}</span></p><p className="mt-1 text-sm">{order.customer_name} · {order.customer_phone}</p><p className="mt-1 text-xs text-muted-foreground">{order.customer_city} · {order.delivery_address}</p></div><Badge variant={order.status === "delivered" ? "secondary" : order.status === "cancelled" ? "destructive" : "outline"}>{orderStatusLabels[order.status]}</Badge></div>
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t pt-3"><span className="text-sm font-semibold">{formatMoney(Number(order.total_amount), order.currency)} <span className="font-normal text-muted-foreground">· {formatDate(order.created_at)}</span></span><div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">{action && <Button className="min-h-10 w-full rounded-lg bg-[#0B3A66] px-4 font-semibold text-white hover:bg-[#082f54] sm:w-auto" size="sm" onClick={() => void changeStatus(action.status)} disabled={busy}>{busy ? "جارٍ التحديث…" : action.label}</Button>}{!["delivered", "cancelled"].includes(order.status) && <Button className="min-h-10 w-full rounded-lg border-rose-200 px-4 font-semibold text-rose-700 hover:bg-rose-50 sm:w-auto" size="sm" variant="outline" onClick={() => void changeStatus("cancelled")} disabled={busy}>إلغاء</Button>}</div></div>
-      {error && <p role="alert" className="mt-2 text-xs text-destructive">{error}</p>}
-    </article>
+    <tr className="align-middle">
+      <td className="max-w-52 px-4 py-3"><p className="truncate font-semibold text-[#0B2440]">{order.product_title}</p><p className="mt-1 text-xs text-muted-foreground">الكمية: {order.quantity.toLocaleString("ar-YE")}</p></td>
+      <td className="px-4 py-3"><p className="font-medium">{order.customer_name}</p><p className="mt-1 text-xs text-muted-foreground" dir="ltr">{order.customer_phone}</p></td>
+      <td className="max-w-56 px-4 py-3"><p className="font-medium">{order.customer_city}</p><p className="mt-1 truncate text-xs text-muted-foreground">{order.delivery_address}</p></td>
+      <td className="whitespace-nowrap px-4 py-3 text-xs text-muted-foreground">{formatDate(order.created_at)}</td>
+      <td className="whitespace-nowrap px-4 py-3 font-semibold">{formatMoney(Number(order.total_amount), order.currency)}</td>
+      <td className="whitespace-nowrap px-4 py-3"><Badge variant={order.status === "delivered" ? "secondary" : order.status === "cancelled" ? "destructive" : "outline"}>{orderStatusLabels[order.status]}</Badge></td>
+      <td className="px-4 py-3"><div className="flex min-w-36 flex-wrap gap-1.5">{action && <Button className="min-h-8 rounded-lg bg-[#0B3A66] px-2.5 text-xs font-semibold text-white hover:bg-[#082f54]" size="sm" onClick={() => void changeStatus(action.status)} disabled={busy}>{busy ? "جارٍ التحديث…" : action.label}</Button>}{!['delivered', 'cancelled'].includes(order.status) && <Button className="min-h-8 rounded-lg border-rose-200 px-2.5 text-xs font-semibold text-rose-700 hover:bg-rose-50" size="sm" variant="outline" onClick={() => void changeStatus("cancelled")} disabled={busy}>إلغاء</Button>}{error && <span role="alert" className="basis-full text-xs text-destructive">{error}</span>}</div></td>
+    </tr>
   );
 }
 
