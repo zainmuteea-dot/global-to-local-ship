@@ -370,6 +370,7 @@ const CUSTOMER_STOREFRONT_CSS = `
 .pr-merchant-card:focus-visible{outline:3px solid #8B671C;outline-offset:4px}
 .pr-merchant-top,.pr-merchant-bottom{position:relative;z-index:1;width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px}
 .pr-merchant-mark{display:grid;width:48px;height:48px;flex:none;place-items:center;border-radius:15px;background:linear-gradient(135deg,#B8912A,#E8C766);color:#241b08;font-size:24px;box-shadow:0 6px 14px rgba(184,145,42,.2)}
+.pr-merchant-store-image{width:68px;height:68px;object-fit:cover!important;object-position:center;border-radius:16px}
 .pr-merchant-city{color:var(--muted);font-size:12px;font-weight:800}
 .pr-merchant-title{position:relative;z-index:1;margin:0;font-size:19px;font-weight:900;line-height:1.5}
 .pr-merchant-description{position:relative;z-index:1;margin:4px 0 0;color:#706344;font-size:13px;font-weight:600;line-height:1.75}
