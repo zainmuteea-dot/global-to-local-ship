@@ -94,31 +94,43 @@ export function MerchantDashboard() {
   }
 
   return (
-    <main dir="rtl" className="mx-auto flex w-full max-w-7xl flex-col gap-7 px-4 py-8 sm:px-6 lg:px-8">
-      <header className="flex flex-col justify-between gap-4 rounded-3xl border bg-card p-6 shadow-sm sm:flex-row sm:items-center sm:p-8">
-        <div><Badge variant={store.status === "active" ? "secondary" : "destructive"}>{store.status === "active" ? "المتجر نشط" : "المتجر موقوف"}</Badge><h1 className="mt-3 text-3xl font-bold">مرحبًا بك في {store.name}</h1><p className="mt-2 text-muted-foreground">أدر منتجاتك وطلباتك من مكان واحد.</p></div>
-        <div className="flex flex-wrap items-center gap-3"><div className="rounded-2xl bg-muted/60 px-5 py-4 text-sm"><p className="text-muted-foreground">عمولة المنصة</p><p className="mt-1 text-2xl font-bold">{(Number(store.commission_rate) * 100).toLocaleString("ar-YE")}٪</p></div><Button asChild disabled={store.status !== "active"}><a href="/merchant?view=add-product"><PackagePlus aria-hidden="true" className="ml-2 size-4" />أضف منتج</a></Button></div>
+    <main dir="rtl" className="mx-auto flex w-full max-w-[1600px] flex-col gap-7 px-4 py-6 sm:px-6 sm:py-8 xl:px-10">
+      <header className="relative isolate overflow-hidden rounded-[28px] bg-gradient-to-l from-[#0B3A66] via-[#0E4577] to-[#0B3A66] p-6 text-white shadow-xl shadow-[#0B3A66]/15 sm:p-8 lg:p-10">
+        <div aria-hidden="true" className="pointer-events-none absolute -left-16 -top-24 -z-10 size-72 rounded-full bg-[#F58220]/25 blur-3xl" />
+        <div aria-hidden="true" className="pointer-events-none absolute -bottom-24 right-1/3 -z-10 size-56 rounded-full bg-white/10 blur-3xl" />
+        <div className="relative flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
+          <div className="max-w-3xl">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-sm font-semibold"><span className={`size-2 rounded-full ${store.status === "active" ? "bg-emerald-400" : "bg-rose-400"}`} />{store.status === "active" ? "المتجر نشط" : "المتجر موقوف"}</span>
+              <span className="rounded-full bg-[#F58220] px-3 py-1.5 text-xs font-bold text-white">بوابة التاجر</span>
+            </div>
+            <h1 className="mt-5 text-3xl font-extrabold tracking-tight sm:text-4xl">مرحبًا بك في {store.name}</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-white/75 sm:text-base">أدر منتجاتك وطلباتك من مكان واحد، وتابع أداء متجرك بكل وضوح.</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="min-w-36 rounded-2xl border border-white/15 bg-white/10 px-5 py-3 backdrop-blur-sm"><p className="text-xs text-white/70">عمولة المنصة</p><p className="mt-1 text-2xl font-extrabold">{(Number(store.commission_rate) * 100).toLocaleString("ar-YE")}٪</p></div>
+            <Button asChild disabled={store.status !== "active"} className="h-12 rounded-xl bg-[#F58220] px-5 font-bold text-white shadow-lg shadow-black/10 hover:bg-[#e97514]"><a href="/merchant?view=add-product"><PackagePlus aria-hidden="true" className="ml-2 size-4" />أضف منتج</a></Button>
+          </div>
+        </div>
+        <div aria-hidden="true" className="absolute bottom-0 right-0 h-1 w-1/3 bg-gradient-to-l from-[#F58220] to-[#FFC531]" />
       </header>
 
-      <section className="grid gap-3 sm:grid-cols-3" aria-label="ملخص المتجر">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-label="ملخص المتجر">
         <Metric icon={<PackagePlus aria-hidden="true" />} label="المنتجات" value={products.length.toLocaleString("ar-YE")} />
         <Metric icon={<Truck aria-hidden="true" />} label="الطلبات النشطة" value={pendingOrders.toLocaleString("ar-YE")} />
         <Metric icon={<BadgeCheck aria-hidden="true" />} label="حصة التاجر من الطلبات المسلّمة بالريال اليمني" value={formatMoney(sellerShareInYER, "YER")} />
       </section>
 
-      {store.status === "suspended" && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">المتجر موقوف مؤقتًا. يمكنك الاطلاع على بياناتك، لكن الإضافة والطلبات الجديدة غير متاحة.</p>}
+      {store.status === "suspended" && <p role="alert" className="rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">المتجر موقوف مؤقتًا. يمكنك الاطلاع على بياناتك، لكن الإضافة والطلبات الجديدة غير متاحة.</p>}
 
-      <section className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-        <StoreProfile store={store} onSaved={() => void mutateStore()} />
+      <section aria-label="إضافة المنتجات وبيانات المتجر" className="grid items-start gap-6 2xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.65fr)]">
         <ProductForm store={store} onCreated={() => void mutateProducts()} />
+        <StoreProfile store={store} onSaved={() => void mutateStore()} />
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <ProductInventory products={products} error={productsError} onSaved={() => void mutateProducts()} active={store.status === "active"} />
-        <MerchantOrders orders={orders} error={ordersError} onStatusChanged={() => { void mutateOrders(); void mutateProducts(); }} />
-      </section>
+      <ProductInventory products={products} error={productsError} onSaved={() => void mutateProducts()} active={store.status === "active"} />
 
-      <section aria-labelledby="merchant-shisha-heading" className="grid gap-6 rounded-3xl border border-primary/20 bg-primary/[0.03] p-4 sm:p-6 lg:grid-cols-[0.9fr_1.1fr]">
+      <section aria-labelledby="merchant-shisha-heading" className="grid gap-6 rounded-3xl border border-[#0B3A66]/10 bg-[#0B3A66]/[0.025] p-4 sm:p-6 lg:grid-cols-2">
         <div className="lg:col-span-2">
           <Badge variant="secondary" className="mb-2">قسم خاص</Badge>
           <h2 id="merchant-shisha-heading" className="text-2xl font-bold">معسلات المتجر</h2>
@@ -134,12 +146,16 @@ export function MerchantDashboard() {
           description="تظهر هنا المنتجات المصنفة كمعسل أو شيشة؛ عدّل السعر والكمية، وتابع اعتماد الإدارة قبل النشر."
         />
       </section>
+
+      <section aria-label="طلبات المتجر">
+        <MerchantOrders orders={orders} error={ordersError} onStatusChanged={() => { void mutateOrders(); void mutateProducts(); }} />
+      </section>
     </main>
   );
 }
 
 function Metric({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
-  return <Card className="rounded-2xl"><CardContent className="flex items-center gap-4 p-5"><div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">{icon}</div><div><p className="text-sm text-muted-foreground">{label}</p><p className="mt-1 font-bold">{value}</p></div></CardContent></Card>;
+  return <Card className="rounded-2xl border-[#0B3A66]/10 bg-white shadow-sm transition-shadow hover:shadow-md"><CardContent className="flex min-h-24 items-center gap-4 p-5"><div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-[#0B3A66]/[0.07] text-[#0B3A66]">{icon}</div><div className="min-w-0"><p className="text-sm leading-6 text-muted-foreground">{label}</p><p className="mt-1 break-words text-lg font-extrabold text-[#0B3A66] sm:text-xl">{value}</p></div></CardContent></Card>;
 }
 
 function StoreProfile({ store, onSaved }: { store: MerchantStorePrivate; onSaved: () => void }) {
@@ -435,7 +451,7 @@ function ProductForm({
     oldPrice: "",
     discountPercent: "",
     sku: "",
-    currency: "YER",
+    currency: "YER" as MerchantProduct["currency"],
     stock: "1",
   });
   const [image, setImage] = useState<File | null>(null);
@@ -461,7 +477,7 @@ function ProductForm({
       oldPrice: "",
       discountPercent: "",
       sku: "",
-      currency: "YER",
+      currency: "YER" as MerchantProduct["currency"],
       stock: "1",
     });
     setImage(null);
@@ -673,8 +689,9 @@ function ProductForm({
             event.preventDefault();
             void persist();
           }}
-          className="grid gap-3 sm:grid-cols-2"
+          className="grid gap-5 2xl:grid-cols-[minmax(0,1fr)_280px]"
         >
+          <div className="grid content-start gap-3 sm:grid-cols-2">
           <Field label="اسم المنتج">
             <Input
               required
@@ -733,7 +750,7 @@ function ProductForm({
           <Field label="العملة">
             <select
               value={form.currency}
-              onChange={(event) => setForm({ ...form, currency: event.target.value })}
+              onChange={(event) => setForm({ ...form, currency: event.target.value as MerchantProduct["currency"] })}
               className="h-9 rounded-md border border-input bg-background px-3 text-sm"
             >
               <option value="YER">ريال يمني (YER)</option>
@@ -843,6 +860,19 @@ function ProductForm({
               {busy ? "جارٍ الإرسال…" : "إرسال للمراجعة"}
             </Button>
         </div>
+          </div>
+          <aside aria-label="معاينة المنتج" className="rounded-2xl border border-[#0B3A66]/10 bg-gradient-to-b from-[#0B3A66]/[0.035] to-white p-4 2xl:sticky 2xl:top-6 2xl:self-start">
+            <div className="mb-3 flex items-center justify-between gap-2"><p className="font-bold text-[#0B3A66]">معاينة المنتج</p><span className="rounded-full bg-[#F58220]/10 px-2.5 py-1 text-xs font-semibold text-[#C65E0C]">مباشرة</span></div>
+            <div className="flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl bg-muted/70">
+              {imagePreviewUrl ? <img src={imagePreviewUrl} alt="معاينة المنتج" className="h-full w-full object-cover" /> : <div className="grid justify-items-center gap-2 text-muted-foreground"><ImagePlus aria-hidden="true" className="size-9" /><span className="text-xs">ستظهر صورة المنتج هنا</span></div>}
+            </div>
+            <div className="mt-4 space-y-2">
+              <p className="line-clamp-2 min-h-6 font-bold">{form.title.trim() || "اسم المنتج"}</p>
+              <p className="line-clamp-3 min-h-12 text-sm leading-6 text-muted-foreground">{form.description.trim() || "سيظهر وصف المنتج هنا بعد إدخاله."}</p>
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-3"><span className="font-extrabold text-[#F58220]">{form.price ? formatMoney(Number(form.price), form.currency) : "السعر"}</span><span className="rounded-full bg-[#0B3A66]/[0.06] px-2.5 py-1 text-xs text-[#0B3A66]">{form.category.trim() || presetCategory || "التصنيف"}</span></div>
+              <p className="text-xs text-muted-foreground">المخزون: {form.stock || "0"} · يظهر بعد اعتماد الإدارة</p>
+            </div>
+          </aside>
         </form>
       </CardContent>
     </Card>
