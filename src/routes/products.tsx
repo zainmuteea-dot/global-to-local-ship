@@ -706,7 +706,8 @@ function CustomerStorefront() {
         <button type="button" className="pr-search-submit" onClick={scrollToStorefront}>بحث</button>
       </div>
 
-      <section className="pr-hero" aria-labelledby="pr-hero-title">
+      {activeTab !== "local" && (
+        <section className="pr-hero" aria-labelledby="pr-hero-title">
         <div className="pr-hero-copy">
           <span className="pr-hero-badge"><Sparkles size={14} aria-hidden="true" /> تسوقك العالمي في مكان واحد</span>
           <h1 id="pr-hero-title">كل ما تحتاجه من <span>العالم</span> يوصلك إلى بابك</h1>
@@ -727,15 +728,18 @@ function CustomerStorefront() {
             <text x="148" y="143" textAnchor="middle" fontFamily="Cairo, Tajawal, sans-serif" fontSize="39" fontWeight="900" fill="#0B3A66">AS</text>
           </svg>
         </div>
-      </section>
+        </section>
+      )}
 
       <div className={`pr-panel pr-panel-${tabDirection}`} id="storefront-panel" key={activeTab}>
-        <header className="pr-head">
+        {activeTab !== "local" && (
+          <header className="pr-head">
           <span className="pr-brand"><i className="dot" /> السوق الشامل · AL SHAMEL</span>
           <h2 className="pr-title">{activeTab === "international" ? <>تسوّق من أشهر المتاجر <span className="grad">العالمية</span></> : activeTab === "local" ? <>متاجر التجار <span className="grad">المحلية</span></> : activeTab === "best-sellers" ? <>الأكثر <span className="grad">مبيعًا</span></> : <>عروض <span className="grad">مختارة</span></>}</h2>
           <p className="pr-sub">{activeTab === "international" ? "اطلب من أشهر المتاجر العالمية وتعرّف على خيارات التسوق المتاحة." : activeTab === "local" ? "تصفح المتاجر المحلية والمنتجات التي اعتمدتها الإدارة." : activeTab === "best-sellers" ? "منتجات مرتبة حسب الكميات المسلّمة فعليًا للعملاء." : "اكتشف العروض الحالية من متاجر السوق الشامل."}</p>
           <div className="pr-divider" aria-hidden="true"><i /><b /><i /></div>
-        </header>
+          </header>
+        )}
 
         {activeTab === "international" && (
           filteredIconStores.length ? <section id="store-links" className="pr-stores" aria-label="بوابات المتاجر العالمية">
