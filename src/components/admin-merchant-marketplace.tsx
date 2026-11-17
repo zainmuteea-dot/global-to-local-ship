@@ -237,6 +237,49 @@ const EMBEDDED_STYLES = `
 @media (max-width:1100px){.admin-grid{grid-template-columns:1fr}.card.sticky{position:static}.st-row{grid-template-columns:1fr 1fr}}
 @media (max-width:820px){.dash{grid-template-columns:1fr}.wrap{padding:16px}.topbar{padding:12px 16px}
  .ao-head{display:none}.ao-row{grid-template-columns:1fr 1fr}.st-row{grid-template-columns:1fr}.mid{display:none}}
+
+/* مظهر إدارة التجار الجديد - تنسيقات فقط دون تغيير الوظائف */
+.dash{--navy:#0B3A66;--navy-2:#124A78;--orange:#F58220;--gold:#FFC531;--green:#10A879;--ink:#193451;--ink-2:#7A91AA;--line:#DCE6F2;--bg:#F3F6FA;--card:#fff}
+.wrap{padding:18px 28px 32px;gap:16px}
+.admin-hero{border-radius:22px;padding:22px 26px;background:linear-gradient(120deg,#0B3A66,#124A78);box-shadow:0 12px 28px #0b3a6618}
+.admin-hero:after{width:260px;height:260px;left:3%;top:-105px;border:1px dashed #ffffff35;background:transparent;opacity:1}
+.ah-top{align-items:center}
+.admin-hero h1{font-size:28px;font-weight:800}
+.admin-hero p{font-size:13px}
+.ah-kpis{gap:10px}
+.kpi{min-width:110px;padding:10px 14px;border-radius:14px;background:#ffffff18}
+.kpi b{font-size:20px}
+.tabs-bar{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%;gap:6px;padding:6px;border-radius:15px;box-shadow:0 2px 5px #0b3a660d}
+.tab-btn{justify-content:center;padding:12px 14px;border-radius:11px}
+.tab-btn.on{background:var(--navy);box-shadow:0 5px 14px #0b3a6625}
+.admin-grid{grid-template-columns:minmax(0,1.4fr) minmax(340px,1fr);gap:16px}
+.col{gap:16px}
+.card{border-color:var(--line);border-radius:18px;box-shadow:0 2px 5px #0b3a6609}
+.card-h{padding:16px 18px}
+.card-h h2{font-size:16px;font-weight:800}
+.card-h p{font-size:12px;color:var(--ink-2)}
+.sq{width:36px;height:36px;border-radius:11px;background:#edf4fb}
+.card-b{padding:16px 18px}
+.stores{gap:10px}
+.st{border-radius:15px;border-color:#dce6f2}
+.st.on{border-color:#b8d3ee;box-shadow:0 3px 10px #0b3a6610}
+.st-h{min-height:66px;padding:12px 14px}
+.lg{width:38px;height:38px;border-radius:11px}
+.st-b{padding:13px;background:#fff}
+.st-badges{justify-content:flex-start}
+.point{background:#f5f8fc;border:0;font-size:11px}
+.st-row{grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.fld label{color:#506987}
+.inp{border-color:#dce6f2;border-radius:11px;padding:10px 12px}
+.inp:focus{border-color:#82b6e5;box-shadow:0 0 0 3px #0b3a6612}
+.st-id{background:#f5f8fc;border-color:#e3ebf4}
+.btn-sm.primary{background:var(--navy)!important;border-radius:10px}
+.btn-sm.ghost{border-radius:10px}
+.cta,.btn-primary{border-radius:11px;background:#7895ad!important;box-shadow:none}
+.search-box .inp{border-radius:12px}
+.results .res{background:#fff}
+@media(max-width:900px){.admin-grid{grid-template-columns:1fr}.card.sticky{position:static}}
+@media(max-width:600px){.wrap{padding:14px}.admin-hero{padding:18px}.tabs-bar{grid-template-columns:1fr}.tab-btn{justify-content:flex-start}.ah-kpis{width:100%}.kpi{flex:1;min-width:90px}.st-row{grid-template-columns:1fr}}
 `;
 
 /* ---------- المكوّن الرئيسي ---------- */
