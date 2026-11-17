@@ -131,7 +131,18 @@ const merchantDashboardStyles = `
     border-radius: 14px;
     background: #fff;
   }
-  .merchant-dashboard-theme .md-products-link { display: block; border-radius: 17px; }
+  .merchant-dashboard-theme .md-products-link {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    border-radius: 17px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: right;
+    cursor: pointer;
+  }
   .merchant-dashboard-theme .md-products-link .md-card { height: 100%; }
   .merchant-dashboard-theme .md-products-link:focus-visible { outline: 3px solid rgba(245,130,32,.55); outline-offset: 3px; }
   @media (min-width: 1101px) {
@@ -183,6 +194,8 @@ async function loadMyOrders(storeId: string) {
 
 export function MerchantDashboard() {
   const { user, loading: authLoading } = useSession();
+  const [showProducts, setShowProducts] = useState(false);
+  const productsSectionRef = useRef<HTMLElement | null>(null);
   const addProductMode = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("view") === "add-product";
   const { data: store, isLoading: storeLoading, error: storeError, mutate: mutateStore } = useSWR(
     user ? ["merchant-my-store", user.id] : null,
@@ -205,6 +218,14 @@ export function MerchantDashboard() {
     0,
   );
   const pendingOrders = orders.filter((order) => !["delivered", "cancelled"].includes(order.status)).length;
+
+  useEffect(() => {
+    if (!showProducts) return;
+    productsSectionRef.current?.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+      block: "start",
+    });
+  }, [showProducts]);
 
   if (authLoading || storeLoading) {
     return <main dir="rtl" className="mx-auto max-w-6xl px-4 py-12"><p className="text-sm text-muted-foreground">جارٍ تحميل بوابة التاجر…</p></main>;
@@ -254,9 +275,16 @@ export function MerchantDashboard() {
       </header>
 
       <section className="md-section grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4" aria-label="ملخص المتجر">
-        <a href="#merchant-products" aria-label="الانتقال إلى إدارة المنتجات" className="md-products-link rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220] focus-visible:ring-offset-2">
+        <button
+          type="button"
+          aria-label={showProducts ? "إخفاء إدارة المنتجات" : "عرض إدارة المنتجات"}
+          aria-expanded={showProducts}
+          aria-controls="merchant-products"
+          onClick={() => setShowProducts((visible) => !visible)}
+          className="md-products-link rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220] focus-visible:ring-offset-2"
+        >
           <Metric tone="navy" icon={<PackagePlus aria-hidden="true" />} label="المنتجات" value={products.length.toLocaleString("ar-YE")} />
-        </a>
+        </button>
         <Metric tone="orange" icon={<Truck aria-hidden="true" />} label="الطلبات النشطة" value={pendingOrders.toLocaleString("ar-YE")} />
         <Metric tone="green" icon={<BadgeCheck aria-hidden="true" />} label="حصة التاجر من الطلبات المسلّمة · YER" value={formatMoney(sellerShareInYER, "YER")} />
         <Metric tone="gold" icon={<Store aria-hidden="true" />} label="عمولة المنصة" value={`${(Number(store.commission_rate) * 100).toLocaleString("ar-YE")}٪`} />
@@ -289,8 +317,21 @@ export function MerchantDashboard() {
         </section>
       </section>
 
-      <section id="merchant-products" aria-label="إدارة المنتجات" className="md-section md-products">
-        <ProductInventory products={products} error={productsError} onSaved={() => void mutateProducts()} active={store.status === "active"} />
+      <section
+        ref={productsSectionRef}
+        id="merchant-products"
+        aria-label="إدارة المنتجات"
+        className="md-section md-products"
+        hidden={!showProducts}
+      >
+        {showProducts && (
+          <ProductInventory
+            products={products}
+            error={productsError}
+            onSaved={() => void mutateProducts()}
+            active={store.status === "active"}
+          />
+        )}
       </section>
 
       <section aria-label="طلبات المتجر" className="md-section md-orders">
