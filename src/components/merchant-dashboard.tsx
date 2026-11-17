@@ -24,6 +24,32 @@ import {
 
 const db = supabase as any;
 
+const merchantDashboardStyles = `
+  .merchant-dashboard-theme { color: #17324b; }
+  .merchant-dashboard-theme .md-hero {
+    background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,.12) 1px, transparent 0), linear-gradient(110deg, #0B3A66, #0E4A7A 58%, #0B3A66);
+    background-size: 18px 18px, auto;
+  }
+  .merchant-dashboard-theme .md-section { animation: md-enter .42s ease both; }
+  .merchant-dashboard-theme .md-section:nth-of-type(2) { animation-delay: .04s; }
+  .merchant-dashboard-theme .md-section:nth-of-type(3) { animation-delay: .08s; }
+  .merchant-dashboard-theme .md-card { transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+  .merchant-dashboard-theme .md-card:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(11,58,102,.09); }
+  .merchant-dashboard-theme .md-metric { border-color: color-mix(in srgb, var(--md-tone) 17%, white); }
+  .merchant-dashboard-theme .md-metric-icon { color: var(--md-tone); background: var(--md-tone-bg); }
+  .merchant-dashboard-theme .md-metric-navy { --md-tone: #0B3A66; --md-tone-bg: #E8F1FB; }
+  .merchant-dashboard-theme .md-metric-orange { --md-tone: #F58220; --md-tone-bg: #FFF0E2; }
+  .merchant-dashboard-theme .md-metric-green { --md-tone: #0C8F63; --md-tone-bg: #E3F8EF; }
+  .merchant-dashboard-theme .md-metric-gold { --md-tone: #D99A00; --md-tone-bg: #FFF6DC; }
+  .merchant-dashboard-theme .md-metric p:last-child { color: var(--md-tone); }
+  .merchant-dashboard-theme .md-live-dot { animation: md-pulse 1.8s ease-out infinite; }
+  @keyframes md-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes md-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(52,211,153,.4); } 55% { box-shadow: 0 0 0 6px rgba(52,211,153,0); } }
+  @media (prefers-reduced-motion: reduce) {
+    .merchant-dashboard-theme *, .merchant-dashboard-theme *::before, .merchant-dashboard-theme *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
+  }
+`;
+
 async function loadMyStore() {
   const { data, error } = await db.rpc("merchant_get_my_store");
   if (error) throw error;
@@ -98,43 +124,45 @@ export function MerchantDashboard() {
   }
 
   return (
-    <main dir="rtl" className="mx-auto flex w-full max-w-[1600px] flex-col gap-5 px-3 py-4 sm:gap-7 sm:px-6 sm:py-8 xl:px-10">
-      <header className="relative isolate overflow-hidden rounded-2xl bg-gradient-to-l from-[#0B3A66] via-[#0E4577] to-[#0B3A66] p-5 text-white shadow-xl shadow-[#0B3A66]/15 sm:rounded-[28px] sm:p-8 lg:p-10">
+    <main dir="rtl" className="merchant-dashboard-theme mx-auto flex min-h-screen w-full max-w-[1240px] flex-col gap-4 bg-[#f3f7fc] px-3 py-4 sm:gap-5 sm:px-6 sm:py-7 xl:px-8">
+      <style>{merchantDashboardStyles}</style>
+      <header className="md-section md-hero relative isolate overflow-hidden rounded-2xl bg-gradient-to-l from-[#0B3A66] via-[#0E4577] to-[#0B3A66] p-5 text-white shadow-xl shadow-[#0B3A66]/15 sm:rounded-[28px] sm:p-7 lg:p-8">
         <div aria-hidden="true" className="pointer-events-none absolute -left-16 -top-24 -z-10 size-72 rounded-full bg-[#F58220]/25 blur-3xl" />
         <div aria-hidden="true" className="pointer-events-none absolute -bottom-24 right-1/3 -z-10 size-56 rounded-full bg-white/10 blur-3xl" />
         <div className="relative flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
           <div className="max-w-3xl">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-sm font-semibold"><span className={`size-2 rounded-full ${store.status === "active" ? "bg-emerald-400" : "bg-rose-400"}`} />{store.status === "active" ? "المتجر نشط" : "المتجر موقوف"}</span>
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-sm font-semibold"><span className={`md-live-dot size-2 rounded-full ${store.status === "active" ? "bg-emerald-400" : "bg-rose-400"}`} />{store.status === "active" ? "المتجر نشط" : "المتجر موقوف"}</span>
               <span className="rounded-full bg-[#F58220] px-3 py-1.5 text-xs font-bold text-white">بوابة التاجر</span>
             </div>
             <h1 className="mt-5 text-3xl font-extrabold tracking-tight sm:text-4xl">مرحبًا بك في {store.name}</h1>
             <p className="mt-3 max-w-2xl text-sm leading-7 text-white/75 sm:text-base">أدر منتجاتك وطلباتك من مكان واحد، وتابع أداء متجرك بكل وضوح.</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <div className="min-w-36 rounded-2xl border border-white/15 bg-white/10 px-5 py-3 backdrop-blur-sm"><p className="text-xs text-white/70">عمولة المنصة</p><p className="mt-1 text-2xl font-extrabold">{(Number(store.commission_rate) * 100).toLocaleString("ar-YE")}٪</p></div>
+            <div className="min-w-36 rounded-2xl border border-white/15 bg-white/10 px-5 py-3 backdrop-blur-sm"><p className="text-xs text-white/70">حالة المتجر</p><p className="mt-1 text-2xl font-extrabold">{store.status === "active" ? "نشط" : "متوقف"}</p></div>
             <Button asChild disabled={store.status !== "active"} className="min-h-11 w-full rounded-xl bg-[#F58220] px-5 font-bold text-white shadow-lg shadow-black/10 transition-colors hover:bg-[#e97514] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFC531] focus-visible:ring-offset-2 sm:w-auto"><a href="/merchant?view=add-product"><PackagePlus aria-hidden="true" className="ml-2 size-4" />أضف منتج</a></Button>
           </div>
         </div>
         <div aria-hidden="true" className="absolute bottom-0 right-0 h-1 w-1/3 bg-gradient-to-l from-[#F58220] to-[#FFC531]" />
       </header>
 
-      <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3" aria-label="ملخص المتجر">
-        <Metric icon={<PackagePlus aria-hidden="true" />} label="المنتجات" value={products.length.toLocaleString("ar-YE")} />
-        <Metric icon={<Truck aria-hidden="true" />} label="الطلبات النشطة" value={pendingOrders.toLocaleString("ar-YE")} />
-        <Metric icon={<BadgeCheck aria-hidden="true" />} label="حصة التاجر من الطلبات المسلّمة بالريال اليمني" value={formatMoney(sellerShareInYER, "YER")} />
+      <section className="md-section grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4" aria-label="ملخص المتجر">
+        <Metric tone="navy" icon={<PackagePlus aria-hidden="true" />} label="المنتجات" value={products.length.toLocaleString("ar-YE")} />
+        <Metric tone="orange" icon={<Truck aria-hidden="true" />} label="الطلبات النشطة" value={pendingOrders.toLocaleString("ar-YE")} />
+        <Metric tone="green" icon={<BadgeCheck aria-hidden="true" />} label="حصة التاجر من الطلبات المسلّمة · YER" value={formatMoney(sellerShareInYER, "YER")} />
+        <Metric tone="gold" icon={<Store aria-hidden="true" />} label="عمولة المنصة" value={`${(Number(store.commission_rate) * 100).toLocaleString("ar-YE")}٪`} />
       </section>
 
       {store.status === "suspended" && <p role="alert" className="rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">المتجر موقوف مؤقتًا. يمكنك الاطلاع على بياناتك، لكن الإضافة والطلبات الجديدة غير متاحة.</p>}
 
-      <section aria-label="إضافة المنتجات وبيانات المتجر" className="grid min-w-0 items-start gap-4 sm:gap-6 2xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.65fr)]">
+      <section aria-label="إضافة المنتجات وبيانات المتجر" className="md-section grid min-w-0 items-start gap-4 sm:gap-5 2xl:grid-cols-[minmax(0,1.65fr)_minmax(320px,0.85fr)]">
         <ProductForm store={store} onCreated={() => void mutateProducts()} />
         <StoreProfile store={store} onSaved={() => void mutateStore()} />
       </section>
 
       <ProductInventory products={products} error={productsError} onSaved={() => void mutateProducts()} active={store.status === "active"} />
 
-      <section aria-labelledby="merchant-shisha-heading" className="grid gap-6 rounded-3xl border border-[#0B3A66]/10 bg-[#0B3A66]/[0.025] p-4 sm:p-6">
+      <section aria-labelledby="merchant-shisha-heading" className="md-section grid gap-5 rounded-3xl border border-[#0B3A66]/10 bg-white p-4 shadow-sm sm:p-5">
         <div>
           <Badge variant="secondary" className="mb-2">قسم خاص</Badge>
           <h2 id="merchant-shisha-heading" className="text-2xl font-bold">معسلات المتجر</h2>
@@ -150,15 +178,15 @@ export function MerchantDashboard() {
         />
       </section>
 
-      <section aria-label="طلبات المتجر">
+      <section aria-label="طلبات المتجر" className="md-section">
         <MerchantOrders orders={orders} error={ordersError} onStatusChanged={() => { void mutateOrders(); void mutateProducts(); }} />
       </section>
     </main>
   );
 }
 
-function Metric({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
-  return <Card className="rounded-2xl border-[#0B3A66]/10 bg-white shadow-sm transition-shadow hover:shadow-md"><CardContent className="flex min-h-24 items-center gap-4 p-5"><div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-[#0B3A66]/[0.07] text-[#0B3A66]">{icon}</div><div className="min-w-0"><p className="text-sm leading-6 text-muted-foreground">{label}</p><p className="mt-1 break-words text-lg font-extrabold text-[#0B3A66] sm:text-xl">{value}</p></div></CardContent></Card>;
+function Metric({ icon, label, value, tone = "navy" }: { icon: ReactNode; label: string; value: string; tone?: "navy" | "orange" | "green" | "gold" }) {
+  return <Card className={`md-card md-metric md-metric-${tone} rounded-2xl border bg-white shadow-sm`}><CardContent className="flex min-h-24 items-center gap-3 p-4 sm:p-5"><div className="md-metric-icon flex size-11 shrink-0 items-center justify-center rounded-2xl">{icon}</div><div className="min-w-0"><p className="text-xs leading-5 text-muted-foreground sm:text-sm">{label}</p><p className="mt-1 break-words text-lg font-extrabold sm:text-xl">{value}</p></div></CardContent></Card>;
 }
 
 function StoreProfile({ store, onSaved }: { store: MerchantStorePrivate; onSaved: () => void }) {
@@ -292,7 +320,7 @@ function StoreProfile({ store, onSaved }: { store: MerchantStorePrivate; onSaved
   }
 
   return (
-    <Card className="rounded-2xl">
+    <Card className="md-card rounded-2xl border-[#0B3A66]/10 shadow-sm">
       <CardHeader>
         <CardTitle>بيانات المتجر</CardTitle>
         <CardDescription>هذه المعلومات تظهر للعملاء في السوق.</CardDescription>
@@ -673,7 +701,7 @@ function ProductForm({
   }
 
   return (
-    <Card className="rounded-2xl">
+    <Card className="md-card rounded-2xl border-[#0B3A66]/10 shadow-sm">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <PackagePlus aria-hidden="true" className="size-5 text-primary" />{" "}
@@ -892,7 +920,7 @@ function isShishaProduct(product: MerchantProduct) {
 function ProductInventory({ products, error, onSaved, active, title = "إدارة المنتجات", description = "غيّر السعر والمخزون مباشرة. تعديل وصف أو صورة منتج منشور يعيده للمراجعة." }: { products: (MerchantProduct & { image_url: string | null })[]; error?: Error; onSaved: () => void; active: boolean; title?: string; description?: string }) {
   if (error) return <Card className="rounded-2xl"><CardContent className="py-8 text-sm text-destructive">تعذر تحميل المنتجات.</CardContent></Card>;
   return (
-    <Card className="rounded-2xl">
+    <Card className="md-card rounded-2xl border-[#0B3A66]/10 shadow-sm">
       <CardHeader><CardTitle>{title}</CardTitle><CardDescription>{description}</CardDescription></CardHeader>
       <CardContent className="grid gap-3">
         {products.length === 0 ? <p className="rounded-xl bg-muted/50 p-6 text-center text-sm text-muted-foreground">لم تضف منتجات بعد.</p> : products.map((product) => <InventoryRow key={product.id} product={product} onSaved={onSaved} active={active} />)}
@@ -1066,7 +1094,7 @@ function InventoryRow({
 function MerchantOrders({ orders, error, onStatusChanged }: { orders: MerchantOrder[]; error?: Error; onStatusChanged: () => void }) {
   if (error) return <Card className="rounded-2xl"><CardContent className="py-8 text-sm text-destructive">تعذر تحميل الطلبات.</CardContent></Card>;
   return (
-    <Card className="rounded-2xl">
+    <Card className="md-card rounded-2xl border-[#0B3A66]/10 shadow-sm">
       <CardHeader><CardTitle>الطلبات</CardTitle><CardDescription>حدّث حالة الطلب بعد التواصل مع العميل.</CardDescription></CardHeader>
       <CardContent className="grid gap-3">
         {orders.length === 0 ? <p className="rounded-xl bg-muted/50 p-6 text-center text-sm text-muted-foreground">ستظهر طلبات العملاء هنا.</p> : orders.map((order) => <OrderRow key={order.id} order={order} onChanged={onStatusChanged} />)}
