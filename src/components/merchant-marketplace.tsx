@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import useSWR from "swr";
 import {
@@ -6,7 +6,6 @@ import {
   Copy,
   Eye,
   MapPin,
-  LoaderCircle,
   Minus,
   Package,
   Plus,
@@ -39,6 +38,10 @@ import {
   type CartItem,
 } from "@/lib/extension-cart";
 
+const PRODUCT_IMAGE_FALLBACK = `data:image/svg+xml,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400"><rect width="600" height="400" rx="24" fill="#eee7da"/><g fill="none" stroke="#ad9b80" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"><rect x="230" y="118" width="140" height="124" rx="18"/><path d="M230 154h140m-112 36h60m-60 28h42"/></g><text x="300" y="300" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#9a896f">صورة المنتج</text></svg>',
+)}`;
+
 async function loadMyMerchantStore() {
   const { data, error } = await supabase.rpc("merchant_get_my_store");
   if (error) throw error;
@@ -62,6 +65,7 @@ export function MerchantMarketplace() {
     loadMyMerchantStore,
   );
   const [search, setSearch] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
   const [selectedStoreId, setSelectedStoreId] = useState(() => {
     if (typeof window === "undefined") return "";
     return new URLSearchParams(window.location.search).get("store")?.trim() ?? "";
@@ -129,7 +133,17 @@ export function MerchantMarketplace() {
     const term = search.trim().toLocaleLowerCase();
     return (
       !term ||
-      [product.title, product.description, product.category, product.store.name, product.store.city]
+      [
+        product.title,
+        product.description,
+        product.category,
+        product.sku,
+        (product as MarketplaceProduct & { color?: string; colour?: string; size?: string; sizes?: string[] }).color,
+        (product as MarketplaceProduct & { colour?: string }).colour,
+        (product as MarketplaceProduct & { size?: string }).size,
+        ...((product as MarketplaceProduct & { sizes?: string[] }).sizes ?? []),
+      ]
+        .filter(Boolean)
         .join(" ")
         .toLocaleLowerCase()
         .includes(term)
@@ -199,38 +213,35 @@ export function MerchantMarketplace() {
 
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             <label className="relative flex-1">
-              <span className="sr-only">ابحث عن منتج أو متجر</span>
-              <Search
-                aria-hidden="true"
-                className="pointer-events-none absolute right-3.5 top-1/2 size-4 -translate-y-1/2 text-[#9b8c78]"
-              />
+              <span className="sr-only">ابحث باسم القطعة أو اللون أو المقاس</span>
+              <Search aria-hidden="true" className="pointer-events-none absolute right-3.5 top-1/2 size-4 -translate-y-1/2 text-[#9b8c78]" />
               <Input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="ابحث عن منتج أو متجر أو مدينة"
+                placeholder="ابحث باسم القطعة أو اللون أو المقاس"
                 className="h-12 rounded-xl border-[#e5dac7] bg-white pr-11 text-[#382719] placeholder:text-[#a49684] focus-visible:ring-[#b48948]"
               />
             </label>
-            <div className="flex flex-wrap gap-2" aria-label="تصنيفات المنتجات">
-              <button
-                type="button"
-                onClick={() => setSearch("")}
-                className={`h-11 rounded-xl px-4 text-sm font-bold transition ${search ? "border border-[#d9c8aa] bg-white text-[#6f5637]" : "bg-[#b48948] text-white shadow-sm"}`}
-              >
-                الكل
-              </button>
-              {categories.slice(0, 4).map((category) => (
-                <button
-                  key={category}
-                  type="button"
-                  onClick={() => setSearch(category)}
-                  className={`h-11 rounded-xl border px-4 text-sm font-semibold transition ${search === category ? "border-[#b48948] bg-[#eee1c9] text-[#53391e]" : "border-[#d9c8aa] bg-white text-[#6f5637] hover:bg-[#f6f0e5]"}`}
-                >
+            <button
+              type="button"
+              aria-expanded={showFilters}
+              aria-controls="marketplace-filters"
+              onClick={() => setShowFilters((value) => !value)}
+              className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-xl border border-[#d9c8aa] bg-white px-5 text-sm font-bold text-[#60472e] transition hover:bg-[#f6f0e5]"
+            >
+              <span aria-hidden="true">☷</span> فلتر
+            </button>
+          </div>
+          {showFilters && (
+            <div id="marketplace-filters" className="mt-3 flex flex-wrap gap-2" aria-label="تصفية حسب التصنيف">
+              <button type="button" onClick={() => setSearch("")} className={`h-10 rounded-full px-4 text-sm font-bold ${search ? "border border-[#d9c8aa] bg-white text-[#6f5637]" : "bg-[#b48948] text-white"}`}>الكل</button>
+              {categories.map((category) => (
+                <button key={category} type="button" onClick={() => setSearch(category)} className={`h-10 rounded-full border px-4 text-sm font-semibold ${search === category ? "border-[#b48948] bg-[#eee1c9] text-[#53391e]" : "border-[#d9c8aa] bg-white text-[#6f5637] hover:bg-[#f6f0e5]"}`}>
                   {category}
                 </button>
               ))}
             </div>
-          </div>
+          )}
         </header>
 
         {addedProductTitle && (
@@ -345,59 +356,95 @@ function ProductCard({
 }) {
   const [imageFailed, setImageFailed] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
-  const imageUrl = imageFailed ? null : product.image_url;
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imageTimedOut, setImageTimedOut] = useState(false);
+  const [requestStarted, setRequestStarted] = useState(false);
+  const imageContainerRef = useRef<HTMLDivElement | null>(null);
+  const imageUrlToShow = imageFailed || imageTimedOut ? null : imageUrl;
 
   useEffect(() => {
     setImageFailed(false);
     setImageLoaded(false);
+    setImageTimedOut(false);
+    setImageUrl(null);
+    setRequestStarted(false);
   }, [product.id]);
 
+  useEffect(() => {
+    if (!requestStarted || imageLoaded || imageFailed) return;
+    const timeout = window.setTimeout(() => setImageTimedOut(true), 3000);
+    return () => window.clearTimeout(timeout);
+  }, [requestStarted, imageLoaded, imageFailed]);
+
+  useEffect(() => {
+    const node = imageContainerRef.current;
+    if (!node || requestStarted || imageUrl) return;
+    let active = true;
+    if (typeof IntersectionObserver === "undefined") {
+      setRequestStarted(true);
+      void getSignedProductImage(product.image_path, 400).then((url) => {
+        setImageUrl(url);
+        if (!url) setImageFailed(true);
+      });
+      return;
+    }
+    const observer = new IntersectionObserver((entries) => {
+      if (!entries.some((entry) => entry.isIntersecting)) return;
+      setRequestStarted(true);
+      void getSignedProductImage(product.image_path, 400).then((url) => {
+        if (!active) return;
+        setImageUrl(url);
+        if (!url) setImageFailed(true);
+      });
+      observer.disconnect();
+    }, { rootMargin: "250px" });
+    observer.observe(node);
+    return () => { active = false; observer.disconnect(); };
+  }, [product.id, product.image_path, requestStarted, imageUrl]);
+
   return (
-    <article className="group flex h-full flex-col overflow-hidden rounded-[1.45rem] border border-[#eee5d7] bg-white shadow-[0_5px_20px_rgba(67,45,22,0.07)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_14px_32px_rgba(67,45,22,0.13)]">
-      <div className="relative aspect-[4/4.2] overflow-hidden bg-[#f3eee5] p-2.5 sm:p-3">
-        {imageUrl ? (
-          <>
-            {!imageLoaded && (
-              <div
-                aria-label="جارٍ تحميل صورة المنتج"
-                role="progressbar"
-                className="absolute inset-2.5 z-[1] flex items-center justify-center rounded-[1rem] bg-[#eee7da]"
-              >
-                <LoaderCircle aria-hidden="true" className="size-6 animate-spin text-[#9a896f]" />
-              </div>
-            )}
-            <img
-              src={imageUrl}
-              alt={product.title}
-              className={`size-full rounded-[1rem] object-contain transition-[opacity,transform] duration-500 group-hover:scale-[1.025] ${imageLoaded ? "opacity-100" : "opacity-0 blur-sm"}`}
-              loading="lazy"
-              decoding="async"
-              onLoad={() => setImageLoaded(true)}
-              onError={() => setImageFailed(true)}
-            />
-          </>
+    <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-[#eee5d7] bg-white shadow-[0_5px_20px_rgba(67,45,22,0.07)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_14px_32px_rgba(67,45,22,0.13)]">
+      <div
+        ref={imageContainerRef}
+        className="relative h-[300px] w-full overflow-hidden bg-[#eee7da]"
+      >
+        
+        {imageUrlToShow ? (
+          <img
+            src={imageUrlToShow}
+            alt={product.title}
+            width={600}
+            height={400}
+            className={`h-full w-full object-cover transition-opacity duration-200 ${imageLoaded ? "opacity-100" : "opacity-0"}`}
+            loading="lazy"
+            decoding="async"
+            onLoad={() => setImageLoaded(true)}
+            onError={() => setImageFailed(true)}
+          />
         ) : (
-          <div className="flex size-full flex-col items-center justify-center gap-2 rounded-[1rem] bg-[#eee7da] text-center text-[#9a896f]">
-            <Package aria-hidden="true" className="size-10" />
-            <span className="text-xs">صورة المنتج غير متاحة</span>
+          <div className="absolute inset-0 flex h-full w-full flex-col items-center justify-center bg-[#eee7da] text-center text-[#9a896f]">
+            {imageTimedOut || imageFailed ? (
+              <img src={PRODUCT_IMAGE_FALLBACK} alt="صورة افتراضية للمنتج" width={600} height={400} className="h-full w-full object-cover" loading="lazy" decoding="async" />
+            ) : (
+              <span className="size-10" aria-hidden="true" />
+            )}
           </div>
         )}
-        <button
-          type="button"
-          onClick={onQuickView}
-          aria-label={`معاينة ${product.title}`}
-          className="absolute bottom-4 right-4 inline-flex size-12 items-center justify-center rounded-full border border-white/80 bg-white/70 text-[#593c20] shadow-[0_4px_18px_rgba(65,42,20,0.18)] backdrop-blur-xl transition hover:scale-105 hover:bg-white/90 hover:shadow-[0_0_20px_rgba(213,173,104,0.55)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b48948]"
-        >
-          <Eye aria-hidden="true" className="size-5" />
-        </button>
-        {product.category && (
-          <span className="absolute left-4 top-4 max-w-[65%] truncate rounded-full border border-white/70 bg-white/85 px-3 py-1 text-[10px] font-bold text-[#745832] shadow-sm backdrop-blur-sm">
-            {product.category}
-          </span>
-        )}
+        <div className="absolute inset-x-3 top-3 z-10 flex items-center justify-between gap-2">
+          <span className="rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-extrabold text-white shadow-sm">فوري</span>
+          <span className="rounded-full bg-white px-3 py-1.5 text-xs font-extrabold text-[#38513a] shadow-sm">متوفر</span>
+        </div>
+        <div className="absolute bottom-3 left-3 z-10 flex items-center gap-2">
+          <button type="button" onClick={onAdd} disabled={product.stock < 1} aria-label={`أضف ${product.title} للسلة`} className="inline-flex size-11 items-center justify-center rounded-full bg-white text-[#4a3020] shadow-lg transition hover:scale-105 hover:bg-[#fff8ed] disabled:opacity-45">
+            <ShoppingBag aria-hidden="true" className="size-5" />
+          </button>
+          <button type="button" onClick={onQuickView} aria-label={`معاينة ${product.title}`} className="inline-flex size-11 items-center justify-center rounded-full bg-white text-[#4a3020] shadow-lg transition hover:scale-105 hover:bg-[#fff8ed]">
+            <Eye aria-hidden="true" className="size-5" />
+          </button>
+        </div>
       </div>
 
-      <div className="flex flex-1 flex-col px-3.5 pb-4 pt-3.5 sm:px-4 sm:pb-5 sm:pt-4">
+      <div className="flex flex-1 flex-col px-4 pb-4 pt-4 sm:px-5 sm:pb-5">
         <h3 className="line-clamp-2 min-h-10 text-sm font-extrabold leading-5 text-[#3d2b1d] sm:text-base sm:leading-6">
           {product.title}
         </h3>
@@ -412,7 +459,7 @@ function ProductCard({
           )}
         </div>
         <div className="mt-2.5 flex min-h-7 flex-wrap items-center gap-1.5">
-          <span className="text-base font-extrabold text-[#d77a32] sm:text-lg">
+          <span className="text-lg font-extrabold text-[#f07826] sm:text-xl">
             {formatMoney(Number(product.price), product.currency)}
           </span>
           {product.old_price != null && product.old_price > product.price && (
@@ -426,14 +473,7 @@ function ProductCard({
             </span>
           )}
         </div>
-        <button
-          type="button"
-          onClick={onAdd}
-          disabled={product.stock < 1}
-          className="mt-auto flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#4a3020] px-2 text-xs font-bold text-white shadow-sm transition hover:bg-[#382719] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a97a3d] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-45 sm:mt-4 sm:text-sm"
-        >
-          <ShoppingBag aria-hidden="true" className="size-4" /> أضف للسلة
-        </button>
+
       </div>
     </article>
   );
@@ -455,7 +495,6 @@ function QuickViewDialog({
   const [quantity, setQuantity] = useState(1);
   const [copied, setCopied] = useState(false);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [imageLoading, setImageLoading] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
 
   useEffect(() => {
@@ -463,17 +502,13 @@ function QuickViewDialog({
     setCopied(false);
     setImageUrl(null);
     setImageFailed(false);
-    if (!product || !open) {
-      setImageLoading(false);
-      return;
-    }
+    if (!product || !open) return;
 
     let active = true;
-    setImageLoading(true);
     void getSignedProductImage(product.image_path, 1200).then((url) => {
       if (!active) return;
       setImageUrl(url);
-      if (!url) setImageLoading(false);
+      if (!url) setImageFailed(true);
     });
     return () => {
       active = false;
@@ -507,9 +542,15 @@ function QuickViewDialog({
                 <img
                   src={imageUrl}
                   alt={product.title}
+                  width={800}
+                  height={450}
                   className="size-full object-contain"
+                  loading="lazy"
                   decoding="async"
+                  onError={() => setImageFailed(true)}
                 />
+              ) : imageFailed ? (
+                <img src="/marketplace-product-placeholder.svg" alt="صورة افتراضية للمنتج" width={800} height={450} className="size-full object-contain" loading="lazy" decoding="async" />
               ) : (
                 <div className="flex size-full items-center justify-center text-[#a18e71]">
                   <Package aria-hidden="true" className="size-14" />
