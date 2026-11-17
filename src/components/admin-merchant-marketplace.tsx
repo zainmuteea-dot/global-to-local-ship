@@ -4,6 +4,7 @@
    - التنسيقات مدمجة بالكامل (لا يحتاج لملف CSS خارجي)
    - متوافق مع جداول merchant_stores / merchant_products / merchant_orders
    - متوافق تماماً مع noUncheckedIndexedAccess الصارم
+   - عمليات الإدارة تستخدم RPCs المقيّدة بصلاحية المدير؛ لا توجد كتابات مباشرة للجداول
    ========================================================= */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,7 +12,7 @@ import type { ReactNode, ChangeEvent } from "react";
 
 /* ---------- الأنواع ---------- */
 type TabKey = "stores" | "products" | "orders";
-type OrderStatus = "new" | "done" | "cancel";
+type OrderStatus = "new" | "processing" | "done" | "cancel";
 
 interface Store {
   id: string;
@@ -33,6 +34,7 @@ interface ProductReview {
   name: string;
   category: string;
   price: number;
+  currency: string;
   oldPrice?: number;
   qty: number;
   submittedAt: string;
@@ -48,6 +50,8 @@ interface OrderItem {
   phone: string;
   product: string;
   amount: number;
+  commission: number;
+  currency: string;
   status: OrderStatus;
   date: string;
 }
@@ -70,13 +74,14 @@ const STATUS: Record<OrderStatus, { label: string; cls: string }> = {
   new: { label: "طلب جديد", cls: "new" },
   done: { label: "مكتمل", cls: "done" },
   cancel: { label: "ملغي", cls: "cancel" },
+  processing: { label: "قيد التنفيذ", cls: "review" },
 };
 
-function formatMoney(amount: number): string {
+function formatMoney(amount: number, currency = "YER"): string {
   try {
     return new Intl.NumberFormat("ar-YE", {
       style: "currency",
-      currency: "YER",
+      currency,
       maximumFractionDigits: 0,
     }).format(amount);
   } catch {
@@ -314,134 +319,102 @@ export function AdminMerchantMarketplace() {
   // فلتر الطلبات
   const [orderFilter, setOrderFilter] = useState<"all" | OrderStatus>("all");
 
-  /* ---------- جلب البيانات من Lovable Cloud ---------- */
+  /* ---------- قراءة بيانات السوق عبر RPC آمن للمتاجر وقراءات محمية ---------- */
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const db = supabase as any;
 
-      // 1) جلب المتاجر (دعم اسم الجدول merchant_stores أو stores)
-      let sRes = await db
-        .from("merchant_stores")
-        .select("id, name, phone, owner_id, commission_rate, is_active, color, created_at")
-        .order("created_at", { ascending: false });
+      // بيانات المتاجر تأتي من RPC يتحقق من صلاحية المدير داخل قاعدة البيانات.
+      const { data: rawStores, error: storesError } = await db.rpc("merchant_admin_list_stores");
+      if (storesError) throw storesError;
+      const storeRows = rawStores || [];
 
-      let isMerchantPrefix = true;
-      if (sRes.error) {
-        isMerchantPrefix = false;
-        sRes = await db
-          .from("stores")
-          .select("id, name, phone, owner_id, commission, active, color, created_at, owner:profiles(full_name)")
-          .order("created_at", { ascending: false });
-      }
-
-      const rawStores = sRes.data || [];
-
-      // 2) جلب أسماء الملاك من profiles
-      const ownerIds = Array.from(new Set(rawStores.map((s: any) => s.owner_id).filter(Boolean)));
+      // يقتصر استعلام الملفات الشخصية على أسماء ملاك المتاجر الظاهرة للمدير.
+      const ownerIds = Array.from(new Set(storeRows.map((store: any) => store.owner_id).filter(Boolean)));
       let profileMap: Record<string, string> = {};
       if (ownerIds.length > 0) {
-        const { data: profs } = await db
+        const { data: profiles, error: profilesError } = await db
           .from("profiles")
           .select("id, full_name")
           .in("id", ownerIds);
-        if (profs) {
-          profileMap = Object.fromEntries(profs.map((p: any) => [p.id, p.full_name || "عميل"]));
-        }
+        if (profilesError) throw profilesError;
+        profileMap = Object.fromEntries((profiles || []).map((profile: any) => [profile.id, profile.full_name || "عميل"]));
       }
 
-      // 3) عد المنتجات لكل متجر
-      const prodTable = isMerchantPrefix ? "merchant_products" : "products";
-      const { data: prodCounts } = await db
-        .from(prodTable)
-        .select("store_id");
-      const countMap: Record<string, number> = {};
-      if (prodCounts) {
-        prodCounts.forEach((p: any) => {
-          if (p.store_id) countMap[p.store_id] = (countMap[p.store_id] || 0) + 1;
-        });
-      }
-
-      const mappedStores: Store[] = rawStores.map((s: any) => {
-        const comm = s.commission !== undefined
-          ? Number(s.commission)
-          : Math.round(Number(s.commission_rate || 0.1) * 100);
-        return {
-          id: s.id,
-          name: s.name,
-          phone: s.phone || "",
-          products: countMap[s.id] || 0,
-          ownerId: s.owner_id,
-          ownerName: s.owner?.full_name || profileMap[s.owner_id] || "مالك المتجر",
-          commission: comm,
-          active: s.active !== undefined ? Boolean(s.active) : Boolean(s.is_active),
-          color: s.color || DEFAULT_COLOR,
-        };
-      });
+      const mappedStores: Store[] = storeRows.map((store: any, index: number) => ({
+        id: store.id,
+        name: store.name,
+        phone: store.contact_phone || "",
+        products: Number(store.product_count || 0),
+        ownerId: store.owner_id,
+        ownerName: profileMap[store.owner_id] || "مالك المتجر",
+        commission: Number(store.commission_rate ?? 0.1) * 100,
+        active: store.status === "active",
+        // اللون للعرض فقط؛ مخطط قاعدة البيانات لا يحفظ لونًا مخصصًا للمتجر.
+        color: PALETTE[index % PALETTE.length] || DEFAULT_COLOR,
+      }));
       setStores(mappedStores);
 
       const firstStore = mappedStores[0];
-      if (firstStore && !expandedId) {
-        setExpandedId(firstStore.id);
-      }
+      if (firstStore && !expandedId) setExpandedId(firstStore.id);
 
-      // 4) جلب المنتجات قيد المراجعة
-      const { data: rawProds } = await db
-        .from(prodTable)
-        .select("id, store_id, name, category, price, old_price, qty, status, created_at")
-        .eq("status", "pending")
+      // القراءة المباشرة هنا للعرض فقط، وتخضع لسياسات RLS الخاصة بالمدير.
+      const { data: rawProducts, error: productsError } = await db
+        .from("merchant_products")
+        .select("id, store_id, title, category, price, currency, stock, status, created_at")
+        .eq("status", "pending_review")
         .order("created_at", { ascending: false });
+      if (productsError) throw productsError;
 
-      const storeMap = Object.fromEntries(mappedStores.map((st) => [st.id, st]));
-
-      const mappedProds: ProductReview[] = (rawProds || []).map((p: any) => {
-        const st = storeMap[p.store_id];
+      const storeMap = Object.fromEntries(mappedStores.map((store) => [store.id, store]));
+      setReviews((rawProducts || []).map((product: any) => {
+        const store = storeMap[product.store_id];
         return {
-          id: p.id,
-          storeId: p.store_id,
-          storeName: st?.name || "متجر",
-          storeColor: st?.color || DEFAULT_COLOR,
-          name: p.name,
-          category: p.category || "عام",
-          price: Number(p.price || 0),
-          oldPrice: p.old_price ? Number(p.old_price) : undefined,
-          qty: Number(p.qty || 1),
-          submittedAt: p.created_at ? new Date(p.created_at).toLocaleDateString("ar-YE") : "الآن",
+          id: product.id,
+          storeId: product.store_id,
+          storeName: store?.name || "متجر",
+          storeColor: store?.color || DEFAULT_COLOR,
+          name: product.title,
+          category: product.category || "عام",
+          price: Number(product.price || 0),
+          currency: product.currency || "YER",
+          qty: Number(product.stock || 0),
+          submittedAt: product.created_at ? new Date(product.created_at).toLocaleDateString("ar-YE") : "الآن",
         };
-      });
-      setReviews(mappedProds);
+      }));
 
-      // 5) جلب الطلبات
-      const orderTable = isMerchantPrefix ? "merchant_orders" : "orders";
-      const { data: rawOrders } = await db
-        .from(orderTable)
-        .select("id, code, store_id, customer_name, customer_phone, product_name, amount, total_amount, status, created_at")
+      const { data: rawOrders, error: ordersError } = await db
+        .from("merchant_orders")
+        .select("id, store_id, customer_name, customer_phone, product_title, total_amount, commission_amount, currency, status, created_at")
         .order("created_at", { ascending: false })
         .limit(50);
+      if (ordersError) throw ordersError;
 
-      const mappedOrders: OrderItem[] = (rawOrders || []).map((o: any) => {
-        const st = storeMap[o.store_id];
-        let stCode: OrderStatus = "new";
-        if (o.status === "completed" || o.status === "done" || o.status === "confirmed") stCode = "done";
-        else if (o.status === "cancelled" || o.status === "cancel") stCode = "cancel";
-
+      setOrders((rawOrders || []).map((order: any) => {
+        const store = storeMap[order.store_id];
+        let status: OrderStatus = "new";
+        if (["confirmed", "preparing", "ready"].includes(order.status)) status = "processing";
+        else if (order.status === "delivered") status = "done";
+        else if (order.status === "cancelled") status = "cancel";
         return {
-          id: o.id,
-          code: o.code || o.id.slice(0, 8),
-          storeId: o.store_id,
-          storeName: st?.name || "المتجر",
-          storeColor: st?.color || DEFAULT_COLOR,
-          customer: o.customer_name || "عميل",
-          phone: o.customer_phone || "",
-          product: o.product_name || "منتج",
-          amount: Number(o.amount || o.total_amount || 0),
-          status: stCode,
-          date: o.created_at ? new Date(o.created_at).toLocaleDateString("ar-YE") : "اليوم",
+          id: order.id,
+          code: String(order.id).slice(0, 8),
+          storeId: order.store_id,
+          storeName: store?.name || "المتجر",
+          storeColor: store?.color || DEFAULT_COLOR,
+          customer: order.customer_name || "عميل",
+          phone: order.customer_phone || "",
+          product: order.product_title || "منتج",
+          amount: Number(order.total_amount || 0),
+          commission: Number(order.commission_amount || 0),
+          currency: order.currency || "YER",
+          status,
+          date: order.created_at ? new Date(order.created_at).toLocaleDateString("ar-YE") : "اليوم",
         };
-      });
-      setOrders(mappedOrders);
+      }));
     } catch (err: any) {
-      fireToast("تعذر جلب البيانات");
+      fireToast("تعذر جلب البيانات. تحقق من صلاحية الإدارة والاتصال.");
     } finally {
       setLoading(false);
     }
@@ -451,37 +424,31 @@ export function AdminMerchantMarketplace() {
     load();
   }, [load]);
 
-  /* ---------- بحث العملاء ---------- */
+  /* ---------- بحث العملاء عبر RPC مخصص للمدير ---------- */
   const runSearch = useCallback(async () => {
     const q = query.trim();
-    if (!q) {
+    if (q.length < 2) {
       setResults([]);
       return;
     }
     setSearching(true);
     try {
-      const db = supabase as any;
-      const { data } = await db
-        .from("profiles")
-        .select("id, full_name, phone")
-        .or(`full_name.ilike.%${q}%,phone.ilike.%${q}%`)
-        .limit(6);
-
-      setResults(
-        (data || []).map((p: any) => ({
-          id: p.id,
-          name: p.full_name || "بدون اسم",
-          phone: p.phone || "بدون هاتف",
-        }))
-      );
+      const { data, error } = await (supabase as any).rpc("merchant_admin_candidates", { _search: q });
+      if (error) throw error;
+      setResults((data || []).map((candidate: any) => ({
+        id: candidate.user_id,
+        name: candidate.full_name || "بدون اسم",
+        phone: candidate.phone || "بدون هاتف",
+      })));
     } catch {
       setResults([]);
+      fireToast("تعذر البحث عن العملاء");
     } finally {
       setSearching(false);
     }
-  }, [query]);
+  }, [query, fireToast]);
 
-  /* ---------- إنشاء متجر جديد ---------- */
+  /* ---------- إنشاء متجر عبر RPC إداري آمن ---------- */
   const createStore = async () => {
     if (!picked) {
       fireToast("اختر عميلاً أولاً");
@@ -494,33 +461,29 @@ export function AdminMerchantMarketplace() {
     setCreating(true);
     try {
       const db = supabase as any;
-      const commRate = Number(newStoreCommission) / 100;
-
-      // محاولة الإدراج في merchant_stores
-      let res = await db.from("merchant_stores").insert({
-        owner_id: picked.id,
-        name: newStoreName.trim(),
-        phone: newStorePhone.trim() || picked.phone,
-        commission_rate: commRate,
-        color: newStoreColor,
-        is_active: true,
+      const { data: storeId, error } = await db.rpc("merchant_admin_create_store", {
+        _owner_id: picked.id,
+        _name: newStoreName.trim(),
+        _contact_phone: newStorePhone.trim() || picked.phone,
+        _city: "",
       });
+      if (error) throw error;
 
-      if (res.error) {
-        // تراجع إلى جدول stores إن كان مستخدماً
-        res = await db.from("stores").insert({
-          owner_id: picked.id,
-          name: newStoreName.trim(),
-          phone: newStorePhone.trim() || picked.phone,
-          commission: Number(newStoreCommission),
-          color: newStoreColor,
-          active: true,
+      // الإنشاء يستخدم عمولة افتراضية 10%؛ نضبط العمولة المختارة عبر RPC منفصل وآمن.
+      let commissionSaveFailed = false;
+      const requestedRate = Number(newStoreCommission) / 100;
+      if (storeId && requestedRate !== 0.1) {
+        const { error: termsError } = await db.rpc("merchant_admin_set_store_terms", {
+          _store_id: storeId,
+          _status: "active",
+          _commission_rate: requestedRate,
         });
+        commissionSaveFailed = Boolean(termsError);
       }
 
-      if (res.error) throw res.error;
-
-      fireToast(`تم إنشاء متجر «${newStoreName.trim()}»`);
+      fireToast(commissionSaveFailed
+        ? `تم إنشاء «${newStoreName.trim()}»، لكن تعذر حفظ العمولة؛ راجعها من بطاقة المتجر.`
+        : `تم إنشاء متجر «${newStoreName.trim()}»`);
       setPicked(null);
       setNewStoreName("");
       setNewStorePhone("");
@@ -534,103 +497,85 @@ export function AdminMerchantMarketplace() {
     }
   };
 
-  /* ---------- تعديل المتجر ---------- */
-  const updateStore = async (id: string, updates: Partial<Store>) => {
+  /* ---------- تعديل الحالة والعمولة عبر RPC إداري آمن ---------- */
+  const updateStore = async (id: string, updates: Pick<Partial<Store>, "commission" | "active">) => {
+    const store = stores.find((item) => item.id === id);
+    if (!store) return;
     try {
-      const db = supabase as any;
-      const payload: any = {};
-      if (updates.name !== undefined) payload.name = updates.name;
-      if (updates.phone !== undefined) payload.phone = updates.phone;
-      if (updates.commission !== undefined) {
-        payload.commission = updates.commission;
-        payload.commission_rate = updates.commission / 100;
-      }
-      if (updates.active !== undefined) {
-        payload.active = updates.active;
-        payload.is_active = updates.active;
-      }
-
-      let res = await db.from("merchant_stores").update(payload).eq("id", id);
-      if (res.error) {
-        res = await db.from("stores").update(payload).eq("id", id);
-      }
-      if (res.error) throw res.error;
-
-      setStores((prev) => prev.map((s) => (s.id === id ? { ...s, ...updates } : s)));
+      const { error } = await (supabase as any).rpc("merchant_admin_set_store_terms", {
+        _store_id: id,
+        _status: (updates.active ?? store.active) ? "active" : "suspended",
+        _commission_rate: (updates.commission ?? store.commission) / 100,
+      });
+      if (error) throw error;
+      setStores((previous) => previous.map((item) => item.id === id ? { ...item, ...updates } : item));
       fireToast("تم حفظ التعديلات");
-    } catch (err: any) {
-      fireToast("فشل الحفظ");
+    } catch {
+      fireToast("فشل الحفظ؛ لم تُحفظ تغييرات المتجر");
     }
   };
 
-  /* ---------- حذف متجر ---------- */
+  /* ---------- إيقاف متجر بأمان بدل الحذف غير المدعوم ---------- */
   const deleteStore = async (id: string, name: string) => {
-    if (!window.confirm(`هل أنت متأكد من حذف متجر «${name}»؟`)) return;
+    if (!window.confirm(`هل تريد إيقاف متجر «${name}»؟ سيبقى سجل المتجر وطلباته محفوظة.`)) return;
+    const store = stores.find((item) => item.id === id);
+    if (!store) return;
     try {
-      const db = supabase as any;
-      let res = await db.from("merchant_stores").delete().eq("id", id);
-      if (res.error) {
-        res = await db.from("stores").delete().eq("id", id);
-      }
-      if (res.error) throw res.error;
-
-      setStores((prev) => prev.filter((s) => s.id !== id));
-      fireToast(`تم حذف «${name}»`);
-    } catch (err: any) {
-      fireToast("فشل حذف المتجر");
+      const { error } = await (supabase as any).rpc("merchant_admin_set_store_terms", {
+        _store_id: id,
+        _status: "suspended",
+        _commission_rate: store.commission / 100,
+      });
+      if (error) throw error;
+      setStores((previous) => previous.map((item) => item.id === id ? { ...item, active: false } : item));
+      fireToast(`تم إيقاف «${name}» مع الحفاظ على سجله`);
+    } catch {
+      fireToast("تعذر إيقاف المتجر");
     }
   };
 
-  /* ---------- مراجعة المنتجات ---------- */
+  /* ---------- مراجعة المنتجات عبر RPC إداري آمن ---------- */
   const reviewProduct = async (id: string, accept: boolean, name: string) => {
     try {
-      const db = supabase as any;
-      const newStatus = accept ? "approved" : "rejected";
-      let res = await db.from("merchant_products").update({ status: newStatus }).eq("id", id);
-      if (res.error) {
-        res = await db.from("products").update({ status: newStatus }).eq("id", id);
-      }
-      if (res.error) throw res.error;
-
-      setReviews((prev) => prev.filter((r) => r.id !== id));
+      const { error } = await (supabase as any).rpc("merchant_admin_review_product", {
+        _product_id: id,
+        _decision: accept ? "approved" : "rejected",
+        _review_note: "",
+      });
+      if (error) throw error;
+      setReviews((previous) => previous.filter((product) => product.id !== id));
       fireToast(accept ? `تم اعتماد «${name}»` : `تم رفض «${name}»`);
-    } catch (err: any) {
-      fireToast("فشل التحديث");
+    } catch {
+      fireToast("فشل تحديث المنتج؛ لم يتغير قرار المراجعة");
     }
   };
 
-  /* ---------- تأكيد طلب ---------- */
+  /* ---------- تأكيد الطلب عبر RPC يتحقق من انتقال الحالة والصلاحية ---------- */
   const confirmOrder = async (id: string, code: string) => {
     try {
-      const db = supabase as any;
-      let res = await db.from("merchant_orders").update({ status: "confirmed" }).eq("id", id);
-      if (res.error) {
-        res = await db.from("orders").update({ status: "done" }).eq("id", id);
-      }
-      if (res.error) throw res.error;
-
-      setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status: "done" } : o)));
+      const { error } = await (supabase as any).rpc("merchant_update_order_status", {
+        _order_id: id,
+        _next_status: "confirmed",
+      });
+      if (error) throw error;
       fireToast(`تم تأكيد الطلب #${code}`);
-    } catch (err: any) {
-      fireToast("فشل تأكيد الطلب");
+      await load();
+    } catch {
+      fireToast("فشل تأكيد الطلب؛ تحقق من حالة الطلب وصلاحية الإدارة");
     }
   };
 
   /* ---------- الإحصائيات المحسوبة ---------- */
+  // لا نجمع عملات مختلفة في رقم واحد؛ الـKPIs تجمع سجلات YER المسلّمة فقط.
   const totalVolume = useMemo(
-    () => orders.filter((o) => o.status === "done").reduce((acc, o) => acc + o.amount, 0),
+    () => orders.filter((order) => order.status === "done" && order.currency === "YER").reduce((sum, order) => sum + order.amount, 0),
     [orders]
   );
 
-  const totalCommission = useMemo(() => {
-    return orders
-      .filter((o) => o.status === "done")
-      .reduce((acc, o) => {
-        const st = stores.find((s) => s.id === o.storeId);
-        const rate = (st?.commission || 10) / 100;
-        return acc + o.amount * rate;
-      }, 0);
-  }, [orders, stores]);
+  const totalCommission = useMemo(
+    () => orders.filter((order) => order.status === "done" && order.currency === "YER").reduce((sum, order) => sum + order.commission, 0),
+    [orders]
+  );
 
   const filteredOrders = useMemo(() => {
     if (orderFilter === "all") return orders;
@@ -685,7 +630,7 @@ export function AdminMerchantMarketplace() {
 
               <div className="ah-kpis">
                 <div className="kpi">
-                  <b>{stores.length}</b>
+                  <b>{stores.filter((store) => store.active).length}</b>
                   <span>المتاجر النشطة</span>
                 </div>
                 <div className="kpi gold">
@@ -797,11 +742,12 @@ export function AdminMerchantMarketplace() {
 
                                     <div className="st-row">
                                       <div className="fld">
-                                        <label><IcoPhone /> هاتف المتجر</label>
+                                        <label><IcoPhone /> هاتف المتجر (للعرض فقط)</label>
                                         <input
                                           className="inp"
                                           defaultValue={st.phone}
-                                          onBlur={(e) => updateStore(st.id, { phone: e.target.value })}
+                                          readOnly
+                                          aria-label="هاتف المتجر للعرض فقط؛ لا يوجد إجراء إداري آمن لتعديله"
                                         />
                                       </div>
 
@@ -811,7 +757,7 @@ export function AdminMerchantMarketplace() {
                                           className="inp"
                                           type="number"
                                           min={0}
-                                          max={100}
+                                          max={30}
                                           defaultValue={st.commission}
                                           onBlur={(e) =>
                                             updateStore(st.id, { commission: Number(e.target.value) || 0 })
@@ -842,7 +788,7 @@ export function AdminMerchantMarketplace() {
                                         onClick={() => deleteStore(st.id, st.name)}
                                         type="button"
                                       >
-                                        <IcoX /> حذف المتجر
+                                        <IcoX /> إيقاف المتجر
                                       </button>
                                       <span className="st-note">
                                         التعديلات تُحفظ تلقائياً بمجرد الخروج من الحقل
@@ -1041,8 +987,8 @@ export function AdminMerchantMarketplace() {
                               </div>
 
                               <div className="price">
-                                <b>{formatMoney(r.price)}</b>
-                                {r.oldPrice && <s>{formatMoney(r.oldPrice)}</s>}
+                                <b>{formatMoney(r.price, r.currency)}</b>
+                                {r.oldPrice && <s>{formatMoney(r.oldPrice, r.currency)}</s>}
                               </div>
 
                               <div className="acts">
@@ -1140,7 +1086,7 @@ export function AdminMerchantMarketplace() {
                               </span>
                             </div>
 
-                            <div className="o-amt">{formatMoney(o.amount)}</div>
+                            <div className="o-amt">{formatMoney(o.amount, o.currency)}</div>
 
                             <div className="o-state">
                               <span className={`tag dot ${stStatus ? stStatus.cls : ""}`}>
@@ -1159,7 +1105,7 @@ export function AdminMerchantMarketplace() {
                                 </button>
                               ) : (
                                 <span style={{ fontSize: 12, color: "var(--ink-2)" }}>
-                                  {o.status === "done" ? "تم التحصيل" : "ملغي"}
+                                  {o.status === "done" ? "تم التسليم" : o.status === "processing" ? "قيد التنفيذ" : "ملغي"}
                                 </span>
                               )}
                             </div>
