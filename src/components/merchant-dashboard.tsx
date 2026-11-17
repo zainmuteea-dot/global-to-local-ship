@@ -726,7 +726,7 @@ function ProductForm({
     if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
     setImagePreviewUrl(URL.createObjectURL(file));
     setUploadingImage(true);
-    setImageUploadMessage("جارٍ ضغط الصورة وإنشاء نسختي WebP…");
+    setImageUploadMessage("جارٍ ضغط الصورة إلى عرض أقصى 800px وإنشاء نسختي WebP بجودة 70%…");
     let uploadedPaths: string[] = [];
     try {
       const variants = await createProductWebpVariants(file);
@@ -743,7 +743,7 @@ function ProductForm({
         if (uploadError) throw uploadError;
         uploadedPaths.push(variantPath);
       }
-      const fullVariantPath = `${basePath}-1200.webp`;
+      const fullVariantPath = `${basePath}-800.webp`;
       setSelectedImagePath(fullVariantPath);
       setUploadedImagePath(fullVariantPath);
       if (previousTemporaryPath && previousTemporaryPath !== draftImagePath) {
@@ -752,7 +752,7 @@ function ProductForm({
           .from("merchant-product-images")
           .remove(previousVariants ?? [previousTemporaryPath]);
       }
-      setImageUploadMessage("تم ضغط الصورة ورفع نسختي WebP (400px و1200px) بنجاح.");
+      setImageUploadMessage("تم ضغط الصورة ورفع نسختي WebP (400px و800px) بجودة 70% بنجاح.");
     } catch (error) {
       if (uploadedPaths.length) {
         await supabase.storage.from("merchant-product-images").remove(uploadedPaths);
