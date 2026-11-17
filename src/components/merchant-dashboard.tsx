@@ -31,7 +31,11 @@ async function loadMyStore() {
 }
 
 async function loadMyProducts(storeId: string) {
-  const { data, error } = await db.from("merchant_products").select("*").eq("store_id", storeId).order("created_at", { ascending: false });
+  const { data, error } = await db
+    .from("merchant_products")
+    .select("id,store_id,title,description,category,price,old_price,discount_percent,sku,currency,stock,image_path,status,review_note,created_at,updated_at")
+    .eq("store_id", storeId)
+    .order("created_at", { ascending: false });
   if (error) throw error;
   const products = (data ?? []) as MerchantProduct[];
   const images = await Promise.all(products.map((product) => getSignedProductImage(product.image_path, 400)));
