@@ -94,8 +94,8 @@ export function MerchantDashboard() {
   }
 
   return (
-    <main dir="rtl" className="mx-auto flex w-full max-w-[1600px] flex-col gap-7 px-4 py-6 sm:px-6 sm:py-8 xl:px-10">
-      <header className="relative isolate overflow-hidden rounded-[28px] bg-gradient-to-l from-[#0B3A66] via-[#0E4577] to-[#0B3A66] p-6 text-white shadow-xl shadow-[#0B3A66]/15 sm:p-8 lg:p-10">
+    <main dir="rtl" className="mx-auto flex w-full max-w-[1600px] flex-col gap-5 px-3 py-4 sm:gap-7 sm:px-6 sm:py-8 xl:px-10">
+      <header className="relative isolate overflow-hidden rounded-2xl bg-gradient-to-l from-[#0B3A66] via-[#0E4577] to-[#0B3A66] p-5 text-white shadow-xl shadow-[#0B3A66]/15 sm:rounded-[28px] sm:p-8 lg:p-10">
         <div aria-hidden="true" className="pointer-events-none absolute -left-16 -top-24 -z-10 size-72 rounded-full bg-[#F58220]/25 blur-3xl" />
         <div aria-hidden="true" className="pointer-events-none absolute -bottom-24 right-1/3 -z-10 size-56 rounded-full bg-white/10 blur-3xl" />
         <div className="relative flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
@@ -109,13 +109,13 @@ export function MerchantDashboard() {
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <div className="min-w-36 rounded-2xl border border-white/15 bg-white/10 px-5 py-3 backdrop-blur-sm"><p className="text-xs text-white/70">عمولة المنصة</p><p className="mt-1 text-2xl font-extrabold">{(Number(store.commission_rate) * 100).toLocaleString("ar-YE")}٪</p></div>
-            <Button asChild disabled={store.status !== "active"} className="h-12 rounded-xl bg-[#F58220] px-5 font-bold text-white shadow-lg shadow-black/10 hover:bg-[#e97514]"><a href="/merchant?view=add-product"><PackagePlus aria-hidden="true" className="ml-2 size-4" />أضف منتج</a></Button>
+            <Button asChild disabled={store.status !== "active"} className="min-h-11 w-full rounded-xl bg-[#F58220] px-5 font-bold text-white shadow-lg shadow-black/10 transition-colors hover:bg-[#e97514] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFC531] focus-visible:ring-offset-2 sm:w-auto"><a href="/merchant?view=add-product"><PackagePlus aria-hidden="true" className="ml-2 size-4" />أضف منتج</a></Button>
           </div>
         </div>
         <div aria-hidden="true" className="absolute bottom-0 right-0 h-1 w-1/3 bg-gradient-to-l from-[#F58220] to-[#FFC531]" />
       </header>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-label="ملخص المتجر">
+      <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3" aria-label="ملخص المتجر">
         <Metric icon={<PackagePlus aria-hidden="true" />} label="المنتجات" value={products.length.toLocaleString("ar-YE")} />
         <Metric icon={<Truck aria-hidden="true" />} label="الطلبات النشطة" value={pendingOrders.toLocaleString("ar-YE")} />
         <Metric icon={<BadgeCheck aria-hidden="true" />} label="حصة التاجر من الطلبات المسلّمة بالريال اليمني" value={formatMoney(sellerShareInYER, "YER")} />
@@ -123,20 +123,19 @@ export function MerchantDashboard() {
 
       {store.status === "suspended" && <p role="alert" className="rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">المتجر موقوف مؤقتًا. يمكنك الاطلاع على بياناتك، لكن الإضافة والطلبات الجديدة غير متاحة.</p>}
 
-      <section aria-label="إضافة المنتجات وبيانات المتجر" className="grid items-start gap-6 2xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.65fr)]">
+      <section aria-label="إضافة المنتجات وبيانات المتجر" className="grid min-w-0 items-start gap-4 sm:gap-6 2xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.65fr)]">
         <ProductForm store={store} onCreated={() => void mutateProducts()} />
         <StoreProfile store={store} onSaved={() => void mutateStore()} />
       </section>
 
       <ProductInventory products={products} error={productsError} onSaved={() => void mutateProducts()} active={store.status === "active"} />
 
-      <section aria-labelledby="merchant-shisha-heading" className="grid gap-6 rounded-3xl border border-[#0B3A66]/10 bg-[#0B3A66]/[0.025] p-4 sm:p-6 lg:grid-cols-2">
-        <div className="lg:col-span-2">
+      <section aria-labelledby="merchant-shisha-heading" className="grid gap-6 rounded-3xl border border-[#0B3A66]/10 bg-[#0B3A66]/[0.025] p-4 sm:p-6">
+        <div>
           <Badge variant="secondary" className="mb-2">قسم خاص</Badge>
           <h2 id="merchant-shisha-heading" className="text-2xl font-bold">معسلات المتجر</h2>
           <p className="mt-2 text-sm text-muted-foreground">أضف معسلات ومنتجات الشيشة وتابع الكمية والسعر وحالة المراجعة. لن تظهر المنتجات للعملاء قبل اعتماد الإدارة.</p>
         </div>
-        <ProductForm store={store} onCreated={() => void mutateProducts()} presetCategory="معسلات" />
         <ProductInventory
           products={products.filter(isShishaProduct)}
           error={productsError}
@@ -379,7 +378,7 @@ function StoreProfile({ store, onSaved }: { store: MerchantStorePrivate; onSaved
               <Button
                 type="button"
                 variant="ghost"
-                className="w-fit text-destructive"
+                className="min-h-10 w-fit text-rose-700 hover:bg-rose-50 hover:text-rose-800"
                 disabled={busy}
                 onClick={() => {
                   setStoreImagePath(null);
@@ -425,7 +424,7 @@ function StoreProfile({ store, onSaved }: { store: MerchantStorePrivate; onSaved
               {message}
             </p>
           )}
-          <Button type="submit" disabled={busy || store.status !== "active"}>
+          <Button type="submit" className="min-h-11 w-full rounded-xl bg-[#0B3A66] px-5 font-bold text-white hover:bg-[#082f54] focus-visible:ring-2 focus-visible:ring-[#FFC531] sm:w-auto" disabled={busy || store.status !== "active"}>
             {busy ? "جارٍ الحفظ…" : "حفظ بيانات المتجر"}
           </Button>
         </form>
@@ -689,9 +688,9 @@ function ProductForm({
             event.preventDefault();
             void persist();
           }}
-          className="grid gap-5 2xl:grid-cols-[minmax(0,1fr)_280px]"
+          className="grid min-w-0 gap-4 sm:gap-5 2xl:grid-cols-[minmax(0,1fr)_280px]"
         >
-          <div className="grid content-start gap-3 sm:grid-cols-2">
+          <div className="grid min-w-0 content-start gap-4 sm:grid-cols-2">
           <Field label="اسم المنتج">
             <Input
               required
@@ -774,10 +773,11 @@ function ProductForm({
             <span className="text-xs font-normal text-muted-foreground">
               ارفع صورة واضحة للمنتج - JPG أو PNG أو WebP - بحد أقصى 6 ميجابايت. الصورة اختيارية.
             </span>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               <Button
                 type="button"
                 variant="outline"
+                className="min-h-11 w-full border-[#0B3A66]/20 text-[#0B3A66] hover:border-[#0B3A66]/40 hover:bg-[#0B3A66]/5 sm:w-auto"
                 disabled={busy || uploadingImage || store.status !== "active"}
                 onClick={() => cameraInputRef.current?.click()}
               >
@@ -787,6 +787,7 @@ function ProductForm({
               <Button
                 type="button"
                 variant="outline"
+                className="min-h-11 w-full border-[#0B3A66]/20 text-[#0B3A66] hover:border-[#0B3A66]/40 hover:bg-[#0B3A66]/5 sm:w-auto"
                 disabled={busy || uploadingImage || store.status !== "active"}
                 onClick={() => galleryInputRef.current?.click()}
               >
@@ -856,7 +857,7 @@ function ProductForm({
             مباشرة بالكاميرا، ولن تظهر للزبائن إلا بعد اعتماد الإدارة.
           </p>
         <div className="flex flex-wrap gap-2 sm:col-span-2">
-            <Button type="submit" disabled={busy || uploadingImage || store.status !== "active"}>
+            <Button type="submit" className="min-h-12 w-full rounded-xl bg-[#F58220] px-6 font-bold text-white shadow-sm transition-colors hover:bg-[#e97514] focus-visible:ring-2 focus-visible:ring-[#0B3A66] sm:w-auto" disabled={busy || uploadingImage || store.status !== "active"}>
               {busy ? "جارٍ الإرسال…" : "إرسال للمراجعة"}
             </Button>
         </div>
@@ -1045,7 +1046,7 @@ function InventoryRow({
       </div>
       <div className="flex flex-col items-start gap-2 sm:items-end">
         <span className="text-xs text-muted-foreground">{product.currency}</span>
-        <Button size="sm" type="submit" variant="outline" disabled={busy || !active}>
+        <Button size="sm" type="submit" className="min-h-10 rounded-lg border-[#0B3A66]/25 px-4 font-semibold text-[#0B3A66] hover:bg-[#0B3A66]/5" variant="outline" disabled={busy || !active}>
           {busy ? "حفظ…" : "حفظ"}
         </Button>
         {message && (
@@ -1091,7 +1092,7 @@ function OrderRow({ order, onChanged }: { order: MerchantOrder; onChanged: () =>
   return (
     <article className="rounded-xl border p-4">
       <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="font-semibold">{order.product_title} <span className="text-muted-foreground">× {order.quantity.toLocaleString("ar-YE")}</span></p><p className="mt-1 text-sm">{order.customer_name} · {order.customer_phone}</p><p className="mt-1 text-xs text-muted-foreground">{order.customer_city} · {order.delivery_address}</p></div><Badge variant={order.status === "delivered" ? "secondary" : order.status === "cancelled" ? "destructive" : "outline"}>{orderStatusLabels[order.status]}</Badge></div>
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t pt-3"><span className="text-sm font-semibold">{formatMoney(Number(order.total_amount), order.currency)} <span className="font-normal text-muted-foreground">· {formatDate(order.created_at)}</span></span><div className="flex gap-2">{action && <Button size="sm" onClick={() => void changeStatus(action.status)} disabled={busy}>{busy ? "جارٍ التحديث…" : action.label}</Button>}{!["delivered", "cancelled"].includes(order.status) && <Button size="sm" variant="outline" onClick={() => void changeStatus("cancelled")} disabled={busy}>إلغاء</Button>}</div></div>
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t pt-3"><span className="text-sm font-semibold">{formatMoney(Number(order.total_amount), order.currency)} <span className="font-normal text-muted-foreground">· {formatDate(order.created_at)}</span></span><div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">{action && <Button className="min-h-10 w-full rounded-lg bg-[#0B3A66] px-4 font-semibold text-white hover:bg-[#082f54] sm:w-auto" size="sm" onClick={() => void changeStatus(action.status)} disabled={busy}>{busy ? "جارٍ التحديث…" : action.label}</Button>}{!["delivered", "cancelled"].includes(order.status) && <Button className="min-h-10 w-full rounded-lg border-rose-200 px-4 font-semibold text-rose-700 hover:bg-rose-50 sm:w-auto" size="sm" variant="outline" onClick={() => void changeStatus("cancelled")} disabled={busy}>إلغاء</Button>}</div></div>
       {error && <p role="alert" className="mt-2 text-xs text-destructive">{error}</p>}
     </article>
   );
