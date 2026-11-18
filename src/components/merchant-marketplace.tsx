@@ -8,7 +8,7 @@ import {
   Package,
   Search,
   ShoppingBag,
-  Home,
+  ArrowRight,
   LockKeyhole,
   X,
 } from "lucide-react";
@@ -26,10 +26,6 @@ import {
   writeCart,
   type CartItem,
 } from "@/lib/extension-cart";
-
-const PRODUCT_IMAGE_FALLBACK = `data:image/svg+xml,${encodeURIComponent(
-  '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400"><rect width="600" height="400" rx="24" fill="#eee7da"/><g fill="none" stroke="#ad9b80" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"><rect x="230" y="118" width="140" height="124" rx="18"/><path d="M230 154h140m-112 36h60m-60 28h42"/></g><text x="300" y="300" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#9a896f">صورة المنتج</text></svg>',
-)}`;
 
 function getStoreLocatorFromUrl(): string {
   if (typeof window === "undefined") return "";
@@ -113,14 +109,16 @@ export function MerchantMarketplace() {
   const selectedStore = useMemo(() => {
     if (!selectedStoreId) return null;
     const locator = normalizeStoreLocator(selectedStoreId);
-    return products.find((product) => {
-      const store = product.store as MarketplaceProduct["store"] & { slug?: string };
-      return (
-        store.id === selectedStoreId ||
-        normalizeStoreLocator(store.name) === locator ||
-        (store.slug ? normalizeStoreLocator(store.slug) === locator : false)
-      );
-    }) ?? null;
+    return (
+      products.find((product) => {
+        const store = product.store as MarketplaceProduct["store"] & { slug?: string };
+        return (
+          store.id === selectedStoreId ||
+          normalizeStoreLocator(store.name) === locator ||
+          (store.slug ? normalizeStoreLocator(store.slug) === locator : false)
+        );
+      }) ?? null
+    );
   }, [products, selectedStoreId]);
   const selectedStoreName = selectedStore?.store.name?.trim() || "السوق الشامل";
   const headerStoreName = selectedStoreId ? selectedStoreName : "السوق الشامل";
@@ -146,7 +144,14 @@ export function MerchantMarketplace() {
         product.description,
         product.category,
         product.sku,
-        (product as MarketplaceProduct & { color?: string; colour?: string; size?: string; sizes?: string[] }).color,
+        (
+          product as MarketplaceProduct & {
+            color?: string;
+            colour?: string;
+            size?: string;
+            sizes?: string[];
+          }
+        ).color,
         (product as MarketplaceProduct & { colour?: string }).colour,
         (product as MarketplaceProduct & { size?: string }).size,
         ...((product as MarketplaceProduct & { sizes?: string[] }).sizes ?? []),
@@ -159,58 +164,88 @@ export function MerchantMarketplace() {
   });
 
   return (
-    <main dir="rtl" className="min-h-screen bg-[#f7f2e8] text-[#382719]">
+    <main dir="rtl" className="min-h-screen bg-[#F5F0E8] text-[#3E2A1E]">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-7 sm:px-6 sm:py-10 lg:px-8">
-        <header className="rounded-[2rem] border border-[#e9dfcd] bg-[#fcfaf5] p-4 shadow-[0_8px_28px_rgba(72,48,24,0.05)] sm:p-6">
-          <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
+        <header className="w-full bg-transparent">
+          <div className="relative mx-auto flex h-[56px] items-center justify-between px-4">
             <Link
               to="/products"
               aria-label="رجوع إلى المتاجر"
-              className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-[#e4d6c0] bg-[#f4ecde] px-3 text-sm font-bold text-[#60472e] transition hover:bg-[#ece0cd]"
+              className="inline-flex h-[40px] items-center justify-center gap-2 rounded-full bg-[#E8DCC8] px-4 text-sm font-bold text-[#3E2A1E] transition hover:bg-[#dfcfb5]"
             >
-              رجوع <span aria-hidden="true">→</span>
+              <span>رجوع</span>
+              <ArrowRight aria-hidden="true" className="size-4" />
             </Link>
-            <h1 className="truncate text-center text-lg font-extrabold tracking-tight text-[#382719] sm:text-2xl">
-              {headerStoreName}
-            </h1>
+            <div className="absolute left-1/2 flex max-w-[55%] -translate-x-1/2 items-center justify-center gap-2.5">
+              <span
+                aria-hidden="true"
+                className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-[#4A2C1A] text-sm font-extrabold text-white"
+              >
+                {Array.from(headerStoreName.trim())[0] || "س"}
+              </span>
+              <h1 className="truncate text-center text-base font-extrabold tracking-tight text-[#3E2A1E] sm:text-lg">
+                {headerStoreName}
+              </h1>
+            </div>
             <Link
               to="/cart"
               aria-label={`السلة، ${cartCount} منتجات`}
-              className="relative inline-flex size-11 items-center justify-center rounded-full bg-[#4a3020] text-white shadow-sm transition hover:bg-[#382719]"
+              className="relative inline-flex size-12 shrink-0 items-center justify-center rounded-full bg-[#4A2C1A] text-white transition hover:bg-[#3E2A1E]"
             >
-              <ShoppingBag aria-hidden="true" className="size-5" />
-              <span className="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full border-2 border-[#fcfaf5] bg-[#b48948] px-1 text-[10px] font-extrabold leading-4 text-white">
+              <ShoppingBag aria-hidden="true" className="size-6" />
+              <span className="absolute -right-0.5 -top-0.5 inline-flex size-[18px] items-center justify-center rounded-full bg-[#E67E22] text-[10px] font-extrabold leading-none text-white">
                 {cartCount}
               </span>
             </Link>
           </div>
 
-          <div className="mt-4 flex flex-row gap-3">
-            <label className="relative min-w-0 flex-1">
+          <div className="mx-auto mt-2 flex h-12 flex-row gap-2 px-4">
+            <label className="relative h-12 min-w-0 flex-1">
               <span className="sr-only">ابحث باسم القطعة، اللون أو المقاس</span>
-              <Search aria-hidden="true" className="pointer-events-none absolute right-3.5 top-1/2 size-4 -translate-y-1/2 text-[#9b8c78]" />
+              <Search
+                aria-hidden="true"
+                className="pointer-events-none absolute right-4 top-1/2 size-4 -translate-y-1/2 text-[#9B8C78]"
+              />
               <Input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="ابحث باسم القطعة، اللون أو المقاس..."
-                className="h-12 rounded-xl border-[#e5dac7] bg-white pr-11 text-[#382719] placeholder:text-[#a49684] focus-visible:ring-[#b48948]"
+                className="h-12 rounded-full border-0 bg-white pr-11 text-[#3E2A1E] placeholder:text-[#A49684] focus-visible:ring-2 focus-visible:ring-[#E67E22]"
               />
             </label>
             <button
               type="button"
               aria-expanded={showFilters}
               aria-controls="marketplace-filters"
+              aria-label="فلتر المنتجات"
               onClick={() => setShowFilters((value) => !value)}
-              className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-xl border border-[#d9c8aa] bg-white px-4 text-sm font-bold text-[#60472e] transition hover:bg-[#f6f0e5] sm:px-5"
+              className="inline-flex size-12 shrink-0 items-center justify-center rounded-xl bg-white text-[#4A2C1A] transition hover:bg-[#fffaf3]"
             >
-              <span aria-hidden="true">☷</span> فلتر
+              <span aria-hidden="true" className="text-xl leading-none">
+                ☷
+              </span>
             </button>
           </div>
           {showFilters && (
-            <div id="marketplace-filters" className="mt-3 flex flex-wrap gap-2" aria-label="تصفية حسب التصنيف">
-              <button type="button" onClick={() => setSearch("")} className={`h-10 rounded-full px-4 text-sm font-bold ${search ? "border border-[#d9c8aa] bg-white text-[#6f5637]" : "bg-[#b48948] text-white"}`}>الكل</button>
+            <div
+              id="marketplace-filters"
+              className="mx-4 mt-3 flex flex-wrap gap-2"
+              aria-label="تصفية حسب التصنيف"
+            >
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className={`h-10 rounded-full px-4 text-sm font-bold ${search ? "border border-[#d9c8aa] bg-white text-[#6f5637]" : "bg-[#4A2C1A] text-white"}`}
+              >
+                الكل
+              </button>
               {categories.map((category) => (
-                <button key={category} type="button" onClick={() => setSearch(category)} className={`h-10 rounded-full border px-4 text-sm font-semibold ${search === category ? "border-[#b48948] bg-[#eee1c9] text-[#53391e]" : "border-[#d9c8aa] bg-white text-[#6f5637] hover:bg-[#f6f0e5]"}`}>
+                <button
+                  key={category}
+                  type="button"
+                  onClick={() => setSearch(category)}
+                  className={`h-10 rounded-full border px-4 text-sm font-semibold ${search === category ? "border-[#E67E22] bg-[#f7e6d6] text-[#3E2A1E]" : "border-[#e8dcc8] bg-white text-[#4A2C1A] hover:bg-[#fffaf3]"}`}
+                >
                   {category}
                 </button>
               ))}
@@ -255,10 +290,7 @@ export function MerchantMarketplace() {
           </div>
 
           {isLoading ? (
-            <div
-              className="grid grid-cols-2 gap-3 min-[480px]:grid-cols-3 sm:gap-5 xl:grid-cols-4"
-              aria-label="جارٍ تحميل المنتجات"
-            >
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3" aria-label="جارٍ تحميل المنتجات">
               {Array.from({ length: 8 }, (_, index) => (
                 <div key={index} className="h-80 animate-pulse rounded-[1.5rem] bg-[#ede4d5]" />
               ))}
@@ -289,7 +321,7 @@ export function MerchantMarketplace() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3 min-[480px]:grid-cols-3 sm:gap-5 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
               {visibleProducts.map((product) => (
                 <ProductCard
                   key={product.id}
@@ -364,8 +396,24 @@ function ProductCard({
   const [imageTimedOut, setImageTimedOut] = useState(false);
   const [requestStarted, setRequestStarted] = useState(false);
   const imageContainerRef = useRef<HTMLDivElement | null>(null);
-  const imageUrlToShow = imageFailed || imageTimedOut ? null : imageUrl ?? product.image_url;
+  const productWithImageAliases = product as MarketplaceProduct & {
+    images?: Array<string | { url?: string; src?: string }>;
+    image?: string | { url?: string; src?: string };
+  };
+  const firstImage = Array.isArray(productWithImageAliases.images)
+    ? productWithImageAliases.images[0]
+    : undefined;
+  const directProductImage =
+    (typeof firstImage === "string" ? firstImage : (firstImage?.url ?? firstImage?.src)) ||
+    product.image_url ||
+    (typeof productWithImageAliases.image === "string"
+      ? productWithImageAliases.image
+      : (productWithImageAliases.image?.url ?? productWithImageAliases.image?.src)) ||
+    null;
+  const imageUrlToShow = imageFailed || imageTimedOut ? null : (imageUrl ?? directProductImage);
   const discountPercent = getDiscountPercent(product);
+  const stockLabel =
+    product.stock === 1 ? "متجر 1 قطعة" : `متوفر ${product.stock.toLocaleString("ar-YE")} قطع`;
 
   useEffect(() => {
     setImageFailed(false);
@@ -383,7 +431,7 @@ function ProductCard({
 
   useEffect(() => {
     const node = imageContainerRef.current;
-    if (!node || imageUrl || product.image_url) return;
+    if (!node || imageUrl || directProductImage) return;
     let active = true;
     const requestImage = () => {
       setRequestStarted(true);
@@ -395,86 +443,111 @@ function ProductCard({
     };
     if (typeof IntersectionObserver === "undefined") {
       requestImage();
-      return () => { active = false; };
+      return () => {
+        active = false;
+      };
     }
-    const observer = new IntersectionObserver((entries) => {
-      if (!entries.some((entry) => entry.isIntersecting)) return;
-      requestImage();
-      observer.disconnect();
-    }, { rootMargin: "250px" });
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        requestImage();
+        observer.disconnect();
+      },
+      { rootMargin: "250px" },
+    );
     observer.observe(node);
-    return () => { active = false; observer.disconnect(); };
-  }, [product.id, product.image_path, product.image_url, imageUrl]);
+    return () => {
+      active = false;
+      observer.disconnect();
+    };
+  }, [product.id, product.image_path, directProductImage, imageUrl]);
 
   const cardImageUrl = imageUrlToShow ?? undefined;
 
   return (
-    <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-[#eee5d7] bg-white shadow-[0_5px_20px_rgba(67,45,22,0.07)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_14px_32px_rgba(67,45,22,0.13)]">
+    <article className="group flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-[0_4px_18px_rgba(67,45,22,0.08)]">
       <div
         ref={imageContainerRef}
-        className="relative h-[300px] w-full overflow-hidden bg-[#eee7da]"
+        className="relative aspect-[4/5] w-full overflow-hidden bg-[#EEE7DA]"
       >
         {imageUrlToShow ? (
           <img
             src={imageUrlToShow}
             alt={product.title}
             width={600}
-            height={400}
-            className={`h-full w-full object-cover transition-opacity duration-200 ${imageLoaded ? "opacity-100" : "opacity-0"}`}
+            height={750}
+            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${imageLoaded ? "opacity-100" : "opacity-0"}`}
             loading="lazy"
             decoding="async"
             onLoad={() => setImageLoaded(true)}
             onError={() => setImageFailed(true)}
           />
         ) : (
-          <img
-            src={PRODUCT_IMAGE_FALLBACK}
-            alt="صورة افتراضية للمنتج"
-            width={600}
-            height={400}
-            className="absolute inset-0 h-full w-full object-cover"
-            loading="lazy"
-            decoding="async"
+          <div
+            role="img"
+            aria-label="لا توجد صورة للمنتج"
+            className="absolute inset-0 bg-[#EEE7DA]"
           />
         )}
-        <div className="absolute inset-x-3 top-3 z-10 flex items-center justify-between gap-2">
-          <span className="rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-extrabold text-white shadow-sm">فوري</span>
-          <span className="rounded-full bg-white px-3 py-1.5 text-xs font-extrabold text-[#38513a] shadow-sm">متوفر</span>
+        <div className="absolute right-2.5 top-2.5 z-10 flex flex-col items-end gap-1.5">
+          <span className="rounded-full bg-[#22C55E] px-2.5 py-1 text-[10px] font-extrabold text-white shadow-sm">
+            فوري ⚡
+          </span>
+          <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-extrabold text-[#3E2A1E] shadow-sm">
+            متوفر
+          </span>
         </div>
-        <div className="absolute bottom-3 left-3 z-10 flex items-center gap-2">
-          <button type="button" onClick={onAdd} disabled={product.stock < 1} aria-label={`أضف ${product.title} للسلة`} className="inline-flex size-11 items-center justify-center rounded-full bg-white text-[#4a3020] shadow-lg transition hover:scale-105 hover:bg-[#fff8ed] disabled:opacity-45">
-            <ShoppingBag aria-hidden="true" className="size-5" />
-          </button>
-          <button type="button" onClick={() => onQuickView(cardImageUrl)} aria-label={`معاينة ${product.title}`} className="inline-flex size-11 items-center justify-center rounded-full bg-white text-[#4a3020] shadow-lg transition hover:scale-105 hover:bg-[#fff8ed]">
+        <div className="absolute bottom-2.5 left-2.5 z-10 flex flex-col gap-1.5">
+          <button
+            type="button"
+            onClick={() => onQuickView(cardImageUrl)}
+            aria-label={`معاينة ${product.title}`}
+            className="inline-flex size-10 items-center justify-center rounded-full bg-white text-[#4A2C1A] shadow-md transition hover:scale-105"
+          >
             <Eye aria-hidden="true" className="size-5" />
+          </button>
+          <button
+            type="button"
+            onClick={onAdd}
+            disabled={product.stock < 1}
+            aria-label={`أضف ${product.title} للسلة`}
+            className="inline-flex size-10 items-center justify-center rounded-full bg-[#4A2C1A] text-white shadow-md transition hover:scale-105 hover:bg-[#3E2A1E] disabled:opacity-45"
+          >
+            <ShoppingBag aria-hidden="true" className="size-5" />
           </button>
         </div>
       </div>
 
-      <div className="flex flex-1 flex-col px-4 pb-4 pt-4 sm:px-5 sm:pb-5">
-        <h3 className="line-clamp-2 min-h-10 text-center text-sm font-extrabold leading-5 text-[#3d2b1d] sm:text-base sm:leading-6">
+      <div className="flex h-[146px] min-h-[110px] flex-col justify-between px-3 py-3 text-center">
+        <h3 className="line-clamp-2 h-10 text-center text-xs font-extrabold leading-5 text-[#3E2A1E] sm:text-sm">
           {product.title}
         </h3>
-        <div className="mt-2 flex min-w-0 items-center justify-center gap-1.5 text-[11px] font-medium text-[#98866d]">
-          <Home aria-hidden="true" className="size-3.5 shrink-0" />
-          <span className="truncate">{storeName}</span>
+        <div className="flex h-5 items-center justify-center">
+          <span className="max-w-full truncate rounded-full bg-[#F5F0E8] px-2.5 py-0.5 text-[10px] font-bold text-[#72573C]">
+            {product.category || "عام"}
+          </span>
         </div>
-        <div dir="ltr" className="mt-2.5 flex min-h-7 items-center justify-between gap-2">
+        <div dir="rtl" className="flex h-7 min-w-0 items-center justify-between gap-1">
+          <span dir="ltr" className="shrink-0 text-sm font-extrabold text-[#E67E22] sm:text-base">
+            {formatYerPrice(Number(product.price))}
+          </span>
           {product.old_price != null && product.old_price > product.price ? (
-            <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-              <span className="text-xs font-semibold text-[#9a8a75] line-through">
+            <div dir="ltr" className="flex min-w-0 items-center gap-1">
+              <span className="truncate text-[10px] font-semibold text-[#9A8A75] line-through sm:text-xs">
                 {formatYerPrice(Number(product.old_price))}
               </span>
               {discountPercent > 0 && (
-                <span className="rounded-full bg-[#fff0e8] px-2 py-0.5 text-[10px] font-extrabold text-[#c65c2d]">
-                  {discountPercent}% OFF
+                <span className="shrink-0 rounded-full bg-[#FFF0E8] px-1.5 py-0.5 text-[9px] font-extrabold text-[#C65C2D]">
+                  -{discountPercent}%
                 </span>
               )}
             </div>
-          ) : <span />}
-          <span className="shrink-0 text-lg font-extrabold text-[#d95e16] sm:text-xl">
-            {formatYerPrice(Number(product.price))}
-          </span>
+          ) : (
+            <span />
+          )}
+        </div>
+        <div className="flex h-4 items-center justify-center text-[10px] font-semibold text-[#806B53]">
+          {stockLabel}
         </div>
       </div>
     </article>
@@ -504,9 +577,10 @@ function QuickViewDialog({
 
   if (!product) return null;
   const itemNumber = getShortItemNumber(product.sku, product.id);
-  const oldPrice = product.old_price != null && product.old_price > product.price
-    ? Number(product.old_price)
-    : null;
+  const oldPrice =
+    product.old_price != null && product.old_price > product.price
+      ? Number(product.old_price)
+      : null;
   const discountPercent = getDiscountPercent(product);
 
   const copyItemNumber = async () => {
@@ -602,14 +676,20 @@ function QuickViewDialog({
             <div className="min-w-0 rounded-xl bg-[#f7f2e9] p-3">
               <p className="text-[11px] font-semibold text-[#98866d]">رقم الصنف</p>
               <div className="mt-1 flex items-center justify-between gap-1.5">
-                <p className="truncate text-sm font-bold text-[#473522]" dir="ltr">{itemNumber}</p>
+                <p className="truncate text-sm font-bold text-[#473522]" dir="ltr">
+                  {itemNumber}
+                </p>
                 <button
                   type="button"
                   onClick={() => void copyItemNumber()}
                   aria-label="نسخ رقم الصنف"
                   className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-white text-[#715634] transition hover:bg-[#f4eddf]"
                 >
-                  {copied ? <Check aria-hidden="true" className="size-4 text-emerald-700" /> : <Copy aria-hidden="true" className="size-4" />}
+                  {copied ? (
+                    <Check aria-hidden="true" className="size-4 text-emerald-700" />
+                  ) : (
+                    <Copy aria-hidden="true" className="size-4" />
+                  )}
                 </button>
               </div>
             </div>
@@ -623,7 +703,9 @@ function QuickViewDialog({
             <div>
               <p className="text-sm font-bold text-[#5b4933]">حد الكمية</p>
               <p className="mt-0.5 text-xs font-semibold text-red-600">
-                {product.stock === 1 ? "المتوفر قطعة واحدة" : `المتوفر ${product.stock.toLocaleString("ar-YE")} قطعة`}
+                {product.stock === 1
+                  ? "المتوفر قطعة واحدة"
+                  : `المتوفر ${product.stock.toLocaleString("ar-YE")} قطعة`}
               </p>
             </div>
             <span className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-white px-3 text-sm font-extrabold text-[#60472e]">
@@ -634,7 +716,10 @@ function QuickViewDialog({
           <div className="mt-3 grid grid-cols-2 gap-2">
             <button
               type="button"
-              onClick={() => { onAdd(product, 1); onOpenChange(false); }}
+              onClick={() => {
+                onAdd(product, 1);
+                onOpenChange(false);
+              }}
               disabled={product.stock < 1}
               className="inline-flex h-12 items-center justify-center gap-2 rounded-[12px] bg-[#4a3020] px-3 text-sm font-extrabold text-white transition hover:bg-[#382719] disabled:cursor-not-allowed disabled:opacity-50"
             >
