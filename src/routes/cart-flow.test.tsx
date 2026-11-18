@@ -16,6 +16,7 @@ vi.mock("@/hooks/use-session", () => ({ useSession: () => ({ user: { id: "custom
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc: mocks.rpc } }));
 vi.mock("@/lib/merchant-marketplace", () => ({
   loadMarketplace: mocks.loadMarketplace,
+  getSignedProductImage: vi.fn(async () => null),
   formatMoney: (value: number, currency: string) => `${value} ${currency}`,
 }));
 vi.mock("@tanstack/react-router", () => ({
@@ -70,7 +71,7 @@ describe("customer merchant-cart journey", () => {
   it("adds a product, respects quantity and stock limits, then places the order from the cart", async () => {
     const marketplace = render(<MerchantMarketplace />);
 
-    fireEvent.click(screen.getByRole("button", { name: "أضف للسلة" }));
+    fireEvent.click(screen.getByRole("button", { name: "أضف منتج محلي للسلة" }));
     expect(screen.getByRole("status").textContent).toContain("تمت إضافة «منتج محلي» إلى السلة");
     expect(readCart()).toHaveLength(1);
     expect(readCart()[0]).toMatchObject({ productId: "product-1", quantity: 1 });

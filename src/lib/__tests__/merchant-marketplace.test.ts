@@ -91,8 +91,9 @@ describe("loadMarketplace store-query failures", () => {
     expect(products[0]).toMatchObject({
       id: "product-1",
       store,
-      image_url: "https://example.test/signed-image",
+      image_url: null,
     });
     expect(mocks.from).toHaveBeenCalledTimes(4);
+    expect(mocks.createSignedUrl).not.toHaveBeenCalled();
   });
 });

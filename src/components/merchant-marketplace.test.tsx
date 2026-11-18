@@ -5,9 +5,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   useSWR: vi.fn(),
   mutate: vi.fn(),
+  getSignedProductImage: vi.fn(async (path: string) => `https://example.test/${path.split("/").pop()}`),
 }));
 
 vi.mock("swr", () => ({ default: mocks.useSWR }));
+vi.mock("@/lib/merchant-marketplace", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@/lib/merchant-marketplace")>(),
+  getSignedProductImage: mocks.getSignedProductImage,
+}));
 vi.mock("@/hooks/use-session", () => ({ useSession: () => ({ user: null }) }));
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
@@ -35,6 +40,17 @@ import { MerchantMarketplace } from "./merchant-marketplace";
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.stubGlobal("IntersectionObserver", class {
+    private callback: IntersectionObserverCallback;
+    constructor(callback: IntersectionObserverCallback) { this.callback = callback; }
+    observe(target: Element) { this.callback([{ isIntersecting: true, target } as IntersectionObserverEntry], this as unknown as IntersectionObserver); }
+    disconnect() {}
+    unobserve() {}
+    takeRecords() { return []; }
+    root = null;
+    rootMargin = "0px";
+    thresholds = [];
+  });
   mocks.useSWR.mockImplementation((key: unknown) =>
     key === "merchant-marketplace"
       ? {
@@ -47,7 +63,7 @@ beforeEach(() => {
   );
 });
 
-afterEach(() => cleanup());
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe("MerchantMarketplace retry and product images", () => {
   it("retries loading marketplace products when the retry button is pressed", () => {
@@ -58,7 +74,7 @@ describe("MerchantMarketplace retry and product images", () => {
     expect(mocks.mutate).toHaveBeenCalledTimes(1);
   });
 
-  it("shows the product fallback when its image fails to load", () => {
+  it("shows the product fallback when its image fails to load", async () => {
     mocks.useSWR.mockImplementation((key: unknown) =>
       key === "merchant-marketplace"
         ? {
@@ -97,9 +113,10 @@ describe("MerchantMarketplace retry and product images", () => {
 
     render(<MerchantMarketplace />);
 
+    await waitFor(() => expect(screen.getByRole("img", { name: "منتج تجريبي" })).toBeTruthy());
     fireEvent.error(screen.getByRole("img", { name: "منتج تجريبي" }));
 
-    expect(screen.getByText("صورة المنتج غير متاحة")).toBeTruthy();
+    expect(screen.getByRole("img", { name: "صورة افتراضية للمنتج" })).toBeTruthy();
     expect(screen.getAllByText("متجر تجريبي").length).toBeGreaterThan(0);
   });
 });
@@ -121,8 +138,8 @@ it("opens the new quick view with stock controls and product details", async () 
               sku: "SKU-TEST-42",
               currency: "YER",
               stock: 2,
-              image_path: "store-1/product-1200.webp",
-              image_url: "https://example.test/product-400.webp",
+              image_path: "store-1/product-800.webp",
+              image_url: "https://example.test/product-800.webp",
               status: "approved",
               created_at: "2026-11-13T12:00:00Z",
               updated_at: "2026-11-13T12:00:00Z",
@@ -142,16 +159,18 @@ it("opens the new quick view with stock controls and product details", async () 
   );
 
   render(<MerchantMarketplace />);
-  expect(screen.getByRole("img", { name: "منتج تجريبي" }).getAttribute("src")).toBe(
-    "https://example.test/product-400.webp",
-  );
+  await waitFor(() => {
+    expect(screen.getByRole("img", { name: "منتج تجريبي" }).getAttribute("src")).toBe(
+      "https://example.test/product-800.webp",
+    );
+  });
   fireEvent.click(screen.getByRole("button", { name: "معاينة منتج تجريبي" }));
 
   expect(screen.getByRole("dialog")).toBeTruthy();
   await waitFor(() => {
     expect(
       screen.getAllByRole("img", { name: "منتج تجريبي" }).map((image) => image.getAttribute("src")),
-    ).toContain("https://example.test/product-1200.webp");
+    ).toContain("https://example.test/product-800.webp");
   });
   expect(screen.getByText("جاهزة فوراً")).toBeTruthy();
   expect(screen.getByText("رقم الصنف")).toBeTruthy();
