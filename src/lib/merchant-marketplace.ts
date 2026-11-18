@@ -3,6 +3,42 @@ import { productImageVariantPath, type ProductImageWidth } from "@/lib/merchant-
 
 const db = supabase as any;
 
+// Keep signed image URLs in memory during their usable lifetime to avoid repeat signing calls.
+const signedImageUrlCache = new Map<string, { url: string; expiresAt: number }>();
+const SIGNED_URL_CACHE_MS = 50 * 60 * 1000;
+const SIGNED_URL_STORAGE_PREFIX = "marketplace-product-image:v1:";
+
+function readCachedSignedImage(cacheKey: string): string | null {
+  const memory = signedImageUrlCache.get(cacheKey);
+  if (memory && memory.expiresAt > Date.now()) return memory.url;
+  signedImageUrlCache.delete(cacheKey);
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(`${SIGNED_URL_STORAGE_PREFIX}${cacheKey}`);
+    if (!raw) return null;
+    const saved = JSON.parse(raw) as { url?: unknown; expiresAt?: unknown };
+    if (typeof saved.url === "string" && typeof saved.expiresAt === "number" && saved.expiresAt > Date.now()) {
+      signedImageUrlCache.set(cacheKey, { url: saved.url, expiresAt: saved.expiresAt });
+      return saved.url;
+    }
+    window.localStorage.removeItem(`${SIGNED_URL_STORAGE_PREFIX}${cacheKey}`);
+  } catch {
+    // Storage may be disabled or unavailable in private browsing; the network flow still works.
+  }
+  return null;
+}
+
+function cacheSignedImage(cacheKey: string, url: string) {
+  const expiresAt = Date.now() + SIGNED_URL_CACHE_MS;
+  signedImageUrlCache.set(cacheKey, { url, expiresAt });
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(`${SIGNED_URL_STORAGE_PREFIX}${cacheKey}`, JSON.stringify({ url, expiresAt }));
+  } catch {
+    // The in-memory and browser HTTP caches remain available when local storage is full or disabled.
+  }
+}
+
 // Existing production schema requires image_path; this store-scoped sentinel represents no uploaded image.
 export const EMPTY_PRODUCT_IMAGE = "__no_image__";
 
@@ -110,6 +146,9 @@ export async function getSignedProductImage(
   if (!path || path.endsWith(`/${EMPTY_PRODUCT_IMAGE}`)) return null;
   const variantPath = width ? productImageVariantPath(path, width) : null;
   const imagePath = variantPath ?? path;
+  const cacheKey = `${imagePath}:${width ?? "original"}`;
+  const cachedUrl = readCachedSignedImage(cacheKey);
+  if (cachedUrl) return cachedUrl;
   try {
     const { data, error } = await supabase.storage
       .from("merchant-product-images")
@@ -117,13 +156,14 @@ export async function getSignedProductImage(
         imagePath,
         3600,
         !variantPath && width
-          ? { transform: { width, resize: "contain", quality: 78 } }
+          ? { transform: { width, resize: width === 600 ? "cover" : "contain", quality: 70 } }
           : undefined,
       );
     if (error) {
       console.warn("[merchant-marketplace] product image signing failed", error.message);
       return null;
     }
+    cacheSignedImage(cacheKey, data.signedUrl);
     return data.signedUrl;
   } catch (error) {
     // A storage/network failure for one image must not hide every approved product.
@@ -158,30 +198,17 @@ export async function loadMarketplace(): Promise<MarketplaceProduct[]> {
     throw storeError;
   }
 
+  // Product image signing is done on demand by each card, not serially while loading the product list.
   const storeById = new Map<string, MarketplaceProduct["store"]>(
-    await Promise.all(
-      (stores ?? []).map(
-        async (store: Omit<MarketplaceProduct["store"], "image_url">) =>
-          [
-            store.id,
-            {
-              ...store,
-              image_url: store.store_image_path
-                ? await getSignedProductImage(store.store_image_path)
-                : null,
-            },
-          ] as const,
-      ),
-    ),
+    (stores ?? []).map((store: Omit<MarketplaceProduct["store"], "image_url">) => [
+      store.id,
+      { ...store, image_url: null },
+    ] as const),
   );
   const visibleRows = (rows as MerchantProduct[]).filter((row) => storeById.has(row.store_id));
-  const signedImages = await Promise.all(
-    visibleRows.map((row) => getSignedProductImage(row.image_path, 400)),
-  );
-
-  return visibleRows.map((row, index) => ({
+  return visibleRows.map((row) => ({
     ...row,
-    image_url: signedImages[index] ?? null,
+    image_url: null, // Signed lazily when the product card enters the viewport.
     store: storeById.get(row.store_id)!,
   }));
 }
