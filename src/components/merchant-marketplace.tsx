@@ -322,10 +322,11 @@ export function MerchantMarketplace() {
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-              {visibleProducts.map((product) => (
+              {visibleProducts.map((product, index) => (
                 <ProductCard
                   key={product.id}
                   product={product}
+                  priority={index < 3}
                   storeName={cardStoreName}
                   onAdd={() => addProductToCart(product)}
                   onQuickView={(cardImageUrl) => openQuickView(product, cardImageUrl)}
@@ -381,11 +382,13 @@ function getDiscountPercent(product: MarketplaceProduct): number {
 
 function ProductCard({
   product,
+  priority,
   storeName,
   onAdd,
   onQuickView,
 }: {
   product: MarketplaceProduct;
+  priority: boolean;
   storeName: string;
   onAdd: () => void;
   onQuickView: (cardImageUrl?: string) => void;
@@ -435,13 +438,13 @@ function ProductCard({
     let active = true;
     const requestImage = () => {
       setRequestStarted(true);
-      void getSignedProductImage(product.image_path, 600).then((url) => {
+      void getSignedProductImage(product.image_path, 800).then((url) => {
         if (!active) return;
         setImageUrl(url);
         if (!url) setImageFailed(true);
       });
     };
-    if (typeof IntersectionObserver === "undefined") {
+    if (priority || typeof IntersectionObserver === "undefined") {
       requestImage();
       return () => {
         active = false;
@@ -460,7 +463,7 @@ function ProductCard({
       active = false;
       observer.disconnect();
     };
-  }, [product.id, product.image_path, directProductImage, imageUrl]);
+  }, [product.id, product.image_path, directProductImage, imageUrl, priority]);
 
   const cardImageUrl = imageUrlToShow ?? undefined;
 
@@ -476,9 +479,10 @@ function ProductCard({
             alt={product.title}
             width={600}
             height={750}
-            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${imageLoaded ? "opacity-100" : "opacity-0"}`}
-            loading="lazy"
+            className={`absolute inset-0 h-full w-full object-cover transition-all duration-300 ${imageLoaded ? "blur-0 opacity-100" : "scale-[1.03] blur-[5px] opacity-75"}`}
+            loading={priority ? "eager" : "lazy"}
             decoding="async"
+            fetchPriority={priority ? "high" : "auto"}
             onLoad={() => setImageLoaded(true)}
             onError={() => setImageFailed(true)}
           />
