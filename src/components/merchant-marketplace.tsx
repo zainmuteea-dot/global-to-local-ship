@@ -8,15 +8,12 @@ import {
   Package,
   Search,
   ShoppingBag,
-  Store,
   Home,
   LockKeyhole,
   X,
 } from "lucide-react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Input } from "@/components/ui/input";
-import { supabase } from "@/integrations/supabase/client";
-import { useSession } from "@/hooks/use-session";
 import {
   getSignedProductImage,
   loadMarketplace,
@@ -34,14 +31,24 @@ const PRODUCT_IMAGE_FALLBACK = `data:image/svg+xml,${encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400"><rect width="600" height="400" rx="24" fill="#eee7da"/><g fill="none" stroke="#ad9b80" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"><rect x="230" y="118" width="140" height="124" rx="18"/><path d="M230 154h140m-112 36h60m-60 28h42"/></g><text x="300" y="300" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#9a896f">صورة المنتج</text></svg>',
 )}`;
 
-async function loadMyMerchantStore() {
-  const { data, error } = await supabase.rpc("merchant_get_my_store");
-  if (error) throw error;
-  return Array.isArray(data) ? (data[0] ?? null) : data;
+function getStoreLocatorFromUrl(): string {
+  if (typeof window === "undefined") return "";
+  const params = new URLSearchParams(window.location.search);
+  const queryLocator = params.get("store")?.trim() || params.get("slug")?.trim();
+  if (queryLocator) return queryLocator;
+  const pathMatch = window.location.pathname.match(/^\/store\/([^/]+)\/?$/i);
+  return pathMatch?.[1] ? decodeURIComponent(pathMatch[1]).trim() : "";
+}
+
+function normalizeStoreLocator(value: string): string {
+  try {
+    return decodeURIComponent(value).trim().toLocaleLowerCase().replace(/\/+$/, "");
+  } catch {
+    return value.trim().toLocaleLowerCase().replace(/\/+$/, "");
+  }
 }
 
 export function MerchantMarketplace() {
-  const { user } = useSession(false);
   const navigate = useNavigate();
   const {
     data: products = [],
@@ -52,15 +59,11 @@ export function MerchantMarketplace() {
     revalidateOnFocus: true,
     dedupingInterval: 20_000,
   });
-  const { data: myStore } = useSWR(
-    user ? ["merchant-my-store", user.id] : null,
-    loadMyMerchantStore,
-  );
   const [search, setSearch] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [selectedStoreId, setSelectedStoreId] = useState(() => {
     if (typeof window === "undefined") return "";
-    return new URLSearchParams(window.location.search).get("store")?.trim() ?? "";
+    return getStoreLocatorFromUrl();
   });
   const [cartCount, setCartCount] = useState(0);
   const [addedProductTitle, setAddedProductTitle] = useState("");
@@ -101,22 +104,34 @@ export function MerchantMarketplace() {
 
   useEffect(() => {
     const syncStoreFromUrl = () => {
-      setSelectedStoreId(new URLSearchParams(window.location.search).get("store")?.trim() ?? "");
+      setSelectedStoreId(getStoreLocatorFromUrl());
     };
     window.addEventListener("popstate", syncStoreFromUrl);
     return () => window.removeEventListener("popstate", syncStoreFromUrl);
   }, []);
 
-  const selectedStoreName = useMemo(
-    () => products.find((product) => product.store.id === selectedStoreId)?.store.name ?? "",
-    [products, selectedStoreId],
-  );
+  const selectedStore = useMemo(() => {
+    if (!selectedStoreId) return null;
+    const locator = normalizeStoreLocator(selectedStoreId);
+    return products.find((product) => {
+      const store = product.store as MarketplaceProduct["store"] & { slug?: string };
+      return (
+        store.id === selectedStoreId ||
+        normalizeStoreLocator(store.name) === locator ||
+        (store.slug ? normalizeStoreLocator(store.slug) === locator : false)
+      );
+    }) ?? null;
+  }, [products, selectedStoreId]);
+  const selectedStoreName = selectedStore?.store.name?.trim() || "السوق الشامل";
+  const headerStoreName = selectedStoreId ? selectedStoreName : "السوق الشامل";
+  const cardStoreName = selectedStoreId ? selectedStoreName : "السوق الشامل";
+  const resolvedStoreId = selectedStore?.store.id ?? selectedStoreId;
   const storeProducts = useMemo(
     () =>
       selectedStoreId
-        ? products.filter((product) => product.store.id === selectedStoreId)
+        ? products.filter((product) => product.store.id === resolvedStoreId)
         : products,
-    [products, selectedStoreId],
+    [products, resolvedStoreId, selectedStoreId],
   );
   const categories = useMemo(
     () => [...new Set(storeProducts.map((product) => product.category).filter(Boolean))],
@@ -146,72 +161,38 @@ export function MerchantMarketplace() {
   return (
     <main dir="rtl" className="min-h-screen bg-[#f7f2e8] text-[#382719]">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-7 sm:px-6 sm:py-10 lg:px-8">
-        <header className="rounded-[2rem] border border-[#e9dfcd] bg-[#fcfaf5] p-5 shadow-[0_8px_28px_rgba(72,48,24,0.05)] sm:p-8">
-          <div className="flex flex-col justify-between gap-5 md:flex-row md:items-center">
-            <div>
-              <span className="inline-flex items-center gap-2 rounded-full bg-[#efe4ce] px-3 py-1.5 text-xs font-bold text-[#85602d]">
-                <Store aria-hidden="true" className="size-3.5" /> السوق المحلي
+        <header className="rounded-[2rem] border border-[#e9dfcd] bg-[#fcfaf5] p-4 shadow-[0_8px_28px_rgba(72,48,24,0.05)] sm:p-6">
+          <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
+            <Link
+              to="/products"
+              aria-label="رجوع إلى المتاجر"
+              className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-[#e4d6c0] bg-[#f4ecde] px-3 text-sm font-bold text-[#60472e] transition hover:bg-[#ece0cd]"
+            >
+              رجوع <span aria-hidden="true">→</span>
+            </Link>
+            <h1 className="truncate text-center text-lg font-extrabold tracking-tight text-[#382719] sm:text-2xl">
+              {headerStoreName}
+            </h1>
+            <Link
+              to="/cart"
+              aria-label={`السلة، ${cartCount} منتجات`}
+              className="relative inline-flex size-11 items-center justify-center rounded-full bg-[#4a3020] text-white shadow-sm transition hover:bg-[#382719]"
+            >
+              <ShoppingBag aria-hidden="true" className="size-5" />
+              <span className="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full border-2 border-[#fcfaf5] bg-[#b48948] px-1 text-[10px] font-extrabold leading-4 text-white">
+                {cartCount}
               </span>
-              <h1 className="mt-3 text-2xl font-extrabold tracking-tight text-[#382719] sm:text-3xl">
-                {selectedStoreId
-                  ? selectedStoreName
-                    ? `منتجات ${selectedStoreName}`
-                    : "منتجات المتجر"
-                  : "تسوّق من متاجرنا المحلية"}
-              </h1>
-              <p className="mt-2 text-sm text-[#887966]">منتجات مختارة من تجار السوق الشامل</p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Link
-                to="/cart"
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#4a3020] px-4 text-sm font-bold text-white transition hover:bg-[#382719]"
-              >
-                <ShoppingBag aria-hidden="true" className="size-4" /> السلة{" "}
-                <span className="rounded-full bg-white/15 px-2 py-0.5">{cartCount}</span>
-              </Link>
-              {selectedStoreId && (
-                <Link
-                  to="/marketplace"
-                  onClick={() => setSelectedStoreId("")}
-                  className="inline-flex h-11 items-center justify-center rounded-xl border border-[#d8c7aa] bg-white px-4 text-sm font-semibold text-[#60472e] transition hover:bg-[#f6f0e5]"
-                >
-                  عرض كل المتاجر
-                </Link>
-              )}
-              {selectedStoreId && myStore?.id === selectedStoreId ? (
-                <>
-                  <Link
-                    to="/merchant"
-                    className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-[#d8c7aa] bg-white px-4 text-sm font-semibold text-[#60472e] transition hover:bg-[#f6f0e5]"
-                  >
-                    <Store aria-hidden="true" className="size-4" /> لوحة متجري
-                  </Link>
-                  <a
-                    href="/merchant?view=add-product"
-                    className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#b48948] px-4 text-sm font-bold text-white transition hover:bg-[#9b743b]"
-                  >
-                    <Package aria-hidden="true" className="size-4" /> أضف منتج
-                  </a>
-                </>
-              ) : (
-                <Link
-                  to="/merchant"
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-[#d8c7aa] bg-white px-4 text-sm font-semibold text-[#60472e] transition hover:bg-[#f6f0e5]"
-                >
-                  <Store aria-hidden="true" className="size-4" /> بوابة التاجر
-                </Link>
-              )}
-            </div>
+            </Link>
           </div>
 
-          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-            <label className="relative flex-1">
-              <span className="sr-only">ابحث باسم القطعة أو اللون أو المقاس</span>
+          <div className="mt-4 flex flex-row gap-3">
+            <label className="relative min-w-0 flex-1">
+              <span className="sr-only">ابحث باسم القطعة، اللون أو المقاس</span>
               <Search aria-hidden="true" className="pointer-events-none absolute right-3.5 top-1/2 size-4 -translate-y-1/2 text-[#9b8c78]" />
               <Input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="ابحث باسم القطعة أو اللون أو المقاس"
+                placeholder="ابحث باسم القطعة، اللون أو المقاس..."
                 className="h-12 rounded-xl border-[#e5dac7] bg-white pr-11 text-[#382719] placeholder:text-[#a49684] focus-visible:ring-[#b48948]"
               />
             </label>
@@ -220,7 +201,7 @@ export function MerchantMarketplace() {
               aria-expanded={showFilters}
               aria-controls="marketplace-filters"
               onClick={() => setShowFilters((value) => !value)}
-              className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-xl border border-[#d9c8aa] bg-white px-5 text-sm font-bold text-[#60472e] transition hover:bg-[#f6f0e5]"
+              className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-xl border border-[#d9c8aa] bg-white px-4 text-sm font-bold text-[#60472e] transition hover:bg-[#f6f0e5] sm:px-5"
             >
               <span aria-hidden="true">☷</span> فلتر
             </button>
@@ -236,7 +217,6 @@ export function MerchantMarketplace() {
             </div>
           )}
         </header>
-
         {addedProductTitle && (
           <div
             role="status"
@@ -314,6 +294,7 @@ export function MerchantMarketplace() {
                 <ProductCard
                   key={product.id}
                   product={product}
+                  storeName={cardStoreName}
                   onAdd={() => addProductToCart(product)}
                   onQuickView={(cardImageUrl) => openQuickView(product, cardImageUrl)}
                 />
@@ -368,10 +349,12 @@ function getDiscountPercent(product: MarketplaceProduct): number {
 
 function ProductCard({
   product,
+  storeName,
   onAdd,
   onQuickView,
 }: {
   product: MarketplaceProduct;
+  storeName: string;
   onAdd: () => void;
   onQuickView: (cardImageUrl?: string) => void;
 }) {
@@ -469,12 +452,12 @@ function ProductCard({
       </div>
 
       <div className="flex flex-1 flex-col px-4 pb-4 pt-4 sm:px-5 sm:pb-5">
-        <h3 className="line-clamp-2 min-h-10 text-sm font-extrabold leading-5 text-[#3d2b1d] sm:text-base sm:leading-6">
+        <h3 className="line-clamp-2 min-h-10 text-center text-sm font-extrabold leading-5 text-[#3d2b1d] sm:text-base sm:leading-6">
           {product.title}
         </h3>
-        <div className="mt-2 flex min-w-0 items-center gap-1.5 text-[11px] font-medium text-[#98866d]">
+        <div className="mt-2 flex min-w-0 items-center justify-center gap-1.5 text-[11px] font-medium text-[#98866d]">
           <Home aria-hidden="true" className="size-3.5 shrink-0" />
-          <span className="truncate">السوق الشامل</span>
+          <span className="truncate">{storeName}</span>
         </div>
         <div dir="ltr" className="mt-2.5 flex min-h-7 items-center justify-between gap-2">
           {product.old_price != null && product.old_price > product.price ? (

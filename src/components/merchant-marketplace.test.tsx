@@ -63,7 +63,7 @@ beforeEach(() => {
   );
 });
 
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); window.history.replaceState({}, "", "/"); });
 
 describe("MerchantMarketplace retry and product images", () => {
   it("retries loading marketplace products when the retry button is pressed", () => {
@@ -183,4 +183,53 @@ it("opens the new quick view with stock controls and product details", async () 
   expect(screen.queryByText("وصف المنتج")).toBeNull();
   expect(screen.getAllByText("100 YER").length).toBe(2);
   expect(screen.getByText("Before Discount 150 YER")).toBeTruthy();
+});
+
+it("shows the selected store name in the compact header and removes the old header copy", () => {
+  window.history.replaceState({}, "", "/marketplace?store=store-1");
+  mocks.useSWR.mockImplementation((key: unknown) =>
+    key === "merchant-marketplace"
+      ? {
+          data: [
+            {
+              id: "header-product",
+              store_id: "store-1",
+              title: "قطعة تجريبية",
+              description: "وصف",
+              category: "عام",
+              price: 450,
+              old_price: 700,
+              discount_percent: null,
+              sku: null,
+              currency: "YER",
+              stock: 1,
+              image_path: "store-1/image.webp",
+              image_url: "https://example.test/image.webp",
+              status: "approved",
+              created_at: "2026-11-13T12:00:00Z",
+              updated_at: "2026-11-13T12:00:00Z",
+              store: {
+                id: "store-1",
+                name: "عالم الاكسسوارات",
+                city: "صنعاء",
+                contact_phone: "777000000",
+              },
+            },
+          ],
+          error: undefined,
+          isLoading: false,
+          mutate: mocks.mutate,
+        }
+      : { data: null, error: undefined, isLoading: false, mutate: vi.fn() },
+  );
+
+  render(<MerchantMarketplace />);
+
+  expect(screen.getByRole("heading", { level: 1, name: "عالم الاكسسوارات" })).toBeTruthy();
+  expect(screen.getByRole("link", { name: "رجوع إلى المتاجر" }).getAttribute("href")).toBe("/products");
+  expect(screen.getByRole("link", { name: /السلة، 0 منتجات/ })).toBeTruthy();
+  expect(screen.getByPlaceholderText("ابحث باسم القطعة، اللون أو المقاس...")).toBeTruthy();
+  expect(screen.queryByText("تسوّق من متاجرنا المحلية")).toBeNull();
+  expect(screen.queryByText("منتجات مختارة من تجار السوق الشامل")).toBeNull();
+  expect(screen.queryByText("بوابة التاجر")).toBeNull();
 });
