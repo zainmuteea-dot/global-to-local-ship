@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useSession } from "@/hooks/use-session";
-import { createProductWebpVariants, productImageVariantPaths } from "@/lib/merchant-product-images";
+import { createProductWebpVariants, createStoreWebp, productImageVariantPaths } from "@/lib/merchant-product-images";
 import { supabase } from "@/integrations/supabase/client";
 import {
   EMPTY_PRODUCT_IMAGE,
@@ -431,18 +431,24 @@ function StoreProfile({ store, onSaved }: { store: MerchantStorePrivate; onSaved
     let nextImagePath = storeImagePath;
     let uploadedPath: string | null = null;
     if (storeImageFile) {
-      const extension =
-        storeImageFile.type === "image/png"
-          ? "png"
-          : storeImageFile.type === "image/webp"
-            ? "webp"
-            : "jpg";
-      uploadedPath = `${store.id}/store/${crypto.randomUUID()}.${extension}`;
+      let compressedStoreImage: File;
+      try {
+        compressedStoreImage = await createStoreWebp(storeImageFile);
+      } catch {
+        setBusy(false);
+        setMessage("تعذر ضغط الصورة إلى WebP بحجم لا يتجاوز 300 كيلوبايت. جرّب صورة أصغر.");
+        return;
+      }
+      uploadedPath = `${store.id}/store/${crypto.randomUUID()}.webp`;
       const { error: uploadError } = await supabase.storage
         .from("merchant-product-images")
-        .upload(uploadedPath, storeImageFile, { contentType: storeImageFile.type, upsert: false });
+        .upload(uploadedPath, compressedStoreImage, {
+          contentType: "image/webp",
+          cacheControl: "31536000",
+          upsert: false,
+        });
       if (uploadError) {
-    setBusy(false);
+        setBusy(false);
         setMessage("تعذر رفع الصورة. تأكد من نوعها وحجمها ثم أعد المحاولة.");
         return;
       }
@@ -726,7 +732,7 @@ function ProductForm({
     if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
     setImagePreviewUrl(URL.createObjectURL(file));
     setUploadingImage(true);
-    setImageUploadMessage("جارٍ ضغط الصورة إلى عرض أقصى 800px وإنشاء نسختي WebP بجودة 70%…");
+    setImageUploadMessage("جارٍ ضغط الصورة إلى WebP بعرض أقصى 800px وجودة 70% وحجم أقصى 300 كيلوبايت…");
     let uploadedPaths: string[] = [];
     try {
       const variants = await createProductWebpVariants(file);
@@ -752,7 +758,7 @@ function ProductForm({
           .from("merchant-product-images")
           .remove(previousVariants ?? [previousTemporaryPath]);
       }
-      setImageUploadMessage("تم ضغط الصورة ورفع نسختي WebP (400px و800px) بجودة 70% بنجاح.");
+      setImageUploadMessage("تم ضغط الصورة ورفع نسختي WebP (400px و800px)، كل نسخة لا تتجاوز 300 كيلوبايت.");
     } catch (error) {
       if (uploadedPaths.length) {
         await supabase.storage.from("merchant-product-images").remove(uploadedPaths);
