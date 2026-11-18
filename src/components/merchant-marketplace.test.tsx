@@ -117,7 +117,7 @@ describe("MerchantMarketplace retry and product images", () => {
     fireEvent.error(screen.getByRole("img", { name: "منتج تجريبي" }));
 
     expect(screen.getByRole("img", { name: "صورة افتراضية للمنتج" })).toBeTruthy();
-    expect(screen.getAllByText("متجر تجريبي").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("السوق الشامل").length).toBeGreaterThan(0);
   });
 });
 
@@ -174,11 +174,13 @@ it("opens the new quick view with stock controls and product details", async () 
   });
   expect(screen.getByText("جاهزة فوراً")).toBeTruthy();
   expect(screen.getByText("رقم الصنف")).toBeTruthy();
-  expect(screen.getByText("SKU-TEST-42")).toBeTruthy();
-  expect(screen.getAllByText(/خصم 33٪/).length).toBe(2);
-  expect(screen.getAllByText("متجر تجريبي").length).toBeGreaterThan(0);
-  expect(screen.getByText("متوفر (٢)")).toBeTruthy();
-
-  fireEvent.click(screen.getByRole("button", { name: /وصف المنتج/ }));
+  expect(screen.getByText(/^\d{8}$/)).toBeTruthy();
+  expect(screen.getAllByText("33% OFF").length).toBe(2);
+  expect(screen.getAllByText("السوق الشامل").length).toBeGreaterThan(0);
+  expect(screen.getByText("المتوفر ٢ قطعة")).toBeTruthy();
   expect(screen.getByText("تفاصيل المنتج")).toBeTruthy();
+  expect(mocks.getSignedProductImage).not.toHaveBeenCalled();
+  expect(screen.queryByText("وصف المنتج")).toBeNull();
+  expect(screen.getAllByText("100 YER").length).toBe(2);
+  expect(screen.getByText("Before Discount 150 YER")).toBeTruthy();
 });
