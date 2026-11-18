@@ -445,7 +445,14 @@ const CUSTOMER_STOREFRONT_CSS = `
 @media(max-width:900px){.pr-topbar-inner{grid-template-columns:auto 1fr auto;gap:9px}.pr-section-nav{gap:0}.pr-section-nav button{padding-inline:8px;font-size:11px}.pr-logo-copy strong{font-size:13px}.pr-search-wrap,.pr-hero{margin-inline:18px}.pr-stores{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:720px){.pr-announcement-inner{min-height:30px;padding:6px 12px;font-size:10px}.pr-announcement-help{display:none}.pr-topbar-inner{display:flex;flex-direction:column;align-items:stretch;gap:7px;padding:8px 12px}.pr-logo{justify-content:center}.pr-section-nav{width:100%;justify-content:space-between;gap:2px}.pr-section-nav button{flex:1;min-height:39px;padding:7px 4px;font-size:10px;white-space:nowrap}.pr-new-badge{padding:2px 5px;font-size:8px}.pr-topbar-actions{width:100%;justify-content:center}.pr-cart-link{min-height:36px}.pr-search-wrap{min-height:45px;margin:12px 12px 17px;border-radius:12px}.pr-search-icon{width:16px;margin-inline:9px 2px}.pr-search-input{height:43px;padding-inline:6px;font-size:11px}.pr-search-category{max-width:104px;margin-inline:4px;padding-inline:5px;font-size:10px}.pr-search-submit{min-width:52px;font-size:11px}.pr-hero{grid-template-columns:1fr;min-height:0;margin-inline:12px;padding:24px 21px;border-radius:20px}.pr-hero-art{grid-row:1;position:absolute;left:4px;top:18px;width:118px;opacity:.8}.pr-hero-art svg{width:118px}.pr-hero-copy{max-width:100%;padding-top:75px}.pr-hero h1{max-width:100%;font-size:25px}.pr-hero p{font-size:12px}.pr-hero-badge{font-size:10px}.pr-hero-actions{gap:7px}.pr-hero-primary,.pr-hero-secondary{min-height:39px;padding:8px 11px;font-size:10px}.pr-head{padding:27px 15px 8px}.pr-title{font-size:24px}.pr-sub{font-size:12px}.pr-stores{grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;padding:0 12px}.pr-store{height:150px;padding:14px 9px}.pr-store .sh-icon{width:68px;height:68px}.pr-merchant-section{margin-top:22px;padding:0 12px}.pr-merchant-grid{grid-template-columns:1fr}.pr-merchant-card{min-height:150px;padding:17px}.pr-banners{gap:12px;padding:0 12px}.pr-banner{min-height:210px;padding:24px 18px}.pr-panel{scroll-margin-top:150px}.pr-bestseller-card{min-height:280px}.pr-best-image{height:125px}.pr-footer{margin-top:30px}}
 @media(prefers-reduced-motion:reduce){.pr-page *,.pr-page *:before,.pr-page *:after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}}
-
+/* Fast, fixed-size merchant cover images. */
+.pr-merchant-card{padding:0;gap:0}
+.pr-merchant-cover{position:relative;width:100%;height:160px;flex:none;overflow:hidden;background:#F5F0E8}
+.pr-merchant-cover-image{display:block;width:100%;height:160px;object-fit:cover;transition:filter .3s ease}
+.pr-merchant-cover-placeholder{display:grid;width:100%;height:160px;place-items:center;background:#F5F0E8;color:#8A735B;font-size:28px}
+.pr-merchant-cover .pr-merchant-city{position:absolute;right:12px;bottom:10px;border-radius:999px;background:rgba(255,255,255,.92);padding:5px 10px;color:#3E2A1E;font-size:11px;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+.pr-merchant-content{position:relative;z-index:1;display:flex;min-height:120px;flex:1;flex-direction:column;gap:10px;padding:15px 18px}
+.pr-merchant-content>div:first-child{flex:1}
 
 `;
 
@@ -554,28 +561,27 @@ function CustomerStorefront() {
         }
 
         const rows = (data ?? []) as Array<Omit<MerchantStorefront, "store_image_url">>;
-        const storesWithImages = await Promise.all(rows.map(async (store) => {
-          const storeImagePath = hasStoreImageFields ? store.store_image_path : null;
-          let store_image_url: string | null = null;
-          if (storeImagePath) {
-            const { data: signedImage, error: imageError } = await supabase.storage
-              .from("merchant-product-images")
-              .createSignedUrl(storeImagePath, 3600);
-            if (imageError) {
-              console.warn("[storefront] store image unavailable", imageError.message);
-            }
-            store_image_url = signedImage?.signedUrl ?? null;
-          }
-          return {
-            ...store,
-            store_image_path: storeImagePath,
-            store_image_fit: hasStoreImageFields ? store.store_image_fit : "cover",
-            store_image_position: hasStoreImageFields ? store.store_image_position : "center",
-            store_image_url,
-          };
+        const storesWithImages: MerchantStorefront[] = rows.map((store) => ({
+          ...store,
+          store_image_path: hasStoreImageFields ? store.store_image_path : null,
+          store_image_fit: hasStoreImageFields ? store.store_image_fit : "cover",
+          store_image_position: hasStoreImageFields ? store.store_image_position : "center",
+          store_image_url: null,
         }));
         if (!isCurrent) return;
+        // Paint the store cards immediately; sign cover URLs in the background.
         setMerchantStores(storesWithImages);
+        void Promise.all(storesWithImages.map(async (store) => ({
+          id: store.id,
+          imageUrl: store.store_image_path ? await getSignedProductImage(store.store_image_path, 800) : null,
+        }))).then((signedImages) => {
+          if (!isCurrent) return;
+          const imageByStoreId = new Map(signedImages.map(({ id, imageUrl }) => [id, imageUrl]));
+          setMerchantStores((current) => current.map((store) => ({
+            ...store,
+            store_image_url: imageByStoreId.get(store.id) ?? null,
+          })));
+        });
         setMerchantStoresError("");
       } catch (error) {
         if (!isCurrent) return;
@@ -760,9 +766,28 @@ function CustomerStorefront() {
             <div className="pr-merchant-grid">
               {merchantStoresLoading ? <div className="pr-merchant-state" role="status">جارٍ تحميل المتاجر...</div> : merchantStoresError ? <div className="pr-merchant-state" role="status">{merchantStoresError}</div> : filteredMerchantStores.length === 0 ? <div className="pr-merchant-state">{searchTerm ? "لا توجد متاجر تطابق بحثك." : "لا توجد متاجر نشطة للعرض حاليًا."}</div> : filteredMerchantStores.map((store, index) => (
                 <article key={store.id} className="pr-merchant-card" style={{ animationDelay: `${index * 45}ms` }}>
-                  <div className="pr-merchant-top">{store.store_image_url ? <img className="pr-merchant-mark pr-merchant-store-image" src={store.store_image_url} alt={`صورة متجر ${store.name}`} style={{ objectFit: store.store_image_fit, objectPosition: store.store_image_position }} loading="lazy" /> : <span className="pr-merchant-mark" aria-hidden="true">🏪</span>}{store.city && <span className="pr-merchant-city">{store.city}</span>}</div>
-                  <div><h3 className="pr-merchant-title">{store.name}</h3>{store.description && <p className="pr-merchant-description">{store.description}</p>}</div>
-                  <div className="pr-merchant-bottom"><a className="pr-merchant-cta" href={`/marketplace?store=${encodeURIComponent(store.id)}`} aria-label={`تصفح منتجات متجر ${store.name}`}>تصفح المنتجات <span aria-hidden="true">←</span></a>{currentMerchantStore?.id === store.id && <div className="pr-merchant-actions" aria-label={`إدارة متجر ${store.name}`}><a className="pr-merchant-action" href="/merchant">لوحة متجري</a><a className="pr-merchant-action" href="/merchant?view=add-product">+ أضف منتج</a></div>}</div>
+                  <div className="pr-merchant-cover">
+                    {store.store_image_url ? (
+                      <img
+                        className="pr-merchant-cover-image blur-[5px]"
+                        src={store.store_image_url}
+                        alt={`صورة متجر ${store.name}`}
+                        width={800}
+                        height={160}
+                        style={{ objectFit: "cover", objectPosition: store.store_image_position ?? "center", backgroundColor: "#F5F0E8" }}
+                        loading={index < 3 ? "eager" : "lazy"}
+                        decoding="async"
+                        fetchPriority={index < 3 ? "high" : "auto"}
+                        onLoad={(event) => event.currentTarget.classList.remove("blur-[5px]")}
+                        onError={(event) => { event.currentTarget.style.visibility = "hidden"; }}
+                      />
+                    ) : <div className="pr-merchant-cover-placeholder" aria-hidden="true">🏪</div>}
+                    {store.city && <span className="pr-merchant-city">{store.city}</span>}
+                  </div>
+                  <div className="pr-merchant-content">
+                    <div><h3 className="pr-merchant-title">{store.name}</h3>{store.description && <p className="pr-merchant-description">{store.description}</p>}</div>
+                    <div className="pr-merchant-bottom"><a className="pr-merchant-cta" href={`/marketplace?store=${encodeURIComponent(store.id)}`} aria-label={`تصفح منتجات متجر ${store.name}`}>تصفح المنتجات <span aria-hidden="true">←</span></a>{currentMerchantStore?.id === store.id && <div className="pr-merchant-actions" aria-label={`إدارة متجر ${store.name}`}><a className="pr-merchant-action" href="/merchant">لوحة متجري</a><a className="pr-merchant-action" href="/merchant?view=add-product">+ أضف منتج</a></div>}</div>
+                  </div>
                 </article>
               ))}
             </div>
@@ -775,7 +800,7 @@ function CustomerStorefront() {
               {bestSellingLoading ? <div className="pr-merchant-state" role="status">جارٍ تحميل المنتجات الأكثر مبيعًا...</div> : bestSellingError ? <div className="pr-merchant-state" role="alert">تعذر تحميل ترتيب المبيعات. تحقق من تطبيق ترحيل عرض الأكثر مبيعًا بعد دمجه.<button type="button" className="pr-retry-button" onClick={() => void mutateBestSellers()}>إعادة المحاولة</button></div> : filteredBestSellingProducts.length === 0 ? <div className="pr-merchant-state">{searchTerm ? "لا توجد منتجات تطابق بحثك." : "لا توجد منتجات مسلّمة كافية لعرض قائمة الأكثر مبيعًا حاليًا."}</div> : filteredBestSellingProducts.map((product, index) => (
                 <article key={product.product_id} className="pr-bestseller-card" style={{ animationDelay: `${index * 45}ms` }}>
                   <span className="pr-best-rank">{index + 1}</span>
-                  <div className="pr-best-image">{product.image_url ? <img src={product.image_url} alt={product.title} loading="lazy" /> : <ShoppingBag size={34} aria-hidden="true" />}</div>
+                  <div className="pr-best-image">{product.image_url ? <img src={product.image_url} alt={product.title} width={600} height={150} loading={index < 3 ? "eager" : "lazy"} decoding="async" fetchPriority={index < 3 ? "high" : "auto"} /> : <ShoppingBag size={34} aria-hidden="true" />}</div>
                   <div className="pr-best-info"><h3>{product.title}</h3><p>{Number(product.quantity_sold).toLocaleString("ar-YE")} مبيعات مسلّمة</p><strong>{Number(product.price).toLocaleString("ar-YE", { maximumFractionDigits: 2 })} {product.currency}</strong></div>
                   <a className="pr-best-link" href={`/marketplace?store=${encodeURIComponent(product.store_id)}`}>تسوّق من المتجر <ArrowLeft size={15} aria-hidden="true" /></a>
                 </article>
