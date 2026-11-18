@@ -18,22 +18,44 @@ function canvasToWebp(canvas: HTMLCanvasElement, quality: number): Promise<Blob>
 }
 
 async function createVariant(source: ImageBitmap, maxWidth: ProductUploadWidth, name: string): Promise<ProductImageVariant> {
-  const scale = Math.min(1, maxWidth / source.width);
-  const width = Math.max(1, Math.round(source.width * scale));
-  const height = Math.max(1, Math.round(source.height * scale));
+  let width = Math.max(1, Math.round(source.width * Math.min(1, maxWidth / source.width)));
+  let height = Math.max(1, Math.round(source.height * (width / source.width)));
   const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
   try {
     const context = canvas.getContext("2d");
     if (!context) throw new Error("Canvas image processing is unavailable.");
-    context.drawImage(source, 0, 0, width, height);
-    const blob = await canvasToWebp(canvas, 0.7);
+    let quality = 0.7;
+    let blob: Blob | null = null;
+    for (let attempt = 0; attempt < 24; attempt += 1) {
+      canvas.width = width;
+      canvas.height = height;
+      context.clearRect(0, 0, width, height);
+      context.drawImage(source, 0, 0, width, height);
+      blob = await canvasToWebp(canvas, quality);
+      if (blob.type !== "image/webp") throw new Error("تعذر إنشاء صورة WebP في هذا المتصفح.");
+      if (blob.size <= 300 * 1024) break;
+      if (quality > 0.5) quality = Math.max(0.5, quality - 0.05);
+      else {
+        width = Math.max(1, Math.floor(width * 0.9));
+        height = Math.max(1, Math.floor(height * 0.9));
+        quality = 0.7;
+      }
+    }
+    if (!blob || blob.size > 300 * 1024) throw new Error("تعذر ضغط الصورة إلى أقل من 300 كيلوبايت.");
     return { width: maxWidth, file: new File([blob], name, { type: "image/webp", lastModified: Date.now() }) };
   } finally {
     canvas.width = 0;
     canvas.height = 0;
   }
+}
+
+export async function createStoreWebp(file: File): Promise<File> {
+  let source: ImageBitmap;
+  try { source = await createImageBitmap(file); }
+  catch { throw new Error("اختر صورة JPG أو PNG أو WebP صالحة."); }
+  try {
+    return (await createVariant(source, 800, `${crypto.randomUUID()}-800.webp`)).file;
+  } finally { source.close(); }
 }
 
 export async function createProductWebpVariants(file: File): Promise<ProductImageVariant[]> {
