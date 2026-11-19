@@ -74,7 +74,7 @@ describe("MerchantMarketplace retry and product images", () => {
     expect(mocks.mutate).toHaveBeenCalledTimes(1);
   });
 
-  it("shows the product fallback when its image fails to load", async () => {
+  it("keeps the real product image element visible after a load error", async () => {
     mocks.useSWR.mockImplementation((key: unknown) =>
       key === "merchant-marketplace"
         ? {
@@ -114,9 +114,12 @@ describe("MerchantMarketplace retry and product images", () => {
     render(<MerchantMarketplace />);
 
     await waitFor(() => expect(screen.getByRole("img", { name: "منتج تجريبي" })).toBeTruthy());
-    fireEvent.error(screen.getByRole("img", { name: "منتج تجريبي" }));
+    const productImage = screen.getByRole("img", { name: "منتج تجريبي" }) as HTMLImageElement;
+    const originalSource = productImage.getAttribute("src");
+    fireEvent.error(productImage);
 
-    expect(screen.getByRole("img", { name: "لا توجد صورة للمنتج" })).toBeTruthy();
+    expect(screen.getByRole("img", { name: "منتج تجريبي" })).toBeTruthy();
+    expect(productImage.getAttribute("src")).toBe(originalSource);
     expect(screen.getAllByText("السوق الشامل").length).toBeGreaterThan(0);
   });
 });
