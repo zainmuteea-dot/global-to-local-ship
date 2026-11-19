@@ -142,13 +142,20 @@ function logMarketplaceError(stage: string, error: unknown) {
 export async function getSignedProductImage(
   path: string,
   width?: ProductImageWidth,
+  refresh = false,
 ): Promise<string | null> {
   if (!path || path.endsWith(`/${EMPTY_PRODUCT_IMAGE}`)) return null;
   const variantPath = width ? productImageVariantPath(path, width) : null;
   const imagePath = variantPath ?? path;
   const cacheKey = `${imagePath}:${width ?? "original"}`;
-  const cachedUrl = readCachedSignedImage(cacheKey);
-  if (cachedUrl) return cachedUrl;
+  if (!refresh) {
+    const cachedUrl = readCachedSignedImage(cacheKey);
+    if (cachedUrl) return cachedUrl;
+  }
+  signedImageUrlCache.delete(cacheKey);
+  if (typeof window !== "undefined") {
+    try { window.localStorage.removeItem(`${SIGNED_URL_STORAGE_PREFIX}${cacheKey}`); } catch { /* cache is optional */ }
+  }
   try {
     const { data, error } = await supabase.storage
       .from("merchant-product-images")
