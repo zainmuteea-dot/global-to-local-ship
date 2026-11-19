@@ -96,7 +96,6 @@ export function MerchantMarketplace() {
   };
 
   const openQuickView = (product: MarketplaceProduct, cardImageUrl?: string) => {
-    // Reuse the card image URL so opening Quick View never triggers another storage request.
     setQuickViewProduct({ ...product, image_url: cardImageUrl ?? product.image_url });
     setQuickViewOpen(true);
   };
@@ -262,7 +261,7 @@ export function MerchantMarketplace() {
               <ProductCard
                 key={product.id}
                 product={product}
-                priority={index < 3}
+                priority={index < 6}
                 onAdd={() => addProductToCart(product)}
                 onQuickView={(cardImageUrl) => openQuickView(product, cardImageUrl)}
               />
@@ -315,6 +314,21 @@ function getDiscountPercent(product: MarketplaceProduct): number {
   return 0;
 }
 
+function readProductColor(product: MarketplaceProduct): string {
+  const details = product as MarketplaceProduct & { color?: string; colour?: string };
+  return (details.color || details.colour || "").trim();
+}
+
+function colorDot(label: string): string {
+  const value = label.toLocaleLowerCase();
+  if (/أسود|اسود|black/.test(value)) return "#111111";
+  if (/أبيض|ابيض|white/.test(value)) return "#FFFFFF";
+  if (/أحمر|احمر|red/.test(value)) return "#DC2626";
+  if (/أزرق|ازرق|blue/.test(value)) return "#2563EB";
+  if (/أخضر|اخضر|green/.test(value)) return "#16A34A";
+  return "#8E8176";
+}
+
 function ProductCard({
   product,
   priority,
@@ -326,13 +340,9 @@ function ProductCard({
   onAdd: () => void;
   onQuickView: (cardImageUrl?: string) => void;
 }) {
-  const [imageFailed, setImageFailed] = useState(false);
-  const [imageLoaded, setImageLoaded] = useState(false);
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [imageTimedOut, setImageTimedOut] = useState(false);
-  const [placeholderFailed, setPlaceholderFailed] = useState(false);
-  const [requestStarted, setRequestStarted] = useState(false);
   const imageContainerRef = useRef<HTMLDivElement | null>(null);
+  const retryTimerRef = useRef<number | null>(null);
+  const retryCountRef = useRef(0);
   const productWithImageAliases = product as MarketplaceProduct & {
     images?: Array<string | { url?: string; src?: string }>;
     image?: string | { url?: string; src?: string };
@@ -347,52 +357,37 @@ function ProductCard({
       ? productWithImageAliases.image
       : (productWithImageAliases.image?.url ?? productWithImageAliases.image?.src)) ||
     null;
-  const imageUrlToShow = imageFailed || imageTimedOut ? null : (imageUrl ?? directProductImage);
+  const [imageUrl, setImageUrl] = useState<string | null>(directProductImage);
   const discountPercent = getDiscountPercent(product);
-  const stockLabel =
-    product.stock === 1 ? "متجر 1 قطعة" : `متوفر ${product.stock.toLocaleString("ar-YE")} قطع`;
+  const colorLabel = readProductColor(product);
 
   useEffect(() => {
-    setImageFailed(false);
-    setImageLoaded(false);
-    setImageTimedOut(false);
-    setPlaceholderFailed(false);
-    setImageUrl(null);
-    setRequestStarted(false);
-  }, [product.id]);
+    if (directProductImage) {
+      setImageUrl(directProductImage);
+      return;
+    }
+    if (!product.image_path) return;
 
-  useEffect(() => {
-    if (directProductImage) setRequestStarted(true);
-  }, [product.id, directProductImage]);
-
-  useEffect(() => {
-    if (!requestStarted || imageLoaded || imageFailed || imageTimedOut) return;
-    const timeout = window.setTimeout(() => setImageTimedOut(true), 3000);
-    return () => window.clearTimeout(timeout);
-  }, [requestStarted, imageLoaded, imageFailed, imageTimedOut]);
-
-  useEffect(() => {
-    const node = imageContainerRef.current;
-    if (!node || imageUrl || directProductImage) return;
     let active = true;
-    const requestImage = () => {
-      setRequestStarted(true);
+    const loadImage = () => {
       void getSignedProductImage(product.image_path, 800).then((url) => {
-        if (!active) return;
-        setImageUrl(url);
-        if (!url) setImageFailed(true);
+        if (active && url) setImageUrl(url);
       });
     };
+
     if (priority || typeof IntersectionObserver === "undefined") {
-      requestImage();
+      loadImage();
       return () => {
         active = false;
       };
     }
+
+    const node = imageContainerRef.current;
+    if (!node) return;
     const observer = new IntersectionObserver(
       (entries) => {
         if (!entries.some((entry) => entry.isIntersecting)) return;
-        requestImage();
+        loadImage();
         observer.disconnect();
       },
       { rootMargin: "250px" },
@@ -402,102 +397,93 @@ function ProductCard({
       active = false;
       observer.disconnect();
     };
-  }, [product.id, product.image_path, directProductImage, imageUrl, priority]);
+  }, [product.id, product.image_path, directProductImage, priority]);
 
-  const cardImageUrl = imageUrlToShow ?? undefined;
+  useEffect(() => () => {
+    if (retryTimerRef.current !== null) window.clearTimeout(retryTimerRef.current);
+  }, []);
+
+  const retryImage = () => {
+    if (retryCountRef.current >= 3) return;
+    retryCountRef.current += 1;
+    const delay = retryCountRef.current * 900;
+    retryTimerRef.current = window.setTimeout(() => {
+      if (product.image_path) {
+        void getSignedProductImage(product.image_path, 800).then((freshUrl) => {
+          if (freshUrl) {
+            setImageUrl(freshUrl);
+            return;
+          }
+          setImageUrl((current) => current ? addRetryQuery(current) : current);
+        });
+      } else {
+        setImageUrl((current) => current ? addRetryQuery(current) : current);
+      }
+    }, delay);
+  };
+
+  const cardImageUrl = imageUrl ?? undefined;
+  const priceText = Number(product.price).toLocaleString("en-US");
+  const currencyText = product.currency === "YER" ? "ر.ي" : product.currency;
+  const hasOldPrice = product.old_price != null && product.old_price > product.price;
 
   return (
     <article className="mkt-card">
-      <div
-        ref={imageContainerRef}
-        className="mkt-media"
-      >
-        {imageUrlToShow ? (
+      <div ref={imageContainerRef} className="mkt-media">
+        {imageUrl ? (
           <img
-            src={imageUrlToShow}
+            src={imageUrl}
             alt={product.title}
-            width={600}
-            height={750}
-            className={imageLoaded ? "is-loaded" : "is-loading"}
+            width={331}
+            height={410}
+            className="mkt-product-image"
             loading={priority ? "eager" : "lazy"}
             decoding="async"
             fetchPriority={priority ? "high" : "auto"}
-            onLoad={() => setImageLoaded(true)}
-            onError={() => setImageFailed(true)}
+            onError={retryImage}
           />
-        ) : imageTimedOut || imageFailed ? (
-          placeholderFailed ? (
-            <div role="img" aria-label="تعذر تحميل الصورة" className="mkt-image-placeholder" />
-          ) : (
-          <img
-            src="/marketplace-product-placeholder.svg"
-            alt="لا توجد صورة للمنتج"
-            width={600}
-            height={750}
-            className="mkt-fallback"
-            loading="eager"
-            decoding="async"
-            onError={() => setPlaceholderFailed(true)}
-          />
-          )
         ) : (
-          <div
-            role="img"
-            aria-label="لا توجد صورة للمنتج"
-            className="mkt-image-placeholder"
-          />
+          <div role="img" aria-label="صورة المنتج غير متاحة" className="mkt-image-placeholder" />
         )}
         <div className="mkt-badges">
-          <span className="mkt-b-fast">
-            فوري ⚡
-          </span>
+          <span className="mkt-b-fast">فوري ⚡</span>
           <span className={`mkt-b-stock ${product.stock < 1 ? "off" : ""}`}>
             {product.stock > 0 ? "متوفر" : "نفد المخزون"}
           </span>
         </div>
         <div className="mkt-actions">
-          <button
-            type="button"
-            onClick={() => onQuickView(cardImageUrl)}
-            aria-label={`معاينة ${product.title}`}
-            className="mkt-ra white"
-          >
+          <button type="button" onClick={() => onQuickView(cardImageUrl)} aria-label={`معاينة ${product.title}`} className="mkt-ra white">
             <Eye aria-hidden="true" className="size-5" />
           </button>
-          <button
-            type="button"
-            onClick={onAdd}
-            disabled={product.stock < 1}
-            aria-label={`أضف ${product.title} للسلة`}
-            className="mkt-ra brown"
-          >
+          <button type="button" onClick={onAdd} disabled={product.stock < 1} aria-label={`أضف ${product.title} للسلة`} className="mkt-ra brown">
             <ShoppingBag aria-hidden="true" className="size-5" />
           </button>
         </div>
       </div>
 
       <div className="mkt-body">
-        <h3 className="mkt-name">
-          {product.title}
-        </h3>
-        <div className="mkt-meta">
-          <span className="mkt-tag">
-            {product.category || "عام"}
-          </span>
+        <h3 className="mkt-name" title={product.title}>{product.title}</h3>
+        <p className="mkt-description">{product.description || ""}</p>
+        <div className="mkt-meta" aria-label="لون المنتج وتصنيفه">
+          {colorLabel ? (
+            <span className="mkt-color-chip">
+              <span className="mkt-color-dot" style={{ backgroundColor: colorDot(colorLabel) }} aria-hidden="true" />
+              <span>{colorLabel}</span>
+            </span>
+          ) : <span className="mkt-meta-spacer" aria-hidden="true" />}
+          {product.category ? <span className="mkt-tag">{product.category}</span> : <span className="mkt-meta-spacer" aria-hidden="true" />}
         </div>
         <div className="mkt-pricing">
-          <span className="mkt-stock-txt">{stockLabel}</span>
+          <span className={`mkt-stock-txt ${product.stock < 1 ? "is-out" : ""}`}>
+            <i aria-hidden="true" />{product.stock > 0 ? "متوفر" : "نفد المخزون"}
+          </span>
           <div className="mkt-price">
             <div className="mkt-was" dir="ltr">
-              {product.old_price != null && product.old_price > product.price && (
-                <>
-                  <s>{Number(product.old_price).toLocaleString("en-US")}</s>
-                  {discountPercent > 0 && <span className="mkt-off">-{discountPercent}%</span>}
-                </>
-              )}
+              {hasOldPrice && <s>{Number(product.old_price).toLocaleString("en-US")} {currencyText}</s>}
+              {discountPercent > 0 && <span className="mkt-off">-{discountPercent}%</span>}
             </div>
             <div className="mkt-now" dir="ltr">
-              <b>{formatProductPrice(Number(product.price), product.currency)}</b>
+              <b>{priceText}</b><span>{currencyText}</span>
             </div>
           </div>
         </div>
@@ -505,6 +491,16 @@ function ProductCard({
       </div>
     </article>
   );
+}
+
+function addRetryQuery(source: string): string {
+  try {
+    const url = new URL(source, window.location.href);
+    url.searchParams.set("mkt_retry", String(Date.now()));
+    return url.toString();
+  } catch {
+    return source;
+  }
 }
 
 function QuickViewDialog({
@@ -521,11 +517,11 @@ function QuickViewDialog({
   onBuyNow: (product: MarketplaceProduct, quantity: number) => void;
 }) {
   const [copied, setCopied] = useState(false);
-  const [imageFailed, setImageFailed] = useState(false);
+  const quickViewRetryCount = useRef(0);
 
   useEffect(() => {
     setCopied(false);
-    setImageFailed(false);
+    quickViewRetryCount.current = 0;
   }, [product?.id, open]);
 
   if (!product) return null;
@@ -570,7 +566,7 @@ function QuickViewDialog({
           </DialogPrimitive.Description>
 
           <div className="mkt-quick-view-image relative h-[380px] w-full overflow-hidden rounded-[16px] bg-[#eee7da]">
-            {product.image_url && !imageFailed ? (
+            {product.image_url ? (
               <img
                 src={product.image_url}
                 alt={product.title}
@@ -580,18 +576,18 @@ function QuickViewDialog({
                 loading="eager"
                 decoding="async"
                 fetchPriority="high"
-                onError={() => setImageFailed(true)}
+                onError={(event) => {
+                  const image = event.currentTarget;
+                  const attempts = quickViewRetryCount.current;
+                  if (attempts >= 3) return;
+                  quickViewRetryCount.current += 1;
+                  window.setTimeout(() => {
+                    image.src = addRetryQuery(image.src);
+                  }, (attempts + 1) * 900);
+                }}
               />
             ) : (
-              <img
-                src="/marketplace-product-placeholder.svg"
-                alt="صورة افتراضية للمنتج"
-                width={600}
-                height={380}
-                className="h-full w-full object-cover"
-                loading="eager"
-                decoding="async"
-              />
+              <div role="img" aria-label="صورة المنتج غير متاحة" className="h-full w-full bg-[#F6EDDE]" />
             )}
             <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-[#36543a] shadow-sm">
               <span className="size-2 rounded-full bg-emerald-500" /> جاهزة فوراً
