@@ -73,8 +73,9 @@ export function CartDrawer({ open, onClose }: Props) {
         ),
       ).filter((element) => element.offsetParent !== null);
       if (!focusable.length) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
+      const first = focusable.at(0);
+      const last = focusable.at(-1);
+      if (!first || !last) return;
       if (event.shiftKey && document.activeElement === first) {
         event.preventDefault();
         last.focus();
@@ -105,6 +106,14 @@ export function CartDrawer({ open, onClose }: Props) {
     }
     return Array.from(grouped.entries());
   }, [items]);
+  const totalLabel = useMemo(() => {
+    if (hasUnpricedItems) return "يكتمل عند تأكيد الأسعار";
+    if (totals.length === 1) {
+      const onlyTotal = totals.at(0);
+      return onlyTotal ? money(onlyTotal[1], onlyTotal[0]) : "—";
+    }
+    return totals.length > 1 ? `${count} قطع` : "—";
+  }, [count, hasUnpricedItems, totals]);
 
   const changeQuantity = (item: Extract<CartItem, { kind: "merchant" }>, quantity: number) => {
     const next = updateMerchantCartQuantity(readCart(), item.id, quantity);
@@ -249,7 +258,7 @@ export function CartDrawer({ open, onClose }: Props) {
               <div className="cd-sum-sep" />
               <div className="cd-sum-r is-total">
                 <span>{totals.length > 1 ? "المجموع حسب العملة" : "الإجمالي"}</span>
-                <b>{hasUnpricedItems ? "يكتمل عند تأكيد الأسعار" : totals.length === 1 ? money(totals[0][1], totals[0][0]) : totals.length > 1 ? `${count} قطع` : "—"}</b>
+                <b>{totalLabel}</b>
               </div>
             </div>
             <Link to="/cart" className="cd-cta" onClick={onClose}>
