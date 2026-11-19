@@ -167,23 +167,23 @@ export function MerchantMarketplace() {
     <main dir="rtl" className="min-h-screen bg-[#F5F0E8] text-[#3E2A1E]">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-7 sm:px-6 sm:py-10 lg:px-8">
         <header className="w-full bg-transparent">
-          <div className="relative mx-auto flex h-[56px] items-center justify-between px-4">
+          <div className="relative mx-auto flex h-[88px] items-center justify-between px-4">
             <Link
               to="/products"
               aria-label="رجوع إلى المتاجر"
-              className="inline-flex h-[40px] items-center justify-center gap-2 rounded-full bg-[#E8DCC8] px-4 text-sm font-bold text-[#3E2A1E] transition hover:bg-[#dfcfb5]"
+              className="inline-flex h-[40px] shrink-0 items-center justify-center gap-2 rounded-full bg-[#E8DCC8] px-4 text-sm font-bold text-[#3E2A1E] transition hover:bg-[#dfcfb5]"
             >
               <span>رجوع</span>
               <ArrowRight aria-hidden="true" className="size-4" />
             </Link>
-            <div className="absolute left-1/2 flex max-w-[55%] -translate-x-1/2 items-center justify-center gap-2.5">
+            <div className="absolute left-1/2 flex max-w-[55%] -translate-x-1/2 flex-col items-center justify-center gap-1">
               <span
                 aria-hidden="true"
-                className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-[#4A2C1A] text-sm font-extrabold text-white"
+                className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-[#4A2C1A] text-base font-extrabold text-white"
               >
                 {Array.from(headerStoreName.trim())[0] || "س"}
               </span>
-              <h1 className="truncate text-center text-base font-extrabold tracking-tight text-[#3E2A1E] sm:text-lg">
+              <h1 className="max-w-full truncate text-center text-sm font-extrabold tracking-tight text-[#3E2A1E] sm:text-base">
                 {headerStoreName}
               </h1>
             </div>
