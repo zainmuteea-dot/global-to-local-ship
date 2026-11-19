@@ -13,7 +13,8 @@ import {
   X,
 } from "lucide-react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { Input } from "@/components/ui/input";
+import { CartDrawer } from "./cart-drawer";
+import "./marketplace.css";
 import {
   getSignedProductImage,
   loadMarketplace,
@@ -63,6 +64,7 @@ export function MerchantMarketplace() {
     return getStoreLocatorFromUrl();
   });
   const [cartCount, setCartCount] = useState(0);
+  const [cartOpen, setCartOpen] = useState(false);
   const [addedProductTitle, setAddedProductTitle] = useState("");
   const [quickViewProduct, setQuickViewProduct] = useState<MarketplaceProduct | null>(null);
   const [quickViewOpen, setQuickViewOpen] = useState(false);
@@ -165,178 +167,111 @@ export function MerchantMarketplace() {
   });
 
   return (
-    <main dir="rtl" className="min-h-screen bg-[#F5F0E8] text-[#3E2A1E]">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-7 sm:px-6 sm:py-10 lg:px-8">
-        <header className="w-full bg-transparent">
-          <div className="relative mx-auto flex h-[88px] items-center justify-between px-4">
-            <Link
-              to="/products"
-              aria-label="رجوع إلى المتاجر"
-              className="inline-flex h-[40px] shrink-0 items-center justify-center gap-2 rounded-full bg-[#E8DCC8] px-4 text-sm font-bold text-[#3E2A1E] transition hover:bg-[#dfcfb5]"
-            >
-              <span>رجوع</span>
-              <ArrowRight aria-hidden="true" className="size-4" />
-            </Link>
-            <div className="absolute left-1/2 flex max-w-[55%] -translate-x-1/2 flex-col items-center justify-center gap-1">
-              <span
-                aria-hidden="true"
-                className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-[#4A2C1A] text-base font-extrabold text-white"
-              >
-                {Array.from(headerStoreName.trim())[0] || "س"}
-              </span>
-              <h1 className="max-w-full truncate text-center text-sm font-extrabold tracking-tight text-[#3E2A1E] sm:text-base">
-                {headerStoreName}
-              </h1>
+    <main dir="rtl" lang="ar" className="mkt">
+      <header className="mkt-bar">
+        <div className="mkt-bar-in">
+          <Link to="/products" aria-label="رجوع إلى المتاجر" className="mkt-back">
+            <span>رجوع</span><ArrowRight aria-hidden="true" className="size-4" />
+          </Link>
+          <div className="mkt-brand" aria-label={headerStoreName}>
+            <span className="mkt-logo" aria-hidden="true">{Array.from(headerStoreName.trim())[0] || "س"}</span>
+            <div className="mkt-brand-txt">
+              <h1>{headerStoreName}</h1>
+              <span>{selectedStoreId ? `${storeProducts.length.toLocaleString("ar-YE")} منتجات` : "متجر التجار"}</span>
             </div>
-            <Link
-              to="/cart"
-              aria-label={`السلة، ${cartCount} منتجات`}
-              className="relative inline-flex size-12 shrink-0 items-center justify-center rounded-full bg-[#4A2C1A] text-white transition hover:bg-[#3E2A1E]"
-            >
-              <ShoppingBag aria-hidden="true" className="size-6" />
-              <span className="absolute -right-0.5 -top-0.5 inline-flex size-[18px] items-center justify-center rounded-full bg-[#E67E22] text-[10px] font-extrabold leading-none text-white">
-                {cartCount}
-              </span>
-            </Link>
           </div>
-
-          <div className="mx-auto mt-2 flex h-12 flex-row gap-2 px-4">
-            <label className="relative h-12 min-w-0 flex-1">
-              <span className="sr-only">ابحث باسم القطعة، اللون أو المقاس</span>
-              <Search
-                aria-hidden="true"
-                className="pointer-events-none absolute right-4 top-1/2 size-4 -translate-y-1/2 text-[#9B8C78]"
-              />
-              <Input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="ابحث باسم القطعة، اللون أو المقاس..."
-                className="h-12 rounded-full border-0 bg-white pr-11 text-[#3E2A1E] placeholder:text-[#A49684] focus-visible:ring-2 focus-visible:ring-[#E67E22]"
-              />
-            </label>
-            <button
-              type="button"
-              aria-expanded={showFilters}
-              aria-controls="marketplace-filters"
-              aria-label="فلتر المنتجات"
-              onClick={() => setShowFilters((value) => !value)}
-              className="inline-flex size-12 shrink-0 items-center justify-center rounded-xl bg-white text-[#4A2C1A] transition hover:bg-[#fffaf3]"
-            >
-              <span aria-hidden="true" className="text-xl leading-none">
-                ☷
-              </span>
-            </button>
-          </div>
-          {showFilters && (
-            <div
-              id="marketplace-filters"
-              className="mx-4 mt-3 flex flex-wrap gap-2"
-              aria-label="تصفية حسب التصنيف"
-            >
-              <button
-                type="button"
-                onClick={() => setSelectedCategory("")}
-                className={`h-10 rounded-full px-4 text-sm font-bold ${!selectedCategory ? "bg-[#4A2C1A] text-white" : "border border-[#d9c8aa] bg-white text-[#6f5637]"}`}
-              >
-                الكل
-              </button>
-              {categories.map((category) => (
-                <button
-                  key={category}
-                  type="button"
-                  onClick={() => setSearch(category)}
-                  className={`h-10 rounded-full border px-4 text-sm font-semibold ${search === category ? "border-[#E67E22] bg-[#f7e6d6] text-[#3E2A1E]" : "border-[#e8dcc8] bg-white text-[#4A2C1A] hover:bg-[#fffaf3]"}`}
-                >
-                  {category}
-                </button>
-              ))}
-            </div>
-          )}
-        </header>
-        {addedProductTitle && (
-          <div
-            role="status"
-            className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#d4bd91] bg-[#f1e6d1] p-4 text-sm text-[#50391f]"
+          <button
+            type="button"
+            aria-label={`افتح السلة، ${cartCount} منتجات`}
+            className="mkt-cart"
+            onClick={() => setCartOpen(true)}
           >
-            <p className="font-semibold">تمت إضافة «{addedProductTitle}» إلى السلة.</p>
-            <Link
-              to="/cart"
-              className="rounded-xl bg-[#4a3020] px-4 py-2 font-bold text-white transition hover:bg-[#382719]"
+            <ShoppingBag aria-hidden="true" className="size-6" />
+            <i className="mkt-cart-n">{cartCount}</i>
+          </button>
+        </div>
+      </header>
+
+      <div className="mkt-tools">
+        <label className="mkt-search">
+          <Search aria-hidden="true" className="size-5" />
+          <span className="sr-only">ابحث باسم القطعة أو اللون أو المقاس</span>
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="ابحث باسم القطعة، اللون أو المقاس..."
+          />
+          {search && (
+            <button type="button" className="mkt-clear" onClick={() => setSearch("")} aria-label="مسح البحث">×</button>
+          )}
+        </label>
+        <button
+          type="button"
+          className="mkt-sort"
+          aria-expanded={showFilters}
+          aria-controls="marketplace-categories"
+          aria-label="إظهار تصنيفات المنتجات"
+          onClick={() => setShowFilters((value) => !value)}
+        >
+          <span aria-hidden="true" className="text-xl leading-none">☷</span>
+        </button>
+      </div>
+      {showFilters && (
+        <nav id="marketplace-categories" className="mkt-chips" aria-label="تصنيفات المنتجات">
+          <button type="button" className={`mkt-chip ${selectedCategory ? "" : "on"}`} onClick={() => setSelectedCategory("")}>الكل</button>
+          {categories.map((category) => (
+            <button
+              key={category}
+              type="button"
+              className={`mkt-chip ${selectedCategory === category ? "on" : ""}`}
+              onClick={() => setSelectedCategory((current) => current === category ? "" : category)}
             >
-              عرض السلة ({cartCount})
-            </Link>
+              {category}
+            </button>
+          ))}
+        </nav>
+      )}
+
+      <section className="mkt-main" aria-label="المنتجات المعتمدة">
+        {addedProductTitle && (
+          <div role="status" className="mkt-added">
+            <span>تمت إضافة «{addedProductTitle}» إلى السلة.</span>
+            <button type="button" onClick={() => setCartOpen(true)}>عرض السلة ({cartCount})</button>
           </div>
         )}
-
-        <section aria-labelledby="marketplace-products-heading">
-          <div className="mb-5 flex items-end justify-between gap-4">
-            <div>
-              <p className="mb-1 text-xs font-bold tracking-wide text-[#a47b3e]">
-                تسوّق بثقة من تجارنا
-              </p>
-              <h2
-                id="marketplace-products-heading"
-                className="text-2xl font-extrabold text-[#382719]"
-              >
-                المنتجات المعتمدة
-              </h2>
-              <p className="mt-1.5 text-sm text-[#8b7c68]">
-                {storeProducts.length.toLocaleString("ar-YE")} منتج معتمد متاح
-                {selectedStoreId && selectedStoreName ? ` في ${selectedStoreName}` : ""}
-              </p>
-            </div>
-            <div className="hidden items-center gap-2 rounded-full border border-[#e7dcc9] bg-[#fcfaf5] px-4 py-2 text-xs font-medium text-[#7c6c58] sm:flex">
-              <span className="size-2 rounded-full bg-emerald-500" /> منتجات متوفرة الآن
-            </div>
+        {isLoading ? (
+          <div className="mkt-grid" aria-label="جارٍ تحميل المنتجات">
+            {Array.from({ length: 6 }, (_, index) => <div key={index} className="mkt-skeleton" />)}
           </div>
+        ) : error ? (
+          <div className="mkt-empty" role="alert">
+            <b>تعذر تحميل المنتجات الآن</b>
+            <p>تحقق من اتصالك ثم أعد المحاولة.</p>
+            <button type="button" className="mkt-empty-retry" onClick={() => void mutate()}>إعادة المحاولة</button>
+          </div>
+        ) : visibleProducts.length === 0 ? (
+          <div className="mkt-empty">
+            <Package aria-hidden="true" className="size-9" />
+            <b>{selectedStoreId && storeProducts.length === 0 ? "لا توجد منتجات معتمدة لهذا المتجر حاليًا" : "لا توجد منتجات مطابقة"}</b>
+            <p>{selectedStoreId && storeProducts.length === 0 ? "ستظهر المنتجات هنا بعد اعتمادها من الإدارة." : "جرّب كلمة بحث أخرى أو عُد إلى كل المنتجات."}</p>
+            {(search || selectedCategory) && <button type="button" className="mkt-empty-retry" onClick={() => { setSearch(""); setSelectedCategory(""); }}>مسح البحث والتصفية</button>}
+          </div>
+        ) : (
+          <div className="mkt-grid">
+            {visibleProducts.map((product, index) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                priority={index < 3}
+                onAdd={() => addProductToCart(product)}
+                onQuickView={(cardImageUrl) => openQuickView(product, cardImageUrl)}
+              />
+            ))}
+          </div>
+        )}
+      </section>
 
-          {isLoading ? (
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3" aria-label="جارٍ تحميل المنتجات">
-              {Array.from({ length: 8 }, (_, index) => (
-                <div key={index} className="h-80 animate-pulse rounded-[1.5rem] bg-[#ede4d5]" />
-              ))}
-            </div>
-          ) : error ? (
-            <div className="rounded-[1.5rem] border border-[#eadfce] bg-[#fcfaf5] px-5 py-12 text-center">
-              <p className="text-sm text-[#8b4c3b]">تعذر تحميل المنتجات الآن. حاول مرة أخرى.</p>
-              <button
-                type="button"
-                onClick={() => void mutate()}
-                className="mt-4 rounded-xl border border-[#d8c7aa] bg-white px-4 py-2 text-sm font-bold text-[#60472e] transition hover:bg-[#f6f0e5]"
-              >
-                إعادة المحاولة
-              </button>
-            </div>
-          ) : visibleProducts.length === 0 ? (
-            <div className="rounded-[1.5rem] border border-[#eadfce] bg-[#fcfaf5] px-5 py-14 text-center">
-              <Package aria-hidden="true" className="mx-auto size-9 text-[#b49a73]" />
-              <p className="mt-3 font-bold text-[#50391f]">
-                {selectedStoreId && storeProducts.length === 0
-                  ? "لا توجد منتجات معتمدة لهذا المتجر حاليًا"
-                  : "لا توجد منتجات مطابقة"}
-              </p>
-              <p className="mt-1 text-sm text-[#8b7c68]">
-                {selectedStoreId && storeProducts.length === 0
-                  ? "ستظهر المنتجات هنا بعد اعتمادها من الإدارة."
-                  : "جرّب كلمة بحث أخرى أو عُد إلى كل المنتجات."}
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-              {visibleProducts.map((product, index) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  priority={index < 3}
-                  onAdd={() => addProductToCart(product)}
-                  onQuickView={(cardImageUrl) => openQuickView(product, cardImageUrl)}
-                />
-              ))}
-            </div>
-          )}
-        </section>
-      </div>
-
+      <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
       <QuickViewDialog
         product={quickViewProduct}
         open={quickViewOpen}
@@ -395,6 +330,7 @@ function ProductCard({
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageTimedOut, setImageTimedOut] = useState(false);
+  const [placeholderFailed, setPlaceholderFailed] = useState(false);
   const [requestStarted, setRequestStarted] = useState(false);
   const imageContainerRef = useRef<HTMLDivElement | null>(null);
   const productWithImageAliases = product as MarketplaceProduct & {
@@ -420,6 +356,7 @@ function ProductCard({
     setImageFailed(false);
     setImageLoaded(false);
     setImageTimedOut(false);
+    setPlaceholderFailed(false);
     setImageUrl(null);
     setRequestStarted(false);
   }, [product.id]);
@@ -470,10 +407,10 @@ function ProductCard({
   const cardImageUrl = imageUrlToShow ?? undefined;
 
   return (
-    <article className="group flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-[0_4px_18px_rgba(67,45,22,0.08)]">
+    <article className="mkt-card">
       <div
         ref={imageContainerRef}
-        className="relative aspect-[4/5] w-full overflow-hidden bg-[#EEE7DA]"
+        className="mkt-media"
       >
         {imageUrlToShow ? (
           <img
@@ -481,45 +418,49 @@ function ProductCard({
             alt={product.title}
             width={600}
             height={750}
-            className={`absolute inset-0 h-full w-full object-cover transition-all duration-300 ${imageLoaded ? "blur-0 opacity-100" : "scale-[1.03] blur-[5px] opacity-75"}`}
+            className={imageLoaded ? "is-loaded" : "is-loading"}
             loading={priority ? "eager" : "lazy"}
             decoding="async"
             fetchPriority={priority ? "high" : "auto"}
             onLoad={() => setImageLoaded(true)}
             onError={() => setImageFailed(true)}
           />
-        ) : imageTimedOut && !imageFailed ? (
+        ) : imageTimedOut || imageFailed ? (
+          placeholderFailed ? (
+            <div role="img" aria-label="تعذر تحميل الصورة" className="mkt-image-placeholder" />
+          ) : (
           <img
             src="/marketplace-product-placeholder.svg"
             alt="صورة افتراضية للمنتج"
             width={600}
             height={750}
-            className="absolute inset-0 h-full w-full object-cover"
+            className="mkt-fallback"
             loading="eager"
             decoding="async"
-            onError={() => setImageFailed(true)}
+            onError={() => setPlaceholderFailed(true)}
           />
+          )
         ) : (
           <div
             role="img"
             aria-label="لا توجد صورة للمنتج"
-            className="absolute inset-0 bg-[#EEE7DA]"
+            className="mkt-image-placeholder"
           />
         )}
-        <div className="absolute right-2.5 top-2.5 z-10 flex flex-col items-end gap-1.5">
-          <span className="rounded-full bg-[#22C55E] px-2.5 py-1 text-[10px] font-extrabold text-white shadow-sm">
+        <div className="mkt-badges">
+          <span className="mkt-b-fast">
             فوري ⚡
           </span>
-          <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-extrabold text-[#3E2A1E] shadow-sm">
-            متوفر
+          <span className={`mkt-b-stock ${product.stock < 1 ? "off" : ""}`}>
+            {product.stock > 0 ? "متوفر" : "نفد المخزون"}
           </span>
         </div>
-        <div className="absolute bottom-2.5 left-2.5 z-10 flex flex-col gap-1.5">
+        <div className="mkt-actions">
           <button
             type="button"
             onClick={() => onQuickView(cardImageUrl)}
             aria-label={`معاينة ${product.title}`}
-            className="inline-flex size-10 items-center justify-center rounded-full bg-white text-[#4A2C1A] shadow-md transition hover:scale-105"
+            className="mkt-ra white"
           >
             <Eye aria-hidden="true" className="size-5" />
           </button>
@@ -528,47 +469,40 @@ function ProductCard({
             onClick={onAdd}
             disabled={product.stock < 1}
             aria-label={`أضف ${product.title} للسلة`}
-            className="inline-flex size-10 items-center justify-center rounded-full bg-[#4A2C1A] text-white shadow-md transition hover:scale-105 hover:bg-[#3E2A1E] disabled:opacity-45"
+            className="mkt-ra brown"
           >
             <ShoppingBag aria-hidden="true" className="size-5" />
           </button>
         </div>
       </div>
 
-      <div className="flex h-[146px] min-h-[110px] flex-col justify-between px-3 py-3 text-center">
-        <h3 className="line-clamp-2 h-10 text-center text-xs font-extrabold leading-5 text-[#3E2A1E] sm:text-sm">
+      <div className="mkt-body">
+        <h3 className="mkt-name">
           {product.title}
         </h3>
-        <div className="flex h-5 items-center justify-center">
-          <span className="max-w-full truncate rounded-full bg-[#F5F0E8] px-2.5 py-0.5 text-[10px] font-bold text-[#72573C]">
+        <div className="mkt-meta">
+          <span className="mkt-tag">
             {product.category || "عام"}
           </span>
         </div>
-        <div dir="rtl" className="flex h-7 min-w-0 items-center justify-between gap-1">
-          <span dir="ltr" className="shrink-0 text-sm font-extrabold text-[#E67E22] sm:text-base">
-            {formatProductPrice(Number(product.price), product.currency)}
-          </span>
-          {product.old_price != null && product.old_price > product.price ? (
-            <div dir="ltr" className="flex min-w-0 items-center gap-1">
-              <span className="truncate text-[10px] font-semibold text-[#9A8A75] line-through sm:text-xs">
-                {formatProductPrice(Number(product.old_price), product.currency)}
-              </span>
-              {discountPercent > 0 && (
-                <span className="shrink-0 rounded-full bg-[#FFF0E8] px-1.5 py-0.5 text-[9px] font-extrabold text-[#C65C2D]">
-                  -{discountPercent}%
-                </span>
+        <div className="mkt-pricing">
+          <span className="mkt-stock-txt">{stockLabel}</span>
+          <div className="mkt-price">
+            <div className="mkt-was" dir="ltr">
+              {product.old_price != null && product.old_price > product.price && (
+                <>
+                  <s>{Number(product.old_price).toLocaleString("en-US")}</s>
+                  {discountPercent > 0 && <span className="mkt-off">-{discountPercent}%</span>}
+                </>
               )}
             </div>
-          ) : (
-            <span />
-          )}
+            <div className="mkt-now" dir="ltr">
+              <b>{Number(product.price).toLocaleString("en-US")}</b>
+              <span>{product.currency === "YER" ? "ري" : product.currency}</span>
+            </div>
+          </div>
         </div>
-        <div className="flex h-4 items-center justify-center text-[10px] font-semibold text-[#806B53]">
-          {stockLabel}
-        </div>
-        <div className="flex h-4 items-center justify-center text-[10px] font-bold text-[#72573C]">
-          🏠 السوق الشامل
-        </div>
+        <div className="mkt-seller">🏠 السوق الشامل</div>
       </div>
     </article>
   );
@@ -619,7 +553,7 @@ function QuickViewDialog({
         <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/45 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
         <DialogPrimitive.Content
           dir="rtl"
-          className="fixed left-1/2 top-1/2 z-50 max-h-[92dvh] w-[calc(100%-1rem)] max-w-[480px] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-[24px] bg-white p-4 text-[#382719] shadow-[0_28px_90px_rgba(24,16,9,0.28)] outline-none sm:p-5"
+          className="mkt-quick-view fixed left-1/2 top-1/2 z-50 max-h-[92dvh] w-[calc(100%-1rem)] max-w-[480px] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-[24px] bg-white p-4 text-[#382719] shadow-[0_28px_90px_rgba(24,16,9,0.28)] outline-none sm:p-5"
         >
           <div className="mb-3 flex items-center justify-between gap-3">
             <DialogPrimitive.Title className="text-base font-extrabold text-[#241a13]">
@@ -636,7 +570,7 @@ function QuickViewDialog({
             تفاصيل المنتج وإضافته إلى السلة
           </DialogPrimitive.Description>
 
-          <div className="relative h-[380px] w-full overflow-hidden rounded-[16px] bg-[#eee7da]">
+          <div className="mkt-quick-view-image relative h-[380px] w-full overflow-hidden rounded-[16px] bg-[#eee7da]">
             {product.image_url && !imageFailed ? (
               <img
                 src={product.image_url}
