@@ -172,27 +172,76 @@ export async function getSignedProductImage(
   }
 }
 
+const MARKETPLACE_PRODUCT_FIELDS =
+  "id,store_id,title,description,category,price,old_price,discount_percent,sku,currency,stock,image_path,status,created_at,updated_at";
+const MARKETPLACE_PRODUCT_BASE_FIELDS =
+  "id,store_id,title,description,category,price,currency,stock,image_path,status,created_at,updated_at";
+const MARKETPLACE_STORE_FIELDS =
+  "id,name,contact_phone,city,store_image_path,store_image_fit,store_image_position";
+const MARKETPLACE_STORE_BASE_FIELDS = "id,name,contact_phone,city";
+
+function isMissingColumnError(error: unknown): boolean {
+  const issue = error as { code?: string; message?: string; details?: string } | null;
+  const message = `${issue?.message ?? ""} ${issue?.details ?? ""}`;
+  return issue?.code === "42703" || issue?.code === "PGRST204" ||
+    /column .* does not exist|could not find .*column.*schema cache/i.test(message);
+}
+
 export async function loadMarketplace(): Promise<MarketplaceProduct[]> {
-  const { data: rows, error } = await db
+  let { data: rows, error } = await db
     .from("merchant_products")
-    .select(
-      "id,store_id,title,description,category,price,old_price,discount_percent,sku,currency,stock,image_path,status,created_at,updated_at",
-    )
+    .select(MARKETPLACE_PRODUCT_FIELDS)
     .eq("status", "approved")
     .gt("stock", 0)
     .order("created_at", { ascending: false });
+
+  // Optional merchandising columns were added after the base marketplace schema.
+  // Fall back to the original production columns if that migration/schema cache is behind.
+  if (error && isMissingColumnError(error)) {
+    console.warn("[merchant-marketplace] optional product columns unavailable; using base fields");
+    const fallback = await db
+      .from("merchant_products")
+      .select(MARKETPLACE_PRODUCT_BASE_FIELDS)
+      .eq("status", "approved")
+      .gt("stock", 0)
+      .order("created_at", { ascending: false });
+    rows = fallback.data;
+    error = fallback.error;
+  }
   if (error) {
     logMarketplaceError("approved products query", error);
     throw error;
   }
   if (!rows?.length) return [];
 
-  const storeIds = [...new Set(rows.map((row: MerchantProduct) => row.store_id))];
-  const { data: stores, error: storeError } = await db
+  const productRows = (rows as Array<Partial<MerchantProduct> & Pick<MerchantProduct,
+    "id" | "store_id" | "title" | "description" | "category" | "price" | "currency" | "stock" | "image_path" | "status" | "created_at" | "updated_at"
+  >>).map((row) => ({
+    ...row,
+    old_price: row.old_price ?? null,
+    discount_percent: row.discount_percent ?? null,
+    sku: row.sku ?? null,
+  })) as MerchantProduct[];
+
+  const storeIds = [...new Set(productRows.map((row) => row.store_id))];
+  let { data: stores, error: storeError } = await db
     .from("merchant_stores")
-    .select("id,name,contact_phone,city,store_image_path,store_image_fit,store_image_position")
+    .select(MARKETPLACE_STORE_FIELDS)
     .in("id", storeIds)
     .eq("status", "active");
+
+  // Store image presentation fields are optional; don't let an unapplied migration
+  // prevent the real approved products and active stores from appearing.
+  if (storeError && isMissingColumnError(storeError)) {
+    console.warn("[merchant-marketplace] optional store image columns unavailable; using base fields");
+    const fallback = await db
+      .from("merchant_stores")
+      .select(MARKETPLACE_STORE_BASE_FIELDS)
+      .in("id", storeIds)
+      .eq("status", "active");
+    stores = fallback.data;
+    storeError = fallback.error;
+  }
   if (storeError) {
     logMarketplaceError("active stores query", storeError);
     throw storeError;
@@ -200,12 +249,18 @@ export async function loadMarketplace(): Promise<MarketplaceProduct[]> {
 
   // Product image signing is done on demand by each card, not serially while loading the product list.
   const storeById = new Map<string, MarketplaceProduct["store"]>(
-    (stores ?? []).map((store: Omit<MarketplaceProduct["store"], "image_url">) => [
+    (stores ?? []).map((store: Partial<MarketplaceProduct["store"]> & Pick<MarketplaceProduct["store"], "id" | "name" | "contact_phone" | "city">) => [
       store.id,
-      { ...store, image_url: null },
+      {
+        ...store,
+        store_image_path: store.store_image_path ?? null,
+        store_image_fit: store.store_image_fit ?? "cover",
+        store_image_position: store.store_image_position ?? "center",
+        image_url: null,
+      },
     ] as const),
   );
-  const visibleRows = (rows as MerchantProduct[]).filter((row) => storeById.has(row.store_id));
+  const visibleRows = productRows.filter((row) => storeById.has(row.store_id));
   return visibleRows.map((row) => ({
     ...row,
     image_url: null, // Signed lazily when the product card enters the viewport.
