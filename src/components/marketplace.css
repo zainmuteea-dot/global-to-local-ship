@@ -86,16 +86,12 @@
 .mkt-chip.on { background: var(--mkt-brown); color: #FFF6EA; box-shadow: 0 6px 14px rgba(130,63,26,.22); }
 
 .mkt-main { width: min(100%,1080px); margin: 0 auto; padding: 22px 24px 0; }
-.mkt-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 20px; align-items: stretch; }
+.mkt-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; align-items: stretch; }
 .mkt-card { min-width: 0; min-height: 591px; display: flex; flex-direction: column; overflow: hidden; border-radius: 18px; background: var(--mkt-card); transition: transform .28s var(--mkt-ease),box-shadow .28s var(--mkt-ease); }
 .mkt-card:hover { transform: translateY(-3px); box-shadow: 0 18px 34px rgba(93,60,30,.10); }
-.mkt-media { position: relative; width: 100%; aspect-ratio: 331 / 410; flex: none; overflow: hidden; background: #F1E7DA; }
-.mkt-media img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; transition: transform .5s var(--mkt-ease),opacity .25s,filter .25s; }
-.mkt-media img.is-loading { opacity: .82; filter: blur(5px); transform: scale(1.03); }
-.mkt-media img.is-loaded { opacity: 1; filter: none; transform: none; }
-.mkt-media img.mkt-fallback { opacity: 1; filter: none; transform: none; }
-.mkt-image-placeholder { position: absolute; inset: 0; background: #F1E7DA; }
-.mkt-card:hover .mkt-media img.is-loaded { transform: scale(1.035); }
+.mkt-media { position: relative; width: 100%; aspect-ratio: 331 / 410; flex: none; overflow: hidden; background: #F6EDDE; }
+.mkt-media img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; aspect-ratio: 331 / 410; object-fit: cover; }
+.mkt-image-placeholder { position: absolute; inset: 0; background: #F6EDDE; }
 .mkt-badges { position: absolute; top: 10px; inset-inline-start: 12px; z-index: 2; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
 .mkt-b-fast, .mkt-b-stock { height: 29px; display: inline-flex; align-items: center; gap: 4px; padding: 0 11px; border-radius: 999px; font-size: 12px; font-weight: 800; white-space: nowrap; backdrop-filter: blur(2px); }
 .mkt-b-fast { background: rgba(239,248,239,.94); color: var(--mkt-green-text); }
@@ -108,20 +104,26 @@
 .mkt-ra:hover { transform: scale(1.07); }
 .mkt-ra.brown:hover { background: #6F3516; }
 .mkt-ra:disabled { opacity: .45; cursor: not-allowed; }
-.mkt-body { min-height: 181px; flex: 1 0 181px; display: flex; flex-direction: column; padding: 15px 16px 14px; }
-.mkt-name { min-height: 51px; display: -webkit-box; overflow: hidden; color: var(--mkt-ink); font-size: 19px; font-weight: 800; line-height: 1.34; text-align: center; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-.mkt-meta { min-height: 24px; margin-top: 8px; display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap; }
+.mkt-body { min-height: 224px; flex: 0 0 224px; display: flex; flex-direction: column; padding: 12px 14px 10px; }
+.mkt-name { height: 50px; min-height: 50px; display: -webkit-box; overflow: hidden; color: #101828; font-size: 19px; font-weight: 800; line-height: 25px; text-align: center; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.mkt-description { height: 40px; min-height: 40px; margin-top: 5px !important; overflow: hidden; color: #3E332B; font-size: 12.5px; font-weight: 600; line-height: 20px; text-align: center; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.mkt-meta { height: 24px; min-height: 24px; margin-top: 4px; display: flex; align-items: center; justify-content: center; gap: 6px; overflow: hidden; }
+.mkt-color-chip { max-width: 52%; height: 24px; display: inline-flex; align-items: center; gap: 6px; overflow: hidden; padding: 0 9px; border-radius: 8px; background: #F9F5F2; color: #3E332B; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.mkt-color-dot { width: 10px; height: 10px; flex: none; border: 1px solid rgba(0,0,0,.18); border-radius: 50%; }
+.mkt-meta-spacer { width: 1px; height: 1px; flex: none; }
 .mkt-tag { max-width: 100%; height: 24px; display: inline-flex; align-items: center; overflow: hidden; padding: 0 9px; border-radius: 8px; background: #F9F5F2; color: var(--mkt-muted); font-size: 11.5px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
-.mkt-pricing { min-height: 48px; margin-top: auto; display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; }
-.mkt-stock-txt { max-width: 48%; padding-bottom: 4px; color: var(--mkt-muted); font-size: 12px; font-weight: 700; white-space: nowrap; }
+.mkt-pricing { height: 50px; min-height: 50px; margin-top: auto; display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; }
+.mkt-stock-txt { max-width: 48%; padding-bottom: 5px; display: inline-flex; align-items: center; gap: 6px; color: #7F6A57; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.mkt-stock-txt i { width: 8px; height: 8px; flex: none; border-radius: 50%; background: #22C55E; }
+.mkt-stock-txt.is-out i { background: #98A2B3; }
 .mkt-price { min-width: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
 .mkt-was { min-width: 0; height: 20px; display: flex; align-items: center; gap: 6px; color: var(--mkt-muted-2); }
 .mkt-was s { font-size: 12.5px; font-weight: 600; text-decoration-color: #B7A99C; text-decoration-thickness: 1.5px; }
 .mkt-off { display: inline-flex; align-items: center; padding: 4px 7px 5px; border-radius: 6px; background: var(--mkt-accent-soft); color: var(--mkt-accent-text); font-size: 11.5px; font-weight: 800; line-height: 1; }
 .mkt-now { display: flex; align-items: baseline; gap: 4px; direction: ltr; }
-.mkt-now b { color: var(--mkt-accent); font-size: 21px; font-weight: 800; letter-spacing: -.5px; line-height: 1.3; }
-.mkt-now span { color: var(--mkt-accent); font-size: 12.5px; font-weight: 700; }
-.mkt-seller { min-height: 20px; margin-top: 4px; color: #8D4218; font-size: 11px; font-weight: 700; text-align: right; }
+.mkt-now b { color: #D94B24; font-size: 21px; font-weight: 800; letter-spacing: -.5px; line-height: 1.3; }
+.mkt-now span { color: #D94B24; font-size: 12.5px; font-weight: 700; }
+.mkt-seller { height: 20px; min-height: 20px; margin-top: 4px; color: #8D4218; font-size: 11px; font-weight: 700; text-align: right; }
 .mkt-empty { min-height: 240px; padding: 52px 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; border-radius: 22px; background: white; color: #8A7560; text-align: center; }
 .mkt-empty b { margin-top: 6px; color: #3B2A1C; font-size: 17px; font-weight: 800; }
 .mkt-empty p { margin: 0 0 10px; font-size: 13.5px; }
@@ -134,12 +136,10 @@
 .mkt-quick-view-image img { display: block; width: 100%; height: 100%; object-fit: cover; }
 
 @media (max-width: 1024px) {
-  .mkt-grid { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px; }
+  .mkt-grid { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; }
   .mkt-main,.mkt-tools,.mkt-chips { padding-left: 20px; padding-right: 20px; }
   .mkt-card { min-height: 0; }
-  .mkt-body { min-height: 166px; flex-basis: 166px; padding: 13px 12px 12px; }
-  .mkt-name { min-height: 48px; font-size: 16px; }
-  .mkt-now b { font-size: 19px; }
+  .mkt-body { min-height: 224px; flex-basis: 224px; padding: 12px 10px 10px; }
 }
 @media (max-width: 760px) {
   .mkt-bar-in { min-height: 72px; padding: 0 16px; }
@@ -155,29 +155,30 @@
   .mkt-sort { width: 50px; height: 50px; border-radius: 16px; }
   .mkt-chip { height: 34px; padding: 0 14px; font-size: 12.5px; }
   .mkt-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
-  .mkt-media { aspect-ratio: 4 / 5; }
-  .mkt-body { min-height: 150px; flex-basis: 150px; padding: 11px 10px 10px; }
-  .mkt-name { min-height: 42px; font-size: 14px; line-height: 1.5; }
-  .mkt-meta { min-height: 22px; margin-top: 5px; }
-  .mkt-tag { height: 22px; padding: 0 7px; font-size: 10.5px; }
-  .mkt-now b { font-size: 17px; }
-  .mkt-now span { font-size: 11px; }
-  .mkt-was s { font-size: 11px; }
-  .mkt-off { font-size: 10.5px; }
-  .mkt-stock-txt { font-size: 10.5px; }
+  .mkt-media { aspect-ratio: 331 / 410; }
+  .mkt-body { min-height: 224px; flex-basis: 224px; padding: 12px 8px 10px; }
+  .mkt-name { height: 50px; min-height: 50px; font-size: 19px; line-height: 25px; }
+  .mkt-description { font-size: 12.5px; }
+  .mkt-meta { height: 24px; min-height: 24px; margin-top: 4px; }
+  .mkt-tag { height: 24px; padding: 0 7px; font-size: 11.5px; }
+  .mkt-now b { font-size: 21px; }
+  .mkt-now span { font-size: 12.5px; }
+  .mkt-was s { font-size: 12.5px; }
+  .mkt-off { font-size: 11.5px; }
+  .mkt-stock-txt { font-size: 12px; }
   .mkt-ra { width: 40px; height: 40px; }
   .mkt-actions { bottom: 8px; inset-inline-end: 8px; gap: 6px; }
   .mkt-badges { top: 8px; inset-inline-start: 8px; gap: 5px; }
   .mkt-b-fast,.mkt-b-stock { height: 23px; padding: 0 8px; font-size: 10.5px; }
-  .mkt-skeleton { min-height: 0; aspect-ratio: 4 / 5; }
+  .mkt-skeleton { min-height: 0; aspect-ratio: 331 / 410; }
 }
 @media (max-width: 420px) {
-  .mkt-grid { gap: 10px; }
-  .mkt-body { min-height: 145px; flex-basis: 145px; padding-inline: 8px; }
-  .mkt-name { min-height: 40px; font-size: 13px; }
-  .mkt-now b { font-size: 15.5px; }
-  .mkt-now span { font-size: 10px; }
-  .mkt-stock-txt { font-size: 9.5px; }
+  .mkt-grid { gap: 12px; }
+  .mkt-body { min-height: 224px; flex-basis: 224px; padding-inline: 7px; }
+  .mkt-name { height: 50px; min-height: 50px; font-size: 19px; line-height: 25px; }
+  .mkt-now b { font-size: 21px; }
+  .mkt-now span { font-size: 12.5px; }
+  .mkt-stock-txt { font-size: 12px; }
   .mkt-seller { font-size: 10px; }
 }
 @media (prefers-reduced-motion: reduce) {
