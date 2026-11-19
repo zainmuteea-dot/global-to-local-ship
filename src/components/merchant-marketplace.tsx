@@ -56,6 +56,7 @@ export function MerchantMarketplace() {
     dedupingInterval: 20_000,
   });
   const [search, setSearch] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [selectedStoreId, setSelectedStoreId] = useState(() => {
     if (typeof window === "undefined") return "";
@@ -122,7 +123,6 @@ export function MerchantMarketplace() {
   }, [products, selectedStoreId]);
   const selectedStoreName = selectedStore?.store.name?.trim() || "السوق الشامل";
   const headerStoreName = selectedStoreId ? selectedStoreName : "السوق الشامل";
-  const cardStoreName = selectedStoreId ? selectedStoreName : "السوق الشامل";
   const resolvedStoreId = selectedStore?.store.id ?? selectedStoreId;
   const storeProducts = useMemo(
     () =>
@@ -138,7 +138,7 @@ export function MerchantMarketplace() {
   const visibleProducts = storeProducts.filter((product) => {
     const term = search.trim().toLocaleLowerCase();
     return (
-      !term ||
+      (!term ||
       [
         product.title,
         product.description,
@@ -159,7 +159,8 @@ export function MerchantMarketplace() {
         .filter(Boolean)
         .join(" ")
         .toLocaleLowerCase()
-        .includes(term)
+        .includes(term)) &&
+      (!selectedCategory || product.category === selectedCategory)
     );
   });
 
@@ -234,8 +235,8 @@ export function MerchantMarketplace() {
             >
               <button
                 type="button"
-                onClick={() => setSearch("")}
-                className={`h-10 rounded-full px-4 text-sm font-bold ${search ? "border border-[#d9c8aa] bg-white text-[#6f5637]" : "bg-[#4A2C1A] text-white"}`}
+                onClick={() => setSelectedCategory("")}
+                className={`h-10 rounded-full px-4 text-sm font-bold ${!selectedCategory ? "bg-[#4A2C1A] text-white" : "border border-[#d9c8aa] bg-white text-[#6f5637]"}`}
               >
                 الكل
               </button>
@@ -327,7 +328,6 @@ export function MerchantMarketplace() {
                   key={product.id}
                   product={product}
                   priority={index < 3}
-                  storeName={cardStoreName}
                   onAdd={() => addProductToCart(product)}
                   onQuickView={(cardImageUrl) => openQuickView(product, cardImageUrl)}
                 />
@@ -352,8 +352,8 @@ export function MerchantMarketplace() {
   );
 }
 
-function formatYerPrice(value: number): string {
-  return `${Number(value).toLocaleString("en-US")} YER`;
+function formatProductPrice(value: number, currency: MarketplaceProduct["currency"] = "YER"): string {
+  return `${Number(value).toLocaleString("en-US")} ${currency}`;
 }
 
 function getShortItemNumber(sku: string | null | undefined, productId: string): string {
@@ -383,13 +383,11 @@ function getDiscountPercent(product: MarketplaceProduct): number {
 function ProductCard({
   product,
   priority,
-  storeName,
   onAdd,
   onQuickView,
 }: {
   product: MarketplaceProduct;
   priority: boolean;
-  storeName: string;
   onAdd: () => void;
   onQuickView: (cardImageUrl?: string) => void;
 }) {
@@ -427,10 +425,14 @@ function ProductCard({
   }, [product.id]);
 
   useEffect(() => {
-    if (!requestStarted || imageLoaded || imageFailed) return;
+    if (directProductImage) setRequestStarted(true);
+  }, [product.id, directProductImage]);
+
+  useEffect(() => {
+    if (!requestStarted || imageLoaded || imageFailed || imageTimedOut) return;
     const timeout = window.setTimeout(() => setImageTimedOut(true), 3000);
     return () => window.clearTimeout(timeout);
-  }, [requestStarted, imageLoaded, imageFailed]);
+  }, [requestStarted, imageLoaded, imageFailed, imageTimedOut]);
 
   useEffect(() => {
     const node = imageContainerRef.current;
@@ -486,6 +488,17 @@ function ProductCard({
             onLoad={() => setImageLoaded(true)}
             onError={() => setImageFailed(true)}
           />
+        ) : imageTimedOut && !imageFailed ? (
+          <img
+            src="/marketplace-product-placeholder.svg"
+            alt="صورة افتراضية للمنتج"
+            width={600}
+            height={750}
+            className="absolute inset-0 h-full w-full object-cover"
+            loading="eager"
+            decoding="async"
+            onError={() => setImageFailed(true)}
+          />
         ) : (
           <div
             role="img"
@@ -533,12 +546,12 @@ function ProductCard({
         </div>
         <div dir="rtl" className="flex h-7 min-w-0 items-center justify-between gap-1">
           <span dir="ltr" className="shrink-0 text-sm font-extrabold text-[#E67E22] sm:text-base">
-            {formatYerPrice(Number(product.price))}
+            {formatProductPrice(Number(product.price), product.currency)}
           </span>
           {product.old_price != null && product.old_price > product.price ? (
             <div dir="ltr" className="flex min-w-0 items-center gap-1">
               <span className="truncate text-[10px] font-semibold text-[#9A8A75] line-through sm:text-xs">
-                {formatYerPrice(Number(product.old_price))}
+                {formatProductPrice(Number(product.old_price), product.currency)}
               </span>
               {discountPercent > 0 && (
                 <span className="shrink-0 rounded-full bg-[#FFF0E8] px-1.5 py-0.5 text-[9px] font-extrabold text-[#C65C2D]">
@@ -552,6 +565,9 @@ function ProductCard({
         </div>
         <div className="flex h-4 items-center justify-center text-[10px] font-semibold text-[#806B53]">
           {stockLabel}
+        </div>
+        <div className="flex h-4 items-center justify-center text-[10px] font-bold text-[#72573C]">
+          🏠 السوق الشامل
         </div>
       </div>
     </article>
@@ -661,7 +677,7 @@ function QuickViewDialog({
               <div className="flex min-w-0 flex-wrap items-center gap-2">
                 {oldPrice != null && (
                   <span className="text-xs font-semibold text-[#9a8a75] line-through sm:text-sm">
-                    Before Discount {formatYerPrice(oldPrice)}
+                    Before Discount {formatProductPrice(oldPrice, product.currency)}
                   </span>
                 )}
                 {discountPercent > 0 && (
@@ -671,7 +687,7 @@ function QuickViewDialog({
                 )}
               </div>
               <span className="shrink-0 text-xl font-extrabold text-[#d95e16] sm:text-2xl">
-                {formatYerPrice(Number(product.price))}
+                {formatProductPrice(Number(product.price), product.currency)}
               </span>
             </div>
           </div>
