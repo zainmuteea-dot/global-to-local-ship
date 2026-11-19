@@ -228,7 +228,11 @@ it("shows the selected store name in the compact header and removes the old head
 
   expect(screen.getByRole("heading", { level: 1, name: "عالم الاكسسوارات" })).toBeTruthy();
   expect(screen.getByRole("link", { name: "رجوع إلى المتاجر" }).getAttribute("href")).toBe("/products");
-  expect(screen.getByRole("link", { name: /السلة، 0 منتجات/ })).toBeTruthy();
+  const cartButton = screen.getByRole("button", { name: /افتح السلة، 0 منتجات/ });
+  expect(cartButton).toBeTruthy();
+  fireEvent.click(cartButton);
+  expect(screen.getByRole("dialog")).toBeTruthy();
+  expect(screen.getByText("سلتك فارغة")).toBeTruthy();
   expect(screen.getByPlaceholderText("ابحث باسم القطعة، اللون أو المقاس...")).toBeTruthy();
   expect(screen.queryByText("تسوّق من متاجرنا المحلية")).toBeNull();
   expect(screen.queryByText("منتجات مختارة من تجار السوق الشامل")).toBeNull();

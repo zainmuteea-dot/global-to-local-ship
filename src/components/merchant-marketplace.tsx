@@ -431,7 +431,7 @@ function ProductCard({
           ) : (
           <img
             src="/marketplace-product-placeholder.svg"
-            alt="صورة افتراضية للمنتج"
+            alt="لا توجد صورة للمنتج"
             width={600}
             height={750}
             className="mkt-fallback"
@@ -497,8 +497,7 @@ function ProductCard({
               )}
             </div>
             <div className="mkt-now" dir="ltr">
-              <b>{Number(product.price).toLocaleString("en-US")}</b>
-              <span>{product.currency === "YER" ? "ري" : product.currency}</span>
+              <b>{formatProductPrice(Number(product.price), product.currency)}</b>
             </div>
           </div>
         </div>
