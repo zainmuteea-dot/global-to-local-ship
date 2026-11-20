@@ -63,7 +63,7 @@ beforeEach(() => {
   );
 });
 
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); window.history.replaceState({}, "", "/"); });
+afterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllGlobals(); window.history.replaceState({}, "", "/"); });
 
 describe("MerchantMarketplace retry and product images", () => {
   it("retries loading marketplace products when the retry button is pressed", () => {
@@ -115,11 +115,18 @@ describe("MerchantMarketplace retry and product images", () => {
 
     const productImage = await screen.findByRole("img", { name: "منتج تجريبي" }) as HTMLImageElement;
     const originalSource = productImage.getAttribute("src");
+    vi.useFakeTimers();
     fireEvent.error(productImage);
 
     expect(screen.getByRole("img", { name: "منتج تجريبي" })).toBeTruthy();
     expect(screen.queryByRole("img", { name: "لا توجد صورة للمنتج" })).toBeNull();
     expect(productImage.getAttribute("src")).toBe(originalSource);
+
+    await vi.advanceTimersByTimeAsync(899);
+    expect(productImage.getAttribute("src")).toBe(originalSource);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(mocks.getSignedProductImage).toHaveBeenCalledWith("store-1/image.jpg", 800, true);
+    expect(productImage.getAttribute("src")).toBe("https://example.test/image.jpg");
     expect(screen.getAllByText("السوق الشامل").length).toBeGreaterThan(0);
   });
 });
