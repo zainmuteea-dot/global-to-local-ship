@@ -474,6 +474,7 @@ function ProductCard({
           ) : <span className="mkt-meta-spacer" aria-hidden="true" />}
           {product.category ? <span className="mkt-tag">{product.category}</span> : <span className="mkt-meta-spacer" aria-hidden="true" />}
         </div>
+        <div className="mkt-price-divider" aria-hidden="true" />
         <div className="mkt-pricing">
           <span className={`mkt-stock-txt ${product.stock < 1 ? "is-out" : ""}`}>
             <i aria-hidden="true" />{product.stock > 0 ? "متوفر" : "نفد المخزون"}
