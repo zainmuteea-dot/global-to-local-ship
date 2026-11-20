@@ -74,7 +74,7 @@ describe("MerchantMarketplace retry and product images", () => {
     expect(mocks.mutate).toHaveBeenCalledTimes(1);
   });
 
-  it("shows the product fallback when its image fails to load", async () => {
+  it("keeps the product image visible and retries when it fails to load", async () => {
     mocks.useSWR.mockImplementation((key: unknown) =>
       key === "merchant-marketplace"
         ? {
@@ -113,10 +113,13 @@ describe("MerchantMarketplace retry and product images", () => {
 
     render(<MerchantMarketplace />);
 
-    await waitFor(() => expect(screen.getByRole("img", { name: "منتج تجريبي" })).toBeTruthy());
-    fireEvent.error(screen.getByRole("img", { name: "منتج تجريبي" }));
+    const productImage = await screen.findByRole("img", { name: "منتج تجريبي" }) as HTMLImageElement;
+    const originalSource = productImage.getAttribute("src");
+    fireEvent.error(productImage);
 
-    expect(screen.getByRole("img", { name: "لا توجد صورة للمنتج" })).toBeTruthy();
+    expect(screen.getByRole("img", { name: "منتج تجريبي" })).toBeTruthy();
+    expect(screen.queryByRole("img", { name: "لا توجد صورة للمنتج" })).toBeNull();
+    expect(productImage.getAttribute("src")).toBe(originalSource);
     expect(screen.getAllByText("السوق الشامل").length).toBeGreaterThan(0);
   });
 });
@@ -179,10 +182,11 @@ it("opens the new quick view with stock controls and product details", async () 
   expect(screen.getByText("-33%")).toBeTruthy();
   expect(screen.getAllByText("السوق الشامل").length).toBeGreaterThan(0);
   expect(screen.getByText("المتوفر ٢ قطعة")).toBeTruthy();
-  expect(screen.getByText("تفاصيل المنتج")).toBeTruthy();
+  // The product description appears both on the card and in Quick View.
+  expect(screen.getAllByText("تفاصيل المنتج")).toHaveLength(2);
   expect(mocks.getSignedProductImage).not.toHaveBeenCalled();
   expect(screen.queryByText("وصف المنتج")).toBeNull();
-  expect(screen.getAllByText("100 YER").length).toBe(2);
+  expect(screen.getAllByText("100 YER").length).toBe(1);
   expect(screen.getByText("Before Discount 150 YER")).toBeTruthy();
 });
 
