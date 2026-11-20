@@ -128,6 +128,7 @@ describe("MerchantMarketplace retry and product images", () => {
       await vi.advanceTimersByTimeAsync(1);
     });
     expect(mocks.getSignedProductImage).toHaveBeenCalledWith("store-1/image.jpg", 800, true);
+    vi.useRealTimers();
     await waitFor(() => expect(productImage.getAttribute("src")).toBe("https://example.test/image.jpg"));
     expect(screen.getAllByText("السوق الشامل").length).toBeGreaterThan(0);
   });
