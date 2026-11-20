@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { ReactNode, ChangeEvent } from "react";
+import { productImageVariantPaths } from "@/lib/merchant-product-images";
 
 /* ---------- الأنواع ---------- */
 type TabKey = "stores" | "products" | "orders";
@@ -26,6 +27,18 @@ interface Store {
   color: string;
 }
 
+interface AdminProductRow {
+  id: string;
+  store_id: string;
+  title: string;
+  category: string | null;
+  price: number | string;
+  currency: string | null;
+  stock: number;
+  status: string;
+  created_at: string | null;
+}
+
 interface ProductReview {
   id: string;
   storeId: string;
@@ -38,6 +51,7 @@ interface ProductReview {
   oldPrice?: number;
   qty: number;
   submittedAt: string;
+  status: string;
 }
 
 interface OrderItem {
@@ -91,6 +105,17 @@ function formatMoney(amount: number, currency = "YER"): string {
 
 function initial(str: string): string {
   return (str || "م").trim().charAt(0);
+}
+
+function productStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    draft: "مسودة",
+    pending_review: "بانتظار المراجعة",
+    approved: "منشور",
+    rejected: "مرفوض",
+    archived: "مؤرشف",
+  };
+  return labels[status] || status;
 }
 
 /* ---------- الأيقونات المضمّنة (SVG) ---------- */
@@ -292,7 +317,18 @@ export function AdminMerchantMarketplace() {
   const [tab, setTab] = useState<TabKey>("stores");
   const [stores, setStores] = useState<Store[]>([]);
   const [reviews, setReviews] = useState<ProductReview[]>([]);
+  const [storeProducts, setStoreProducts] = useState<ProductReview[]>([]);
   const [orders, setOrders] = useState<OrderItem[]>([]);
+  const [editingStoreId, setEditingStoreId] = useState<string | null>(null);
+  const [storeNameDraft, setStoreNameDraft] = useState("");
+  const [pendingDelete, setPendingDelete] = useState<{
+    kind: "store" | "product";
+    id: string;
+    name: string;
+    storeId?: string;
+    hasOrders: boolean;
+  } | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -359,16 +395,20 @@ export function AdminMerchantMarketplace() {
       const firstStore = mappedStores[0];
       if (firstStore && !expandedId) setExpandedId(firstStore.id);
 
-      // القراءة المباشرة هنا للعرض فقط، وتخضع لسياسات RLS الخاصة بالمدير.
-      const { data: rawProducts, error: productsError } = await db
-        .from("merchant_products")
-        .select("id, store_id, title, category, price, currency, stock, status, created_at")
-        .eq("status", "pending_review")
-        .order("created_at", { ascending: false });
-      if (productsError) throw productsError;
+      // بيانات المنتجات تُعرض داخل كل متجر، وتُراجع المنتجات المعلقة من القائمة نفسها.
+      let rawProducts: AdminProductRow[] = [];
+      if (mappedStores.length > 0) {
+        const { data, error: productsError } = await db
+          .from("merchant_products")
+          .select("id, store_id, title, category, price, currency, stock, status, created_at")
+          .in("store_id", mappedStores.map((store) => store.id))
+          .order("created_at", { ascending: false });
+        if (productsError) throw productsError;
+        rawProducts = (data || []) as AdminProductRow[];
+      }
 
       const storeMap = Object.fromEntries(mappedStores.map((store) => [store.id, store]));
-      setReviews((rawProducts || []).map((product: any) => {
+      const mappedProducts: ProductReview[] = rawProducts.map((product) => {
         const store = storeMap[product.store_id];
         return {
           id: product.id,
@@ -381,8 +421,11 @@ export function AdminMerchantMarketplace() {
           currency: product.currency || "YER",
           qty: Number(product.stock || 0),
           submittedAt: product.created_at ? new Date(product.created_at).toLocaleDateString("ar-YE") : "الآن",
+          status: product.status,
         };
-      }));
+      });
+      setStoreProducts(mappedProducts);
+      setReviews(mappedProducts.filter((product) => product.status === "pending_review"));
 
       const { data: rawOrders, error: ordersError } = await db
         .from("merchant_orders")
@@ -515,22 +558,113 @@ export function AdminMerchantMarketplace() {
     }
   };
 
-  /* ---------- إيقاف متجر بأمان بدل الحذف غير المدعوم ---------- */
-  const deleteStore = async (id: string, name: string) => {
-    if (!window.confirm(`هل تريد إيقاف متجر «${name}»؟ سيبقى سجل المتجر وطلباته محفوظة.`)) return;
-    const store = stores.find((item) => item.id === id);
-    if (!store) return;
+  /* ---------- تعديل اسم المتجر بصلاحية إدارية داخل قاعدة البيانات ---------- */
+  const saveStoreName = async (id: string) => {
+    const name = storeNameDraft.trim();
+    if (name.length < 2 || name.length > 100) {
+      fireToast("اسم المتجر يجب أن يكون بين حرفين و100 حرف");
+      return;
+    }
     try {
-      const { error } = await (supabase as any).rpc("merchant_admin_set_store_terms", {
+      const { error } = await (supabase as any).rpc("merchant_admin_rename_store", {
         _store_id: id,
-        _status: "suspended",
-        _commission_rate: store.commission / 100,
+        _name: name,
       });
       if (error) throw error;
-      setStores((previous) => previous.map((item) => item.id === id ? { ...item, active: false } : item));
-      fireToast(`تم إيقاف «${name}» مع الحفاظ على سجله`);
+      setStores((previous) => previous.map((item) => item.id === id ? { ...item, name } : item));
+      setReviews((previous) => previous.map((item) => item.storeId === id ? { ...item, storeName: name } : item));
+      setStoreProducts((previous) => previous.map((item) => item.storeId === id ? { ...item, storeName: name } : item));
+      setOrders((previous) => previous.map((item) => item.storeId === id ? { ...item, storeName: name } : item));
+      window.dispatchEvent(new CustomEvent("merchant-store-updated", { detail: { id, name } }));
+      try {
+        window.localStorage.setItem("merchant-store-updated", JSON.stringify({ id, name, at: Date.now() }));
+      } catch { /* The current page still updates immediately if storage is unavailable. */ }
+      setEditingStoreId(null);
+      fireToast("تم تعديل اسم المتجر في السوق والإدارة");
     } catch {
-      fireToast("تعذر إيقاف المتجر");
+      fireToast("تعذر تعديل اسم المتجر؛ لم يتم حفظ التغيير");
+    }
+  };
+
+  const removeProductImages = async (paths: string[]) => {
+    const files = Array.from(new Set(paths
+      .filter((path) => path && !path.endsWith("/__no_image__") && path !== "__no_image__")
+      .flatMap((path) => productImageVariantPaths(path) ?? [path])));
+    if (files.length === 0) return;
+    const { error } = await supabase.storage.from("merchant-product-images").remove(files);
+    if (error) console.warn("[admin-merchant-marketplace] product image cleanup failed", error.message);
+  };
+
+  /* ---------- فتح تأكيد المتجر ثم حذفه أو أرشفته مع الحفاظ على الطلبات ---------- */
+  const requestDeleteStore = async (id: string, name: string) => {
+    const db = supabase as any;
+    const { count, error } = await db
+      .from("merchant_orders")
+      .select("id", { count: "exact", head: true })
+      .eq("store_id", id);
+    if (error) {
+      fireToast("تعذر التحقق من الطلبات المرتبطة؛ لم يتم حذف المتجر");
+      return;
+    }
+    setPendingDelete({ kind: "store", id, name, hasOrders: (count ?? 0) > 0 });
+  };
+
+  /* ---------- فتح تأكيد المنتج ثم حذفه أو أرشفته مع الحفاظ على الطلبات ---------- */
+  const requestDeleteProduct = async (id: string, storeId: string, name: string) => {
+    const db = supabase as any;
+    const { count, error } = await db
+      .from("merchant_orders")
+      .select("id", { count: "exact", head: true })
+      .eq("product_id", id);
+    if (error) {
+      fireToast("تعذر التحقق من الطلبات المرتبطة؛ لم يتم حذف المنتج");
+      return;
+    }
+    setPendingDelete({ kind: "product", id, storeId, name, hasOrders: (count ?? 0) > 0 });
+  };
+
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
+    const pending = pendingDelete;
+    setDeleteBusy(true);
+    const db = supabase as any;
+    try {
+      if (pending.kind === "store") {
+        const { data, error } = await db.rpc("merchant_admin_delete_store", { _store_id: pending.id });
+        if (error) throw error;
+        const result = Array.isArray(data) ? data[0] : data;
+        if (result?.action === "deleted") {
+          setStores((previous) => previous.filter((item) => item.id !== pending.id));
+          setStoreProducts((previous) => previous.filter((item) => item.storeId !== pending.id));
+          setReviews((previous) => previous.filter((item) => item.storeId !== pending.id));
+          setExpandedId((previous) => previous === pending.id ? null : previous);
+          await removeProductImages(result.image_paths ?? []);
+          fireToast(`تم حذف «${pending.name}» لعدم ارتباطه بأي طلب`);
+        } else {
+          setStores((previous) => previous.map((item) => item.id === pending.id ? { ...item, active: false } : item));
+          fireToast("هذا العنصر مرتبط بطلبات، سيتم إخفاؤه فقط ولن يتم حذفه نهائيا حفاظا على سجل الطلبات");
+        }
+        await load();
+      } else {
+        const { data, error } = await db.rpc("merchant_admin_delete_product", { _product_id: pending.id });
+        if (error) throw error;
+        const result = Array.isArray(data) ? data[0] : data;
+        setReviews((previous) => previous.filter((item) => item.id !== pending.id));
+        if (result?.action === "deleted") {
+          setStoreProducts((previous) => previous.filter((item) => item.id !== pending.id));
+          setStores((previous) => previous.map((item) => item.id === pending.storeId ? { ...item, products: Math.max(0, item.products - 1) } : item));
+          await removeProductImages(result.image_paths ?? []);
+          fireToast(`تم حذف المنتج «${pending.name}» نهائياً`);
+        } else {
+          setStoreProducts((previous) => previous.map((item) => item.id === pending.id ? { ...item, status: "archived" } : item));
+          fireToast("هذا العنصر مرتبط بطلبات، سيتم إخفاؤه فقط ولن يتم حذفه نهائيا حفاظا على سجل الطلبات");
+        }
+      }
+      setPendingDelete(null);
+    } catch {
+      fireToast("تعذر تنفيذ الإجراء؛ لم يتم المساس بالطلبات");
+    } finally {
+      setDeleteBusy(false);
     }
   };
 
@@ -782,17 +916,41 @@ export function AdminMerchantMarketplace() {
                                       </div>
                                     </div>
 
+                                    <div style={{ marginTop: 14, borderTop: "1px solid #e3ebf4", paddingTop: 12 }}>
+                                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
+                                        <b style={{ color: "var(--navy)", fontSize: 13 }}>منتجات المتجر ({storeProducts.filter((product) => product.storeId === st.id).length})</b>
+                                      </div>
+                                      {storeProducts.filter((product) => product.storeId === st.id).length === 0 ? (
+                                        <span className="st-note">لا توجد منتجات في هذا المتجر.</span>
+                                      ) : storeProducts.filter((product) => product.storeId === st.id).map((product) => (
+                                        <div key={product.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, border: "1px solid #e3ebf4", borderRadius: 10, padding: "8px 10px", marginTop: 7 }}>
+                                          <div style={{ minWidth: 0 }}>
+                                            <b style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 13 }}>{product.name}</b>
+                                            <small style={{ color: "var(--ink-2)" }}>{productStatusLabel(product.status)} · {formatMoney(product.price, product.currency)}</small>
+                                          </div>
+                                          <button className="btn-sm danger" onClick={() => void requestDeleteProduct(product.id, st.id, product.name)} type="button">
+                                            <IcoX /> حذف المنتج
+                                          </button>
+                                        </div>
+                                      ))}
+                                    </div>
+
                                     <div className="st-foot">
-                                      <button
-                                        className="btn-sm danger"
-                                        onClick={() => deleteStore(st.id, st.name)}
-                                        type="button"
-                                      >
-                                        <IcoX /> إيقاف المتجر
+                                      {editingStoreId === st.id ? (
+                                        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                                          <input className="inp" aria-label="اسم المتجر الجديد" value={storeNameDraft} onChange={(event) => setStoreNameDraft(event.target.value)} maxLength={100} style={{ width: 220 }} />
+                                          <button className="btn-sm primary" onClick={() => void saveStoreName(st.id)} type="button">حفظ</button>
+                                          <button className="btn-sm ghost" onClick={() => setEditingStoreId(null)} type="button">إلغاء</button>
+                                        </div>
+                                      ) : (
+                                        <button className="btn-sm ghost" onClick={() => { setEditingStoreId(st.id); setStoreNameDraft(st.name); }} type="button">
+                                          تعديل الاسم
+                                        </button>
+                                      )}
+                                      <button className="btn-sm danger" onClick={() => void requestDeleteStore(st.id, st.name)} type="button">
+                                        <IcoX /> حذف المتجر
                                       </button>
-                                      <span className="st-note">
-                                        التعديلات تُحفظ تلقائياً بمجرد الخروج من الحقل
-                                      </span>
+                                      <span className="st-note">التعديلات تُحفظ تلقائياً بمجرد الخروج من الحقل</span>
                                     </div>
                                   </div>
                                 </div>
@@ -1006,6 +1164,13 @@ export function AdminMerchantMarketplace() {
                                 >
                                   <IcoX /> رفض
                                 </button>
+                                <button
+                                  className="pill no"
+                                  onClick={() => void requestDeleteProduct(r.id, r.storeId, r.name)}
+                                  type="button"
+                                >
+                                  <IcoX /> حذف المنتج
+                                </button>
                               </div>
                             </div>
                           </div>
@@ -1120,6 +1285,39 @@ export function AdminMerchantMarketplace() {
           )}
         </div>
       </main>
+
+      {pendingDelete && (
+        <div
+          role="presentation"
+          onClick={() => { if (!deleteBusy) setPendingDelete(null); }}
+          style={{ position: "fixed", inset: 0, zIndex: 50, display: "grid", placeItems: "center", padding: 20, background: "rgba(15, 23, 42, .48)" }}
+        >
+          <section
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="merchant-delete-title"
+            aria-describedby="merchant-delete-description"
+            dir="rtl"
+            onClick={(event) => event.stopPropagation()}
+            style={{ width: "min(100%, 440px)", borderRadius: 18, background: "#fff", padding: 22, boxShadow: "0 24px 70px rgba(15,23,42,.24)" }}
+          >
+            <h2 id="merchant-delete-title" style={{ margin: 0, fontSize: 18, color: "#14213A" }}>تأكيد الحذف</h2>
+            <p id="merchant-delete-description" style={{ margin: "12px 0 20px", lineHeight: 1.8, color: "#5B6880" }}>
+              {pendingDelete.hasOrders
+                ? "هذا العنصر مرتبط بطلبات، سيتم إخفاؤه فقط ولن يتم حذفه نهائيا حفاظا على سجل الطلبات"
+                : pendingDelete.kind === "store"
+                  ? "هل أنت متأكد؟ سيتم حذف المتجر ومنتجاته نهائيا"
+                  : "هل أنت متأكد أنك تريد حذف هذا المنتج؟"}
+            </p>
+            <div style={{ display: "flex", justifyContent: "flex-start", gap: 10, flexWrap: "wrap" }}>
+              <button className="btn-sm danger" type="button" onClick={() => void confirmDelete()} disabled={deleteBusy}>
+                {deleteBusy ? "جارٍ التنفيذ…" : pendingDelete.hasOrders ? "تأكيد الإخفاء / الأرشفة" : "تأكيد الحذف"}
+              </button>
+              <button className="btn-sm ghost" type="button" onClick={() => setPendingDelete(null)} disabled={deleteBusy}>إلغاء</button>
+            </div>
+          </section>
+        </div>
+      )}
 
       {/* تنبيه عائم (Toast) */}
       <div className={`toast ${toastMsg ? "on" : ""}`}>
