@@ -186,7 +186,7 @@ it("opens the new quick view with stock controls and product details", async () 
   expect(screen.getAllByText("تفاصيل المنتج")).toHaveLength(2);
   expect(mocks.getSignedProductImage).not.toHaveBeenCalled();
   expect(screen.queryByText("وصف المنتج")).toBeNull();
-  expect(screen.getAllByText("100 YER").length).toBe(2);
+  expect(screen.getAllByText("100 YER").length).toBe(1);
   expect(screen.getByText("Before Discount 150 YER")).toBeTruthy();
 });
 
