@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -124,9 +124,11 @@ describe("MerchantMarketplace retry and product images", () => {
 
     await vi.advanceTimersByTimeAsync(899);
     expect(productImage.getAttribute("src")).toBe(originalSource);
-    await vi.advanceTimersByTimeAsync(1);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
     expect(mocks.getSignedProductImage).toHaveBeenCalledWith("store-1/image.jpg", 800, true);
-    expect(productImage.getAttribute("src")).toBe("https://example.test/image.jpg");
+    await waitFor(() => expect(productImage.getAttribute("src")).toBe("https://example.test/image.jpg"));
     expect(screen.getAllByText("السوق الشامل").length).toBeGreaterThan(0);
   });
 });
