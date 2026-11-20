@@ -184,6 +184,7 @@ async function loadMyProducts(storeId: string) {
     .from("merchant_products")
     .select("id,store_id,title,description,category,price,old_price,discount_percent,sku,currency,stock,image_path,status,review_note,created_at,updated_at")
     .eq("store_id", storeId)
+    .neq("status", "archived")
     .order("created_at", { ascending: false });
   if (error) throw error;
   const products = (data ?? []) as MerchantProduct[];
@@ -214,6 +215,18 @@ export function MerchantDashboard() {
     store ? ["merchant-orders", store.id] : null,
     ([, storeId]) => loadMyOrders(storeId),
   );
+  useEffect(() => {
+    const refreshStore = () => { void mutateStore(); };
+    const refreshFromStorage = (event: StorageEvent) => {
+      if (event.key === "merchant-store-updated") refreshStore();
+    };
+    window.addEventListener("merchant-store-updated", refreshStore);
+    window.addEventListener("storage", refreshFromStorage);
+    return () => {
+      window.removeEventListener("merchant-store-updated", refreshStore);
+      window.removeEventListener("storage", refreshFromStorage);
+    };
+  }, [mutateStore]);
 
   const deliveredInYER = orders.filter(
     (order) => order.status === "delivered" && order.currency === "YER",

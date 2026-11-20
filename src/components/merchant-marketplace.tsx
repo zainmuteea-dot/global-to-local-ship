@@ -70,6 +70,19 @@ export function MerchantMarketplace() {
   const [quickViewOpen, setQuickViewOpen] = useState(false);
 
   useEffect(() => {
+    const refreshStoreName = () => { void mutate(); };
+    const refreshFromStorage = (event: StorageEvent) => {
+      if (event.key === "merchant-store-updated") refreshStoreName();
+    };
+    window.addEventListener("merchant-store-updated", refreshStoreName);
+    window.addEventListener("storage", refreshFromStorage);
+    return () => {
+      window.removeEventListener("merchant-store-updated", refreshStoreName);
+      window.removeEventListener("storage", refreshFromStorage);
+    };
+  }, [mutate]);
+
+  useEffect(() => {
     const syncCart = () =>
       setCartCount(
         readCart().reduce((sum, item) => sum + (isMerchantCartItem(item) ? item.quantity : 1), 0),
