@@ -133,6 +133,7 @@ const navItems = [
   { label: "إدارة بطاقات العروض", href: "/admin/offer-cards", icon: PackageSearch },
   { label: "الشات", href: "/admin-chat", icon: MessageSquare },
   { label: "الإشعارات", href: "/notifications", icon: Bell },
+  { label: "إدارة سوق التجارة", href: "/admin/merchants", icon: Store },
   { label: "المنتجات الفورية", href: "/products/manage", icon: PackageOpen },
 ] as const;
 
