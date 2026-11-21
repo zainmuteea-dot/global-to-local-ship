@@ -197,7 +197,7 @@ function NotificationsPage() {
 
   if (sessionLoading || (user && canManage === null)) {
     return (
-      <AccountShell title="الإشعارات">
+      <AccountShell title="الإشعارات" className="notifications-page-shell">
         <p
           role="status"
           className="rounded-2xl border border-slate-200 bg-white p-4 text-center text-sm text-slate-600"
@@ -226,7 +226,7 @@ function NotificationsPage() {
   }
 
   return (
-    <AccountShell title="إشعاراتي">
+    <AccountShell title="إشعاراتي" className="notifications-page-shell">
       <EmptyState
         icon={<Bell className="size-8" />}
         title="سجّل الدخول لعرض إشعاراتك"
@@ -526,7 +526,7 @@ function CustomerNotificationsPage({
   ];
 
   return (
-    <AccountShell title="إشعاراتي">
+    <AccountShell title="إشعاراتي" className="notifications-page-shell">
       <div className="nt-root" dir="rtl">
         <style>{NOTIFICATIONS_CUSTOMER_STYLE}</style>
         <div className="nt-wrap">
