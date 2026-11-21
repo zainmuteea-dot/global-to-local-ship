@@ -10,7 +10,6 @@ import {
   FileText,
   FileSpreadsheet,
   Headphones,
-  Home,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -23,10 +22,8 @@ import {
   Store,
   Tag,
   TrendingUp,
-  UserCheck,
   UserCog,
   Wallet,
-  Zap,
   Coins,
   Database,
   Settings,
@@ -139,10 +136,6 @@ const navItems = [
 
 // روابط عملية من القائمة السابقة. أبقيتها منفصلة حتى لا تتأثر الاختصارات والأزرار الحالية.
 const legacyNavItems = [
-  { label: "الرئيسية", href: "/", icon: Home },
-  { label: "طلب شراء جديد", href: "/new-order", icon: Zap },
-  { label: "تتبع الشحنة", href: "/track", icon: Truck },
-  { label: "حسابي", href: "/my-account", icon: UserCheck },
   { label: "الأسعار والشحن", href: "/prices", icon: Tag },
   { label: "الحسابات المالية", href: "/accounts", icon: Coins },
   { label: "المحاسبة", href: "/accounting", icon: FileSpreadsheet },
