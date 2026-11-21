@@ -197,7 +197,7 @@ function NotificationsPage() {
 
   if (sessionLoading || (user && canManage === null)) {
     return (
-      <AccountShell title="الإشعارات">
+      <AccountShell title="الإشعارات" className="notifications-page-shell">
         <p
           role="status"
           className="rounded-2xl border border-slate-200 bg-white p-4 text-center text-sm text-slate-600"
@@ -226,7 +226,7 @@ function NotificationsPage() {
   }
 
   return (
-    <AccountShell title="إشعاراتي">
+    <AccountShell title="إشعاراتي" className="notifications-page-shell">
       <EmptyState
         icon={<Bell className="size-8" />}
         title="سجّل الدخول لعرض إشعاراتك"
@@ -526,7 +526,7 @@ function CustomerNotificationsPage({
   ];
 
   return (
-    <AccountShell title="إشعاراتي">
+    <AccountShell title="إشعاراتي" className="notifications-page-shell">
       <div className="nt-root" dir="rtl">
         <style>{NOTIFICATIONS_CUSTOMER_STYLE}</style>
         <div className="nt-wrap">
@@ -676,10 +676,27 @@ function CustomerNotificationsPage({
 }
 
 const NOTIFICATIONS_CUSTOMER_STYLE = `
-.nt-root{--nt-primary:#0f4c81;--nt-primary2:#1c6fb8;--nt-ink:#15233b;--nt-muted:#64748b;--nt-line:#e3edf7;--nt-bg:#f3f7fc;direction:rtl;color:var(--nt-ink);font-family:'Tajawal','Cairo',system-ui,sans-serif;background:linear-gradient(135deg,#eef5fd,#f7faff 65%);border-radius:22px;padding:12px;min-height:70vh}
+.nt-root{--nt-primary:#0A2E6B;--nt-primary2:#1D4ED8;--nt-ink:#334155;--nt-muted:#334155;--nt-line:#E2E8F0;--nt-bg:#fff;direction:rtl;color:var(--nt-ink);font-family:'Tajawal','Cairo',system-ui,sans-serif;background:linear-gradient(180deg,#0A2E6B 0%,#123A8A 45%,#1D4ED8 100%);border-radius:22px;padding:12px;min-height:70vh}
 .nt-root *{box-sizing:border-box}.nt-wrap{max-width:680px;margin:0 auto;padding:0 0 26px}.nt-topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:4px 2px 14px}.nt-topbar-title{display:flex;align-items:center;gap:9px;color:var(--nt-primary);font-weight:900;font-size:16px}.nt-topbar-title h1{margin:0;font:inherit}.nt-unread-badge{display:inline-flex;min-width:21px;height:21px;align-items:center;justify-content:center;padding:0 6px;border-radius:999px;background:#f97316;color:#fff;font-size:11px;font-weight:900}.nt-back{display:inline-flex;align-items:center;gap:6px;border:1px solid #d5e4f3;border-radius:999px;background:#fff;color:var(--nt-primary);padding:8px 13px;font-family:inherit;font-size:12px;font-weight:800;cursor:pointer}.nt-back:hover{background:#eaf3fd}.nt-greet{display:flex;align-items:center;gap:13px;overflow:hidden;position:relative;border-radius:19px;padding:17px 16px;color:white;background:linear-gradient(110deg,#0f4c81,#287fc4);box-shadow:0 12px 25px #0f4c8126}.nt-greet:after{content:'';position:absolute;inset-inline-start:-24px;bottom:-55px;width:130px;height:130px;border-radius:50%;background:#ffffff13}.nt-avatar{display:grid;place-items:center;flex:none;width:48px;height:48px;border-radius:15px;background:#ffffff25;z-index:1}.nt-greet-copy{z-index:1;min-width:0}.nt-greet h2{font-size:clamp(16px,4vw,21px);font-weight:900;margin:0 0 3px}.nt-greet p{font-size:12px;font-weight:600;color:#e4f2ff;margin:0}.nt-summary{margin-top:13px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:13px;border:1px solid var(--nt-line);border-radius:16px;background:#fff;box-shadow:0 7px 18px #0f4c810d}.nt-summary-copy{display:flex;align-items:center;gap:10px;min-width:0}.nt-summary-icon{display:grid;place-items:center;flex:none;width:40px;height:40px;border-radius:13px;background:#e6f7ef;color:#119653}.nt-summary-icon.is-read{background:#e9f7ef}.nt-summary-title{font-size:13px;font-weight:900;margin:0}.nt-summary-subtitle{font-size:10px;color:var(--nt-muted);font-weight:700;margin:3px 0 0}.nt-read-all{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid #d7e6f5;border-radius:10px;padding:9px 11px;background:#edf5fd;color:var(--nt-primary);font-family:inherit;font-size:11px;font-weight:800;cursor:pointer}.nt-read-all:disabled{opacity:.48;cursor:not-allowed}.nt-filters{display:flex;gap:7px;overflow-x:auto;margin:13px 0 3px;padding:1px 0 5px;scrollbar-width:none}.nt-filters::-webkit-scrollbar{display:none}.nt-filter{display:inline-flex;align-items:center;gap:6px;flex:none;border:1px solid var(--nt-line);border-radius:999px;padding:7px 11px;background:#fff;color:var(--nt-muted);font-family:inherit;font-size:11px;font-weight:800;cursor:pointer}.nt-filter.active{border-color:transparent;background:linear-gradient(110deg,#0f4c81,#287fc4);color:#fff;box-shadow:0 5px 12px #0f4c8129}.nt-filter-count{display:inline-grid;place-items:center;min-width:17px;height:17px;padding:0 4px;border-radius:999px;background:#eaf2fb;color:var(--nt-primary);font-size:9px;font-weight:900}.nt-filter.active .nt-filter-count{background:#ffffff32;color:white}.nt-error{display:flex;align-items:flex-start;gap:7px;margin:9px 0;padding:10px 12px;border:1px solid #fde68a;border-radius:12px;background:#fffbeb;color:#92400e;font-size:11px;font-weight:700;line-height:1.6}.nt-loading,.nt-empty{margin-top:12px;border:1px solid var(--nt-line);border-radius:16px;background:#fff;text-align:center;padding:24px 14px;color:var(--nt-muted);font-size:12px}.nt-list{display:flex;flex-direction:column;gap:11px;margin-top:11px}.nt-card{position:relative;overflow:hidden;border:1px solid var(--nt-line);border-radius:17px;background:#fff;padding:13px;box-shadow:0 8px 20px #0f4c810c;transition:transform .18s,box-shadow .18s}.nt-card:hover{transform:translateY(-2px);box-shadow:0 13px 25px #0f4c8119}.nt-card:before{content:'';position:absolute;inset-inline-start:0;top:0;bottom:0;width:4px}.nt-card.ord:before{background:#1c6fb8}.nt-card.pay:before{background:#13a15b}.nt-card.acc:before{background:#8249e8}.nt-card.other:before{background:#d97706}.nt-card.unread{box-shadow:0 0 0 1px #cfe2f5,0 8px 20px #0f4c8110}.nt-card-header{display:flex;align-items:flex-start;gap:10px}.nt-category-icon{display:grid;place-items:center;flex:none;width:39px;height:39px;border-radius:12px}.nt-card.ord .nt-category-icon{background:#e7f1fc;color:#1c6fb8}.nt-card.pay .nt-category-icon{background:#e5f7ed;color:#119653}.nt-card.acc .nt-category-icon{background:#f1eaff;color:#8249e8}.nt-card.other .nt-category-icon{background:#fff7ed;color:#c2410c}.nt-card-content{flex:1;min-width:0}.nt-meta-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:0 0 4px}.nt-category-label,.nt-new{border-radius:999px;padding:3px 7px;font-size:9px;font-weight:900}.nt-card.ord .nt-category-label{background:#e7f1fc;color:#1c6fb8}.nt-card.pay .nt-category-label{background:#e5f7ed;color:#119653}.nt-card.acc .nt-category-label{background:#f1eaff;color:#8249e8}.nt-card.other .nt-category-label{background:#fff7ed;color:#c2410c}.nt-new{background:#fff1e5;color:#c75a0b}.nt-date{font-size:9px;font-weight:700;color:#8090a5}.nt-card-title{font-size:13px;line-height:1.5;font-weight:900;margin:0;color:var(--nt-ink);overflow-wrap:anywhere}.nt-message{margin:9px 0 0;border:1px solid #e4eef8;border-radius:11px;background:#f7fbff;padding:9px 10px;color:#42536a;font-size:11px;font-weight:650;line-height:1.8;overflow-wrap:anywhere;white-space:pre-wrap}.nt-card-actions{display:flex;justify-content:flex-end;margin-top:9px}.nt-details{display:inline-flex;align-items:center;gap:5px;border:1px solid #d5e5f5;border-radius:10px;background:white;color:var(--nt-primary);padding:7px 10px;font-family:inherit;font-size:10px;font-weight:800;cursor:pointer}.nt-card.pay .nt-details{border-color:#b9e7cc;color:#119653}.nt-card.acc .nt-details{border-color:#dbcafa;color:#8249e8}.nt-card.other .nt-details{border-color:#fed7aa;color:#c2410c}.nt-details:hover{background:#f1f7fd}.nt-empty{display:flex;flex-direction:column;align-items:center;gap:7px;background:linear-gradient(135deg,#fff,#f6faff)}.nt-empty-icon{display:grid;place-items:center;width:54px;height:54px;border-radius:17px;background:#eaf3fd;color:#0f4c81}.nt-empty-title{margin:3px 0 0;color:var(--nt-ink);font-size:13px;font-weight:900}.nt-empty-subtitle{margin:0;color:var(--nt-muted);font-size:10px;font-weight:650}
 @media(max-width:480px){.nt-root{border-radius:16px;padding:9px}.nt-summary{align-items:stretch}.nt-read-all{width:100%}.nt-card{padding:11px}.nt-category-icon{width:36px;height:36px}}
-@media(prefers-reduced-motion:reduce){.nt-root *{scroll-behavior:auto!important;transition:none!important}}
+@media(prefers-reduced-motion:reduce){.nt-root *{scroll-behavior:auto!important;transition:none!important}}.min-h-screen:has(.nt-root){background:linear-gradient(180deg,#0A2E6B 0%,#123A8A 45%,#1D4ED8 100%)!important}.nt-root .nt-summary-icon,.nt-root .nt-category-icon{background:#DBEAFE!important;color:#1D4ED8!important}.nt-root svg{color:#1D4ED8!important}
+`;
+
+const NOTIFICATIONS_ADMIN_STYLE = `
+.notifications-admin-theme{isolation:isolate;color:#334155;background:linear-gradient(180deg,#0A2E6B 0%,#123A8A 45%,#1D4ED8 100%)}
+.notifications-admin-theme>.pointer-events-none{background:radial-gradient(ellipse at top,rgba(255,122,0,.12),transparent 68%)!important}
+.notifications-admin-theme [class*="bg-"]{background-color:#fff!important;background-image:none!important}
+.notifications-admin-theme [class*="border-"]{border-color:#E2E8F0!important}
+.notifications-admin-theme [class*="text-"]{color:#334155!important}
+.notifications-admin-theme :is(h1,h2,h3,h4){color:#0A2E6B!important}
+.notifications-admin-theme svg,.notifications-admin-theme svg[class*="text-"]{color:#1D4ED8!important;filter:none!important}
+.notifications-admin-theme button{border-color:#1D4ED8!important;background-color:#1D4ED8!important;background-image:none!important;color:#fff!important}
+.notifications-admin-theme button svg{color:#fff!important}
+.notifications-admin-theme button[class*="bg-[#FF7A00]"],.notifications-admin-theme button[class*="from-[#FF7A00]"]{border-color:#FF7A00!important;background-color:#FF7A00!important;color:#fff!important}
+.notifications-admin-theme button[class*="bg-[#FF7A00]"]:hover,.notifications-admin-theme button[class*="from-[#FF7A00]"]:hover{border-color:#F97316!important;background-color:#F97316!important}
+.notifications-admin-theme :is(input,textarea,select){border-color:#E2E8F0!important;background:#fff!important;color:#334155!important}
+.notifications-admin-theme option{background:#fff;color:#334155}
+.notifications-admin-theme [class*="shadow-"]{box-shadow:0 3px 12px rgba(10,46,107,.08)!important}
 `;
 
 /** شاشة الإدارة: لا تظهر إلا بعد نجاح التحقق من دور admin أو staff. */
@@ -1246,41 +1263,41 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
     {
       label: "عروض",
       count: notifications.filter((n) => n.type === "offer").length,
-      color: "#00D4FF",
+      color: "#1D4ED8",
     },
     {
       label: "تحديثات شحن",
       count: notifications.filter((n) => n.type === "shipment").length,
-      color: "#FF6B00",
+      color: "#FF7A00",
     },
     {
       label: "تحديثات شراء",
       count: notifications.filter((n) => n.type === "purchase").length,
-      color: "#22C55E",
+      color: "#1D4ED8",
     },
     {
       label: "دعم وإدارة",
       count: notifications.filter(
         (n) => !["offer", "shipment", "purchase"].includes(n.type),
       ).length,
-      color: "#EAB308",
+      color: "#FF7A00",
     },
   ];
   const typeMax = Math.max(1, ...notificationTypes.map((item) => item.count));
   const orderStatusClass = (status: string) => {
     const normalized = status.trim().toLowerCase();
     if (["جديد", "new"].includes(normalized))
-      return "border-[#22C55E]/30 bg-[#22C55E]/20 text-[#22C55E]";
+      return "border-[#1D4ED8]/30 bg-[#1D4ED8]/20 text-[#1D4ED8]";
     if (
       normalized.includes("معالج") ||
       normalized.includes("transit") ||
       normalized.includes("تواصل")
     )
-      return "border-[#00D4FF]/30 bg-[#00D4FF]/20 text-[#00D4FF]";
+      return "border-[#1D4ED8]/30 bg-[#1D4ED8]/20 text-[#1D4ED8]";
     if (normalized.includes("دفع") || normalized.includes("pending"))
-      return "border-[#EAB308]/30 bg-[#EAB308]/20 text-[#EAB308]";
+      return "border-[#FF7A00]/30 bg-[#FF7A00]/20 text-[#FF7A00]";
     if (normalized.includes("تأكيد") || normalized.includes("confirm"))
-      return "border-[#22C55E]/30 bg-[#22C55E]/20 text-[#22C55E]";
+      return "border-[#1D4ED8]/30 bg-[#1D4ED8]/20 text-[#1D4ED8]";
     if (normalized.includes("ملغ") || normalized.includes("cancel"))
       return "border-white/20 bg-white/10 text-white/60";
     return "border-white/10 bg-white/5 text-white/70";
@@ -1303,13 +1320,14 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
     <div
       dir="rtl"
       lang="ar"
-      className="min-h-[100dvh] bg-[#060D1E] px-3 py-5 text-white sm:px-5 sm:py-7"
+      className="notifications-admin-theme min-h-[100dvh] px-3 py-5 sm:px-5 sm:py-7"
     >
+      <style>{NOTIFICATIONS_ADMIN_STYLE}</style>
       <div className="pointer-events-none fixed inset-x-0 top-0 h-[480px] bg-[radial-gradient(ellipse_at_top,rgba(35,119,171,0.12),transparent_68%)]" />
       <div className="relative mx-auto w-full max-w-[1200px] space-y-4">
         <header className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-[#19274E] bg-[#0B152B]/95 p-4 shadow-[0_0_30px_rgba(245,158,11,0.10)] backdrop-blur-[16px] sm:px-6">
           <div className="flex items-center gap-3">
-            <span className="grid size-14 shrink-0 place-items-center rounded-2xl border border-amber-300/40 bg-gradient-to-br from-amber-300 to-amber-600 text-[#10172A] shadow-[0_8px_24px_rgba(245,158,11,0.22)]" aria-label="مركز الإشعارات"><Bell className="size-7 stroke-[2.5]" aria-hidden="true" /></span>
+            <span className="grid size-14 shrink-0 place-items-center rounded-2xl border border-amber-300/40 bg-gradient-to-br from-amber-300 to-amber-600 text-[#10172A] shadow-[0_8px_24px_rgba(245,158,11,0.22)]" aria-label="مركز الإشعارات"><img src="/alshamel-logo.png" alt="شعار التسوق الشامل" className="size-12 rounded-xl object-contain" /></span>
             <div>
               <h1 className="text-xl font-black text-white sm:text-2xl">
                 التسوق الشامل - مركز الإشعارات
@@ -1323,14 +1341,14 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
             <button
               type="button"
               onClick={() => void toggleSound()}
-              className={`inline-flex min-h-11 items-center justify-center rounded-xl border px-4 py-2.5 text-xs font-bold transition ${soundOn ? "border-[#22C55E]/30 bg-[#22C55E]/10 text-[#22C55E]" : "border-white/10 bg-white/5 text-white/60"}`}
+              className={`inline-flex min-h-11 items-center justify-center rounded-xl border px-4 py-2.5 text-xs font-bold transition ${soundOn ? "border-[#1D4ED8]/30 bg-[#1D4ED8]/10 text-[#1D4ED8]" : "border-white/10 bg-white/5 text-white/60"}`}
             >
               {soundOn ? "🔔 الصوت يعمل" : "🔕 الصوت متوقف"}
             </button>
             <button
               type="button"
               onClick={() => navigate({ to: "/admin" })}
-              className="inline-flex min-h-11 items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-xs font-bold text-white/80 transition hover:border-[#00D4FF]/40 hover:text-[#00D4FF]"
+              className="inline-flex min-h-11 items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-xs font-bold text-white/80 transition hover:border-[#1D4ED8]/40 hover:text-[#1D4ED8]"
             >
               رجوع للوحة القيادة
             </button>
@@ -1340,7 +1358,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
         {error && (
           <p
             role="alert"
-            className="rounded-xl border border-[#EAB308]/30 bg-[#EAB308]/10 p-3 text-sm text-[#EAB308]"
+            className="rounded-xl border border-[#FF7A00]/30 bg-[#FF7A00]/10 p-3 text-sm text-[#FF7A00]"
           >
             {error}
           </p>
@@ -1348,7 +1366,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
         {loading && (
           <p
             role="status"
-            className="rounded-xl border border-white/10 bg-[#0A1931]/60 p-3 text-center text-sm text-white/60"
+            className="rounded-xl border border-white/10 bg-[#FFFFFF]/60 p-3 text-center text-sm text-white/60"
           >
             جارٍ تحميل الإشعارات والطلبات…
           </p>
@@ -1358,59 +1376,59 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
           aria-label="ملخص الإشعارات"
           className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4"
         >
-          <article className="rounded-2xl border border-[#00D4FF]/20 bg-[#0A1931]/60 p-4 shadow-[0_0_20px_rgba(0,212,255,0.1)]">
+          <article className="rounded-2xl border border-[#1D4ED8]/20 bg-[#FFFFFF]/60 p-4 shadow-[0_0_20px_rgba(0,212,255,0.1)]">
             <div className="flex items-start justify-between">
               <span className="text-3xl font-black text-white">
                 {totalShown}
               </span>
-              <Bell className="size-5 text-[#00D4FF]" />
+              <Bell className="size-5 text-[#1D4ED8]" />
             </div>
             <p className="mt-2 text-xs text-white/60">
               إشعار ضمن القائمة المعروضة
             </p>
-            <span className="mt-3 inline-flex rounded-full bg-[#00D4FF]/20 px-2.5 py-1 text-[11px] font-bold text-[#00D4FF]">
+            <span className="mt-3 inline-flex rounded-full bg-[#1D4ED8]/20 px-2.5 py-1 text-[11px] font-bold text-[#1D4ED8]">
               {unreadSystem} غير مقروء
             </span>
           </article>
-          <article className="rounded-2xl border border-[#FF6B00]/20 bg-[#0A1931]/60 p-4 shadow-[0_0_20px_rgba(255,107,0,0.1)]">
+          <article className="rounded-2xl border border-[#FF7A00]/20 bg-[#FFFFFF]/60 p-4 shadow-[0_0_20px_rgba(255,107,0,0.1)]">
             <div className="flex items-start justify-between">
               <span className="text-3xl font-black text-white">
                 {unreadPercent}%
               </span>
-              <Inbox className="size-5 text-[#FF6B00]" />
+              <Inbox className="size-5 text-[#FF7A00]" />
             </div>
             <p className="mt-2 text-xs text-white/60">
               لم يتم قراءتها من القائمة
             </p>
-            <span className="mt-3 inline-flex rounded-full bg-[#FF6B00]/20 px-2.5 py-1 text-[11px] font-bold text-[#FF6B00]">
+            <span className="mt-3 inline-flex rounded-full bg-[#FF7A00]/20 px-2.5 py-1 text-[11px] font-bold text-[#FF7A00]">
               {unreadSystem} إشعار جديد
             </span>
           </article>
-          <article className="rounded-2xl border border-[#00D4FF]/20 bg-[#0A1931]/60 p-4 shadow-[0_0_20px_rgba(0,212,255,0.1)]">
+          <article className="rounded-2xl border border-[#1D4ED8]/20 bg-[#FFFFFF]/60 p-4 shadow-[0_0_20px_rgba(0,212,255,0.1)]">
             <div className="flex items-start justify-between">
               <span className="text-3xl font-black text-white">
                 {readPercent}%
               </span>
-              <CheckCheck className="size-5 text-[#22C55E]" />
+              <CheckCheck className="size-5 text-[#1D4ED8]" />
             </div>
             <p className="mt-2 text-xs text-white/60">
               مقروءة من إجمالي المعروض
             </p>
-            <span className="mt-3 inline-flex rounded-full bg-[#22C55E]/20 px-2.5 py-1 text-[11px] font-bold text-[#22C55E]">
+            <span className="mt-3 inline-flex rounded-full bg-[#1D4ED8]/20 px-2.5 py-1 text-[11px] font-bold text-[#1D4ED8]">
               {readCount} مقروء
             </span>
           </article>
-          <article className="rounded-2xl border border-[#FF6B00]/20 bg-[#0A1931]/60 p-4 shadow-[0_0_20px_rgba(255,107,0,0.1)]">
+          <article className="rounded-2xl border border-[#FF7A00]/20 bg-[#FFFFFF]/60 p-4 shadow-[0_0_20px_rgba(255,107,0,0.1)]">
             <div className="flex items-start justify-between">
               <span className="text-3xl font-black text-white">
                 {urgentCount}
               </span>
-              <AlertTriangle className="size-5 text-[#FF6B00]" />
+              <AlertTriangle className="size-5 text-[#FF7A00]" />
             </div>
             <p className="mt-2 text-xs text-white/60">
               إشعارات عاجلة حسب النوع أو العنوان
             </p>
-            <span className="mt-3 inline-flex rounded-full bg-[#FF6B00]/20 px-2.5 py-1 text-[11px] font-bold text-[#FF6B00]">
+            <span className="mt-3 inline-flex rounded-full bg-[#FF7A00]/20 px-2.5 py-1 text-[11px] font-bold text-[#FF7A00]">
               {urgentCount ? "يتطلب إجراء" : "لا يوجد عاجل"}
             </span>
           </article>
@@ -1420,7 +1438,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
           aria-label="تحليلات الإشعارات"
           className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
         >
-          <article className="rounded-2xl border border-white/10 bg-[#0A1931]/60 p-5">
+          <article className="rounded-2xl border border-white/10 bg-[#FFFFFF]/60 p-5">
             <h2 className="font-bold text-white">نسبة القراءة</h2>
             <p className="mt-1 text-[11px] text-[#5D7183]">
               من الإشعارات المحمّلة حاليًا
@@ -1429,10 +1447,10 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
               <div
                 className="grid size-32 place-items-center rounded-full"
                 style={{
-                  background: `conic-gradient(#FF6B00 0 ${readPercent}%, #00D4FF ${readPercent}% 100%)`,
+                  background: `conic-gradient(#FF7A00 0 ${readPercent}%, #1D4ED8 ${readPercent}% 100%)`,
                 }}
               >
-                <div className="grid size-[104px] place-items-center rounded-full bg-[#0A1931]">
+                <div className="grid size-[104px] place-items-center rounded-full bg-[#FFFFFF]">
                   <span className="text-3xl font-black text-white">
                     {readPercent}%
                   </span>
@@ -1441,16 +1459,16 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
             </div>
             <div className="mt-4 flex justify-center gap-5 text-xs">
               <span className="flex items-center gap-2 text-white/70">
-                <i className="size-2 rounded-full bg-[#FF6B00]" />
+                <i className="size-2 rounded-full bg-[#FF7A00]" />
                 مقروء {readPercent}%
               </span>
               <span className="flex items-center gap-2 text-white/70">
-                <i className="size-2 rounded-full bg-[#00D4FF]" />
+                <i className="size-2 rounded-full bg-[#1D4ED8]" />
                 غير مقروء {unreadPercent}%
               </span>
             </div>
           </article>
-          <article className="rounded-2xl border border-white/10 bg-[#0A1931]/60 p-5">
+          <article className="rounded-2xl border border-white/10 bg-[#FFFFFF]/60 p-5">
             <h2 className="font-bold text-white">أنواع الإشعارات</h2>
             <p className="mt-1 text-[11px] text-[#5D7183]">
               توزيع العناصر المعروضة حسب النوع
@@ -1478,7 +1496,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
               ))}
             </div>
           </article>
-          <article className="rounded-2xl border border-white/10 bg-[#0A1931]/60 p-5">
+          <article className="rounded-2xl border border-white/10 bg-[#FFFFFF]/60 p-5">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="font-bold text-white">
@@ -1488,7 +1506,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
                   أرقام شكلية للمعاينة، وليست بيانات تشغيلية
                 </p>
               </div>
-              <MapPinned className="size-5 text-[#00D4FF]" />
+              <MapPinned className="size-5 text-[#1D4ED8]" />
             </div>
             <div className="mt-3 grid grid-cols-[1fr_auto] items-center gap-3">
               <svg
@@ -1499,15 +1517,15 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
               >
                 <path
                   d="M17 23 28 17 39 21 48 15 57 19 65 15 72 21 83 23 78 31 88 37 81 46 86 55 78 63 75 75 66 81 59 89 47 84 40 79 31 78 25 68 18 62 21 52 13 45 19 37 15 30Z"
-                  fill="#0A1931"
-                  stroke="#00D4FF"
+                  fill="#FFFFFF"
+                  stroke="#1D4ED8"
                   strokeWidth="1.5"
-                  style={{ filter: "drop-shadow(0 0 4px #00D4FF)" }}
+                  style={{ filter: "drop-shadow(0 0 4px #1D4ED8)" }}
                 />
                 <path
                   d="M24 37 42 32 56 43 74 29M42 32 48 59 67 71M48 59 31 68M48 59 60 45"
                   fill="none"
-                  stroke="#00D4FF"
+                  stroke="#1D4ED8"
                   strokeWidth=".7"
                   opacity=".75"
                 />
@@ -1517,13 +1535,13 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
                       cx={city.x}
                       cy={city.y}
                       r="2.5"
-                      fill="#FF6B00"
-                      style={{ filter: "drop-shadow(0 0 4px #FF6B00)" }}
+                      fill="#FF7A00"
+                      style={{ filter: "drop-shadow(0 0 4px #FF7A00)" }}
                     />
                     <text
                       x={city.x}
                       y={city.y - 5}
-                      fill="#FFFFFF"
+                      fill="#0A2E6B"
                       textAnchor="middle"
                       fontSize="5"
                     >
@@ -1536,83 +1554,83 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
                 {cityStats.map((city) => (
                   <div key={city.name}>
                     <p className="text-xs text-white">{city.name}</p>
-                    <p className="text-sm font-bold text-[#FF6B00]">
+                    <p className="text-sm font-bold text-[#FF7A00]">
                       {city.count}
                     </p>
                   </div>
                 ))}
                 <div className="border-t border-white/10 pt-2">
                   <p className="text-[10px] text-[#5D7183]">الإجمالي التوضيحي</p>
-                  <p className="font-bold text-[#FF6B00]">885</p>
+                  <p className="font-bold text-[#FF7A00]">885</p>
                 </div>
               </div>
             </div>
           </article>
         </section>
 
-        <section id="site-ticker-manager" className="scroll-mt-5 rounded-2xl border border-[#EAB308]/30 bg-[#0A1931]/90 p-4 sm:p-5">
+        <section id="site-ticker-manager" className="scroll-mt-5 rounded-2xl border border-[#FF7A00]/30 bg-[#FFFFFF]/90 p-4 sm:p-5">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="flex items-center gap-2 font-bold text-white"><Tag className="size-5 text-[#EAB308]" /> إدارة أشرطة الموقع</h2>
+              <h2 className="flex items-center gap-2 font-bold text-white"><Tag className="size-5 text-[#FF7A00]" /> إدارة أشرطة الموقع</h2>
               <p className="mt-1 text-xs text-[#91A2BD]">رسائل مستقلة عن إشعارات العملاء وSMS. تُعرض حسب الموقع والترتيب وفترة التفعيل.</p>
             </div>
-            <button type="button" onClick={() => { setTickerDraft(emptyTickerDraft); setTickerFormOpen((open) => !open); setTickerError(null); setTickerSuccess(null); }} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#EAB308] px-4 py-2 text-sm font-black text-[#111827] hover:brightness-110">
+            <button type="button" onClick={() => { setTickerDraft(emptyTickerDraft); setTickerFormOpen((open) => !open); setTickerError(null); setTickerSuccess(null); }} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#FF7A00] px-4 py-2 text-sm font-black text-[#111827] hover:brightness-110">
               {tickerFormOpen ? <X className="size-4" /> : <Plus className="size-4" />}{tickerFormOpen ? "إغلاق النموذج" : "إضافة رسالة شريط"}
             </button>
           </div>
           {tickerError && <p role="alert" className="mb-3 rounded-xl border border-red-400/30 bg-red-500/10 p-3 text-sm text-red-200">{tickerError}</p>}
           {tickerSuccess && <p role="status" className="mb-3 rounded-xl border border-emerald-400/30 bg-emerald-500/10 p-3 text-sm text-emerald-200">{tickerSuccess}</p>}
 
-          {tickerFormOpen && <form onSubmit={(event) => void saveTickerMessage(event)} className="mb-5 grid gap-3 rounded-2xl border border-white/10 bg-black/20 p-4 md:grid-cols-2">
+          {tickerFormOpen && <form onSubmit={(event) => void saveTickerMessage(event)} className="mb-5 grid gap-3 rounded-2xl border border-white/10 bg-white p-4 md:grid-cols-2">
             <label className="grid gap-1.5 text-xs font-bold text-slate-300 md:col-span-2">نص الرسالة *
-              <textarea required minLength={1} maxLength={180} rows={2} value={tickerDraft.message} onChange={(event) => setTickerDraft((draft) => ({ ...draft, message: event.target.value }))} placeholder="اكتب رسالة الشريط (حتى 180 حرفًا)" className="rounded-xl border border-white/10 bg-[#060D1E] px-3 py-3 text-sm text-white outline-none focus:border-[#EAB308]/60" />
+              <textarea required minLength={1} maxLength={180} rows={2} value={tickerDraft.message} onChange={(event) => setTickerDraft((draft) => ({ ...draft, message: event.target.value }))} placeholder="اكتب رسالة الشريط (حتى 180 حرفًا)" className="rounded-xl border border-white/10 bg-white px-3 py-3 text-sm text-white outline-none focus:border-[#FF7A00]/60" />
               <span className="text-left text-[11px] text-slate-500">{tickerDraft.message.trim().length}/180</span>
             </label>
             <label className="grid gap-1.5 text-xs font-bold text-slate-300">مكان الظهور *
-              <select value={tickerDraft.placement} onChange={(event) => setTickerDraft((draft) => ({ ...draft, placement: event.target.value as SiteTickerRow["placement"] }))} className="rounded-xl border border-white/10 bg-[#060D1E] px-3 py-3 text-sm text-white">
+              <select value={tickerDraft.placement} onChange={(event) => setTickerDraft((draft) => ({ ...draft, placement: event.target.value as SiteTickerRow["placement"] }))} className="rounded-xl border border-white/10 bg-white px-3 py-3 text-sm text-white">
                 <option value="home_guest">الصفحة الرئيسية للزوار</option><option value="dashboard">لوحة العميل</option><option value="both">كلاهما</option>
               </select>
             </label>
             <label className="grid gap-1.5 text-xs font-bold text-slate-300">شارة قصيرة (اختيارية)
-              <input maxLength={30} value={tickerDraft.badge} onChange={(event) => setTickerDraft((draft) => ({ ...draft, badge: event.target.value }))} placeholder="مثال: عرض أو تنبيه" className="rounded-xl border border-white/10 bg-[#060D1E] px-3 py-3 text-sm text-white" />
+              <input maxLength={30} value={tickerDraft.badge} onChange={(event) => setTickerDraft((draft) => ({ ...draft, badge: event.target.value }))} placeholder="مثال: عرض أو تنبيه" className="rounded-xl border border-white/10 bg-white px-3 py-3 text-sm text-white" />
             </label>
             <label className="grid gap-1.5 text-xs font-bold text-slate-300">رابط داخلي اختياري
-              <input type="text" value={tickerDraft.href} onChange={(event) => setTickerDraft((draft) => ({ ...draft, href: event.target.value }))} placeholder="مثال: /products" pattern="^(/(?!/).*)?$" title="استخدم مسارًا داخليًا يبدأ بشرطة واحدة /" className="rounded-xl border border-white/10 bg-[#060D1E] px-3 py-3 text-sm text-white" />
+              <input type="text" value={tickerDraft.href} onChange={(event) => setTickerDraft((draft) => ({ ...draft, href: event.target.value }))} placeholder="مثال: /products" pattern="^(/(?!/).*)?$" title="استخدم مسارًا داخليًا يبدأ بشرطة واحدة /" className="rounded-xl border border-white/10 bg-white px-3 py-3 text-sm text-white" />
             </label>
             <label className="grid gap-1.5 text-xs font-bold text-slate-300">ترتيب العرض
-              <input type="number" min="0" max="9999" step="1" required value={tickerDraft.sort_order} onChange={(event) => setTickerDraft((draft) => ({ ...draft, sort_order: event.target.value }))} className="rounded-xl border border-white/10 bg-[#060D1E] px-3 py-3 text-sm text-white" />
+              <input type="number" min="0" max="9999" step="1" required value={tickerDraft.sort_order} onChange={(event) => setTickerDraft((draft) => ({ ...draft, sort_order: event.target.value }))} className="rounded-xl border border-white/10 bg-white px-3 py-3 text-sm text-white" />
             </label>
             <label className="grid gap-1.5 text-xs font-bold text-slate-300">يبدأ التفعيل (اختياري)
-              <input type="datetime-local" value={tickerDraft.starts_at} onChange={(event) => setTickerDraft((draft) => ({ ...draft, starts_at: event.target.value }))} className="rounded-xl border border-white/10 bg-[#060D1E] px-3 py-3 text-sm text-white" />
+              <input type="datetime-local" value={tickerDraft.starts_at} onChange={(event) => setTickerDraft((draft) => ({ ...draft, starts_at: event.target.value }))} className="rounded-xl border border-white/10 bg-white px-3 py-3 text-sm text-white" />
             </label>
             <label className="grid gap-1.5 text-xs font-bold text-slate-300">ينتهي التفعيل (اختياري)
-              <input type="datetime-local" value={tickerDraft.ends_at} onChange={(event) => setTickerDraft((draft) => ({ ...draft, ends_at: event.target.value }))} className="rounded-xl border border-white/10 bg-[#060D1E] px-3 py-3 text-sm text-white" />
+              <input type="datetime-local" value={tickerDraft.ends_at} onChange={(event) => setTickerDraft((draft) => ({ ...draft, ends_at: event.target.value }))} className="rounded-xl border border-white/10 bg-white px-3 py-3 text-sm text-white" />
             </label>
             <label className="flex min-h-11 items-center gap-2 text-sm font-bold text-slate-200"><input type="checkbox" checked={tickerDraft.is_active} onChange={(event) => setTickerDraft((draft) => ({ ...draft, is_active: event.target.checked }))} className="size-4 accent-amber-400" /> الرسالة نشطة</label>
             <div className="rounded-xl border border-sky-300/20 bg-gradient-to-r from-[#0A2540] to-[#0F4C81] p-3 md:col-span-2">
               <p className="mb-2 text-[10px] font-bold text-sky-200">معاينة الشريط</p>
-              <div className="flex min-h-10 items-center gap-2 overflow-hidden rounded-lg border border-sky-300/20 bg-[#071B34] px-3 text-sm text-white">
+              <div className="flex min-h-10 items-center gap-2 overflow-hidden rounded-lg border border-sky-300/20 bg-white px-3 text-sm text-white">
                 {tickerDraft.badge.trim() && <span className="shrink-0 rounded-full bg-orange-500 px-2 py-1 text-[10px] font-black">{tickerDraft.badge.trim()}</span>}
                 <span className="truncate">{tickerDraft.message.trim() || "سيظهر نص الرسالة هنا"}</span>
               </div>
               {tickerDraft.href.trim() && <p className="mt-1 text-[10px] text-sky-200">رابط: {tickerDraft.href}</p>}
             </div>
             <div className="flex flex-wrap gap-2 md:col-span-2">
-              <button type="submit" disabled={tickerSaving} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#EAB308] px-5 py-2.5 text-sm font-black text-[#111827] disabled:opacity-50">{tickerSaving ? "جارٍ الحفظ…" : tickerDraft.id ? "حفظ التعديلات" : "إضافة الرسالة"}</button>
+              <button type="submit" disabled={tickerSaving} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#FF7A00] px-5 py-2.5 text-sm font-black text-[#111827] disabled:opacity-50">{tickerSaving ? "جارٍ الحفظ…" : tickerDraft.id ? "حفظ التعديلات" : "إضافة الرسالة"}</button>
               {tickerDraft.id && <button type="button" onClick={() => { setTickerDraft(emptyTickerDraft); setTickerFormOpen(false); }} className="min-h-11 rounded-xl border border-white/15 px-4 py-2 text-sm text-white/80">إلغاء التعديل</button>}
             </div>
           </form>}
 
-          {tickerLoading ? <p className="py-5 text-center text-sm text-slate-400">جارٍ تحميل رسائل الأشرطة…</p> : tickerRows.length === 0 ? <p className="rounded-xl border border-dashed border-white/15 p-5 text-center text-sm text-slate-400">لا توجد رسائل بعد. أضف أول رسالة لتظهر بعد تفعيل الترحيل.</p> : <div className="space-y-3">{tickerRows.map((row) => <article key={row.id} className={`rounded-xl border p-3 ${row.is_active ? "border-sky-300/20 bg-[#071B34]/70" : "border-white/10 bg-black/20 opacity-70"}`}>
+          {tickerLoading ? <p className="py-5 text-center text-sm text-slate-400">جارٍ تحميل رسائل الأشرطة…</p> : tickerRows.length === 0 ? <p className="rounded-xl border border-dashed border-white/15 p-5 text-center text-sm text-slate-400">لا توجد رسائل بعد. أضف أول رسالة لتظهر بعد تفعيل الترحيل.</p> : <div className="space-y-3">{tickerRows.map((row) => <article key={row.id} className={`rounded-xl border p-3 ${row.is_active ? "border-sky-300/20 bg-white/70" : "border-white/10 bg-white opacity-70"}`}>
             <div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0 flex-1"><div className="mb-2 flex flex-wrap items-center gap-2">{row.badge && <span className="rounded-full bg-orange-500/15 px-2 py-1 text-[10px] font-bold text-orange-200">{row.badge}</span>}<span className="rounded-full bg-sky-400/10 px-2 py-1 text-[10px] text-sky-200">{row.placement === "home_guest" ? "الرئيسية للزوار" : row.placement === "dashboard" ? "لوحة العميل" : "الرئيسية ولوحة العميل"}</span><span className={`rounded-full px-2 py-1 text-[10px] ${row.is_active ? "bg-emerald-500/10 text-emerald-300" : "bg-slate-500/20 text-slate-400"}`}>{row.is_active ? "مفعلة" : "معطلة"}</span><span className="text-[10px] text-slate-500">ترتيب {row.sort_order}</span></div><p className="text-sm leading-6 text-white">{row.message}</p><p className="mt-1 text-[10px] text-slate-500">{row.href ? `الرابط: ${row.href}` : "دون رابط"} · {row.starts_at ? `من ${new Date(row.starts_at).toLocaleString("ar-YE")}` : "دون بداية محددة"} · {row.ends_at ? `إلى ${new Date(row.ends_at).toLocaleString("ar-YE")}` : "دون نهاية محددة"}</p></div>
               <div className="flex shrink-0 gap-2"><button type="button" onClick={() => startTickerEdit(row)} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-sky-300/20 px-3 text-xs font-bold text-sky-200 hover:bg-sky-300/10"><Pencil className="size-3.5" /> تعديل</button><button type="button" onClick={() => void toggleTickerActive(row)} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-amber-300/20 px-3 text-xs font-bold text-amber-200 hover:bg-amber-300/10">{row.is_active ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}{row.is_active ? "تعطيل" : "تفعيل"}</button><button type="button" onClick={() => void deleteTickerMessage(row)} aria-label="حذف رسالة الشريط" className="inline-flex min-h-9 items-center justify-center rounded-lg border border-red-300/20 px-3 text-red-200 hover:bg-red-300/10"><Trash2 className="size-4" /></button></div>
             </div>
           </article>)}</div>}
         </section>
 
-        <section className="rounded-2xl border border-[#00D4FF]/20 bg-[#0A1931]/80 p-4 sm:p-5">
+        <section className="rounded-2xl border border-[#1D4ED8]/20 bg-[#FFFFFF]/80 p-4 sm:p-5">
           <div className="mb-4 flex items-center gap-3">
-            <span className="grid size-10 place-items-center rounded-xl bg-[#FF6B00]/20 text-[#FF6B00]">
+            <span className="grid size-10 place-items-center rounded-xl bg-[#FF7A00]/20 text-[#FF7A00]">
               <Send className="size-5" />
             </span>
             <div>
@@ -1634,12 +1652,12 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
               required
               maxLength={120}
               placeholder="عنوان العرض أو الإشعار"
-              className="rounded-lg border border-[#00D4FF]/20 bg-black/40 px-3 py-3 text-sm text-white outline-none placeholder:text-white/40 focus:border-[#00D4FF]/60"
+              className="rounded-lg border border-[#1D4ED8]/20 bg-white px-3 py-3 text-sm text-white outline-none placeholder:text-white/40 focus:border-[#1D4ED8]/60"
             />
             <select
               value={draftType}
               onChange={(event) => setDraftType(event.target.value)}
-              className="rounded-lg border border-[#00D4FF]/20 bg-[#050A14] px-3 py-3 text-sm text-white outline-none focus:border-[#00D4FF]/60"
+              className="rounded-lg border border-[#1D4ED8]/20 bg-white px-3 py-3 text-sm text-white outline-none focus:border-[#1D4ED8]/60"
             >
               <option value="offer">عرض</option>
               <option value="system">إشعار عام</option>
@@ -1654,12 +1672,12 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
               maxLength={2000}
               rows={3}
               placeholder="اكتب تفاصيل العرض أو الإشعار"
-              className="rounded-lg border border-[#00D4FF]/20 bg-black/40 px-3 py-3 text-sm text-white outline-none placeholder:text-white/40 focus:border-[#00D4FF]/60 md:col-span-2"
+              className="rounded-lg border border-[#1D4ED8]/20 bg-white px-3 py-3 text-sm text-white outline-none placeholder:text-white/40 focus:border-[#1D4ED8]/60 md:col-span-2"
             />
             <button
               type="submit"
               disabled={sending}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[#FF6B00] to-[#FF8C32] px-4 py-3 text-sm font-bold text-white shadow-[0_0_20px_rgba(255,107,0,0.4)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 md:col-span-2"
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[#FF7A00] to-[#F97316] px-4 py-3 text-sm font-bold text-white shadow-[0_0_20px_rgba(255,107,0,0.4)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 md:col-span-2"
             >
               <Send className="size-4" />
               {sending ? "جارٍ الإرسال…" : "ارسل لجميع العملاء"}
@@ -1669,11 +1687,11 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
 
         <section
           aria-label="فرز الإشعارات"
-          className="rounded-2xl border border-white/10 bg-[#0A1931]/60 p-4"
+          className="rounded-2xl border border-white/10 bg-[#FFFFFF]/60 p-4"
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="flex items-center gap-2 text-sm font-bold text-white">
-              <Tag className="size-4 text-[#FF6B00]" />
+              <Tag className="size-4 text-[#FF7A00]" />
               فرز الإشعارات والبحث فيها
             </h2>
             <div className="flex flex-wrap gap-2">
@@ -1691,7 +1709,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
                   onClick={() => setReadFilter(value)}
                   className={`rounded-lg border px-3 py-1.5 text-xs font-bold transition ${
                     readFilter === value
-                      ? "border-[#FF6B00] bg-[#FF6B00] text-white"
+                      ? "border-[#FF7A00] bg-[#FF7A00] text-white"
                       : "border-white/15 bg-white/5 text-white/70 hover:bg-white/10"
                   }`}
                 >
@@ -1718,7 +1736,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
                   onClick={() => setCategoryFilter(value)}
                   className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${
                     categoryFilter === value
-                      ? "border-[#EAB308] bg-[#EAB308] text-[#0A1931]"
+                      ? "border-[#FF7A00] bg-[#FF7A00] text-[#FFFFFF]"
                       : "border-white/15 bg-transparent text-white/70 hover:bg-white/10"
                   }`}
                 >
@@ -1730,15 +1748,15 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
                 aria-controls="customer-notifications-panel"
                 aria-expanded={activeCustomerPanel === "notifications"}
                 onClick={() => setActiveCustomerPanel("notifications")}
-                className={`inline-flex min-h-9 items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold transition hover:border-[#00D4FF]/50 ${
+                className={`inline-flex min-h-9 items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold transition hover:border-[#1D4ED8]/50 ${
                   activeCustomerPanel === "notifications"
-                    ? "border-[#00D4FF]/60 bg-[#00D4FF]/15 text-[#00D4FF]"
-                    : "border-[#00D4FF]/25 bg-[#00D4FF]/5 text-white/80"
+                    ? "border-[#1D4ED8]/60 bg-[#1D4ED8]/15 text-[#1D4ED8]"
+                    : "border-[#1D4ED8]/25 bg-[#1D4ED8]/5 text-white/80"
                 }`}
               >
-                <MessageCircle className="size-4 text-[#00D4FF]" aria-hidden="true" />
+                <MessageCircle className="size-4 text-[#1D4ED8]" aria-hidden="true" />
                 إشعارات العملاء
-                <span className="rounded-full bg-[#00D4FF]/15 px-2 py-0.5 text-[11px] font-black text-[#00D4FF]">
+                <span className="rounded-full bg-[#1D4ED8]/15 px-2 py-0.5 text-[11px] font-black text-[#1D4ED8]">
                   {notifications.length}
                 </span>
               </button>
@@ -1747,15 +1765,15 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
                 aria-controls="customer-orders-panel"
                 aria-expanded={activeCustomerPanel === "orders"}
                 onClick={() => setActiveCustomerPanel("orders")}
-                className={`inline-flex min-h-9 items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold transition hover:border-[#FF6B00]/50 ${
+                className={`inline-flex min-h-9 items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold transition hover:border-[#FF7A00]/50 ${
                   activeCustomerPanel === "orders"
-                    ? "border-[#FF6B00]/60 bg-[#FF6B00]/15 text-[#FF8C32]"
-                    : "border-[#FF6B00]/25 bg-[#FF6B00]/5 text-white/80"
+                    ? "border-[#FF7A00]/60 bg-[#FF7A00]/15 text-[#F97316]"
+                    : "border-[#FF7A00]/25 bg-[#FF7A00]/5 text-white/80"
                 }`}
               >
-                <PackagePlus className="size-4 text-[#FF6B00]" aria-hidden="true" />
+                <PackagePlus className="size-4 text-[#FF7A00]" aria-hidden="true" />
                 طلبات العملاء
-                <span className="rounded-full bg-[#FF6B00]/15 px-2 py-0.5 text-[11px] font-black text-[#FF8C32]">
+                <span className="rounded-full bg-[#FF7A00]/15 px-2 py-0.5 text-[11px] font-black text-[#F97316]">
                   {orders.length}
                 </span>
               </button>
@@ -1775,7 +1793,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
                 onChange={(event) => setNotificationSearch(event.target.value)}
                 placeholder="بحث في الإشعارات…"
                 aria-label="بحث في الإشعارات"
-                className="w-56 rounded-lg border border-white/15 bg-[#071226] px-3 py-2 text-xs text-white placeholder:text-white/40 focus:border-[#00D4FF] focus:outline-none"
+                className="w-56 rounded-lg border border-white/15 bg-white px-3 py-2 text-xs text-white placeholder:text-white/40 focus:border-[#1D4ED8] focus:outline-none"
               />
             </div>
           </div>
@@ -1791,7 +1809,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
           <section
             id="customer-notifications-panel"
             aria-label="إشعارات العملاء والإدارة"
-            className="scroll-mt-4 space-y-3 rounded-2xl border border-[#00D4FF]/20 bg-[#0A1931]/70 p-4 sm:p-5"
+            className="scroll-mt-4 space-y-3 rounded-2xl border border-[#1D4ED8]/20 bg-[#FFFFFF]/70 p-4 sm:p-5"
           >
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -1802,20 +1820,20 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
                 type="button"
                 disabled={savingRead || unreadSystem === 0}
                 onClick={() => void markAllSystemRead()}
-                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-[#00D4FF]/30 bg-[#00D4FF]/10 px-4 py-2 text-sm font-bold text-[#00D4FF] hover:bg-[#00D4FF]/20 disabled:opacity-50"
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-[#1D4ED8]/30 bg-[#1D4ED8]/10 px-4 py-2 text-sm font-bold text-[#1D4ED8] hover:bg-[#1D4ED8]/20 disabled:opacity-50"
               >
                 <CheckCheck className="size-4" aria-hidden="true" />
                 تحديد غير المقروء كمقروء ({unreadSystem})
               </button>
             </div>
             {notifications.length === 0 ? (
-              <p className="rounded-xl border border-white/10 bg-black/20 p-5 text-center text-sm text-white/50">لا توجد إشعارات للعملاء حاليًا.</p>
+              <p className="rounded-xl border border-white/10 bg-white p-5 text-center text-sm text-white/50">لا توجد إشعارات للعملاء حاليًا.</p>
             ) : (
               <div className="grid gap-3 lg:grid-cols-2">
                 {sortedNotifications.map((item) => {
                   const isRead = readIds.has(item.id);
                   return (
-                    <article key={item.id} className="rounded-xl border border-white/10 bg-[#071226]/80 p-4">
+                    <article key={item.id} className="rounded-xl border border-white/10 bg-white/80 p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <h3 className="break-words font-bold text-white">{item.title}</h3>
@@ -1823,7 +1841,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
                             {item.type} · {new Date(item.created_at).toLocaleString("ar", { dateStyle: "medium", timeStyle: "short" })}
                           </p>
                         </div>
-                        <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold ${isRead ? "bg-white/10 text-white/50" : "bg-[#FF6B00]/15 text-[#FF8C32]"}`}>
+                        <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold ${isRead ? "bg-white/10 text-white/50" : "bg-[#FF7A00]/15 text-[#F97316]"}`}>
                           {isRead ? "مقروء" : "جديد"}
                         </span>
                       </div>
@@ -1850,7 +1868,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
           <section
             id="customer-orders-panel"
             aria-label="طلبات العملاء اللحظية"
-            className="scroll-mt-4 space-y-3 rounded-2xl border border-[#FF6B00]/20 bg-[#0A1931]/70 p-4 sm:p-5"
+            className="scroll-mt-4 space-y-3 rounded-2xl border border-[#FF7A00]/20 bg-[#FFFFFF]/70 p-4 sm:p-5"
           >
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -1868,15 +1886,15 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
               </button>
             </div>
             {orders.length === 0 ? (
-              <p className="rounded-xl border border-white/10 bg-black/20 p-5 text-center text-sm text-white/50">لا توجد طلبات عملاء حاليًا.</p>
+              <p className="rounded-xl border border-white/10 bg-white p-5 text-center text-sm text-white/50">لا توجد طلبات عملاء حاليًا.</p>
             ) : (
               <div className="grid gap-3 lg:grid-cols-2">
                 {orders.map((order) => (
-                  <article key={order.id} className="rounded-xl border border-white/10 bg-[#071226]/80 p-4">
+                  <article key={order.id} className="rounded-xl border border-white/10 bg-white/80 p-4">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <h3 className="font-bold text-white">{order.customer_name || "عميل"}</h3>
-                        <p className="mt-1 text-xs text-[#00D4FF]">رقم التتبع: {order.tracking_code || "—"}</p>
+                        <p className="mt-1 text-xs text-[#1D4ED8]">رقم التتبع: {order.tracking_code || "—"}</p>
                       </div>
                       <span className={`rounded-full border px-3 py-1 text-xs font-bold ${orderStatusClass(order.status)}`}>{order.status || "جديد"}</span>
                     </div>
@@ -1884,7 +1902,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
                     {order.notes && <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-white/70">{order.notes}</p>}
                     <div className="mt-4 flex flex-wrap gap-2">
                       {order.phone && (
-                        <a href={`tel:${order.phone}`} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-[#22C55E]/25 bg-[#22C55E]/10 px-3 py-2 text-xs font-bold text-[#22C55E]">
+                        <a href={`tel:${order.phone}`} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-[#1D4ED8]/25 bg-[#1D4ED8]/10 px-3 py-2 text-xs font-bold text-[#1D4ED8]">
                           <Phone className="size-4" aria-hidden="true" />
                           اتصال بالعميل
                         </a>
@@ -1893,7 +1911,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
                         <button
                           type="button"
                           onClick={() => void markOrderSeen(order.id)}
-                          className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-[#00D4FF]/25 bg-[#00D4FF]/10 px-3 py-2 text-xs font-bold text-[#00D4FF]"
+                          className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-[#1D4ED8]/25 bg-[#1D4ED8]/10 px-3 py-2 text-xs font-bold text-[#1D4ED8]"
                         >
                           <CheckCheck className="size-4" aria-hidden="true" />
                           تسجيل التواصل

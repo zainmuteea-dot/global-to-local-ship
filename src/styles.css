@@ -61,6 +61,10 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+.notifications-page-shell {
+  background: linear-gradient(180deg, #0A2E6B 0%, #123A8A 45%, #1D4ED8 100%) !important;
+}
+
 /* ================== الروبوت الأزرق وفقاعة الترحيب ================== */
 
 .chatbot {

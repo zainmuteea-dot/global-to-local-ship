@@ -7,6 +7,7 @@ type AccountShellProps = {
   back?: string;
   children: ReactNode;
   wide?: boolean;
+  className?: string;
 };
 
 export function AccountShell({
@@ -14,11 +15,12 @@ export function AccountShell({
   back = "/my-account",
   children,
   wide = false,
+  className = "",
 }: AccountShellProps) {
   const navigate = useNavigate();
 
   return (
-    <div dir="rtl" lang="ar" className="min-h-screen bg-background px-4 py-6 font-body">
+    <div dir="rtl" lang="ar" className={`min-h-screen bg-background px-4 py-6 font-body ${className}`}>
       <div className={`mx-auto w-full max-w-md ${wide ? "lg:max-w-7xl xl:max-w-[1440px]" : ""}`}>
         <div className="mb-6 flex items-center justify-between">
           <button
