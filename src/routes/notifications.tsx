@@ -683,8 +683,8 @@ const NOTIFICATIONS_CUSTOMER_STYLE = `
 `;
 
 const NOTIFICATIONS_ADMIN_STYLE = `
-.notifications-admin-theme{isolation:isolate;color:#334155;background:linear-gradient(180deg,#0A2E6B 0%,#123A8A 45%,#1D4ED8 100%)}
-.notifications-admin-theme>.pointer-events-none{background:radial-gradient(ellipse at top,rgba(255,122,0,.12),transparent 68%)!important}
+.notifications-admin-theme{box-sizing:border-box;isolation:isolate;color:#1E293B;background:linear-gradient(180deg,#0A2E6B 0%,#123A8A 50%,#1D4ED8 100%);min-height:100dvh;width:100%}
+.notifications-admin-theme>.pointer-events-none{display:none!important}
 .notifications-admin-theme [class*="bg-"]{background-color:#fff!important;background-image:none!important}
 .notifications-admin-theme [class*="border-"]{border-color:#E2E8F0!important}
 .notifications-admin-theme [class*="text-"]{color:#334155!important}
@@ -1320,11 +1320,11 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
     <div
       dir="rtl"
       lang="ar"
-      className="notifications-admin-theme min-h-[100dvh] px-3 py-5 sm:px-5 sm:py-7"
+      className="notifications-admin-theme min-h-[100dvh] w-full px-0 py-0"
     >
       <style>{NOTIFICATIONS_ADMIN_STYLE}</style>
       <div className="pointer-events-none fixed inset-x-0 top-0 h-[480px] bg-[radial-gradient(ellipse_at_top,rgba(35,119,171,0.12),transparent_68%)]" />
-      <div className="relative mx-auto w-full max-w-[1200px] space-y-4">
+      <div className="relative mx-auto w-full max-w-[1200px] space-y-4 p-4">
         <header className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-[#19274E] bg-[#0B152B]/95 p-4 shadow-[0_0_30px_rgba(245,158,11,0.10)] backdrop-blur-[16px] sm:px-6">
           <div className="flex items-center gap-3">
             <span className="grid size-14 shrink-0 place-items-center rounded-2xl border border-amber-300/40 bg-gradient-to-br from-amber-300 to-amber-600 text-[#10172A] shadow-[0_8px_24px_rgba(245,158,11,0.22)]" aria-label="مركز الإشعارات"><img src="/alshamel-logo.png" alt="شعار التسوق الشامل" className="size-12 rounded-xl object-contain" /></span>
@@ -1374,9 +1374,9 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
 
         <section
           aria-label="ملخص الإشعارات"
-          className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4"
+          className="grid grid-cols-2 gap-3 md:grid-cols-4"
         >
-          <article className="rounded-2xl border border-[#1D4ED8]/20 bg-[#FFFFFF]/60 p-4 shadow-[0_0_20px_rgba(0,212,255,0.1)]">
+          <article className="rounded-2xl border border-[#E2E8F0] bg-white p-4 shadow-sm">
             <div className="flex items-start justify-between">
               <span className="text-3xl font-black text-white">
                 {totalShown}
@@ -1390,7 +1390,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
               {unreadSystem} غير مقروء
             </span>
           </article>
-          <article className="rounded-2xl border border-[#FF7A00]/20 bg-[#FFFFFF]/60 p-4 shadow-[0_0_20px_rgba(255,107,0,0.1)]">
+          <article className="rounded-2xl border border-[#E2E8F0] bg-white p-4 shadow-sm">
             <div className="flex items-start justify-between">
               <span className="text-3xl font-black text-white">
                 {unreadPercent}%
@@ -1404,7 +1404,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
               {unreadSystem} إشعار جديد
             </span>
           </article>
-          <article className="rounded-2xl border border-[#1D4ED8]/20 bg-[#FFFFFF]/60 p-4 shadow-[0_0_20px_rgba(0,212,255,0.1)]">
+          <article className="rounded-2xl border border-[#E2E8F0] bg-white p-4 shadow-sm">
             <div className="flex items-start justify-between">
               <span className="text-3xl font-black text-white">
                 {readPercent}%
@@ -1418,7 +1418,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
               {readCount} مقروء
             </span>
           </article>
-          <article className="rounded-2xl border border-[#FF7A00]/20 bg-[#FFFFFF]/60 p-4 shadow-[0_0_20px_rgba(255,107,0,0.1)]">
+          <article className="rounded-2xl border border-[#E2E8F0] bg-white p-4 shadow-sm">
             <div className="flex items-start justify-between">
               <span className="text-3xl font-black text-white">
                 {urgentCount}
@@ -1628,7 +1628,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
           </article>)}</div>}
         </section>
 
-        <section className="rounded-2xl border border-[#1D4ED8]/20 bg-[#FFFFFF]/80 p-4 sm:p-5">
+        <section className="rounded-2xl border border-[#E2E8F0] bg-white p-4 sm:p-5">
           <div className="mb-4 flex items-center gap-3">
             <span className="grid size-10 place-items-center rounded-xl bg-[#FF7A00]/20 text-[#FF7A00]">
               <Send className="size-5" />
@@ -1644,7 +1644,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
           </div>
           <form
             onSubmit={(event) => void sendCustomerNotification(event)}
-            className="grid gap-3 md:grid-cols-2"
+            className="grid w-full gap-3"
           >
             <input
               value={draftTitle}
@@ -1652,12 +1652,12 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
               required
               maxLength={120}
               placeholder="عنوان العرض أو الإشعار"
-              className="rounded-lg border border-[#1D4ED8]/20 bg-white px-3 py-3 text-sm text-white outline-none placeholder:text-white/40 focus:border-[#1D4ED8]/60"
+              className="w-full rounded-lg border border-[#E2E8F0] bg-white px-3 py-3 text-sm text-slate-800 outline-none placeholder:text-slate-500 focus:border-[#1D4ED8]"
             />
             <select
               value={draftType}
               onChange={(event) => setDraftType(event.target.value)}
-              className="rounded-lg border border-[#1D4ED8]/20 bg-white px-3 py-3 text-sm text-white outline-none focus:border-[#1D4ED8]/60"
+              className="w-full rounded-lg border border-[#E2E8F0] bg-white px-3 py-3 text-sm text-slate-800 outline-none focus:border-[#1D4ED8]"
             >
               <option value="offer">عرض</option>
               <option value="system">إشعار عام</option>
@@ -1672,12 +1672,12 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
               maxLength={2000}
               rows={3}
               placeholder="اكتب تفاصيل العرض أو الإشعار"
-              className="rounded-lg border border-[#1D4ED8]/20 bg-white px-3 py-3 text-sm text-white outline-none placeholder:text-white/40 focus:border-[#1D4ED8]/60 md:col-span-2"
+              className="w-full rounded-lg border border-[#E2E8F0] bg-white px-3 py-3 text-sm text-slate-800 outline-none placeholder:text-slate-500 focus:border-[#1D4ED8]"
             />
             <button
               type="submit"
               disabled={sending}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[#FF7A00] to-[#F97316] px-4 py-3 text-sm font-bold text-white shadow-[0_0_20px_rgba(255,107,0,0.4)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 md:col-span-2"
+              className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#FF7A00] px-4 text-sm font-bold text-white shadow-sm transition hover:bg-[#F97316] disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Send className="size-4" />
               {sending ? "جارٍ الإرسال…" : "ارسل لجميع العملاء"}
@@ -1809,9 +1809,9 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
           <section
             id="customer-notifications-panel"
             aria-label="إشعارات العملاء والإدارة"
-            className="scroll-mt-4 space-y-3 rounded-2xl border border-[#1D4ED8]/20 bg-[#FFFFFF]/70 p-4 sm:p-5"
+            className="scroll-mt-4 space-y-3 rounded-2xl border border-[#E2E8F0] bg-white p-4 sm:p-5"
           >
-            <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap flex-row-reverse items-center justify-between gap-3">
               <div>
                 <h2 className="text-lg font-black text-white">إشعارات العملاء والإدارة</h2>
                 <p className="mt-1 text-xs text-white/50">{notifications.length} إشعارًا محفوظًا في القائمة</p>
@@ -1829,28 +1829,28 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
             {notifications.length === 0 ? (
               <p className="rounded-xl border border-white/10 bg-white p-5 text-center text-sm text-white/50">لا توجد إشعارات للعملاء حاليًا.</p>
             ) : (
-              <div className="grid gap-3 lg:grid-cols-2">
+              <div className="divide-y divide-[#E2E8F0]">
                 {sortedNotifications.map((item) => {
                   const isRead = readIds.has(item.id);
                   return (
-                    <article key={item.id} className="rounded-xl border border-white/10 bg-white/80 p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <h3 className="break-words font-bold text-white">{item.title}</h3>
-                          <p className="mt-1 text-[11px] text-white/45">
+                    <article key={item.id} className="py-3">
+                      <div className="flex items-start justify-between gap-3 [direction:ltr]">
+                        <div className="min-w-0 flex-1 text-right [direction:rtl]">
+                          <h3 className="break-words text-sm font-bold text-[#1E293B]">{item.title}</h3>
+                          <p className="mt-1 text-sm text-slate-600">
                             {item.type} · {new Date(item.created_at).toLocaleString("ar", { dateStyle: "medium", timeStyle: "short" })}
                           </p>
                         </div>
-                        <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold ${isRead ? "bg-white/10 text-white/50" : "bg-[#FF7A00]/15 text-[#F97316]"}`}>
+                        <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${isRead ? "bg-slate-100 text-slate-600" : "bg-orange-100 text-orange-800"}`}>
                           {isRead ? "مقروء" : "جديد"}
                         </span>
                       </div>
-                      {item.message && <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-white/70">{item.message}</p>}
-                      <div className="mt-3 flex justify-end">
+                      {item.message && <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-[#1E293B]">{item.message}</p>}
+                      <div className="mt-3 flex justify-end [direction:ltr]">
                         <button
                           type="button"
                           onClick={() => void deleteCustomerNotification(item)}
-                          className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-red-400/20 px-3 py-2 text-xs font-bold text-red-300 transition hover:bg-red-400/10"
+                          className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
                         >
                           <Trash2 className="size-4" aria-hidden="true" />
                           حذف الإشعار
