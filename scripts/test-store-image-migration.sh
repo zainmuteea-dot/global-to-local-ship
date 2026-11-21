@@ -32,6 +32,9 @@ cp "$repo_root/supabase/migrations/20261116020000_store_image_fields_compat.sql"
   "$test_root/supabase/migrations/20261116020100_store_image_fields_compat_repeat.sql"
 cp "$repo_root/supabase/migrations/20261116030000_marketplace_best_sellers.sql" \
   "$test_root/supabase/migrations/20261116030000_marketplace_best_sellers.sql"
+# Verify the production repair migration re-applies cleanly after the original RPC migration.
+cp "$repo_root/supabase/migrations/20261121002100_repair_marketplace_best_sellers_rpc.sql" \
+  "$test_root/supabase/migrations/20261121002100_repair_marketplace_best_sellers_rpc.sql"
 cp "$repo_root/supabase/tests/database/merchant_store_images_compat_test.sql" \
   "$test_root/supabase/tests/database/merchant_store_images_compat_test.sql"
 cp "$repo_root/supabase/tests/database/marketplace_best_sellers_test.sql" \
