@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
+import "../styles/products-frontpage.css";
 import useSWR from "swr";
 import { useSession } from "@/hooks/use-session";
 import { createFileRoute, Outlet, useLocation, Link } from "@tanstack/react-router";
@@ -679,11 +680,7 @@ function CustomerStorefront() {
         <div className="pr-topbar-inner">
           <div className="pr-logo" aria-label="السوق الشامل AL SHAMEL">
             <span className="pr-logo-mark" aria-hidden="true">
-              <svg viewBox="0 0 48 48" role="img" focusable="false">
-                <path d="M8 12h5l4 19h18l5-14H16" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                <circle cx="20" cy="37" r="2.8" fill="currentColor" /><circle cx="33" cy="37" r="2.8" fill="currentColor" />
-                <path d="M34 7l1.5 3.7 4 .4-3 2.5.9 3.9-3.4-2.1-3.4 2.1.9-3.9-3-2.5 4-.4z" fill="#F58220" />
-              </svg>
+              <img src="/al-shamel-logo.jpeg" alt="" width={92} height={66} />
             </span>
             <span className="pr-logo-copy"><strong>السوق الشامل</strong><small>AL SHAMEL</small></span>
           </div>
@@ -694,46 +691,54 @@ function CustomerStorefront() {
             <button type="button" className={`pr-tab-button pr-deals-tab${activeTab === "deals" ? " is-active" : ""}`} aria-pressed={activeTab === "deals"} onClick={() => selectTab("deals")}>العروض<span className="pr-new-badge">جديد</span></button>
           </nav>
           <div className="pr-topbar-actions">
+            <a className="pr-whatsapp-link" href="https://wa.me/967773370041" target="_blank" rel="noopener noreferrer">
+              <MessageCircle size={15} aria-hidden="true" /><span>واتساب</span>
+            </a>
             <Link to="/cart" className="pr-cart-link" aria-label={`سلة المشتريات، ${cartCount} عنصر`}>
-              <ShoppingCart size={17} aria-hidden="true" /><span>سلة المشتريات</span>
+              <ShoppingCart size={17} aria-hidden="true" /><span>السلة</span>
               <span className="pr-cart-count">{cartCount}</span>
             </Link>
           </div>
         </div>
       </div>
 
-      <div className="pr-search-wrap" role="search">
-        <Search className="pr-search-icon" aria-hidden="true" size={19} />
-        <label className="sr-only" htmlFor="products-storefront-search">ابحث عن منتج أو متجر</label>
-        <input id="products-storefront-search" className="pr-search-input" value={storefrontSearch} onChange={(event) => setStorefrontSearch(event.target.value)} placeholder="ابحث عن منتج، متجر، أو عرض..." />
-        <label className="sr-only" htmlFor="products-storefront-category">كل الأقسام</label>
-        <select id="products-storefront-category" className="pr-search-category" value={activeTab} onChange={(event) => selectTab(event.target.value as typeof activeTab)}>
-          <option value="international">منتجات دولية</option><option value="local">متاجر محلية</option><option value="best-sellers">الأكثر مبيعًا</option><option value="deals">العروض</option>
-        </select>
-        <button type="button" className="pr-search-submit" onClick={scrollToStorefront}>بحث</button>
-      </div>
+      <section className="pr-search-card" aria-label="البحث في السوق">
+        <div className="pr-search-heading">
+          <div><h2>ابحث في السوق</h2><p>اعثر على متجرك أو المنتج الذي تبحث عنه</p></div>
+          <Search size={18} aria-hidden="true" />
+        </div>
+        <div className="pr-search-wrap" role="search">
+          <Search className="pr-search-icon" aria-hidden="true" size={19} />
+          <label className="sr-only" htmlFor="products-storefront-search">ابحث عن منتج أو متجر</label>
+          <input id="products-storefront-search" className="pr-search-input" value={storefrontSearch} onChange={(event) => setStorefrontSearch(event.target.value)} placeholder="ابحث عن منتج، متجر، أو عرض..." />
+          {storefrontSearch && <button type="button" className="pr-search-clear" aria-label="مسح البحث" onClick={() => setStorefrontSearch("")}>مسح</button>}
+          <label className="sr-only" htmlFor="products-storefront-category">كل الأقسام</label>
+          <select id="products-storefront-category" className="pr-search-category" value={activeTab} onChange={(event) => selectTab(event.target.value as typeof activeTab)}>
+            <option value="international">منتجات دولية</option><option value="local">متاجر محلية</option><option value="best-sellers">الأكثر مبيعًا</option><option value="deals">العروض</option>
+          </select>
+          <button type="button" className="pr-search-submit" onClick={scrollToStorefront}>ابحث</button>
+        </div>
+        <div className="pr-quick-search" aria-label="بحث سريع">
+          <span>بحث سريع</span>
+          {["سماعات", "ساعة", "جوال", "حقيبة", "عطر"].map((term) => (
+            <button key={term} type="button" className="pr-quick-chip" onClick={() => { setStorefrontSearch(term); selectTab("best-sellers"); scrollToStorefront(); }}>{term}</button>
+          ))}
+        </div>
+      </section>
 
       {activeTab !== "local" && (
         <section className="pr-hero" aria-labelledby="pr-hero-title">
         <div className="pr-hero-copy">
           <span className="pr-hero-badge"><Sparkles size={14} aria-hidden="true" /> تسوقك العالمي في مكان واحد</span>
-          <h1 id="pr-hero-title">كل ما تحتاجه من <span>العالم</span> يوصلك إلى بابك</h1>
-          <p>تسوق من أشهر المتاجر العالمية والمحلية بسهولة، واكتشف منتجات وعروضًا مختارة بعناية.</p>
+          <h1 id="pr-hero-title">تسوّقك العالمي في <span>مكان واحد</span></h1>
+          <p>اطلب من أشهر المتاجر العالمية، واجعل التسوق والشراء والشحن والتوصيل إلى اليمن أسهل من أي وقت.</p>
           <div className="pr-hero-actions">
             <button type="button" className="pr-hero-primary" onClick={() => { selectTab("international"); scrollToStorefront(); }}>ابدأ التسوق <ShoppingBag size={16} aria-hidden="true" /></button>
             <button type="button" className="pr-hero-secondary" onClick={() => { selectTab("local"); scrollToStorefront(); }}>تصفح المتاجر <ArrowLeft size={16} aria-hidden="true" /></button>
           </div>
         </div>
         <div className="pr-hero-art" aria-hidden="true">
-          <svg viewBox="0 0 300 240" role="img" focusable="false">
-            <circle cx="142" cy="119" r="98" fill="rgba(255,255,255,.06)" />
-            <circle cx="238" cy="48" r="34" fill="rgba(255,197,49,.15)" />
-            <path d="M230 22l4.5 12 13 1.2-9.8 8.2 3 12.8-10.7-6.9-10.8 6.9 3-12.8-9.7-8.2 12.9-1.2z" fill="#FFC531" />
-            <path d="M39 69h18l19 98h112l24-73H69" fill="none" stroke="#73BDF2" strokeWidth="12" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M77 95h142l-19 62H90z" fill="#F58220" />
-            <circle cx="101" cy="184" r="15" fill="#fff" stroke="#73BDF2" strokeWidth="7" /><circle cx="181" cy="184" r="15" fill="#fff" stroke="#73BDF2" strokeWidth="7" />
-            <text x="148" y="143" textAnchor="middle" fontFamily="Cairo, Tajawal, sans-serif" fontSize="39" fontWeight="900" fill="#0B3A66">AS</text>
-          </svg>
+          <img className="pr-hero-logo" src="/al-shamel-logo.jpeg" alt="" width={220} height={220} loading="eager" decoding="async" />
         </div>
         </section>
       )}
@@ -744,6 +749,10 @@ function CustomerStorefront() {
           <span className="pr-brand"><i className="dot" /> السوق الشامل · AL SHAMEL</span>
           <h2 className="pr-title">{activeTab === "international" ? <>تسوّق من أشهر المتاجر <span className="grad">العالمية</span></> : activeTab === "best-sellers" ? <>الأكثر <span className="grad">مبيعًا</span></> : <>عروض <span className="grad">مختارة</span></>}</h2>
           <p className="pr-sub">{activeTab === "international" ? "اطلب من أشهر المتاجر العالمية وتعرّف على خيارات التسوق المتاحة." : activeTab === "best-sellers" ? "منتجات مرتبة حسب الكميات المسلّمة فعليًا للعملاء." : "اكتشف العروض الحالية من متاجر السوق الشامل."}</p>
+          <div className="pr-head-meta">
+            <span>{activeTab === "international" ? `${filteredIconStores.length} متاجر` : activeTab === "best-sellers" ? `${filteredBestSellingProducts.length} منتجات` : `${filteredOfferCards.length} عروض`}</span>
+            {activeTab === "international" && <button type="button" onClick={() => { setStorefrontSearch(""); selectTab("international"); }}>كل المتاجر</button>}
+          </div>
           <div className="pr-divider" aria-hidden="true"><i /><b /><i /></div>
           </header>
         )}
@@ -753,8 +762,11 @@ function CustomerStorefront() {
             {filteredIconStores.map(({ id, name, from, to, ink, Glyph }, index) => {
               const store = INTERNATIONAL_STORES.find((item) => item.id === id);
               const url = getExternalStoreUrl(id, store?.fallback ?? "https://www.google.com");
-              return <a key={id} className="pr-store" style={{ animationDelay: `${index * 45}ms` }} href={url} target="_blank" rel="noopener noreferrer" aria-label={`تسوق من ${name}، يفتح في تبويب جديد`} title={`تسوق من ${name}`}>
-                <span className="pr-store-go" aria-hidden="true">↗</span><IconShell id={`store-${id}`} from={from} to={to} {...(ink ? { ink } : {})}><Glyph /></IconShell><span className="pr-store-name">{name}</span>
+              return <a key={id} data-store={id} className="pr-store" style={{ animationDelay: `${index * 45}ms` }} href={url} target="_blank" rel="noopener noreferrer" aria-label={`تسوق من ${name}، يفتح في تبويب جديد`} title={`تسوق من ${name}`}>
+                <span className="pr-store-go" aria-hidden="true">↗</span>
+                <IconShell id={`store-${id}`} from={from} to={to} {...(ink ? { ink } : {})}><Glyph /></IconShell>
+                <span className="pr-store-info"><span className="pr-store-name">{name}</span><span className="pr-store-description">تسوّق عالمي وخيارات متنوعة</span><span className="pr-store-shipping">شحن 7–12 يوم</span></span>
+                <span className="pr-store-cta">تسوّق الآن <ArrowLeft size={14} aria-hidden="true" /></span>
               </a>;
             })}
           </section> : <div className="pr-merchant-state">لا توجد متاجر تطابق بحثك.</div>
@@ -826,7 +838,13 @@ function CustomerStorefront() {
         )}
       </div>
 
-      <footer className="pr-footer"><div className="pr-footer-inner"><span className="pr-footer-brand">AL SHAMEL · السوق الشامل</span><span>تسوق عالمي أسهل، من مكان واحد</span></div></footer>
+      <footer className="pr-footer">
+        <div className="pr-footer-inner">
+          <div className="pr-footer-brand-row"><img src="/al-shamel-logo.jpeg" alt="السوق الشامل" width={72} height={54} loading="lazy" /><div><strong>السوق الشامل</strong><span>تسوق عالمي أسهل، من مكان واحد</span></div></div>
+          <div className="pr-footer-actions"><a href="https://wa.me/967773370041" target="_blank" rel="noopener noreferrer"><MessageCircle size={15} aria-hidden="true" /> تواصل واتساب</a><a href="tel:+967773370041"><span aria-hidden="true">☎</span> اتصل بنا</a></div>
+          <nav className="pr-footer-links" aria-label="روابط مهمة"><Link to="/terms">الشروط</Link><Link to="/privacy">الخصوصية</Link><Link to="/about">عن السوق</Link><Link to="/cart">السلة</Link></nav>
+        </div>
+      </footer>
     </main>
   );
 }
