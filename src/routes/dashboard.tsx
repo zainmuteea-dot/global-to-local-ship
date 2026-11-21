@@ -1233,14 +1233,6 @@ export default function DashboardPage() {
                     <User className="size-4 text-sky-300" />
                     <span>إدارة حسابي والفواتير</span>
                   </Link>
-                  <Link
-                    to="/prices"
-                    onClick={() => setIsSidebarOpen(false)}
-                    className="flex items-center gap-3 p-3 rounded-2xl hover:bg-white/10 font-black text-sm text-sky-100 transition"
-                  >
-                    <CircleDollarSign className="size-4 text-sky-300" />
-                    <span>دليل الأسعار والعمولات</span>
-                  </Link>
                   <a
                     href="https://wa.me/967770000000"
                     target="_blank"
