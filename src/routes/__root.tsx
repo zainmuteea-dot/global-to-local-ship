@@ -4,6 +4,8 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useLocation,
+  useNavigate,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -11,6 +13,7 @@ import { lazy, Suspense, useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { supabase } from "@/integrations/supabase/client";
 const ChatBot = lazy(() =>
   import("../components/chat-bot").then(({ ChatBot: component }) => ({ default: component })),
 );
@@ -125,6 +128,43 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+function RedirectAdminsFromCustomerRoutes() {
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const customerRoute = pathname === "/" || pathname === "/new-order" ||
+    pathname === "/my-account" || pathname === "/track" || pathname.startsWith("/track/");
+
+  useEffect(() => {
+    if (!customerRoute) return;
+    let active = true;
+    let timer: number | undefined;
+    const checkAdmin = async () => {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (!active || sessionError || !session) return;
+      const { data, error } = await supabase.rpc("has_role", {
+        _user_id: session.user.id,
+        _role: "admin",
+      });
+      if (active && !error && data === true) {
+        void navigate({ to: "/admin", replace: true });
+      }
+    };
+
+    void checkAdmin();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      timer = window.setTimeout(() => void checkAdmin(), 0);
+    });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+      if (timer !== undefined) window.clearTimeout(timer);
+    };
+  }, [customerRoute, navigate]);
+
+  return null;
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
@@ -136,6 +176,7 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <RedirectAdminsFromCustomerRoutes />
       <Outlet />
       <Suspense fallback={null}>
         <ChatBot />
