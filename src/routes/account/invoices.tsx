@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowRight, Check, CreditCard, Eye, Loader2, Receipt, RefreshCw, Wallet } from "lucide-react";
+import { useCallback, useLayoutEffect, useMemo, useState } from "react";
+import { ArrowRight, Check, CreditCard, Eye, Receipt, RefreshCw, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
 
@@ -18,6 +18,31 @@ type InvoiceItem = {
   remainingYer: number | null;
   createdAt: string | null;
 };
+
+const invoiceCacheKey = (userId: string) => `account-invoices:v1:${userId}`;
+
+function readInvoiceCache(userId: string): InvoiceItem[] {
+  if (typeof window === "undefined" || !userId) return [];
+  try {
+    const raw = window.localStorage.getItem(invoiceCacheKey(userId));
+    const value = raw ? JSON.parse(raw) : null;
+    if (!Array.isArray(value)) return [];
+    return value.filter((item: any) =>
+      item && typeof item.key === "string" && typeof item.invoiceNumber === "string",
+    ).slice(0, 10) as InvoiceItem[];
+  } catch {
+    return [];
+  }
+}
+
+function writeInvoiceCache(userId: string, invoices: InvoiceItem[]) {
+  if (typeof window === "undefined" || !userId) return;
+  try {
+    window.localStorage.setItem(invoiceCacheKey(userId), JSON.stringify(invoices.slice(0, 10)));
+  } catch {
+    // Storage may be disabled or full; the live page still works without it.
+  }
+}
 
 const FIXED_YER_RATE = { SAR: 140, USD: 535 } as const;
 
@@ -53,13 +78,18 @@ const money = (value: number | null) =>
 
 function AccountInvoicesPage() {
   const { user, loading: sessionLoading } = useSession();
-  const [invoices, setInvoices] = useState<InvoiceItem[]>([]);
+  const [invoiceData, setInvoiceData] = useState<{ userId: string; items: InvoiceItem[] }>(() => ({
+    userId: user?.id ?? "",
+    items: user?.id ? readInvoiceCache(user.id) : [],
+  }));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const invoices = invoiceData.userId === user?.id ? invoiceData.items : [];
+  const showSkeleton = sessionLoading || (!!user && (loading || invoiceData.userId !== user.id));
 
-  const loadInvoices = useCallback(async () => {
+  const loadInvoices = useCallback(async (cachedAtStart: InvoiceItem[] = []) => {
     if (!user) return;
-    setLoading(true);
+    if (cachedAtStart.length === 0) setLoading(true);
     setError("");
     const db = supabase as any;
     const metadata = (user.user_metadata ?? {}) as Record<string, unknown>;
@@ -88,7 +118,7 @@ function AccountInvoicesPage() {
         .select(orderSelect)
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
-        .limit(500);
+        .limit(10);
       if (ownOrdersError) throw ownOrdersError;
       addOrders(ownOrders);
 
@@ -108,7 +138,7 @@ function AccountInvoicesPage() {
             .select(orderSelect)
             .eq(column, phone)
             .order("created_at", { ascending: false })
-            .limit(500);
+            .limit(10);
           if (!phoneError) addOrders(data);
         }
       }
@@ -122,12 +152,15 @@ function AccountInvoicesPage() {
             .select(orderSelect)
             .eq(column, user.email)
             .order("created_at", { ascending: false })
-            .limit(500);
+            .limit(10);
           if (!emailError) addOrders(data);
         }
       }
 
-      const orderIds = Array.from(orderMap.keys());
+      const recentOrders = Array.from(orderMap.values())
+        .sort((a, b) => String(b.created_at ?? "").localeCompare(String(a.created_at ?? "")))
+        .slice(0, 10);
+      const orderIds = recentOrders.map((order) => String(order.id));
       const invoiceMap = new Map<string, any>();
       const invoiceByTrackingCode = new Map<string, any>();
       const invoiceById = new Map<string, any>();
@@ -147,7 +180,7 @@ function AccountInvoicesPage() {
         .select(invoiceSelect)
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
-        .limit(500);
+        .limit(10);
       if (!ownInvoicesError) addInvoices(ownInvoices);
 
       for (let start = 0; start < orderIds.length; start += 100) {
@@ -157,7 +190,7 @@ function AccountInvoicesPage() {
           .select(invoiceSelect)
           .in("order_id", chunk)
           .order("created_at", { ascending: false })
-          .limit(500);
+          .limit(10);
         if (!linkedError) addInvoices(data);
       }
       const trackingCodes = Array.from(
@@ -174,7 +207,7 @@ function AccountInvoicesPage() {
           .select(invoiceSelect)
           .in("tracking_code", chunk)
           .order("created_at", { ascending: false })
-          .limit(500);
+          .limit(10);
         if (!codeError) addInvoices(data);
       }
       if (user.email) {
@@ -184,7 +217,7 @@ function AccountInvoicesPage() {
             .select(invoiceSelect)
             .eq(column, user.email)
             .order("created_at", { ascending: false })
-            .limit(500);
+            .limit(10);
           if (!emailError) addInvoices(data);
         }
       }
@@ -212,7 +245,7 @@ function AccountInvoicesPage() {
         }
       }
 
-      const items: InvoiceItem[] = Array.from(orderMap.values()).map((order) => {
+      const items: InvoiceItem[] = recentOrders.map((order) => {
         const id = String(order.id);
         const invoice =
           invoiceMap.get(id) ?? invoiceByTrackingCode.get(String(order.tracking_code ?? "").trim());
@@ -257,18 +290,34 @@ function AccountInvoicesPage() {
         });
       }
       items.sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
-      setInvoices(items);
+      const firstTen = items.slice(0, 10);
+      writeInvoiceCache(user.id, firstTen);
+      setInvoiceData({ userId: user.id, items: firstTen });
     } catch (cause) {
       console.error("Failed to load account invoices:", cause);
-      setInvoices([]);
-      setError("تعذر تحميل فواتيرك وطلباتك. تأكد من صلاحيات قراءة الطلبات والدفعات.");
+      // Keep any cached invoices visible when the background refresh fails.
+      if (cachedAtStart.length === 0) {
+        setInvoiceData({ userId: user.id, items: [] });
+        setError("تعذر تحميل فواتيرك وطلباتك. تأكد من صلاحيات قراءة الطلبات والدفعات.");
+      }
     } finally {
       setLoading(false);
     }
   }, [user]);
 
-  useEffect(() => {
-    if (!sessionLoading && user) void loadInvoices();
+  useLayoutEffect(() => {
+    if (sessionLoading) return;
+    if (!user) {
+      setInvoiceData({ userId: "", items: [] });
+      setLoading(false);
+      return;
+    }
+    const cached = readInvoiceCache(user.id);
+    setInvoiceData({ userId: user.id, items: cached });
+    setLoading(cached.length === 0);
+    setError("");
+    // Cache is committed before paint; the network refresh never replaces it with a spinner.
+    void loadInvoices(cached);
   }, [loadInvoices, sessionLoading, user]);
 
   const navigate = useNavigate();
@@ -328,7 +377,7 @@ function AccountInvoicesPage() {
         {error && (
           <div className="ai-alert" role="alert">
             <span>{error}</span>
-            <button type="button" onClick={() => void loadInvoices()} aria-label="إعادة تحميل الفواتير">
+            <button type="button" onClick={() => void loadInvoices(invoices)} aria-label="إعادة تحميل الفواتير">
               <RefreshCw size={16} /> إعادة المحاولة
             </button>
           </div>
@@ -355,8 +404,17 @@ function AccountInvoicesPage() {
           <span>{invoices.length} {invoices.length === 1 ? "فاتورة" : "فواتير"}</span>
         </div>
 
-        {loading ? (
-          <div className="ai-state" role="status"><Loader2 className="ai-spin" size={25} /> جارٍ تحميل فواتيرك…</div>
+        {showSkeleton ? (
+          <div className="ai-skeleton-list" role="status" aria-label="تحميل الفواتير">
+            {Array.from({ length: 3 }, (_, index) => (
+              <article className="ai-skeleton-card" key={index} aria-hidden="true">
+                <div className="ai-skeleton-heading"><i /><div><i /><i /></div></div>
+                <i className="ai-skeleton-line wide" /><i className="ai-skeleton-line" />
+                <div className="ai-skeleton-amounts"><i /><i /><i /></div>
+                <i className="ai-skeleton-button" />
+              </article>
+            ))}
+          </div>
         ) : invoices.length === 0 ? (
           <div className="ai-empty">
             <span className="ai-empty-icon"><Receipt size={25} /></span>
@@ -469,7 +527,8 @@ const INVOICE_STYLE = `
 .ai-status{margin-top:12px}.ai-status-line{margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;gap:8px}.ai-status-text{font-size:10px;font-weight:800;color:var(--ai-blue)}.ai-status-text.paid{color:var(--ai-green)}.ai-percent{font-size:10px;font-weight:900;color:var(--ai-blue)}.ai-progress{height:6px;overflow:hidden;border-radius:999px;background:#eaf0f6}.ai-progress span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#0f4c81,#247bc0);transition:width .35s}
 .ai-amounts{margin-top:12px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));overflow:hidden;border:1px solid #e2eaf3;border-radius:12px}.ai-amount{min-width:0;padding:8px 5px;display:grid;justify-items:center;gap:3px;background:#fff;text-align:center}.ai-amount+.ai-amount{border-inline-start:1px solid #e9eff5}.ai-amount span{color:var(--ai-muted);font-size:9px;font-weight:700}.ai-amount strong{font-size:12px;font-weight:900;overflow-wrap:anywhere}.ai-amount.paid-amount strong{color:var(--ai-green)}.ai-amount.remaining-amount strong{color:var(--ai-orange)}
 .ai-actions{margin-top:10px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px}.ai-pay-button,.ai-details-button{min-height:35px;display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:11px;font-family:inherit;font-size:10px;font-weight:900;cursor:pointer;transition:filter .18s,transform .18s}.ai-pay-button{padding:8px 10px;border:0;background:linear-gradient(110deg,#104e84,#247bc0);color:#fff;box-shadow:0 5px 11px rgba(15,76,129,.2)}.ai-pay-button:hover:not(:disabled){filter:brightness(1.06);transform:translateY(-1px)}.ai-pay-button.ai-complete{background:#e6f7ee;color:var(--ai-green);box-shadow:none;cursor:default}.ai-pay-button.ai-unavailable{background:#f1f5f9;color:#64748b;box-shadow:none;cursor:not-allowed}.ai-details-button{padding:8px 11px;border:1px solid #d6e6f5;background:#fff;color:var(--ai-blue)}.ai-details-button:hover:not(:disabled){background:#f2f8fd}.ai-details-button:disabled{opacity:.55;cursor:not-allowed}
-.ai-state,.ai-empty{min-height:150px;padding:30px 18px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;border:1px solid #e2eaf3;border-radius:18px;background:rgba(255,255,255,.82);color:var(--ai-muted);text-align:center;font-size:13px;font-weight:700}.ai-spin{animation:ai-spin 1s linear infinite}@keyframes ai-spin{to{transform:rotate(360deg)}}.ai-empty strong{color:var(--ai-ink);font-size:14px}.ai-empty p{margin:0;font-size:11px}.ai-empty-icon{width:46px;height:46px;display:grid;place-items:center;border-radius:14px;background:#eaf3fb;color:var(--ai-blue)}
+.ai-skeleton-list{display:flex;flex-direction:column;gap:13px}.ai-skeleton-card{padding:14px;border:1px solid #e3ebf4;border-radius:19px;background:#fff;box-shadow:0 8px 22px rgba(15,76,129,.08)}.ai-skeleton-heading{display:flex;align-items:center;gap:9px}.ai-skeleton-heading>i{width:34px;height:34px;flex:none;border-radius:11px;background:#eaf0f6}.ai-skeleton-heading>div{flex:1;display:grid;gap:7px}.ai-skeleton-heading>div i,.ai-skeleton-line,.ai-skeleton-amounts i,.ai-skeleton-button{display:block;border-radius:999px;background:linear-gradient(90deg,#edf2f7 25%,#e2eaf3 45%,#edf2f7 65%);background-size:220% 100%;animation:ai-shimmer 1.2s ease-in-out infinite}.ai-skeleton-heading>div i{height:10px;width:58%}.ai-skeleton-heading>div i+ i{width:32%;height:8px}.ai-skeleton-line{height:8px;width:70%;margin-top:14px}.ai-skeleton-line.wide{width:92%;margin-top:17px}.ai-skeleton-amounts{margin-top:14px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.ai-skeleton-amounts i{height:34px;border-radius:9px}.ai-skeleton-button{height:36px;margin-top:12px;border-radius:11px}@keyframes ai-shimmer{to{background-position:-220% 0}}
+.ai-state,.ai-empty{min-height:150px;padding:30px 18px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;border:1px solid #e2eaf3;border-radius:18px;background:rgba(255,255,255,.82);color:var(--ai-muted);text-align:center;font-size:13px;font-weight:700}.ai-empty strong{color:var(--ai-ink);font-size:14px}.ai-empty p{margin:0;font-size:11px}.ai-empty-icon{width:46px;height:46px;display:grid;place-items:center;border-radius:14px;background:#eaf3fb;color:var(--ai-blue)}
 .ai-footer{margin-top:22px;display:flex;align-items:center;justify-content:center;gap:5px;color:var(--ai-muted);font-size:10px;font-weight:700}.ai-footer a{color:var(--ai-blue);font-weight:900;text-decoration:none}.ai-footer a:hover{text-decoration:underline}
 @media(max-width:560px){
   .ai-main{width:calc(100% - 24px);padding-top:13px}
@@ -507,5 +566,5 @@ const INVOICE_STYLE = `
   .ai-details-button{font-size:9px;padding:8px 7px}
 }
 .ai-page button:focus-visible,.ai-page a:focus-visible{outline:3px solid #e6ad35;outline-offset:2px}
-@media(prefers-reduced-motion:reduce){.ai-page *{scroll-behavior:auto!important;transition:none!important}.ai-spin{animation:none}}
+@media(prefers-reduced-motion:reduce){.ai-page *{scroll-behavior:auto!important;transition:none!important}.ai-skeleton-card *{animation:none!important}}
 `;
