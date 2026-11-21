@@ -1541,7 +1541,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
                     <text
                       x={city.x}
                       y={city.y - 5}
-                      fill="#FFFFFF"
+                      fill="#0A2E6B"
                       textAnchor="middle"
                       fontSize="5"
                     >
@@ -1581,35 +1581,35 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
           {tickerError && <p role="alert" className="mb-3 rounded-xl border border-red-400/30 bg-red-500/10 p-3 text-sm text-red-200">{tickerError}</p>}
           {tickerSuccess && <p role="status" className="mb-3 rounded-xl border border-emerald-400/30 bg-emerald-500/10 p-3 text-sm text-emerald-200">{tickerSuccess}</p>}
 
-          {tickerFormOpen && <form onSubmit={(event) => void saveTickerMessage(event)} className="mb-5 grid gap-3 rounded-2xl border border-white/10 bg-black/20 p-4 md:grid-cols-2">
+          {tickerFormOpen && <form onSubmit={(event) => void saveTickerMessage(event)} className="mb-5 grid gap-3 rounded-2xl border border-white/10 bg-white p-4 md:grid-cols-2">
             <label className="grid gap-1.5 text-xs font-bold text-slate-300 md:col-span-2">نص الرسالة *
-              <textarea required minLength={1} maxLength={180} rows={2} value={tickerDraft.message} onChange={(event) => setTickerDraft((draft) => ({ ...draft, message: event.target.value }))} placeholder="اكتب رسالة الشريط (حتى 180 حرفًا)" className="rounded-xl border border-white/10 bg-[#060D1E] px-3 py-3 text-sm text-white outline-none focus:border-[#FF7A00]/60" />
+              <textarea required minLength={1} maxLength={180} rows={2} value={tickerDraft.message} onChange={(event) => setTickerDraft((draft) => ({ ...draft, message: event.target.value }))} placeholder="اكتب رسالة الشريط (حتى 180 حرفًا)" className="rounded-xl border border-white/10 bg-white px-3 py-3 text-sm text-white outline-none focus:border-[#FF7A00]/60" />
               <span className="text-left text-[11px] text-slate-500">{tickerDraft.message.trim().length}/180</span>
             </label>
             <label className="grid gap-1.5 text-xs font-bold text-slate-300">مكان الظهور *
-              <select value={tickerDraft.placement} onChange={(event) => setTickerDraft((draft) => ({ ...draft, placement: event.target.value as SiteTickerRow["placement"] }))} className="rounded-xl border border-white/10 bg-[#060D1E] px-3 py-3 text-sm text-white">
+              <select value={tickerDraft.placement} onChange={(event) => setTickerDraft((draft) => ({ ...draft, placement: event.target.value as SiteTickerRow["placement"] }))} className="rounded-xl border border-white/10 bg-white px-3 py-3 text-sm text-white">
                 <option value="home_guest">الصفحة الرئيسية للزوار</option><option value="dashboard">لوحة العميل</option><option value="both">كلاهما</option>
               </select>
             </label>
             <label className="grid gap-1.5 text-xs font-bold text-slate-300">شارة قصيرة (اختيارية)
-              <input maxLength={30} value={tickerDraft.badge} onChange={(event) => setTickerDraft((draft) => ({ ...draft, badge: event.target.value }))} placeholder="مثال: عرض أو تنبيه" className="rounded-xl border border-white/10 bg-[#060D1E] px-3 py-3 text-sm text-white" />
+              <input maxLength={30} value={tickerDraft.badge} onChange={(event) => setTickerDraft((draft) => ({ ...draft, badge: event.target.value }))} placeholder="مثال: عرض أو تنبيه" className="rounded-xl border border-white/10 bg-white px-3 py-3 text-sm text-white" />
             </label>
             <label className="grid gap-1.5 text-xs font-bold text-slate-300">رابط داخلي اختياري
-              <input type="text" value={tickerDraft.href} onChange={(event) => setTickerDraft((draft) => ({ ...draft, href: event.target.value }))} placeholder="مثال: /products" pattern="^(/(?!/).*)?$" title="استخدم مسارًا داخليًا يبدأ بشرطة واحدة /" className="rounded-xl border border-white/10 bg-[#060D1E] px-3 py-3 text-sm text-white" />
+              <input type="text" value={tickerDraft.href} onChange={(event) => setTickerDraft((draft) => ({ ...draft, href: event.target.value }))} placeholder="مثال: /products" pattern="^(/(?!/).*)?$" title="استخدم مسارًا داخليًا يبدأ بشرطة واحدة /" className="rounded-xl border border-white/10 bg-white px-3 py-3 text-sm text-white" />
             </label>
             <label className="grid gap-1.5 text-xs font-bold text-slate-300">ترتيب العرض
-              <input type="number" min="0" max="9999" step="1" required value={tickerDraft.sort_order} onChange={(event) => setTickerDraft((draft) => ({ ...draft, sort_order: event.target.value }))} className="rounded-xl border border-white/10 bg-[#060D1E] px-3 py-3 text-sm text-white" />
+              <input type="number" min="0" max="9999" step="1" required value={tickerDraft.sort_order} onChange={(event) => setTickerDraft((draft) => ({ ...draft, sort_order: event.target.value }))} className="rounded-xl border border-white/10 bg-white px-3 py-3 text-sm text-white" />
             </label>
             <label className="grid gap-1.5 text-xs font-bold text-slate-300">يبدأ التفعيل (اختياري)
-              <input type="datetime-local" value={tickerDraft.starts_at} onChange={(event) => setTickerDraft((draft) => ({ ...draft, starts_at: event.target.value }))} className="rounded-xl border border-white/10 bg-[#060D1E] px-3 py-3 text-sm text-white" />
+              <input type="datetime-local" value={tickerDraft.starts_at} onChange={(event) => setTickerDraft((draft) => ({ ...draft, starts_at: event.target.value }))} className="rounded-xl border border-white/10 bg-white px-3 py-3 text-sm text-white" />
             </label>
             <label className="grid gap-1.5 text-xs font-bold text-slate-300">ينتهي التفعيل (اختياري)
-              <input type="datetime-local" value={tickerDraft.ends_at} onChange={(event) => setTickerDraft((draft) => ({ ...draft, ends_at: event.target.value }))} className="rounded-xl border border-white/10 bg-[#060D1E] px-3 py-3 text-sm text-white" />
+              <input type="datetime-local" value={tickerDraft.ends_at} onChange={(event) => setTickerDraft((draft) => ({ ...draft, ends_at: event.target.value }))} className="rounded-xl border border-white/10 bg-white px-3 py-3 text-sm text-white" />
             </label>
             <label className="flex min-h-11 items-center gap-2 text-sm font-bold text-slate-200"><input type="checkbox" checked={tickerDraft.is_active} onChange={(event) => setTickerDraft((draft) => ({ ...draft, is_active: event.target.checked }))} className="size-4 accent-amber-400" /> الرسالة نشطة</label>
             <div className="rounded-xl border border-sky-300/20 bg-gradient-to-r from-[#0A2540] to-[#0F4C81] p-3 md:col-span-2">
               <p className="mb-2 text-[10px] font-bold text-sky-200">معاينة الشريط</p>
-              <div className="flex min-h-10 items-center gap-2 overflow-hidden rounded-lg border border-sky-300/20 bg-[#071B34] px-3 text-sm text-white">
+              <div className="flex min-h-10 items-center gap-2 overflow-hidden rounded-lg border border-sky-300/20 bg-white px-3 text-sm text-white">
                 {tickerDraft.badge.trim() && <span className="shrink-0 rounded-full bg-orange-500 px-2 py-1 text-[10px] font-black">{tickerDraft.badge.trim()}</span>}
                 <span className="truncate">{tickerDraft.message.trim() || "سيظهر نص الرسالة هنا"}</span>
               </div>
@@ -1621,7 +1621,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
             </div>
           </form>}
 
-          {tickerLoading ? <p className="py-5 text-center text-sm text-slate-400">جارٍ تحميل رسائل الأشرطة…</p> : tickerRows.length === 0 ? <p className="rounded-xl border border-dashed border-white/15 p-5 text-center text-sm text-slate-400">لا توجد رسائل بعد. أضف أول رسالة لتظهر بعد تفعيل الترحيل.</p> : <div className="space-y-3">{tickerRows.map((row) => <article key={row.id} className={`rounded-xl border p-3 ${row.is_active ? "border-sky-300/20 bg-[#071B34]/70" : "border-white/10 bg-black/20 opacity-70"}`}>
+          {tickerLoading ? <p className="py-5 text-center text-sm text-slate-400">جارٍ تحميل رسائل الأشرطة…</p> : tickerRows.length === 0 ? <p className="rounded-xl border border-dashed border-white/15 p-5 text-center text-sm text-slate-400">لا توجد رسائل بعد. أضف أول رسالة لتظهر بعد تفعيل الترحيل.</p> : <div className="space-y-3">{tickerRows.map((row) => <article key={row.id} className={`rounded-xl border p-3 ${row.is_active ? "border-sky-300/20 bg-white/70" : "border-white/10 bg-white opacity-70"}`}>
             <div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0 flex-1"><div className="mb-2 flex flex-wrap items-center gap-2">{row.badge && <span className="rounded-full bg-orange-500/15 px-2 py-1 text-[10px] font-bold text-orange-200">{row.badge}</span>}<span className="rounded-full bg-sky-400/10 px-2 py-1 text-[10px] text-sky-200">{row.placement === "home_guest" ? "الرئيسية للزوار" : row.placement === "dashboard" ? "لوحة العميل" : "الرئيسية ولوحة العميل"}</span><span className={`rounded-full px-2 py-1 text-[10px] ${row.is_active ? "bg-emerald-500/10 text-emerald-300" : "bg-slate-500/20 text-slate-400"}`}>{row.is_active ? "مفعلة" : "معطلة"}</span><span className="text-[10px] text-slate-500">ترتيب {row.sort_order}</span></div><p className="text-sm leading-6 text-white">{row.message}</p><p className="mt-1 text-[10px] text-slate-500">{row.href ? `الرابط: ${row.href}` : "دون رابط"} · {row.starts_at ? `من ${new Date(row.starts_at).toLocaleString("ar-YE")}` : "دون بداية محددة"} · {row.ends_at ? `إلى ${new Date(row.ends_at).toLocaleString("ar-YE")}` : "دون نهاية محددة"}</p></div>
               <div className="flex shrink-0 gap-2"><button type="button" onClick={() => startTickerEdit(row)} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-sky-300/20 px-3 text-xs font-bold text-sky-200 hover:bg-sky-300/10"><Pencil className="size-3.5" /> تعديل</button><button type="button" onClick={() => void toggleTickerActive(row)} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-amber-300/20 px-3 text-xs font-bold text-amber-200 hover:bg-amber-300/10">{row.is_active ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}{row.is_active ? "تعطيل" : "تفعيل"}</button><button type="button" onClick={() => void deleteTickerMessage(row)} aria-label="حذف رسالة الشريط" className="inline-flex min-h-9 items-center justify-center rounded-lg border border-red-300/20 px-3 text-red-200 hover:bg-red-300/10"><Trash2 className="size-4" /></button></div>
             </div>
@@ -1652,12 +1652,12 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
               required
               maxLength={120}
               placeholder="عنوان العرض أو الإشعار"
-              className="rounded-lg border border-[#1D4ED8]/20 bg-black/40 px-3 py-3 text-sm text-white outline-none placeholder:text-white/40 focus:border-[#1D4ED8]/60"
+              className="rounded-lg border border-[#1D4ED8]/20 bg-white px-3 py-3 text-sm text-white outline-none placeholder:text-white/40 focus:border-[#1D4ED8]/60"
             />
             <select
               value={draftType}
               onChange={(event) => setDraftType(event.target.value)}
-              className="rounded-lg border border-[#1D4ED8]/20 bg-[#050A14] px-3 py-3 text-sm text-white outline-none focus:border-[#1D4ED8]/60"
+              className="rounded-lg border border-[#1D4ED8]/20 bg-white px-3 py-3 text-sm text-white outline-none focus:border-[#1D4ED8]/60"
             >
               <option value="offer">عرض</option>
               <option value="system">إشعار عام</option>
@@ -1672,7 +1672,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
               maxLength={2000}
               rows={3}
               placeholder="اكتب تفاصيل العرض أو الإشعار"
-              className="rounded-lg border border-[#1D4ED8]/20 bg-black/40 px-3 py-3 text-sm text-white outline-none placeholder:text-white/40 focus:border-[#1D4ED8]/60 md:col-span-2"
+              className="rounded-lg border border-[#1D4ED8]/20 bg-white px-3 py-3 text-sm text-white outline-none placeholder:text-white/40 focus:border-[#1D4ED8]/60 md:col-span-2"
             />
             <button
               type="submit"
@@ -1793,7 +1793,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
                 onChange={(event) => setNotificationSearch(event.target.value)}
                 placeholder="بحث في الإشعارات…"
                 aria-label="بحث في الإشعارات"
-                className="w-56 rounded-lg border border-white/15 bg-[#071226] px-3 py-2 text-xs text-white placeholder:text-white/40 focus:border-[#1D4ED8] focus:outline-none"
+                className="w-56 rounded-lg border border-white/15 bg-white px-3 py-2 text-xs text-white placeholder:text-white/40 focus:border-[#1D4ED8] focus:outline-none"
               />
             </div>
           </div>
@@ -1827,13 +1827,13 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
               </button>
             </div>
             {notifications.length === 0 ? (
-              <p className="rounded-xl border border-white/10 bg-black/20 p-5 text-center text-sm text-white/50">لا توجد إشعارات للعملاء حاليًا.</p>
+              <p className="rounded-xl border border-white/10 bg-white p-5 text-center text-sm text-white/50">لا توجد إشعارات للعملاء حاليًا.</p>
             ) : (
               <div className="grid gap-3 lg:grid-cols-2">
                 {sortedNotifications.map((item) => {
                   const isRead = readIds.has(item.id);
                   return (
-                    <article key={item.id} className="rounded-xl border border-white/10 bg-[#071226]/80 p-4">
+                    <article key={item.id} className="rounded-xl border border-white/10 bg-white/80 p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <h3 className="break-words font-bold text-white">{item.title}</h3>
@@ -1886,11 +1886,11 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
               </button>
             </div>
             {orders.length === 0 ? (
-              <p className="rounded-xl border border-white/10 bg-black/20 p-5 text-center text-sm text-white/50">لا توجد طلبات عملاء حاليًا.</p>
+              <p className="rounded-xl border border-white/10 bg-white p-5 text-center text-sm text-white/50">لا توجد طلبات عملاء حاليًا.</p>
             ) : (
               <div className="grid gap-3 lg:grid-cols-2">
                 {orders.map((order) => (
-                  <article key={order.id} className="rounded-xl border border-white/10 bg-[#071226]/80 p-4">
+                  <article key={order.id} className="rounded-xl border border-white/10 bg-white/80 p-4">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <h3 className="font-bold text-white">{order.customer_name || "عميل"}</h3>
