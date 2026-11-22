@@ -8,7 +8,6 @@ import {
   Clock3,
   ClipboardPlus,
   FileText,
-  FileSpreadsheet,
   Headphones,
   LayoutDashboard,
   LogOut,
@@ -138,7 +137,6 @@ const navItems = [
 const legacyNavItems = [
   { label: "الأسعار والشحن", href: "/prices", icon: Tag },
   { label: "الحسابات المالية", href: "/accounts", icon: Coins },
-  { label: "المحاسبة", href: "/accounting", icon: FileSpreadsheet },
   { label: "فواتير المشتريات", href: "/purchase-invoices", icon: Receipt },
   { label: "المخزون", href: "/inventory", icon: PackageOpen },
   { label: "المستودعات", href: "/warehouses", icon: PackageCheck },
