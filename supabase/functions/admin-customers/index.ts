@@ -37,7 +37,7 @@ async function fetchAll<T>(
 }
 
 async function listCustomers(adminClient: SupabaseClient) {
-  const [profiles, roles, orders, payments] = await Promise.all([
+  const [profiles, roles, orders, payments, deleteJobs] = await Promise.all([
     fetchAll<any>((from, to) =>
       adminClient.from("profiles")
         .select("id,full_name,phone,created_at")
@@ -64,6 +64,11 @@ async function listCustomers(adminClient: SupabaseClient) {
         .order("created_at", { ascending: false })
         .range(from, to)
     ),
+    fetchAll<any>((from, to) =>
+      adminClient.from("customer_delete_jobs")
+        .select("target_user_id")
+        .range(from, to)
+    ),
   ]);
 
   const staffIds = new Set(
@@ -71,7 +76,12 @@ async function listCustomers(adminClient: SupabaseClient) {
       .filter((row) => row.role === "admin" || row.role === "staff")
       .map((row) => row.user_id),
   );
-  const customers = profiles.filter((profile) => !staffIds.has(profile.id));
+  const pendingDeleteIds = new Set(
+    deleteJobs.map((job) => job.target_user_id),
+  );
+  const customers = profiles.filter(
+    (profile) => !staffIds.has(profile.id) && !pendingDeleteIds.has(profile.id),
+  );
   const profilesByPhone = new Map<string, string[]>();
   for (const profile of customers) {
     const phone = normalizePhone(profile.phone);
