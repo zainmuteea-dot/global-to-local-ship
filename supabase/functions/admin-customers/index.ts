@@ -39,13 +39,13 @@ async function fetchAll<T>(
 async function countCustomers(adminClient: SupabaseClient) {
   const [profiles, roles, deleteJobs] = await Promise.all([
     fetchAll<{ id: string }>((from, to) =>
-      adminClient.from("profiles").select("id").range(from, to)
+      adminClient.from("profiles").select("id").range(from, to),
     ),
     fetchAll<{ user_id: string; role: string }>((from, to) =>
-      adminClient.from("user_roles").select("user_id,role").range(from, to)
+      adminClient.from("user_roles").select("user_id,role").range(from, to),
     ),
     fetchAll<{ target_user_id: string }>((from, to) =>
-      adminClient.from("customer_delete_jobs").select("target_user_id").range(from, to)
+      adminClient.from("customer_delete_jobs").select("target_user_id").range(from, to),
     ),
   ]);
 

@@ -774,9 +774,21 @@ export default function AdminOperationsPage() {
       .subscribe();
     const customersChannel = supabase
       .channel("admin_registered_customers_realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, refreshCustomerCount)
-      .on("postgres_changes", { event: "*", schema: "public", table: "user_roles" }, refreshCustomerCount)
-      .on("postgres_changes", { event: "*", schema: "public", table: "customer_delete_jobs" }, refreshCustomerCount)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "profiles" },
+        refreshCustomerCount,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "user_roles" },
+        refreshCustomerCount,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "customer_delete_jobs" },
+        refreshCustomerCount,
+      )
       .subscribe();
     const customerCountTimer = window.setInterval(refreshCustomerCount, 60_000);
 
