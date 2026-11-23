@@ -34,6 +34,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 export type DashboardStats = {
   activeShipments: number | null;
+  registeredCustomers: number | null;
   followUpOrders: number | null;
   completedShipments: number | null;
   totalCollected: string | null;
@@ -69,6 +70,7 @@ type AdminDashboardShellProps = {
 
 const SAMPLE_STATS: DashboardStats = {
   activeShipments: 8,
+  registeredCustomers: 0,
   followUpOrders: 3,
   completedShipments: 5,
   totalCollected: "12,450",
@@ -479,7 +481,7 @@ export function AdminDashboardShell({
           </div>
 
           <section
-            className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4"
+            className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-5"
             aria-label="إحصائيات اليوم"
           >
             <MetricCard
@@ -492,6 +494,17 @@ export function AdminDashboardShell({
               }
               tone="blue"
               icon={<Truck className="size-5" />}
+            />
+            <MetricCard
+              title="إجمالي العملاء"
+              value={stats.registeredCustomers === null ? "—" : String(stats.registeredCustomers)}
+              note={
+                stats.registeredCustomers === null
+                  ? "بانتظار تحميل الحسابات المسجلة"
+                  : "عدد فعلي من حسابات العملاء المسجلة"
+              }
+              tone="purple"
+              icon={<Users className="size-5" />}
             />
             <MetricCard
               title="طلبات تحتاج متابعة"
