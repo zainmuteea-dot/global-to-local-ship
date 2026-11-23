@@ -16,6 +16,9 @@ import {
   Save,
   X,
   KeyRound,
+  UserPlus,
+  Mail,
+  Lock,
 } from "lucide-react";
 import { AdminRouteGuard } from "@/components/admin/AdminRouteGuard";
 import { EmployeePermissionsEditor } from "@/components/admin/EmployeePermissionsEditor";
@@ -41,7 +44,7 @@ interface EmployeeRpcRow {
   created_at: string | null;
 }
 
-// The current generated Supabase types do not yet declare the two admin RPCs.
+// The current generated Supabase types do not yet declare the admin RPCs.
 // Keep this narrow adapter until types.ts is regenerated after deploying the SQL.
 async function callEmployeeRpc(
   name: string,
@@ -66,7 +69,7 @@ async function getFunctionErrorMessage(error: unknown): Promise<string> {
       }
     }
   }
-  return error instanceof Error ? error.message : "تعذر حذف الحساب. تحقق من إعداد Edge Function.";
+  return error instanceof Error ? error.message : "تعذر تنفيذ العملية. تحقق من إعداد الصلاحيات.";
 }
 
 const ROLE_INFO: Record<StaffRole, { title: string; color: string; bg: string; border: string }> = {
@@ -98,6 +101,8 @@ function formatJoinDate(value: string | null): string {
 function EmployeesPage() {
   const navigate = useNavigate();
   const canDeleteEmployees = usePermission("employees", "delete");
+  const canCreateEmployees = usePermission("employees", "create");
+
   const [employees, setEmployees] = useState<EmployeeItem[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [permissionsEmployee, setPermissionsEmployee] = useState<EmployeeItem | null>(null);
@@ -106,10 +111,23 @@ function EmployeesPage() {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
   const [reloadKey, setReloadKey] = useState(0);
+
+  // حالة التعديل
   const [editing, setEditing] = useState<EmployeeItem | null>(null);
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [editRole, setEditRole] = useState<StaffRole>("staff");
+
+  // حالة الإضافة
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+  const [newRole, setNewRole] = useState<StaffRole>("staff");
+  const [addLoading, setAddLoading] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
+
   const [busyId, setBusyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
@@ -138,8 +156,6 @@ function EmployeesPage() {
           throw new Error("هذا الحساب لا يملك صلاحية المشرف لعرض قائمة الموظفين.");
         }
 
-        // لا نستعلم مباشرة من user_roles/profiles: سياسات RLS الحالية تسمح للمستخدم
-        // بقراءة صفه فقط. RPC SECURITY DEFINER تعرض القائمة للمدير بعد التحقق منه.
         const { data, error } = await callEmployeeRpc("admin_list_employees");
         if (error) throw new Error(error.message);
         const rows = Array.isArray(data) ? (data as EmployeeRpcRow[]) : [];
@@ -160,13 +176,13 @@ function EmployeesPage() {
 
         if (active) setEmployees(result);
       } catch (error) {
-        console.error("تعذر تحميل قائمة الموظفين من Supabase:", error);
+        console.error("تعذر تحميل قائمة الموظفين من قاعدة البيانات:", error);
         if (active) {
           setEmployees([]);
           setLoadError(
             error instanceof Error
               ? error.message
-              : "تعذر تحميل الموظفين. تحقق من اتصال Supabase وسياسات الوصول.",
+              : "تعذر تحميل الموظفين. تحقق من اتصال قاعدة البيانات وسياسات الوصول.",
           );
         }
       } finally {
@@ -187,6 +203,15 @@ function EmployeesPage() {
     setEditRole(employee.role);
     setActionError(null);
     setActionMessage(null);
+  }
+
+  function resetAddForm() {
+    setNewName("");
+    setNewEmail("");
+    setNewPassword("");
+    setNewPhone("");
+    setNewRole("staff");
+    setAddError(null);
   }
 
   async function saveEmployee(event: FormEvent<HTMLFormElement>) {
@@ -214,13 +239,87 @@ function EmployeesPage() {
       });
       if (error) throw new Error(error.message);
       setEditing(null);
-      setActionMessage("تم حفظ بيانات الموظف ودوره.");
+      setActionMessage("تم حفظ بيانات الموظف ودوره بنجاح.");
       setReloadKey((key) => key + 1);
     } catch (error) {
       console.error("تعذر تحديث حساب الموظف:", error);
       setActionError(error instanceof Error ? error.message : "تعذر حفظ التعديلات.");
     } finally {
       setBusyId(null);
+    }
+  }
+
+  async function handleAddEmployee(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const fullName = newName.trim();
+    const email = newEmail.trim().toLowerCase();
+    const password = newPassword;
+    const phone = newPhone.trim();
+
+    if (!fullName) {
+      setAddError("يرجى إدخال اسم الموظف.");
+      return;
+    }
+    if (!email) {
+      setAddError("يرجى إدخال البريد الإلكتروني.");
+      return;
+    }
+    if (!password || password.length < 6) {
+      setAddError("كلمة المرور يجب ألا تقل عن 6 خانات.");
+      return;
+    }
+
+    setAddLoading(true);
+    setAddError(null);
+
+    try {
+      // 1. محاولة الإنشاء عبر RPC المباشرة
+      const { data: rpcData, error: rpcErr } = await callEmployeeRpc("admin_create_employee", {
+        _email: email,
+        _password: password,
+        _full_name: fullName,
+        _phone: phone || null,
+        _role: newRole,
+      });
+
+      if (!rpcErr && rpcData) {
+        setShowAddModal(false);
+        resetAddForm();
+        setActionMessage("تمت إضافة الموظف الجديد بنجاح.");
+        setReloadKey((key) => key + 1);
+        return;
+      }
+
+      // 2. المحاولة البديلة عبر auth.signUp
+      const { data: authResult, error: signUpErr } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+            phone: phone || null,
+          },
+        },
+      });
+
+      if (signUpErr) throw signUpErr;
+      if (!authResult.user) throw new Error("تعذر إنشاء حساب الموظف.");
+
+      // تحديث الدور في user_roles
+      await (supabase.from("user_roles" as any) as any).upsert({
+        user_id: authResult.user.id,
+        role: newRole,
+      });
+
+      setShowAddModal(false);
+      resetAddForm();
+      setActionMessage("تم إنشاء حساب الموظف بنجاح.");
+      setReloadKey((key) => key + 1);
+    } catch (err) {
+      console.error("تعذر إضافة الموظف:", err);
+      setAddError(err instanceof Error ? err.message : "تعذر إضافة الموظف.");
+    } finally {
+      setAddLoading(false);
     }
   }
 
@@ -247,16 +346,45 @@ function EmployeesPage() {
     setActionError(null);
     setActionMessage(null);
     try {
-      const { data, error } = await supabase.functions.invoke("admin-delete-employee", {
-        body: { userId: employee.id },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      setActionMessage("تم حذف حساب المستخدم نهائيًا.");
+      // 1. المحاولة أولاً عبر RPC المباشرة لتجنب خطأ Edge Function غير المنشورة
+      let isDeleted = false;
+      let rpcErrMessage: string | null = null;
+      try {
+        const { error: rpcErr } = await callEmployeeRpc("admin_delete_employee", {
+          _target_user_id: employee.id,
+        });
+        if (!rpcErr) {
+          isDeleted = true;
+        } else {
+          rpcErrMessage = rpcErr.message;
+        }
+      } catch (e) {
+        rpcErrMessage = e instanceof Error ? e.message : "فشل RPC";
+      }
+
+      // 2. إذا لم تتوفر RPC، يتم استدعاء Edge Function كخيار ثانٍ
+      if (!isDeleted) {
+        try {
+          const { data, error } = await supabase.functions.invoke("admin-delete-employee", {
+            body: { userId: employee.id },
+          });
+          if (error) throw error;
+          if (data?.error) throw new Error(data.error);
+          isDeleted = true;
+        } catch (funcErr) {
+          throw new Error(
+            rpcErrMessage
+              ? `فشل الحذف: (${rpcErrMessage})`
+              : await getFunctionErrorMessage(funcErr),
+          );
+        }
+      }
+
+      setActionMessage("تم حذف حساب الموظف نهائيًا.");
       setReloadKey((key) => key + 1);
     } catch (error) {
       console.error("تعذر حذف حساب الموظف:", error);
-      setActionError(await getFunctionErrorMessage(error));
+      setActionError(error instanceof Error ? error.message : "تعذر حذف الموظف.");
     } finally {
       setBusyId(null);
     }
@@ -302,19 +430,35 @@ function EmployeesPage() {
                 الموظفون من قاعدة البيانات
               </h1>
               <p className="text-[11px] font-semibold text-slate-500">
-                الحسابات التي لديها دور موثوق في Supabase
+                الحسابات التي لديها دور موثوق في النظام
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setReloadKey((key) => key + 1)}
-            disabled={loading}
-            className="flex cursor-pointer items-center gap-2 rounded-xl bg-[#0F4C81] px-3 py-2 text-xs font-bold text-white transition hover:bg-[#0b3b65] disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} />
-            <span>تحديث</span>
-          </button>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setShowAddModal(true);
+                setAddError(null);
+              }}
+              disabled={canCreateEmployees.loading || (canCreateEmployees.error === null && !canCreateEmployees.allowed)}
+              className="flex cursor-pointer items-center gap-1.5 rounded-xl bg-orange-600 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <UserPlus className="size-4" />
+              <span>إضافة موظف</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setReloadKey((key) => key + 1)}
+              disabled={loading}
+              className="flex cursor-pointer items-center gap-2 rounded-xl bg-[#0F4C81] px-3 py-2 text-xs font-bold text-white transition hover:bg-[#0b3b65] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} />
+              <span>تحديث</span>
+            </button>
+          </div>
         </div>
       </header>
 
@@ -397,53 +541,227 @@ function EmployeesPage() {
             <div>
               <p className="font-black">تعذر تحميل الموظفين</p>
               <p className="mt-1">{loadError}</p>
-              <p className="mt-2 text-xs">
-                تأكد من تثبيت RPC باسم
-                <code dir="ltr" className="mx-1 rounded bg-red-100 px-1">admin_list_employees</code>
-                و
-                <code dir="ltr" className="mx-1 rounded bg-red-100 px-1">admin_update_employee</code>
-                في قاعدة Supabase الصحيحة، وأن الحساب يحمل دور admin.
-              </p>
             </div>
           </div>
         )}
 
         {(actionError || actionMessage) && (
-          <div role={actionError ? "alert" : "status"} className={`rounded-2xl border p-3 text-sm font-bold ${actionError ? "border-red-200 bg-red-50 text-red-800" : "border-emerald-200 bg-emerald-50 text-emerald-800"}`}>
+          <div
+            role={actionError ? "alert" : "status"}
+            className={`rounded-2xl border p-3 text-sm font-bold ${
+              actionError
+                ? "border-red-200 bg-red-50 text-red-800"
+                : "border-emerald-200 bg-emerald-50 text-emerald-800"
+            }`}
+          >
             {actionError || actionMessage}
           </div>
         )}
 
-        {canDeleteEmployees.error && (
-          <div role="alert" className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm font-bold text-amber-900">
-            تعذر التحقق من صلاحية حذف حسابات الموظفين. أوقفت أزرار الحذف حتى ينجح التحقق.
-            <span className="mt-1 block break-words text-xs font-medium" dir="auto">{canDeleteEmployees.error}</span>
+        {/* نافذة إضافة موظف جديد */}
+        {showAddModal && (
+          <div
+            className="fixed inset-0 z-50 grid place-items-center bg-slate-950/50 p-4"
+            role="presentation"
+          >
+            <form
+              onSubmit={handleAddEmployee}
+              dir="rtl"
+              className="w-full max-w-lg space-y-4 rounded-3xl bg-white p-5 shadow-2xl"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="flex items-center gap-2 text-lg font-black text-slate-900">
+                  <UserPlus className="size-5 text-orange-600" />
+                  إضافة حساب موظف جديد
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
+                  aria-label="إغلاق"
+                >
+                  <X className="size-5" />
+                </button>
+              </div>
+
+              <label className="block space-y-1 text-sm font-bold text-slate-700">
+                الاسم الكامل
+                <input
+                  type="text"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="مثال: أحمد محمد"
+                  maxLength={120}
+                  required
+                  className="h-11 w-full rounded-xl border border-slate-300 px-3 outline-none focus:border-orange-600"
+                />
+              </label>
+
+              <label className="block space-y-1 text-sm font-bold text-slate-700">
+                البريد الإلكتروني
+                <div className="relative">
+                  <Mail className="absolute left-3 top-3 size-4 text-slate-400" />
+                  <input
+                    type="email"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    placeholder="employee@domain.com"
+                    dir="ltr"
+                    required
+                    className="h-11 w-full rounded-xl border border-slate-300 pl-9 pr-3 text-left outline-none focus:border-orange-600"
+                  />
+                </div>
+              </label>
+
+              <label className="block space-y-1 text-sm font-bold text-slate-700">
+                كلمة المرور المؤقتة
+                <div className="relative">
+                  <Lock className="absolute left-3 top-3 size-4 text-slate-400" />
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="6 خانات على الأقل"
+                    dir="ltr"
+                    required
+                    minLength={6}
+                    className="h-11 w-full rounded-xl border border-slate-300 pl-9 pr-3 text-left outline-none focus:border-orange-600"
+                  />
+                </div>
+              </label>
+
+              <label className="block space-y-1 text-sm font-bold text-slate-700">
+                رقم الهاتف (اختياري)
+                <input
+                  type="tel"
+                  value={newPhone}
+                  onChange={(e) => setNewPhone(e.target.value)}
+                  placeholder="770000000"
+                  maxLength={30}
+                  dir="ltr"
+                  className="h-11 w-full rounded-xl border border-slate-300 px-3 text-left outline-none focus:border-orange-600"
+                />
+              </label>
+
+              <label className="block space-y-1 text-sm font-bold text-slate-700">
+                الدور والصلاحية
+                <select
+                  value={newRole}
+                  onChange={(e) => setNewRole(e.target.value as StaffRole)}
+                  className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 outline-none focus:border-orange-600"
+                >
+                  <option value="staff">موظف عادي (Staff)</option>
+                  <option value="admin">مشرف عام (Admin)</option>
+                </select>
+              </label>
+
+              {addError && (
+                <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm font-bold text-red-800">
+                  {addError}
+                </p>
+              )}
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-200"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  disabled={addLoading}
+                  className="inline-flex items-center gap-2 rounded-xl bg-orange-600 px-5 py-2 text-sm font-bold text-white transition hover:bg-orange-700 disabled:opacity-60"
+                >
+                  <UserPlus className="size-4" />
+                  {addLoading ? "جارٍ الإنشاء…" : "إنشاء الحساب"}
+                </button>
+              </div>
+            </form>
           </div>
         )}
 
+        {/* نافذة تعديل بيانات الموظف */}
         {editing && (
-          <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/50 p-4" role="presentation">
-            <form onSubmit={saveEmployee} dir="rtl" className="w-full max-w-lg space-y-4 rounded-3xl bg-white p-5 shadow-2xl" aria-labelledby="edit-employee-title">
+          <div
+            className="fixed inset-0 z-50 grid place-items-center bg-slate-950/50 p-4"
+            role="presentation"
+          >
+            <form
+              onSubmit={saveEmployee}
+              dir="rtl"
+              className="w-full max-w-lg space-y-4 rounded-3xl bg-white p-5 shadow-2xl"
+              aria-labelledby="edit-employee-title"
+            >
               <div className="flex items-center justify-between gap-3">
-                <h2 id="edit-employee-title" className="text-lg font-black">تعديل بيانات الموظف</h2>
-                <button type="button" onClick={() => setEditing(null)} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100" aria-label="إغلاق"><X className="size-5" /></button>
+                <h2 id="edit-employee-title" className="text-lg font-black">
+                  تعديل بيانات الموظف
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setEditing(null)}
+                  className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
+                  aria-label="إغلاق"
+                >
+                  <X className="size-5" />
+                </button>
               </div>
-              <label className="block space-y-1 text-sm font-bold">الاسم
-                <input value={editName} onChange={(e) => setEditName(e.target.value)} maxLength={120} required className="h-11 w-full rounded-xl border border-slate-300 px-3 outline-none focus:border-sky-700" />
+              <label className="block space-y-1 text-sm font-bold">
+                الاسم
+                <input
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  maxLength={120}
+                  required
+                  className="h-11 w-full rounded-xl border border-slate-300 px-3 outline-none focus:border-sky-700"
+                />
               </label>
-              <label className="block space-y-1 text-sm font-bold">رقم الهاتف
-                <input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} maxLength={30} dir="ltr" className="h-11 w-full rounded-xl border border-slate-300 px-3 text-left outline-none focus:border-sky-700" />
+              <label className="block space-y-1 text-sm font-bold">
+                رقم الهاتف
+                <input
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  maxLength={30}
+                  dir="ltr"
+                  className="h-11 w-full rounded-xl border border-slate-300 px-3 text-left outline-none focus:border-sky-700"
+                />
               </label>
-              <label className="block space-y-1 text-sm font-bold">الدور
-                <select value={editRole} onChange={(e) => setEditRole(e.target.value as StaffRole)} className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 outline-none focus:border-sky-700">
-                  <option value="staff">موظف</option><option value="admin">مشرف عام</option>
+              <label className="block space-y-1 text-sm font-bold">
+                الدور
+                <select
+                  value={editRole}
+                  onChange={(e) => setEditRole(e.target.value as StaffRole)}
+                  className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 outline-none focus:border-sky-700"
+                >
+                  <option value="staff">موظف</option>
+                  <option value="admin">مشرف عام</option>
                 </select>
               </label>
-              <p className="text-xs leading-6 text-amber-800">تغيير دور المدير يخضع لفحص في قاعدة البيانات، ولا يمكن خفض آخر مدير.</p>
-              {actionError && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">{actionError}</p>}
+              <p className="text-xs leading-6 text-amber-800">
+                تغيير دور المدير يخضع لفحص في قاعدة البيانات، ولا يمكن خفض آخر مدير.
+              </p>
+              {actionError && (
+                <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">
+                  {actionError}
+                </p>
+              )}
               <div className="flex justify-end gap-2">
-                <button type="button" onClick={() => setEditing(null)} className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-bold">إلغاء</button>
-                <button type="submit" disabled={busyId === editing.id} className="inline-flex items-center gap-2 rounded-xl bg-[#0F4C81] px-4 py-2 text-sm font-bold text-white disabled:opacity-60"><Save className="size-4" />{busyId === editing.id ? "جارٍ الحفظ…" : "حفظ التعديلات"}</button>
+                <button
+                  type="button"
+                  onClick={() => setEditing(null)}
+                  className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-bold"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  disabled={busyId === editing.id}
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#0F4C81] px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
+                >
+                  <Save className="size-4" />
+                  {busyId === editing.id ? "جارٍ الحفظ…" : "حفظ التعديلات"}
+                </button>
               </div>
             </form>
           </div>
@@ -470,84 +788,110 @@ function EmployeesPage() {
                     </td>
                   </tr>
                 )}
-                {!loading && !loadError && filteredEmployees.map((employee) => {
-                  const roleStyle = ROLE_INFO[employee.role];
-                  const deleteDisabled =
-                    busyId === employee.id ||
-                    employee.id === currentUserId ||
-                    canDeleteEmployees.loading ||
-                    canDeleteEmployees.error !== null ||
-                    !canDeleteEmployees.allowed;
-                  const deleteTitle =
-                    employee.id === currentUserId
-                      ? "لا يمكنك حذف حسابك الحالي"
-                      : canDeleteEmployees.loading
-                        ? "جارٍ التحقق من صلاحية الحذف"
-                        : canDeleteEmployees.error
-                          ? "تعذر التحقق من صلاحية الحذف"
-                          : !canDeleteEmployees.allowed
-                            ? "لا تملك صلاحية حذف حسابات الموظفين"
-                            : employee.role === "admin"
-                              ? "حذف مشرف آخر يتطلب بقاء مشرف آخر على الأقل"
-                              : null;
-                  return (
-                    <tr key={employee.id} className="transition hover:bg-slate-50/70">
-                      <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-2.5">
-                          <div className="grid size-9 place-items-center rounded-full border border-slate-200 bg-slate-100 text-sm font-black text-[#0F4C81]">
-                            {employee.name.charAt(0)}
+                {!loading &&
+                  !loadError &&
+                  filteredEmployees.map((employee) => {
+                    const roleStyle = ROLE_INFO[employee.role];
+                    const deleteDisabled =
+                      busyId === employee.id ||
+                      employee.id === currentUserId ||
+                      canDeleteEmployees.loading ||
+                      canDeleteEmployees.error !== null ||
+                      !canDeleteEmployees.allowed;
+                    const deleteTitle =
+                      employee.id === currentUserId
+                        ? "لا يمكنك حذف حسابك الحالي"
+                        : canDeleteEmployees.loading
+                          ? "جارٍ التحقق من صلاحية الحذف"
+                          : canDeleteEmployees.error
+                            ? "تعذر التحقق من صلاحية الحذف"
+                            : !canDeleteEmployees.allowed
+                              ? "لا تملك صلاحية حذف حسابات الموظفين"
+                              : employee.role === "admin"
+                                ? "حذف مشرف آخر يتطلب بقاء مشرف آخر على الأقل"
+                                : null;
+                    return (
+                      <tr key={employee.id} className="transition hover:bg-slate-50/70">
+                        <td className="px-4 py-3.5">
+                          <div className="flex items-center gap-2.5">
+                            <div className="grid size-9 place-items-center rounded-full border border-slate-200 bg-slate-100 text-sm font-black text-[#0F4C81]">
+                              {employee.name.charAt(0)}
+                            </div>
+                            <span className="font-black text-slate-900">{employee.name}</span>
                           </div>
-                          <span className="font-black text-slate-900">{employee.name}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <span className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-[11px] font-black ${roleStyle.bg} ${roleStyle.color} ${roleStyle.border}`}>
-                          <BadgeCheck className="size-3" />
-                          {roleStyle.title}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3.5 font-mono font-bold text-slate-700">
-                        {employee.phone || "—"}
-                      </td>
-                      <td className="px-4 py-3.5 text-slate-600">
-                        <span className="inline-flex items-center gap-1.5">
-                          <CalendarDays className="size-3.5 text-slate-400" />
-                          {formatJoinDate(employee.createdAt)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3.5 font-mono text-[10px] text-slate-500" dir="ltr">
-                        {employee.id}
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-2">
-                          <button type="button" onClick={() => beginEdit(employee)} disabled={busyId === employee.id} className="inline-flex items-center gap-1 rounded-lg bg-sky-50 px-2.5 py-2 font-bold text-sky-800 hover:bg-sky-100 disabled:opacity-50" aria-label={`تعديل ${employee.name}`}><Pencil className="size-3.5" /><span>تعديل</span></button>
-                          <button type="button" onClick={() => { setPermissionsEmployee(employee); setActionError(null); setActionMessage(null); }} disabled={busyId === employee.id} className="inline-flex items-center gap-1 rounded-lg bg-violet-50 px-2.5 py-2 font-bold text-violet-800 hover:bg-violet-100 disabled:opacity-50" aria-label={`إدارة صلاحيات ${employee.name}`}><KeyRound className="size-3.5" /><span>الصلاحيات</span></button>
-                          <button
-                            type="button"
-                            onClick={() => void deleteEmployee(employee)}
-                            disabled={deleteDisabled}
-                            {...(deleteTitle ? { title: deleteTitle } : {})}
-                            className="inline-flex items-center gap-1 rounded-lg bg-red-50 px-2.5 py-2 font-bold text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
-                            aria-label={deleteTitle ?? `حذف ${employee.name}`}
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <span
+                            className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-[11px] font-black ${roleStyle.bg} ${roleStyle.color} ${roleStyle.border}`}
                           >
-                            <Trash2 className="size-3.5" />
-                            <span>
-                              {busyId === employee.id
-                                ? "جارٍ…"
-                                : employee.id === currentUserId
-                                  ? "حسابك الحالي"
-                                  : canDeleteEmployees.loading
-                                    ? "جارٍ التحقق…"
-                                    : canDeleteEmployees.error || !canDeleteEmployees.allowed
-                                      ? "غير مصرح"
-                                      : "حذف نهائي"}
-                            </span>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                            <BadgeCheck className="size-3" />
+                            {roleStyle.title}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3.5 font-mono font-bold text-slate-700">
+                          {employee.phone || "—"}
+                        </td>
+                        <td className="px-4 py-3.5 text-slate-600">
+                          <span className="inline-flex items-center gap-1.5">
+                            <CalendarDays className="size-3.5 text-slate-400" />
+                            {formatJoinDate(employee.createdAt)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3.5 font-mono text-[10px] text-slate-500" dir="ltr">
+                          {employee.id}
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => beginEdit(employee)}
+                              disabled={busyId === employee.id}
+                              className="inline-flex items-center gap-1 rounded-lg bg-sky-50 px-2.5 py-2 font-bold text-sky-800 hover:bg-sky-100 disabled:opacity-50"
+                              aria-label={`تعديل ${employee.name}`}
+                            >
+                              <Pencil className="size-3.5" />
+                              <span>تعديل</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPermissionsEmployee(employee);
+                                setActionError(null);
+                                setActionMessage(null);
+                              }}
+                              disabled={busyId === employee.id}
+                              className="inline-flex items-center gap-1 rounded-lg bg-violet-50 px-2.5 py-2 font-bold text-violet-800 hover:bg-violet-100 disabled:opacity-50"
+                              aria-label={`إدارة صلاحيات ${employee.name}`}
+                            >
+                              <KeyRound className="size-3.5" />
+                              <span>الصلاحيات</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void deleteEmployee(employee)}
+                              disabled={deleteDisabled}
+                              {...(deleteTitle ? { title: deleteTitle } : {})}
+                              className="inline-flex items-center gap-1 rounded-lg bg-red-50 px-2.5 py-2 font-bold text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                              aria-label={deleteTitle ?? `حذف ${employee.name}`}
+                            >
+                              <Trash2 className="size-3.5" />
+                              <span>
+                                {busyId === employee.id
+                                  ? "جارٍ…"
+                                  : employee.id === currentUserId
+                                    ? "حسابك الحالي"
+                                    : canDeleteEmployees.loading
+                                      ? "جارٍ التحقق…"
+                                      : canDeleteEmployees.error || !canDeleteEmployees.allowed
+                                        ? "غير مصرح"
+                                        : "حذف نهائي"}
+                              </span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 {!loading && !loadError && filteredEmployees.length === 0 && (
                   <tr>
                     <td colSpan={6} className="px-4 py-12 text-center">
@@ -556,11 +900,6 @@ function EmployeesPage() {
                           ? "لا توجد حسابات موظفين في جدول user_roles."
                           : "لا توجد نتائج تطابق البحث أو التصفية."}
                       </p>
-                      {employees.length === 0 && (
-                        <p className="mt-1 text-xs text-slate-500">
-                          أضف دور admin أو staff للحساب المطلوب من لوحة Supabase.
-                        </p>
-                      )}
                     </td>
                   </tr>
                 )}
@@ -577,10 +916,6 @@ function EmployeesPage() {
             onSaved={() => setReloadKey((key) => key + 1)}
           />
         )}
-
-        <p className="text-center text-[11px] font-medium text-slate-500">
-          تعديل بيانات الحساب والصلاحيات يمر عبر RPC. تعرض الصفحة زر الحذف فقط عند تحقق صلاحية الموظف؛ يجب أن تتحقق Edge Function admin-delete-employee من الصلاحية نفسها وتمنع حذف الحساب الحالي وآخر مشرف، ولا يوضع مفتاح service_role في المتصفح. هذه الصفحة لا تحتوي نموذج إنشاء حساب، لذا يجب فحص صلاحية employees/create في واجهة ودالة الإنشاء المنفصلتين.
-        </p>
       </main>
     </div>
   );
@@ -592,7 +927,7 @@ export const Route = createFileRoute("/employees")({
       { title: "إدارة الموظفين والصلاحيات | السوق الشامل" },
       {
         name: "description",
-        content: "عرض حسابات الموظفين والمشرفين المرتبطة بقاعدة بيانات Supabase.",
+        content: "عرض وإدارة حسابات الموظفين والمشرفين والصلاحيات.",
       },
     ],
   }),
@@ -600,7 +935,11 @@ export const Route = createFileRoute("/employees")({
 });
 
 function GuardedEmployeesPage() {
-  return <AdminRouteGuard><EmployeesPage /></AdminRouteGuard>;
+  return (
+    <AdminRouteGuard>
+      <EmployeesPage />
+    </AdminRouteGuard>
+  );
 }
 
 export default GuardedEmployeesPage;
