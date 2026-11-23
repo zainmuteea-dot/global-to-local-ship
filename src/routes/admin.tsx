@@ -693,17 +693,29 @@ export default function AdminOperationsPage() {
     });
     const customerCount = data?.customerCount;
     if (
-      error ||
-      data?.success !== true ||
-      typeof customerCount !== "number" ||
-      !Number.isSafeInteger(customerCount) ||
-      customerCount < 0
+      !error &&
+      data?.success === true &&
+      typeof customerCount === "number" &&
+      Number.isSafeInteger(customerCount) &&
+      customerCount >= 0
     ) {
-      console.error("تعذر تحميل العدد الفعلي للعملاء:", error ?? data?.error ?? "invalid response");
+      setRegisteredCustomersCount(customerCount);
+      return;
+    }
+
+    // Older deployed Edge Functions may not support the count action yet.
+    const { count, error: profileCountError } = await supabase
+      .from("profiles")
+      .select("id", { count: "exact", head: true });
+    if (profileCountError || typeof count !== "number" || count < 0) {
+      console.error(
+        "تعذر تحميل عدد حسابات العملاء:",
+        profileCountError ?? error ?? data?.error ?? "invalid response",
+      );
       setRegisteredCustomersCount(null);
       return;
     }
-    setRegisteredCustomersCount(customerCount);
+    setRegisteredCustomersCount(count);
   };
 
   // دالة جلب الشحنات من قاعدة بيانات Lovable Cloud
