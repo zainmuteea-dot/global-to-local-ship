@@ -377,6 +377,7 @@ export default function AdminOperationsPage() {
   const [activeTab, setActiveTab] = useState<"operations" | "finance" | "employees">("operations");
   const [orders, setOrders] = useState<OrderItem[]>([]);
   const [ordersLoadedFromDatabase, setOrdersLoadedFromDatabase] = useState(false);
+  const [registeredCustomersCount, setRegisteredCustomersCount] = useState<number | null>(null);
 
   const [employees, setEmployees] = useState<Employee[]>(() => {
     try {
@@ -686,6 +687,25 @@ export default function AdminOperationsPage() {
     } catch {}
   }, [employees]);
 
+  const fetchRegisteredCustomerCount = async () => {
+    const { data, error } = await supabase.functions.invoke("admin-customers", {
+      body: { action: "count" },
+    });
+    const customerCount = data?.customerCount;
+    if (
+      error ||
+      data?.success !== true ||
+      typeof customerCount !== "number" ||
+      !Number.isSafeInteger(customerCount) ||
+      customerCount < 0
+    ) {
+      console.error("تعذر تحميل العدد الفعلي للعملاء:", error ?? data?.error ?? "invalid response");
+      setRegisteredCustomersCount(null);
+      return;
+    }
+    setRegisteredCustomersCount(customerCount);
+  };
+
   // دالة جلب الشحنات من قاعدة بيانات Lovable Cloud
   const fetchOrdersFromDatabase = async () => {
     setLoading(true);
@@ -740,19 +760,30 @@ export default function AdminOperationsPage() {
     }
   };
 
-  // الاشتراك اللحظي Realtime مع جدول orders
+  // تحديث الطلبات والعملاء من قاعدة البيانات، مع استماع للتغييرات وفحص احتياطي دوري.
   useEffect(() => {
     fetchOrdersFromDatabase();
+    void fetchRegisteredCustomerCount();
 
-    const channel = supabase
+    const refreshCustomerCount = () => void fetchRegisteredCustomerCount();
+    const ordersChannel = supabase
       .channel("admin_orders_realtime_sync")
       .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => {
         fetchOrdersFromDatabase();
       })
       .subscribe();
+    const customersChannel = supabase
+      .channel("admin_registered_customers_realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, refreshCustomerCount)
+      .on("postgres_changes", { event: "*", schema: "public", table: "user_roles" }, refreshCustomerCount)
+      .on("postgres_changes", { event: "*", schema: "public", table: "customer_delete_jobs" }, refreshCustomerCount)
+      .subscribe();
+    const customerCountTimer = window.setInterval(refreshCustomerCount, 60_000);
 
     return () => {
-      supabase.removeChannel(channel);
+      window.clearInterval(customerCountTimer);
+      void supabase.removeChannel(ordersChannel);
+      void supabase.removeChannel(customersChannel);
     };
   }, []);
 
@@ -1033,6 +1064,7 @@ export default function AdminOperationsPage() {
     activeShipments: ordersLoadedFromDatabase
       ? dashboardOrders.filter((order) => !["delivered", "cancelled"].includes(order.status)).length
       : null,
+    registeredCustomers: registeredCustomersCount,
     followUpOrders: ordersLoadedFromDatabase
       ? dashboardOrders.filter((order) => ["new", "reviewing"].includes(order.status)).length
       : null,

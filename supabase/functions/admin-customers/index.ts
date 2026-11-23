@@ -36,6 +36,29 @@ async function fetchAll<T>(
   }
 }
 
+async function countCustomers(adminClient: SupabaseClient) {
+  const [profiles, roles, deleteJobs] = await Promise.all([
+    fetchAll<{ id: string }>((from, to) =>
+      adminClient.from("profiles").select("id").range(from, to)
+    ),
+    fetchAll<{ user_id: string; role: string }>((from, to) =>
+      adminClient.from("user_roles").select("user_id,role").range(from, to)
+    ),
+    fetchAll<{ target_user_id: string }>((from, to) =>
+      adminClient.from("customer_delete_jobs").select("target_user_id").range(from, to)
+    ),
+  ]);
+
+  const excludedIds = new Set([
+    ...roles
+      .filter((row) => row.role === "admin" || row.role === "staff")
+      .map((row) => row.user_id),
+    ...deleteJobs.map((job) => job.target_user_id),
+  ]);
+
+  return profiles.filter((profile) => !excludedIds.has(profile.id)).length;
+}
+
 async function listCustomers(adminClient: SupabaseClient) {
   const [profiles, roles, orders, payments, deleteJobs] = await Promise.all([
     fetchAll<any>((from, to) =>
@@ -212,6 +235,22 @@ Deno.serve(async (req) => {
   }
   const isAdmin = adminRole.data === true;
   const isStaff = staffRole.data === true;
+
+  if (body?.action === "count") {
+    if (!isAdmin && !isStaff) {
+      return json(403, { error: "عرض عدد العملاء متاح للمدير والموظفين فقط." });
+    }
+    try {
+      const customerCount = await countCustomers(adminClient);
+      return json(200, { success: true, customerCount });
+    } catch (error) {
+      console.error(
+        "Customer count query failed:",
+        error instanceof Error ? error.message : "unknown error",
+      );
+      return json(500, { error: "تعذر قراءة عدد حسابات العملاء." });
+    }
+  }
 
   if (body?.action === "list") {
     if (!isAdmin && !isStaff) {
