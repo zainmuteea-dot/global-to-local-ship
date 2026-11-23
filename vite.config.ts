@@ -8,6 +8,7 @@ export default defineConfig({
   },
   tanstackStart: {
     router: { routeFileIgnorePattern: "(test|received-summary|payment-approval)\\.ts" },
+    client: { entry: "client" },
     server: { entry: "server" },
   },
 });
