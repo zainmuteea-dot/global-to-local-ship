@@ -282,12 +282,32 @@ export function LoginPage() {
         }
 
         user = data.user;
-        const [adminRole, staffRole] = await Promise.all([
-          supabase.rpc("has_role", { _user_id: user.id, _role: "admin" }),
-          supabase.rpc("has_role", { _user_id: user.id, _role: "staff" }),
-        ]);
+        const { data: isAdmin, error: adminRoleError } = await supabase.rpc("has_role", {
+          _user_id: user.id,
+          _role: "admin",
+        });
 
-        if (adminRole.error || staffRole.error || !(adminRole.data || staffRole.data)) {
+        if (adminRoleError) {
+          await supabase.auth.signOut();
+          throw new Error("تعذر التحقق من صلاحية الحساب. حاول مرة أخرى.");
+        }
+
+        let hasStaffAccess = isAdmin === true;
+        if (!hasStaffAccess) {
+          const { data: isStaff, error: staffRoleError } = await supabase.rpc("has_role", {
+            _user_id: user.id,
+            _role: "staff",
+          });
+
+          if (staffRoleError) {
+            await supabase.auth.signOut();
+            throw new Error("تعذر التحقق من صلاحية الحساب. حاول مرة أخرى.");
+          }
+
+          hasStaffAccess = isStaff === true;
+        }
+
+        if (!hasStaffAccess) {
           await supabase.auth.signOut();
           throw new Error("هذا الحساب غير مصرح له بدخول الإدارة.");
         }
