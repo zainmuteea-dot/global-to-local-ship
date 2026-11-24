@@ -282,12 +282,32 @@ export function LoginPage() {
         }
 
         user = data.user;
-        const [adminRole, staffRole] = await Promise.all([
-          supabase.rpc("has_role", { _user_id: user.id, _role: "admin" }),
-          supabase.rpc("has_role", { _user_id: user.id, _role: "staff" }),
-        ]);
+        const { data: isAdmin, error: adminRoleError } = await supabase.rpc("has_role", {
+          _user_id: user.id,
+          _role: "admin",
+        });
 
-        if (adminRole.error || staffRole.error || !(adminRole.data || staffRole.data)) {
+        if (adminRoleError) {
+          await supabase.auth.signOut();
+          throw new Error("تعذر التحقق من صلاحية الحساب. حاول مرة أخرى.");
+        }
+
+        let hasStaffAccess = isAdmin === true;
+        if (!hasStaffAccess) {
+          const { data: isStaff, error: staffRoleError } = await supabase.rpc("has_role", {
+            _user_id: user.id,
+            _role: "staff",
+          });
+
+          if (staffRoleError) {
+            await supabase.auth.signOut();
+            throw new Error("تعذر التحقق من صلاحية الحساب. حاول مرة أخرى.");
+          }
+
+          hasStaffAccess = isStaff === true;
+        }
+
+        if (!hasStaffAccess) {
           await supabase.auth.signOut();
           throw new Error("هذا الحساب غير مصرح له بدخول الإدارة.");
         }
@@ -355,10 +375,8 @@ export function LoginPage() {
         user = data.user;
       }
       // بيانات الاسم والهاتف محفوظة في Auth metadata؛ لا نحتاج استعلام profiles من المتصفح.
-      const resolvedName =
-        user.user_metadata?.["full_name"] || fullName.trim();
-      const resolvedPhone =
-        user.user_metadata?.["phone"] || normalizePhoneE164(identifier);
+      const resolvedName = user.user_metadata?.["full_name"] || fullName.trim();
+      const resolvedPhone = user.user_metadata?.["phone"] || normalizePhoneE164(identifier);
 
       localStorage.setItem("alsouk_customer_logged_in", "true");
       localStorage.setItem(
@@ -377,8 +395,10 @@ export function LoginPage() {
       }
 
       window.location.href = getSafeCustomerReturnPath();
-    } catch (err: any) {
-      setErrorMessage(err?.message || "تعذر إكمال العملية. تحقق من البيانات وحاول مرة أخرى.");
+    } catch (err: unknown) {
+      setErrorMessage(
+        err instanceof Error ? err.message : "تعذر إكمال العملية. تحقق من البيانات وحاول مرة أخرى.",
+      );
     } finally {
       setLoading(false);
     }
@@ -391,8 +411,8 @@ export function LoginPage() {
       let phone: string;
       try {
         phone = normalizePhoneE164(identifier);
-      } catch (err: any) {
-        setErrorMessage(err?.message || "أدخل رقم هاتفك أولًا.");
+      } catch (err: unknown) {
+        setErrorMessage(err instanceof Error ? err.message : "أدخل رقم هاتفك أولًا.");
         return;
       }
 
