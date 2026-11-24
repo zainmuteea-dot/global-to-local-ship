@@ -375,10 +375,8 @@ export function LoginPage() {
         user = data.user;
       }
       // بيانات الاسم والهاتف محفوظة في Auth metadata؛ لا نحتاج استعلام profiles من المتصفح.
-      const resolvedName =
-        user.user_metadata?.["full_name"] || fullName.trim();
-      const resolvedPhone =
-        user.user_metadata?.["phone"] || normalizePhoneE164(identifier);
+      const resolvedName = user.user_metadata?.["full_name"] || fullName.trim();
+      const resolvedPhone = user.user_metadata?.["phone"] || normalizePhoneE164(identifier);
 
       localStorage.setItem("alsouk_customer_logged_in", "true");
       localStorage.setItem(
@@ -397,8 +395,10 @@ export function LoginPage() {
       }
 
       window.location.href = getSafeCustomerReturnPath();
-    } catch (err: any) {
-      setErrorMessage(err?.message || "تعذر إكمال العملية. تحقق من البيانات وحاول مرة أخرى.");
+    } catch (err: unknown) {
+      setErrorMessage(
+        err instanceof Error ? err.message : "تعذر إكمال العملية. تحقق من البيانات وحاول مرة أخرى.",
+      );
     } finally {
       setLoading(false);
     }
@@ -411,8 +411,8 @@ export function LoginPage() {
       let phone: string;
       try {
         phone = normalizePhoneE164(identifier);
-      } catch (err: any) {
-        setErrorMessage(err?.message || "أدخل رقم هاتفك أولًا.");
+      } catch (err: unknown) {
+        setErrorMessage(err instanceof Error ? err.message : "أدخل رقم هاتفك أولًا.");
         return;
       }
 
