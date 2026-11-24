@@ -399,6 +399,7 @@ export default function AdminOperationsPage() {
   const [loading, setLoading] = useState(false);
   const [now, setNow] = useState(() => new Date());
   const [pendingPaymentsCount, setPendingPaymentsCount] = useState(0);
+  const [newOrdersCount, setNewOrdersCount] = useState(0);
   const [backupLoading, setBackupLoading] = useState(false);
   const [isPosOpen, setIsPosOpen] = useState(false);
   const [posItemName, setPosItemName] = useState("");
@@ -567,6 +568,28 @@ export default function AdminOperationsPage() {
     return () => {
       supabase.removeChannel(channel);
     };
+  }, []);
+
+  const fetchNewOrdersCount = async () => {
+    try {
+      const { count, error } = await supabase
+        .from("orders")
+        .select("id", { count: "exact", head: true })
+        .in("status", ["جديد", "new"]);
+      if (!error && typeof count === "number") {
+        setNewOrdersCount(count);
+      }
+    } catch (err) {
+      console.error("فشل جلب عدد الطلبات الجديدة:", err);
+    }
+  };
+
+  useEffect(() => {
+    void fetchNewOrdersCount();
+    const interval = setInterval(() => {
+      void fetchNewOrdersCount();
+    }, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const downloadLocalBackup = async () => {
@@ -1159,10 +1182,32 @@ export default function AdminOperationsPage() {
         <div className="flex w-full min-w-0 flex-wrap items-center justify-start gap-2" dir="rtl">
           <button
             type="button"
-            onClick={() => setIsAddModalOpen(true)}
-            className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-orange-600 px-3 py-2 text-xs font-bold text-white hover:bg-orange-700"
+            onClick={() => navigateTo("/admin/orders")}
+            className="relative inline-flex min-h-10 items-center gap-2 text-white shadow-sm transition-opacity hover:opacity-90 active:scale-[0.98]"
+            style={{
+              backgroundColor: "#FD7E14",
+              borderRadius: "10px",
+              fontSize: "16px",
+              fontWeight: "bold",
+              padding: "8px 16px",
+            }}
           >
-            <PlusCircle className="size-4" /> إنشاء شحنة
+            <span className="text-[18px] leading-none" aria-hidden="true">📦</span>
+            <span>طلبات العملاء</span>
+            {newOrdersCount > 0 && (
+              <span
+                className="absolute -top-2 -left-2 flex items-center justify-center rounded-full text-white font-bold animate-pulse shadow-md"
+                style={{
+                  backgroundColor: "#DC3545",
+                  width: "20px",
+                  height: "20px",
+                  fontSize: "11px",
+                  lineHeight: 1,
+                }}
+              >
+                {newOrdersCount}
+              </span>
+            )}
           </button>
           <button
             type="button"
