@@ -64,6 +64,8 @@ import { Route as AccountWalletRouteImport } from './routes/account/wallet'
 import { Route as AdminMerchantsRouteImport } from './routes/admin/merchants'
 import { Route as AdminOfferCardsRouteImport } from './routes/admin/offer-cards'
 import { Route as AdminOffersRouteImport } from './routes/admin/offers'
+import { Route as AdminOrdersRouteImport } from './routes/admin/orders'
+import { Route as AdminPaymentsRouteImport } from './routes/admin/payments'
 import { Route as AdminSheinSyncRouteImport } from './routes/admin/shein-sync'
 import { Route as ApiSheinPriceRouteImport } from './routes/api/shein-price'
 import { Route as OffersSlugRouteImport } from './routes/offers/$slug'
@@ -349,6 +351,16 @@ const AdminOffersRoute = AdminOffersRouteImport.update({
   path: '/offers',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminOrdersRoute = AdminOrdersRouteImport.update({
+  id: '/orders',
+  path: '/orders',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminPaymentsRoute = AdminPaymentsRouteImport.update({
+  id: '/payments',
+  path: '/payments',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminSheinSyncRoute = AdminSheinSyncRouteImport.update({
   id: '/shein-sync',
   path: '/shein-sync',
@@ -451,6 +463,8 @@ export interface FileRoutesByFullPath {
   '/admin/merchants': typeof AdminMerchantsRoute
   '/admin/offer-cards': typeof AdminOfferCardsRoute
   '/admin/offers': typeof AdminOffersRoute
+  '/admin/orders': typeof AdminOrdersRoute
+  '/admin/payments': typeof AdminPaymentsRoute
   '/admin/shein-sync': typeof AdminSheinSyncRoute
   '/api/shein-price': typeof ApiSheinPriceRoute
   '/offers/$slug': typeof OffersSlugRoute
@@ -517,6 +531,8 @@ export interface FileRoutesByTo {
   '/admin/merchants': typeof AdminMerchantsRoute
   '/admin/offer-cards': typeof AdminOfferCardsRoute
   '/admin/offers': typeof AdminOffersRoute
+  '/admin/orders': typeof AdminOrdersRoute
+  '/admin/payments': typeof AdminPaymentsRoute
   '/admin/shein-sync': typeof AdminSheinSyncRoute
   '/api/shein-price': typeof ApiSheinPriceRoute
   '/offers/$slug': typeof OffersSlugRoute
@@ -584,6 +600,8 @@ export interface FileRoutesById {
   '/admin/merchants': typeof AdminMerchantsRoute
   '/admin/offer-cards': typeof AdminOfferCardsRoute
   '/admin/offers': typeof AdminOffersRoute
+  '/admin/orders': typeof AdminOrdersRoute
+  '/admin/payments': typeof AdminPaymentsRoute
   '/admin/shein-sync': typeof AdminSheinSyncRoute
   '/api/shein-price': typeof ApiSheinPriceRoute
   '/offers/$slug': typeof OffersSlugRoute
@@ -652,6 +670,8 @@ export interface FileRouteTypes {
     | '/admin/merchants'
     | '/admin/offer-cards'
     | '/admin/offers'
+    | '/admin/orders'
+    | '/admin/payments'
     | '/admin/shein-sync'
     | '/api/shein-price'
     | '/offers/$slug'
@@ -718,6 +738,8 @@ export interface FileRouteTypes {
     | '/admin/merchants'
     | '/admin/offer-cards'
     | '/admin/offers'
+    | '/admin/orders'
+    | '/admin/payments'
     | '/admin/shein-sync'
     | '/api/shein-price'
     | '/offers/$slug'
@@ -784,6 +806,8 @@ export interface FileRouteTypes {
     | '/admin/merchants'
     | '/admin/offer-cards'
     | '/admin/offers'
+    | '/admin/orders'
+    | '/admin/payments'
     | '/admin/shein-sync'
     | '/api/shein-price'
     | '/offers/$slug'
@@ -1242,6 +1266,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminOffersRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/orders': {
+      id: '/admin/orders'
+      path: '/orders'
+      fullPath: '/admin/orders'
+      preLoaderRoute: typeof AdminOrdersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/payments': {
+      id: '/admin/payments'
+      path: '/payments'
+      fullPath: '/admin/payments'
+      preLoaderRoute: typeof AdminPaymentsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/shein-sync': {
       id: '/admin/shein-sync'
       path: '/shein-sync'
@@ -1312,6 +1350,8 @@ interface AdminRouteChildren {
   AdminMerchantsRoute: typeof AdminMerchantsRoute
   AdminOfferCardsRoute: typeof AdminOfferCardsRoute
   AdminOffersRoute: typeof AdminOffersRoute
+  AdminOrdersRoute: typeof AdminOrdersRoute
+  AdminPaymentsRoute: typeof AdminPaymentsRoute
   AdminSheinSyncRoute: typeof AdminSheinSyncRoute
   AdminLogosSlugRoute: typeof AdminLogosSlugRoute
   AdminLogosIndexRoute: typeof AdminLogosIndexRoute
@@ -1321,6 +1361,8 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminMerchantsRoute: AdminMerchantsRoute,
   AdminOfferCardsRoute: AdminOfferCardsRoute,
   AdminOffersRoute: AdminOffersRoute,
+  AdminOrdersRoute: AdminOrdersRoute,
+  AdminPaymentsRoute: AdminPaymentsRoute,
   AdminSheinSyncRoute: AdminSheinSyncRoute,
   AdminLogosSlugRoute: AdminLogosSlugRoute,
   AdminLogosIndexRoute: AdminLogosIndexRoute,

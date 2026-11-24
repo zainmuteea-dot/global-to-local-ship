@@ -1211,10 +1211,16 @@ export default function AdminOperationsPage() {
           </button>
           <button
             type="button"
-            onClick={() => setIsQuickScanOpen(true)}
-            className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#1a2a52] px-3 py-2 text-xs font-bold text-white hover:bg-[#243a70]"
+            onClick={() => navigateTo("/admin/payments")}
+            className="relative inline-flex min-h-10 items-center gap-2 bg-[#198754] text-white font-bold px-5 py-3 rounded-[10px] text-[16px] transition-opacity hover:opacity-90 active:scale-[0.98] shadow-sm"
           >
-            <ScanLine className="size-4" /> مسح باركود
+            <span className="text-[18px] leading-none" aria-hidden="true">💳</span>
+            <span>طرق الدفع</span>
+            {pendingPaymentsCount > 0 && (
+              <span className="absolute -top-2 -left-2 bg-[#DC3545] text-white text-[12px] font-bold w-[22px] h-[22px] rounded-full flex items-center justify-center animate-pulse shadow-md">
+                {pendingPaymentsCount}
+              </span>
+            )}
           </button>
           <button
             type="button"
