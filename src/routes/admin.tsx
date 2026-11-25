@@ -8,6 +8,7 @@ import {
 } from "@/components/admin/AdminDashboardShell";
 import { AdminRouteGuard } from "@/components/admin/AdminRouteGuard";
 import { useEffect, useMemo, useRef, useState } from "react";
+import useSWR from "swr";
 import {
   Bell,
   CheckCircle2,
@@ -442,6 +443,61 @@ export default function AdminOperationsPage() {
 
   const navigateTo = (path: string) => {
     if (typeof window !== "undefined") window.location.href = path;
+  };
+
+  const fetchPendingMerchantOrders = async () => {
+    const { data, count, error } = await (supabase as any)
+      .from("merchant_orders")
+      .select("id", { count: "exact" })
+      .in("status", ["pending", "new", "awaiting_review"])
+      .order("created_at", { ascending: false })
+      .limit(100);
+
+    if (error) throw error;
+    return {
+      ids: (data ?? []).map((row: { id: string }) => String(row.id)),
+      count: count ?? 0,
+    };
+  };
+
+  const {
+    data: pendingMerchantOrders,
+    error: pendingMerchantOrdersError,
+    isLoading: pendingMerchantOrdersLoading,
+  } = useSWR("admin-pending-merchant-orders", fetchPendingMerchantOrders, {
+    refreshInterval: 30_000,
+    revalidateOnFocus: true,
+  });
+
+  const openMerchantMarket = () => {
+    if (pendingMerchantOrdersLoading || !pendingMerchantOrders) {
+      window.alert("جارٍ التحقق من طلبات التجار. حاول مرة أخرى بعد لحظات.");
+      return;
+    }
+    if (pendingMerchantOrdersError) {
+      window.alert("تعذّر التحقق من طلبات التجار. لن يتم عرض العدد على أنه صفر.");
+      return;
+    }
+    if (pendingMerchantOrders.count === 0) {
+      navigateTo("/admin/merchant-market");
+      return;
+    }
+
+    const orderNumbers = pendingMerchantOrders.ids
+      .slice(0, 12)
+      .map((id: string) => `#${id.replaceAll("-", "").slice(0, 8).toUpperCase()}`)
+      .join(" ، ");
+    const moreOrders = pendingMerchantOrders.count > 12
+      ? `، و${pendingMerchantOrders.count - 12} طلبات أخرى`
+      : "";
+
+    if (
+      window.confirm(
+        `يوجد ${pendingMerchantOrders.count} طلبات من التجار بانتظار التوزيع: ${orderNumbers}${moreOrders} - هل تريد فتح إدارة سوق التجار؟`,
+      )
+    ) {
+      navigateTo("/admin/merchant-market");
+    }
   };
 
   const fetchVouchers = async () => {
@@ -1320,13 +1376,20 @@ export default function AdminOperationsPage() {
           </button>
           <button
             type="button"
-            onClick={() => {
-              setPosNotice("");
-              setIsPosOpen(true);
-            }}
-            className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700"
+            onClick={openMerchantMarket}
+            className="relative inline-flex min-h-10 max-w-full items-center gap-2 rounded-xl bg-emerald-800 px-3 py-2 text-xs font-bold leading-5 text-white shadow-sm transition-colors hover:bg-emerald-900 active:scale-[0.98]"
+            aria-label={`إدارة سوق التجار على المسارات، ${pendingMerchantOrders?.count ?? 0} طلبات جديدة`}
           >
-            <Wallet className="size-4" /> POS
+            <Store className="size-4 shrink-0" aria-hidden="true" />
+            <span className="whitespace-normal text-right sm:whitespace-nowrap">إدارة سوق التجار على المسارات</span>
+            {(pendingMerchantOrders?.count ?? 0) > 0 && (
+              <span
+                className="absolute -left-2 -top-2 grid size-5 place-items-center rounded-full bg-red-600 text-[10px] font-black text-white shadow-md animate-bounce"
+                aria-live="polite"
+              >
+                {pendingMerchantOrders?.count}
+              </span>
+            )}
           </button>
           <button
             type="button"
@@ -1631,7 +1694,7 @@ export default function AdminOperationsPage() {
               <div className="p-3.5 bg-gradient-to-br from-orange-50 to-white border border-orange-100 rounded-2xl">
                 <span className="text-[11px] font-bold text-orange-600">المحطة 2</span>
                 <h4 className="font-bold text-xs text-[#0A2540] mt-1">الشحن الدولي</h4>
-                <p className="text-[11px] text-slate-500 mt-0.5">رحلات ��وية وبحرية مباشرة</p>
+                <p className="text-[11px] text-slate-500 mt-0.5">رحلا�� ��وية وبحرية مباشرة</p>
               </div>
 
               <div className="p-3.5 bg-gradient-to-br from-sky-50 to-white border border-sky-100 rounded-2xl">

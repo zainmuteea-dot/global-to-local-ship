@@ -61,6 +61,7 @@ import { Route as AccountInvoicesRouteImport } from './routes/account/invoices'
 import { Route as AccountOrdersRouteImport } from './routes/account/orders'
 import { Route as AccountProfileRouteImport } from './routes/account/profile'
 import { Route as AccountWalletRouteImport } from './routes/account/wallet'
+import { Route as AdminMerchantMarketRouteImport } from './routes/admin/merchant-market'
 import { Route as AdminMerchantsRouteImport } from './routes/admin/merchants'
 import { Route as AdminOfferCardsRouteImport } from './routes/admin/offer-cards'
 import { Route as AdminOffersRouteImport } from './routes/admin/offers'
@@ -337,6 +338,11 @@ const AccountWalletRoute = AccountWalletRouteImport.update({
   path: '/account/wallet',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminMerchantMarketRoute = AdminMerchantMarketRouteImport.update({
+  id: '/merchant-market',
+  path: '/merchant-market',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminMerchantsRoute = AdminMerchantsRouteImport.update({
   id: '/merchants',
   path: '/merchants',
@@ -466,6 +472,7 @@ export interface FileRoutesByFullPath {
   '/account/orders': typeof AccountOrdersRoute
   '/account/profile': typeof AccountProfileRoute
   '/account/wallet': typeof AccountWalletRoute
+  '/admin/merchant-market': typeof AdminMerchantMarketRoute
   '/admin/merchants': typeof AdminMerchantsRoute
   '/admin/offer-cards': typeof AdminOfferCardsRoute
   '/admin/offers': typeof AdminOffersRoute
@@ -535,6 +542,7 @@ export interface FileRoutesByTo {
   '/account/orders': typeof AccountOrdersRoute
   '/account/profile': typeof AccountProfileRoute
   '/account/wallet': typeof AccountWalletRoute
+  '/admin/merchant-market': typeof AdminMerchantMarketRoute
   '/admin/merchants': typeof AdminMerchantsRoute
   '/admin/offer-cards': typeof AdminOfferCardsRoute
   '/admin/offers': typeof AdminOffersRoute
@@ -605,6 +613,7 @@ export interface FileRoutesById {
   '/account/orders': typeof AccountOrdersRoute
   '/account/profile': typeof AccountProfileRoute
   '/account/wallet': typeof AccountWalletRoute
+  '/admin/merchant-market': typeof AdminMerchantMarketRoute
   '/admin/merchants': typeof AdminMerchantsRoute
   '/admin/offer-cards': typeof AdminOfferCardsRoute
   '/admin/offers': typeof AdminOffersRoute
@@ -676,6 +685,7 @@ export interface FileRouteTypes {
     | '/account/orders'
     | '/account/profile'
     | '/account/wallet'
+    | '/admin/merchant-market'
     | '/admin/merchants'
     | '/admin/offer-cards'
     | '/admin/offers'
@@ -745,6 +755,7 @@ export interface FileRouteTypes {
     | '/account/orders'
     | '/account/profile'
     | '/account/wallet'
+    | '/admin/merchant-market'
     | '/admin/merchants'
     | '/admin/offer-cards'
     | '/admin/offers'
@@ -814,6 +825,7 @@ export interface FileRouteTypes {
     | '/account/orders'
     | '/account/profile'
     | '/account/wallet'
+    | '/admin/merchant-market'
     | '/admin/merchants'
     | '/admin/offer-cards'
     | '/admin/offers'
@@ -1257,6 +1269,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccountWalletRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/merchant-market': {
+      id: '/admin/merchant-market'
+      path: '/merchant-market'
+      fullPath: '/admin/merchant-market'
+      preLoaderRoute: typeof AdminMerchantMarketRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/merchants': {
       id: '/admin/merchants'
       path: '/merchants'
@@ -1366,6 +1385,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AdminRouteChildren {
+  AdminMerchantMarketRoute: typeof AdminMerchantMarketRoute
   AdminMerchantsRoute: typeof AdminMerchantsRoute
   AdminOfferCardsRoute: typeof AdminOfferCardsRoute
   AdminOffersRoute: typeof AdminOffersRoute
@@ -1378,6 +1398,7 @@ interface AdminRouteChildren {
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminMerchantMarketRoute: AdminMerchantMarketRoute,
   AdminMerchantsRoute: AdminMerchantsRoute,
   AdminOfferCardsRoute: AdminOfferCardsRoute,
   AdminOffersRoute: AdminOffersRoute,
