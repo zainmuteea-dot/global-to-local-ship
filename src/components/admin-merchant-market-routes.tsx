@@ -83,7 +83,7 @@ async function loadMerchantMarket(): Promise<MarketData> {
   if (ordersResult.error) throw ordersResult.error;
 
   const rawStores = (storesResult.data ?? []) as Array<Record<string, unknown>>;
-  const ownerIds = [...new Set(rawStores.map((store) => String(store.owner_id ?? "")).filter(Boolean))];
+  const ownerIds = [...new Set(rawStores.map((store) => String(store["owner_id"] ?? "")).filter(Boolean))];
   let ownersById: Record<string, string> = {};
 
   if (ownerIds.length > 0) {
@@ -102,12 +102,12 @@ async function loadMerchantMarket(): Promise<MarketData> {
 
   return {
     stores: rawStores.map((store) => ({
-      id: String(store.id),
-      name: String(store.name || "متجر"),
-      city: String(store.city || "غير محددة"),
-      phone: String(store.contact_phone || ""),
-      ownerName: ownersById[String(store.owner_id)] || "مالك المتجر",
-      status: String(store.status || "active"),
+      id: String(store["id"]),
+      name: String(store["name"] || "متجر"),
+      city: String(store["city"] || "غير محددة"),
+      phone: String(store["contact_phone"] || ""),
+      ownerName: ownersById[String(store["owner_id"])] || "مالك المتجر",
+      status: String(store["status"] || "active"),
     })),
     orders: (ordersResult.data ?? []) as MerchantOrder[],
   };

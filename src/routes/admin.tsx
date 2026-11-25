@@ -485,7 +485,7 @@ export default function AdminOperationsPage() {
 
     const orderNumbers = pendingMerchantOrders.ids
       .slice(0, 12)
-      .map((id) => `#${id.replaceAll("-", "").slice(0, 8).toUpperCase()}`)
+      .map((id: string) => `#${id.replaceAll("-", "").slice(0, 8).toUpperCase()}`)
       .join(" ، ");
     const moreOrders = pendingMerchantOrders.count > 12
       ? `، و${pendingMerchantOrders.count - 12} طلبات أخرى`
@@ -1614,7 +1614,7 @@ export default function AdminOperationsPage() {
               <div className="p-3.5 bg-gradient-to-br from-orange-50 to-white border border-orange-100 rounded-2xl">
                 <span className="text-[11px] font-bold text-orange-600">المحطة 2</span>
                 <h4 className="font-bold text-xs text-[#0A2540] mt-1">الشحن الدولي</h4>
-                <p className="text-[11px] text-slate-500 mt-0.5">رحلات ��وية وبحرية مباشرة</p>
+                <p className="text-[11px] text-slate-500 mt-0.5">رحلا�� ��وية وبحرية مباشرة</p>
               </div>
 
               <div className="p-3.5 bg-gradient-to-br from-sky-50 to-white border border-sky-100 rounded-2xl">
