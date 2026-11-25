@@ -33,6 +33,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
 import { AccountShell, EmptyState } from "@/components/AccountShell";
 import { sendSms } from "@/services/sendSms";
+import { Toaster } from "@/components/ui/sonner";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/notifications")({
   component: NotificationsPage,
@@ -694,6 +696,7 @@ const NOTIFICATIONS_ADMIN_STYLE = `
 .notifications-admin-theme button svg{color:#fff!important}
 .notifications-admin-theme button[class*="bg-[#FF7A00]"],.notifications-admin-theme button[class*="from-[#FF7A00]"]{border-color:#FF7A00!important;background-color:#FF7A00!important;color:#fff!important}
 .notifications-admin-theme button[class*="bg-[#FF7A00]"]:hover,.notifications-admin-theme button[class*="from-[#FF7A00]"]:hover{border-color:#F97316!important;background-color:#F97316!important}
+.notifications-admin-theme .customer-orders-alert-badge{border-color:#fff!important;background-color:#DC2626!important;color:#fff!important}
 .notifications-admin-theme :is(input,textarea,select){border-color:#E2E8F0!important;background:#fff!important;color:#334155!important}
 .notifications-admin-theme option{background:#fff;color:#334155}
 .notifications-admin-theme [class*="shadow-"]{box-shadow:0 3px 12px rgba(10,46,107,.08)!important}
@@ -737,10 +740,26 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
     new Set(),
   );
   const soundOnRef = useRef(soundOn);
+  const hasUserInteractedRef = useRef(false);
 
   useEffect(() => {
     soundOnRef.current = soundOn;
   }, [soundOn]);
+
+  useEffect(() => {
+    const markUserInteraction = () => {
+      hasUserInteractedRef.current = true;
+      window.removeEventListener("pointerdown", markUserInteraction);
+      window.removeEventListener("keydown", markUserInteraction);
+    };
+
+    window.addEventListener("pointerdown", markUserInteraction, { once: true });
+    window.addEventListener("keydown", markUserInteraction, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", markUserInteraction);
+      window.removeEventListener("keydown", markUserInteraction);
+    };
+  }, []);
 
   // رسائل الشريط محفوظة في جدول مستقل، ولا تدخل في تدفق إشعارات العملاء أو SMS.
   const loadTickerRows = useCallback(async () => {
@@ -896,7 +915,11 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
   }, [activeCustomerPanel]);
 
   const playSound = () => {
-    if (!soundOnRef.current || typeof window === "undefined") return;
+    if (
+      !soundOnRef.current ||
+      !hasUserInteractedRef.current ||
+      typeof window === "undefined"
+    ) return;
     new Audio(
       "https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3",
     )
@@ -936,9 +959,19 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
         console.error("تعذر تحميل طلبات العملاء للإدارة:", ordersResult.error);
         setError("تعذر تحميل طلبات العملاء. تحقق من صلاحيات الإدارة وRLS.");
       } else {
-        setOrders(
-          (ordersResult.data ?? []).map((order) => ({ ...order, read: true })),
-        );
+        const loadedOrders = (ordersResult.data ?? []).map((order) => ({
+          ...order,
+          read: true,
+        }));
+        setOrders((current) => {
+          const ordersById = new Map(loadedOrders.map((order) => [order.id, order]));
+          current
+            .filter((order) => !order.read)
+            .forEach((order) => ordersById.set(order.id, order));
+          return Array.from(ordersById.values())
+            .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))
+            .slice(0, 500);
+        });
       }
 
       if (notificationsResult.error) {
@@ -975,17 +1008,43 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
             [
               { ...order, read: false },
               ...current.filter((item) => item.id !== order.id),
-            ].slice(0, 30),
+            ].slice(0, 500),
           );
+          setActiveCustomerPanel("orders");
           playSound();
-          if (
-            "Notification" in window &&
-            Notification.permission === "granted"
-          ) {
-            new Notification("طلب جديد - السوق الشامل", {
-              body: `${order.customer_name} • ${order.tracking_code}`,
-            });
-          }
+          toast.custom(
+            (toastId) => (
+              <div
+                dir="rtl"
+                role="status"
+                className="flex w-[min(92vw,440px)] items-center gap-3 rounded-2xl border border-orange-200 bg-white p-4 text-right shadow-xl"
+              >
+                <span className="shrink-0 text-2xl" aria-hidden="true">📦</span>
+                <p className="min-w-0 flex-1 text-sm font-bold leading-6 text-slate-800">
+                  طلب جديد من {order.customer_name || "عميل"} - رقم التتبع {order.tracking_code || "غير متوفر"}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    toast.dismiss(toastId);
+                    void navigate({ to: "/admin/orders" });
+                  }}
+                  className="shrink-0 rounded-lg bg-orange-600 px-3 py-2 text-xs font-bold text-white hover:bg-orange-700"
+                >
+                  عرض الطلب
+                </button>
+                <button
+                  type="button"
+                  aria-label="إغلاق إشعار الطلب الجديد"
+                  onClick={() => toast.dismiss(toastId)}
+                  className="grid size-8 shrink-0 place-items-center rounded-full text-lg font-bold text-slate-500 hover:bg-slate-100"
+                >
+                  X
+                </button>
+              </div>
+            ),
+            { duration: 10_000, position: "top-center" },
+          );
         },
       )
       .subscribe();
@@ -1070,15 +1129,8 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
     setRefreshing(false);
   };
 
-  const toggleSound = async () => {
+  const toggleSound = () => {
     const next = !soundOn;
-    if (
-      next &&
-      "Notification" in window &&
-      Notification.permission === "default"
-    ) {
-      await Notification.requestPermission();
-    }
     setSoundOn(next);
     window.localStorage.setItem("sc_notify", next ? "1" : "0");
   };
@@ -1317,12 +1369,14 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
   ];
 
   return (
-    <div
-      dir="rtl"
-      lang="ar"
-      className="notifications-admin-theme min-h-[100dvh] w-full px-0 py-0"
-    >
-      <style>{NOTIFICATIONS_ADMIN_STYLE}</style>
+    <>
+      <Toaster position="top-center" />
+      <div
+        dir="rtl"
+        lang="ar"
+        className="notifications-admin-theme min-h-[100dvh] w-full px-0 py-0"
+      >
+        <style>{NOTIFICATIONS_ADMIN_STYLE}</style>
       <div className="pointer-events-none fixed inset-x-0 top-0 h-[480px] bg-[radial-gradient(ellipse_at_top,rgba(35,119,171,0.12),transparent_68%)]" />
       <div className="relative mx-auto w-full max-w-[1200px] space-y-4 p-4">
         <header className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-[#19274E] bg-[#0B152B]/95 p-4 shadow-[0_0_30px_rgba(245,158,11,0.10)] backdrop-blur-[16px] sm:px-6">
@@ -1765,7 +1819,7 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
                 aria-controls="customer-orders-panel"
                 aria-expanded={activeCustomerPanel === "orders"}
                 onClick={() => setActiveCustomerPanel("orders")}
-                className={`inline-flex min-h-9 items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold transition hover:border-[#FF7A00]/50 ${
+                className={`relative inline-flex min-h-9 items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold transition hover:border-[#FF7A00]/50 ${
                   activeCustomerPanel === "orders"
                     ? "border-[#FF7A00]/60 bg-[#FF7A00]/15 text-[#F97316]"
                     : "border-[#FF7A00]/25 bg-[#FF7A00]/5 text-white/80"
@@ -1773,7 +1827,16 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
               >
                 <PackagePlus className="size-4 text-[#FF7A00]" aria-hidden="true" />
                 طلبات العملاء
+                {unreadOrders > 0 && activeCustomerPanel !== "orders" && (
+                  <span
+                    className="customer-orders-alert-badge absolute -left-1 -top-1 grid size-5 place-items-center rounded-full border border-white text-[10px] font-black animate-pulse"
+                    aria-label={`${unreadOrders} طلب جديد`}
+                  >
+                    {unreadOrders}
+                  </span>
+                )}
                 <span className="rounded-full bg-[#FF7A00]/15 px-2 py-0.5 text-[11px] font-black text-[#F97316]">
+
                   {orders.length}
                 </span>
               </button>
@@ -1929,7 +1992,8 @@ function AdminNotificationsPage({ userId }: { userId: string }) {
           السوق الشامل © 2026 - مركز الإشعارات
         </footer>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 
