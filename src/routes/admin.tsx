@@ -15,7 +15,6 @@ import {
   Coins,
   Copy,
   DollarSign,
-  Download,
   FileSpreadsheet,
   FileText,
   FolderTree,
@@ -400,6 +399,7 @@ export default function AdminOperationsPage() {
   const [now, setNow] = useState(() => new Date());
   const [pendingPaymentsCount, setPendingPaymentsCount] = useState(0);
   const [newOrdersCount, setNewOrdersCount] = useState(0);
+  const [routeOrders, setRouteOrders] = useState<Array<{ id: string; tracking_code?: string; status?: string }>>([]);
   const [backupLoading, setBackupLoading] = useState(false);
   const [isPosOpen, setIsPosOpen] = useState(false);
   const [posItemName, setPosItemName] = useState("");
@@ -591,6 +591,64 @@ export default function AdminOperationsPage() {
     }, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  const fetchRouteOrders = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("id, tracking_code, status, created_at")
+        .in("status", ["pending", "new", "awaiting_review", "جديد", "قيد المراجعة"])
+        .order("created_at", { ascending: false });
+      if (!error && data) {
+        setRouteOrders(data as any);
+      }
+    } catch (err) {
+      console.error("فشل جلب طلبات توزيع المسارات:", err);
+    }
+  };
+
+  useEffect(() => {
+    void fetchRouteOrders();
+    const interval = setInterval(() => {
+      void fetchRouteOrders();
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleRouteDispatchClick = async () => {
+    let currentOrders = routeOrders;
+    try {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("id, tracking_code, status, created_at")
+        .in("status", ["pending", "new", "awaiting_review", "جديد", "قيد المراجعة"])
+        .order("created_at", { ascending: false });
+      if (!error && data) {
+        currentOrders = data as any;
+        setRouteOrders(currentOrders);
+      }
+    } catch (err) {
+      console.error("فشل التحقق من طلبات توزيع المسارات:", err);
+    }
+
+    if (!currentOrders || currentOrders.length === 0) {
+      window.alert("لا توجد طلبات جديدة للتوزيع حالياً");
+      return;
+    }
+
+    const orderNumbers = currentOrders.map(
+      (o: any) => `#${o.tracking_code || o.order_number || String(o.id).slice(0, 8)}`
+    );
+    const displayNumbers =
+      orderNumbers.length > 8
+        ? `${orderNumbers.slice(0, 8).join(" ، ")} ... و ${orderNumbers.length - 8} أخرى`
+        : orderNumbers.join(" ، ");
+    const confirmMessage = `يوجد ${currentOrders.length} طلب بانتظار التوزيع: ${displayNumbers} - هل تريد فتح صفحة توزيع المسارات؟`;
+
+    if (window.confirm(confirmMessage)) {
+      navigateTo("/admin/routes");
+    }
+  };
 
   const downloadLocalBackup = async () => {
     setBackupLoading(true);
@@ -1232,11 +1290,33 @@ export default function AdminOperationsPage() {
           </button>
           <button
             type="button"
-            onClick={downloadLocalBackup}
-            disabled={backupLoading}
-            className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 disabled:opacity-50"
+            onClick={handleRouteDispatchClick}
+            className="relative inline-flex min-h-10 items-center gap-2 text-white shadow-sm transition-opacity hover:opacity-90 active:scale-[0.98]"
+            style={{
+              backgroundColor: "#0F4C81",
+              borderRadius: "10px",
+              fontSize: "16px",
+              fontWeight: "bold",
+              padding: "8px 16px",
+            }}
           >
-            <Download className="size-4" /> {backupLoading ? "جارٍ التصدير…" : "تصدير"}
+            <span className="text-[18px] leading-none" aria-hidden="true">🚚</span>
+            <span>توزيع الطلبات على المسارات</span>
+            {routeOrders.length > 0 && (
+              <span
+                className="absolute -top-2 -left-2 flex items-center justify-center rounded-full text-white font-bold animate-bounce shadow-md"
+                style={{
+                  backgroundColor: "#DC3545",
+                  minWidth: "22px",
+                  height: "22px",
+                  padding: "0 5px",
+                  fontSize: "11px",
+                  lineHeight: 1,
+                }}
+              >
+                {routeOrders.length}
+              </span>
+            )}
           </button>
           <button
             type="button"
