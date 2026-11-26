@@ -1,9 +1,11 @@
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
 export default defineConfig({
-  server: {
-    port: Number(process.env.PORT ?? 8080),
-    strictPort: true,
+  vite: {
+    server: {
+      port: Number(process.env["PORT"] ?? 8080),
+      strictPort: true,
+    },
   },
   // يستخدم Vercel preset عند البناء على Vercel،
   // وNetlify preset في بيئة Lovable.
