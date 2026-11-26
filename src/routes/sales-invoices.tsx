@@ -12,6 +12,7 @@ import {
 import {
   ArrowRight,
   Banknote,
+  BarChart3,
   CheckCircle2,
   Clock,
   CreditCard,
@@ -28,6 +29,8 @@ import {
   Smartphone,
   Star,
   Trash2,
+  TrendingDown,
+  TrendingUp,
   Wallet,
   X,
 } from "lucide-react";
@@ -349,6 +352,86 @@ const sumComplete = (
 
 const yerLabel = (value: number | string | null | undefined) =>
   value == null ? "غير مسجل" : `${money(value, 0)} ر.ي`;
+
+/* =========================================================
+   الملخص الإحصائي الشهري — يُحسب من الصفوف المحمّلة فقط
+   ========================================================= */
+type MonthSummary = {
+  key: string;
+  label: string;
+  count: number;
+  total: number;
+  paid: number;
+  remaining: number;
+  missing: number;
+};
+
+const MONTH_FORMATTER = new Intl.DateTimeFormat("ar-YE-u-nu-latn", {
+  month: "long",
+  year: "numeric",
+  timeZone: "Asia/Aden",
+});
+
+function monthKeyOf(value: string | null): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Aden", year: "numeric", month: "2-digit",
+  }).formatToParts(date);
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  return year && month ? `${year}-${month}` : null;
+}
+
+function buildMonthlySummary(rows: InvoiceRow[]): MonthSummary[] {
+  const buckets = new Map<
+    string,
+    MonthSummary & { sampleDate: string }
+  >();
+  for (const row of rows) {
+    const key = monthKeyOf(row.created_at);
+    if (!key) continue;
+    const bucket =
+      buckets.get(key) ?? {
+        key,
+        label: "",
+        count: 0,
+        total: 0,
+        paid: 0,
+        remaining: 0,
+        missing: 0,
+        sampleDate: row.created_at ?? "",
+      };
+    bucket.count += 1;
+    if (row.total_yer == null || !Number.isFinite(Number(row.total_yer))) bucket.missing += 1;
+    else bucket.total += amount(row.total_yer);
+    if (row.paid_yer == null || !Number.isFinite(Number(row.paid_yer))) bucket.missing += 1;
+    else bucket.paid += amount(row.paid_yer);
+    if (row.remaining_yer == null || !Number.isFinite(Number(row.remaining_yer))) bucket.missing += 1;
+    else bucket.remaining += amount(row.remaining_yer);
+    buckets.set(key, bucket);
+  }
+
+  return [...buckets.values()]
+    .sort((a, b) => b.key.localeCompare(a.key))
+    .map(({ sampleDate, ...bucket }) => {
+      const date = new Date(sampleDate);
+      return {
+        ...bucket,
+        label: Number.isNaN(date.getTime())
+          ? bucket.key
+          : MONTH_FORMATTER.format(date),
+      };
+    });
+}
+
+function monthShares(month: MonthSummary) {
+  if (month.total <= 0 || month.missing > 0) return { paid: 0, rest: 0 };
+  const paid = Math.min(100, (month.paid / month.total) * 100);
+  const rest = Math.min(100 - paid, (month.remaining / month.total) * 100);
+  return { paid, rest };
+}
 
 /* =========================================================
    طرق الدفع — مفتاح موحّد + أسماء بديلة شائعة
@@ -1179,6 +1262,8 @@ function SalesInvoicesPage() {
           </div>
         </section>
 
+        <MonthlySummarySection rows={filteredInvoices} />
+
         {/* ===== طرق الدفع ===== */}
         <section
           aria-labelledby="payment-methods-title"
@@ -1661,6 +1746,218 @@ function SalesInvoicesPage() {
   );
 }
 
+/* ===================== الملخص الشهري ===================== */
+function MonthlySummarySection({ rows }: { rows: InvoiceRow[] }) {
+  const months = useMemo(() => buildMonthlySummary(rows), [rows]);
+  const stats = useMemo(() => {
+    const complete = months.every((month) => month.missing === 0);
+    const totalAll = months.reduce((sum, month) => sum + month.total, 0);
+    const paidAll = months.reduce((sum, month) => sum + month.paid, 0);
+    const best = months.reduce<MonthSummary | null>(
+      (top, month) => (top === null || month.total > top.total ? month : top),
+      null,
+    );
+    const latest = months[0] ?? null;
+    const previous = months[1] ?? null;
+    return {
+      totalAll,
+      paidAll,
+      complete,
+      best: complete ? best : null,
+      latest,
+      previous,
+      average: complete && months.length > 0 ? totalAll / months.length : null,
+      collection: complete && totalAll > 0 ? (paidAll / totalAll) * 100 : null,
+      growth:
+        latest && previous && latest.missing === 0 && previous.missing === 0 && previous.total > 0 &&
+        Math.round((Date.parse(`${latest.key}-01T00:00:00Z`) - Date.parse(`${previous.key}-01T00:00:00Z`)) / 86400000) <= 31
+          ? ((latest.total - previous.total) / previous.total) * 100
+          : null,
+    };
+  }, [months]);
+  const maxTotal = useMemo(
+    () => months.reduce((max, month) => month.missing > 0 ? max : Math.max(max, month.total), 0),
+    [months],
+  );
+  const undatedCount = rows.length - months.reduce((sum, month) => sum + month.count, 0);
+
+  return (
+    <section
+      aria-labelledby="monthly-summary-title"
+      className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-5"
+    >
+      <header className="mb-4 flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 pb-3">
+        <div className="flex items-center gap-2.5">
+          <span className="flex size-9 items-center justify-center rounded-xl bg-[#0B3A66]/5 text-[#0B3A66]">
+            <BarChart3 className="size-4" />
+          </span>
+          <div>
+            <h2
+              id="monthly-summary-title"
+              className="text-sm font-black text-[#0B3A66] md:text-base"
+            >
+              الملخص الإحصائي للمبيعات حسب الشهر
+            </h2>
+            <p className="text-[11px] font-semibold text-slate-500">
+              حسب تاريخ إنشاء الفاتورة/الطلب بتوقيت اليمن، مع البحث وفلتر الدفع.
+              المدفوع هو رصيد الدفعات المعتمدة الحالي وليس تحصيلًا بتاريخ الدفع.
+            </p>
+          </div>
+        </div>
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-bold text-slate-600">
+          {months.length} شهر في النتائج
+        </span>
+      </header>
+
+      {undatedCount > 0 && (
+        <p role="status" className="mb-3 text-xs font-bold text-amber-700">
+          {undatedCount} سجل بدون تاريخ صحيح مستبعد من التجميع الشهري.
+        </p>
+      )}
+      {months.some((month) => month.missing > 0) && (
+        <p className="mb-3 text-xs font-bold text-amber-700">البيانات المالية ناقصة لبعض الأشهر؛ أُخفيت مؤشرات الأداء التي تعتمد عليها بدل احتسابها كصفر.</p>
+      )}
+      {months.length === 0 ? (
+        <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-xs font-semibold text-slate-500">
+          لا توجد تواريخ فواتير في النتائج الحالية لعرض الملخص الشهري.
+        </p>
+      ) : (
+        <>
+          <div className="mb-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+            <div className="rounded-xl border border-[#F2E6D3] bg-[#FFFAF1] p-3">
+              <p className="text-[11px] font-bold text-slate-500">متوسط أشهر النتائج</p>
+              <p className="mt-1 whitespace-nowrap text-sm font-black text-[#0B3A66]">
+                {stats.average == null ? "بيانات غير مكتملة" : `${money(stats.average, 0)} ر.ي`}
+              </p>
+            </div>
+            <div className="rounded-xl border border-[#F2E6D3] bg-[#FFFAF1] p-3">
+              <p className="text-[11px] font-bold text-slate-500">أفضل شهر</p>
+              <p className="mt-1 truncate text-sm font-black text-[#0B3A66]">
+                {stats.best ? stats.best.label : "غير متاح"}
+              </p>
+              {stats.best && (
+                <p className="text-[11px] font-bold text-emerald-700">
+                  {money(stats.best.total, 0)} ر.ي
+                </p>
+              )}
+            </div>
+            <div className="rounded-xl border border-[#F2E6D3] bg-[#FFFAF1] p-3">
+              <p className="text-[11px] font-bold text-slate-500">نسبة التحصيل</p>
+              <p className="mt-1 text-sm font-black text-emerald-700">
+                {stats.collection == null ? "غير متاحة" : `${money(stats.collection, 1)}%`}
+              </p>
+              <p className="text-[11px] font-bold text-slate-500">
+                {stats.complete ? `${money(stats.paidAll, 0)} من ${money(stats.totalAll, 0)}` : "بيانات غير مكتملة"}
+              </p>
+            </div>
+            <div className="rounded-xl border border-[#F2E6D3] bg-[#FFFAF1] p-3">
+              <p className="text-[11px] font-bold text-slate-500">آخر شهر مقابل السابق</p>
+              {stats.growth == null ? (
+                <p className="mt-1 text-sm font-black text-slate-500">لا مقارنة</p>
+              ) : (
+                <p
+                  className={`mt-1 flex items-center gap-1 text-sm font-black ${
+                    stats.growth >= 0 ? "text-emerald-700" : "text-red-700"
+                  }`}
+                >
+                  {stats.growth >= 0 ? (
+                    <TrendingUp className="size-4" />
+                  ) : (
+                    <TrendingDown className="size-4" />
+                  )}
+                  <span dir="ltr">{money(Math.abs(stats.growth), 1)}%</span>
+                </p>
+              )}
+              <p className="text-[11px] font-bold text-slate-500">
+                {stats.previous ? stats.previous.label : "شهر واحد فقط"}
+              </p>
+            </div>
+          </div>
+
+          <ul className="space-y-2.5">
+            {months.map((month) => {
+              const shares = monthShares(month);
+              const width = maxTotal > 0 ? Math.max(2, (month.total / maxTotal) * 100) : 0;
+              return (
+                <li key={month.key}>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <span className="w-20 shrink-0 text-xs font-bold text-[#0B3A66] sm:w-24">
+                      {month.label}
+                    </span>
+                    <div
+                      className="relative h-3 min-w-[110px] flex-1 overflow-hidden rounded-full bg-slate-100"
+                      role="img"
+                      aria-label={month.missing > 0 ? `${month.label}: بيانات غير مكتملة` : `${month.label}: إجمالي ${money(month.total, 0)} ريال، مدفوع ${money(month.paid, 0)}، متبقٍ ${money(month.remaining, 0)}`}
+                    >
+                      <span
+                        className="absolute inset-y-0 right-0 rounded-full bg-emerald-600"
+                        style={{ width: `${(width * shares.paid) / 100}%` }}
+                      />
+                      <span
+                        className="absolute inset-y-0 rounded-full bg-amber-500"
+                        style={{
+                          right: `${(width * shares.paid) / 100}%`,
+                          width: `${(width * shares.rest) / 100}%`,
+                        }}
+                      />
+                    </div>
+                    <span
+                      className="w-20 shrink-0 text-left text-xs font-black tabular-nums text-slate-900 sm:w-24"
+                      dir="ltr"
+                    >
+                      {month.missing > 0 ? "غير مكتمل" : money(month.total, 0)}
+                    </span>
+                    <span className="hidden rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-600 sm:inline-block">
+                      {month.count} فاتورة
+                    </span>
+                    {month.missing > 0 && (
+                      <span className="hidden text-[10px] font-bold text-amber-700 sm:inline">
+                        {month.missing} قيمة ناقصة
+                      </span>
+                    )}
+                    <span className="w-full text-[11px] font-semibold text-slate-500 md:hidden">
+                      {month.count} فاتورة
+                      {month.missing > 0
+                        ? ` · ${month.missing} قيمة ناقصة`
+                        : ` · مدفوع ${money(month.paid, 0)} · متبقٍ ${money(month.remaining, 0)}`}
+                    </span>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+          <div className="mt-4 hidden overflow-x-auto md:block">
+            <table className="w-full min-w-[650px] text-right text-xs">
+              <thead className="bg-slate-50 text-[#0B3A66]"><tr>
+                <th className="p-3">الشهر</th><th className="p-3">السجلات</th><th className="p-3">الإجمالي</th><th className="p-3">المدفوع</th><th className="p-3">المتبقي</th><th className="p-3">التحصيل</th>
+              </tr></thead>
+              <tbody>{months.map((month) => (
+                <tr key={month.key} className="border-b border-slate-100">
+                  <td className="p-3 font-bold">{month.label}</td><td className="p-3">{month.count}</td>
+                  <td className="whitespace-nowrap p-3">{month.missing ? "غير مكتمل" : yerLabel(month.total)}</td>
+                  <td className="whitespace-nowrap p-3 text-emerald-700">{month.missing ? "غير مكتمل" : yerLabel(month.paid)}</td>
+                  <td className="whitespace-nowrap p-3 text-amber-700">{month.missing ? "غير مكتمل" : yerLabel(month.remaining)}</td>
+                  <td className="p-3">{month.missing === 0 && month.total > 0 ? `${money(month.paid / month.total * 100, 1)}%` : "غير متاحة"}</td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-3 text-[11px] font-bold text-slate-500">
+            <span className="inline-flex items-center gap-1.5">
+              <i className="size-2.5 rounded-sm bg-emerald-600" /> مدفوع
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <i className="size-2.5 rounded-sm bg-amber-500" /> متبقٍ عند التسليم
+            </span>
+            <span className="text-slate-400">طول الشريط يقارن الأشهر المكتملة فقط. النسبة تقارن آخر شهرين متتاليين ظاهرين؛ قد يكون آخر شهر غير مكتمل زمنيًا.</span>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
 /* ===================== سند القبض ===================== */
 const STORE = {
   name: "السوق الشامل",
@@ -2045,6 +2342,9 @@ const PDF_REPORT_CSS = `
 .si-pdf-table th { background:#EDF3F9; color:#0B3A66; font-weight:700; }
 .si-pdf-table tr:nth-child(even) td { background:#F8FAFC; }
 .si-pdf-num { direction:ltr; unicode-bidi:isolate; display:inline-block; }
+.si-pdf-months { margin:0 0 14px; }
+.si-pdf-months h3 { margin:0 0 6px; font-size:12px; color:#0B3A66; }
+.si-pdf-months-table { font-size:10px; }
 .si-pdf-foot { margin-top:14px; font-size:11px; color:#475569; }
 @media print {
   @page siInvoiceReport { size:A4 landscape; margin:12mm; }
@@ -2059,6 +2359,7 @@ const PDF_REPORT_CSS = `
   .si-pdf-table th, .si-pdf-table td { padding:6px 5px; }
   .si-pdf-table thead { display:table-header-group; }
   .si-pdf-table tr { break-inside:avoid; page-break-inside:avoid; }
+  .si-pdf-months h3 { break-after:avoid; }
   .si-pdf-foot { break-inside:avoid; }
   .si-pdf-export { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
 }
@@ -2073,6 +2374,7 @@ function InvoicePdfReport({ report, onClose }: {
     paid: sumComplete(report.rows, "paid_yer"),
     remaining: sumComplete(report.rows, "remaining_yer"),
   };
+  const monthlyPdf = buildMonthlySummary(report.rows);
   const printReport = () => window.print();
   const autoPrinted = useRef(false);
 
@@ -2134,6 +2436,38 @@ function InvoicePdfReport({ report, onClose }: {
           <div>المدفوع<b>{reportTotals.paid == null ? "بيانات غير مكتملة" : yerLabel(reportTotals.paid)}</b></div>
           <div>المتبقي عند التسليم<b>{reportTotals.remaining == null ? "بيانات غير مكتملة" : yerLabel(reportTotals.remaining)}</b></div>
         </div>
+        {monthlyPdf.length > 0 && (
+          <section className="si-pdf-months">
+            <h3>الملخص الشهري حسب تاريخ إنشاء الفاتورة/الطلب (توقيت اليمن)</h3>
+            <p className="si-pdf-foot">المدفوع رصيد معتمد حالي وليس التحصيل حسب تاريخ الدفع. مستبعد لغياب تاريخ صحيح: {report.rows.length - monthlyPdf.reduce((sum, month) => sum + month.count, 0)} سجل.</p>
+            <div className="si-pdf-table-wrap">
+              <table className="si-pdf-table si-pdf-months-table">
+                <thead>
+                  <tr>
+                    <th>الشهر</th>
+                    <th>عدد الفواتير</th>
+                    <th>الإجمالي (ر.ي)</th>
+                    <th>المدفوع (ر.ي)</th>
+                    <th>المتبقي (ر.ي)</th>
+                    <th>نسبة التحصيل</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {monthlyPdf.map((month) => (
+                    <tr key={month.key}>
+                      <td>{month.label}</td>
+                      <td>{month.count}</td>
+                      <td><span className="si-pdf-num">{month.missing > 0 ? "غير مكتمل" : money(month.total, 0)}</span></td>
+                      <td><span className="si-pdf-num">{month.missing > 0 ? "غير مكتمل" : money(month.paid, 0)}</span></td>
+                      <td><span className="si-pdf-num">{month.missing > 0 ? "غير مكتمل" : money(month.remaining, 0)}</span></td>
+                      <td><span className="si-pdf-num">{month.missing === 0 && month.total > 0 ? `${money((month.paid / month.total) * 100, 1)}%` : "غير متاحة"}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
         <div className="si-pdf-table-wrap">
           <table className="si-pdf-table">
             <colgroup><col style={{width:"4%"}} /><col style={{width:"15%"}} /><col style={{width:"16%"}} /><col style={{width:"12%"}} /><col style={{width:"11%"}} /><col style={{width:"12%"}} /><col style={{width:"10%"}} /><col style={{width:"10%"}} /><col style={{width:"10%"}} /></colgroup>
