@@ -1,6 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { Toaster } from "@/components/ui/sonner";
+import { toast } from "sonner";
 
 const FIXED_YER_RATE = { SAR: 140, USD: 535 } as const;
 
@@ -116,25 +118,6 @@ const CSS = `
 .notif-empty{padding:24px 10px;text-align:center;color:var(--muted);font-size:12.5px}
 .notif-error{margin-bottom:8px;padding:8px 10px;border-radius:10px;background:#fff1f2;color:#be123c;font-size:11px}
 
-/* Top Floating Banner Toast */
-.pay-banner-wrap{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:9999;
-  width:92%;max-width:540px;animation:slideDownBanner .38s cubic-bezier(0.16,1,0.3,1)}
-.pay-banner{background:linear-gradient(135deg,#059669 0%,#10b981 100%);color:#fff;
-  border-radius:16px;padding:14px 16px;box-shadow:0 14px 34px -8px rgba(16,185,129,0.55),0 0 0 1px rgba(255,255,255,0.2);
-  display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;transition:transform .2s,box-shadow .2s}
-.pay-banner:hover{transform:translateY(-2px);box-shadow:0 18px 40px -8px rgba(16,185,129,0.65)}
-.pay-banner-body{display:flex;align-items:center;gap:12px}
-.pay-banner-icon{font-size:24px;flex:0 0 auto;display:grid;place-items:center;background:rgba(255,255,255,0.22);width:42px;height:42px;border-radius:12px}
-.pay-banner-title{font-size:14.5px;font-weight:900;letter-spacing:.2px}
-.pay-banner-sub{font-size:12px;opacity:0.95;margin-top:2px;line-height:1.4}
-.pay-banner-actions{display:flex;align-items:center;gap:8px}
-.pay-banner-close{background:rgba(255,255,255,0.25);border:none;color:#fff;border-radius:50%;width:28px;height:28px;cursor:pointer;display:grid;place-items:center;font-size:13px;transition:.2s}
-.pay-banner-close:hover{background:rgba(255,255,255,0.4)}
-
-@keyframes slideDownBanner{
-  0%{opacity:0;transform:translate(-50%,-24px) scale(0.96)}
-  100%{opacity:1;transform:translate(-50%,0) scale(1)}
-}
 @keyframes bellShake{
   0%,100%{transform:rotate(0)}
   20%,60%{transform:rotate(14deg)}
@@ -575,11 +558,16 @@ function PayPage() {
   const [readNotificationIds, setReadNotificationIds] = useState<Set<string>>(new Set());
   const [notificationUserId, setNotificationUserId] = useState<string | null>(null);
   const [notificationError, setNotificationError] = useState("");
-  const [activeBanner, setActiveBanner] = useState<any | null>(null);
   const [showBellMenu, setShowBellMenu] = useState(false);
   const [bellShake, setBellShake] = useState(false);
   const [notificationSoundEnabled, setNotificationSoundEnabled] = useState(false);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const approvalToastPaymentIds = useRef(new Set<string>());
+  const showPaymentAcceptedToast = useCallback((paymentId: string) => {
+    if (approvalToastPaymentIds.current.has(paymentId)) return;
+    approvalToastPaymentIds.current.add(paymentId);
+    toast.success("تم قبول الدفع");
+  }, []);
 
   const remaining = Math.max(total - paid, 0);
   const isPaid = /مدفوع|مكتمل|paid|complete/i.test(status) && !/غير|جزئي/i.test(status);
@@ -739,7 +727,7 @@ function PayPage() {
   };
 
   useEffect(() => {
-    if (!orderNo) return;
+    if (!orderNo || !orderId) return;
 
     let isActive = true;
     let notifChannel: any = null;
@@ -758,7 +746,7 @@ function PayPage() {
           searchableText,
         );
       const isApproved =
-        /payment_approved|approved_payment|تم اعتماد|اعتماد دفعتك|اعتمدت دفعتك|approved/i.test(
+        /payment_approved|approved_payment|تم اعتماد|اعتماد دفعتك|اعتمدت دفعتك|تم قبول الدفع|تم قبول دفعتك|قبول دفعتك|approved/i.test(
           searchableText,
         );
       const belongsToThisOrder = searchableText.includes(orderNo);
@@ -848,7 +836,9 @@ function PayPage() {
                 30,
               ),
             );
-            setActiveBanner(newNotice);
+            if (newNotice.payment_id) {
+              showPaymentAcceptedToast(String(newNotice.payment_id));
+            }
             setBellShake(true);
             window.setTimeout(() => setBellShake(false), 1200);
             playNotificationTone();
@@ -860,41 +850,43 @@ function PayPage() {
             console.warn("Customer notification Realtime status:", status);
           }
         });
-
-      paymentsChannel = supabase
-        .channel(`realtime-payments-${orderNo}-${user.id}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "payments",
-            filter: `order_id=eq.${orderId}`,
-          },
-          () => {
-            void loadOrderData();
-          },
-        )
-        .on(
-          "postgres_changes",
-          {
-            event: "UPDATE",
-            schema: "public",
-            table: "orders",
-            filter: `tracking_code=eq.${orderNo}`,
-          },
-          () => {
-            void loadOrderData();
-          },
-        )
-        .subscribe((status: string) => {
-          if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-            console.warn("Order Realtime status:", status);
-          }
-        });
     };
 
-    if (!orderId) return;
+    paymentsChannel = supabase
+      .channel(`realtime-payments-${orderNo}-${orderId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "payments",
+          filter: `order_id=eq.${orderId}`,
+        },
+        (payload) => {
+          const updatedPayment = payload.new as { id?: string; status?: string };
+          if (updatedPayment.status === "approved" && updatedPayment.id) {
+            showPaymentAcceptedToast(String(updatedPayment.id));
+          }
+          void loadOrderData();
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "orders",
+          filter: `id=eq.${orderId}`,
+        },
+        () => {
+          void loadOrderData();
+        },
+      )
+      .subscribe((status: string) => {
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          console.warn("Order Realtime status:", status);
+        }
+      });
 
     void setupNotificationListener();
 
@@ -903,7 +895,8 @@ function PayPage() {
       if (notifChannel) void supabase.removeChannel(notifChannel);
       if (paymentsChannel) void supabase.removeChannel(paymentsChannel);
     };
-  }, [orderNo, orderId, loadOrderData, playNotificationTone]);
+  }, [orderNo, orderId, loadOrderData, playNotificationTone, showPaymentAcceptedToast]);
+
 
   useEffect(() => {
     return () => {
@@ -913,13 +906,6 @@ function PayPage() {
       }
     };
   }, []);
-
-  const handleBannerClick = () => {
-    setActiveBanner(null);
-    setShowBellMenu(true);
-    setBellShake(true);
-    setTimeout(() => setBellShake(false), 600);
-  };
 
   const unreadCount = notifications.filter((notice) => !readNotificationIds.has(notice.id)).length;
 
@@ -1092,45 +1078,14 @@ function PayPage() {
   };
 
   return (
-    <div className="pay-root">
-      <style>{CSS}</style>
+    <>
+      <Toaster position="top-center" richColors />
+      <div className="pay-root">
+        <style>{CSS}</style>
       <link
         href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap"
         rel="stylesheet"
       />
-
-      {activeBanner && (
-        <div className="pay-banner-wrap">
-          <div
-            className="pay-banner"
-            onClick={handleBannerClick}
-            title="انقر لعرض الإشعار في السجل"
-          >
-            <div className="pay-banner-body">
-              <div className="pay-banner-icon">🎉</div>
-              <div>
-                <div className="pay-banner-title">
-                  {activeBanner.title || "تم اعتماد دفعتك بنجاح ✓"}
-                </div>
-                <div className="pay-banner-sub">{notificationMessage(activeBanner)}</div>
-              </div>
-            </div>
-            <div className="pay-banner-actions">
-              <button
-                type="button"
-                className="pay-banner-close"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setActiveBanner(null);
-                }}
-                title="إغلاق"
-              >
-                ✕
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       <div className="pay-wrap">
         <header className="pay-topbar">
@@ -1502,6 +1457,7 @@ function PayPage() {
           </section>
         )}
       </div>
-    </div>
+      </div>
+    </>
   );
 }
