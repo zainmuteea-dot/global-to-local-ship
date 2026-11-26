@@ -19,6 +19,7 @@ import {
   FileText,
   Landmark,
   Loader2,
+  Package,
   Pencil,
   Plus,
   Printer,
@@ -547,6 +548,14 @@ function rankProductMonth(month: ProductMonth, metric: "quantity" | "revenue"): 
 }
 
 const PRODUCT_ANALYSIS_CSS = `
+
+.si-products-toggle{box-sizing:border-box;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;width:100%;margin:0;padding:14px 16px;border:1px solid #0B3A66;border-radius:12px;background:#0B3A66;color:#FFFFFF;text-align:start;font:inherit;font-size:14px;font-weight:800;cursor:pointer}
+.si-products-toggle:hover{background:#0F4C81}.si-products-toggle:focus-visible{outline:3px solid #0F4C81;outline-offset:3px}
+.si-products-toggle-main,.si-products-toggle-meta{display:flex;align-items:center;gap:10px;min-width:0}.si-products-toggle-main{flex:1 1 230px}.si-products-toggle-main svg{flex-shrink:0}.si-products-toggle-meta{flex-wrap:wrap;font-size:12px;justify-content:space-between}
+.si-products-toggle-action{display:inline-flex;align-items:center;gap:8px;background:#FFFAF1;color:#0B3A66;border-radius:8px;padding:7px 10px;white-space:nowrap}
+.si-products-body{padding-top:16px}.si-products-body[hidden]{display:none!important}
+@media(max-width:600px){.si-products-toggle{padding:12px;font-size:13px}}
+@media print{.si-products-toggle{display:none}}
 .si-products{box-sizing:border-box;min-width:0;border:1px solid #F2E6D3;border-radius:16px;background:#FFFAF1;padding:20px;color:#0B3A66;}
 .si-products *{box-sizing:border-box}.si-products h2,.si-products h3{margin:0 0 10px;font-weight:900}.si-products p{margin:8px 0;font-size:12px;line-height:1.8;color:#475569}
 .si-products-controls{display:flex;flex-wrap:wrap;gap:12px;margin:16px 0}.si-products-controls label{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:700;min-width:0}.si-products-controls select{max-width:100%;border:1px solid #F2E6D3;border-radius:10px;padding:9px;background:#fff;color:#0B3A66;font:inherit;min-height:40px}.si-products-controls select:focus-visible{outline:2px solid #0F4C81;outline-offset:2px}
@@ -578,11 +587,15 @@ function MonthlyProductsSection({ rows, loading = false, forReport = false }: { 
   const [monthKey, setMonthKey] = useState("");
   const [metric, setMetric] = useState<"quantity" | "revenue">("quantity");
   const [limit, setLimit] = useState(10);
+  const [isOpen, setIsOpen] = useState(false);
   const selected = analysis.months.find((month) => month.key === monthKey) ?? analysis.months[0];
   const ranked = selected ? rankProductMonth(selected, metric) : null;
   const leader = ranked?.[0];
   const tied = leader ? (ranked ?? []).filter((product) => product[metric] === leader[metric]).length : 0;
-  return <section className="si-products" aria-label="تحليل المنتجات الأكثر مبيعاً لكل شهر" dir="rtl"><style dangerouslySetInnerHTML={{ __html: PRODUCT_ANALYSIS_CSS }} /><h2>تحليل المنتجات الأكثر مبيعًا لكل شهر</h2><p>السجلات المحمّلة والظاهرة فقط حسب البحث وطريقة الدفع. الشهر حسب إنشاء الفاتورة/الطلب بتوقيت اليمن، وليس تاريخ دفع المبلغ. الكميات بنود الطلبات، وليست صافي المبيعات بعد الإلغاء أو المرتجعات.</p><p>هوية المنتج حسب المعرّف أو SKU مع فصل المتغيرات. قيمة المبيعات هي إجمالي بند المنتج المسجل بالريال اليمني فقط، وليست إجمالي الطلب أو أرباحًا.</p>
+  const title = "تحليل المنتجات الأكثر مبيعًا لكل شهر";
+  const body = (
+    <>
+<p>السجلات المحمّلة والظاهرة فقط حسب البحث وطريقة الدفع. الشهر حسب إنشاء الفاتورة/الطلب بتوقيت اليمن، وليس تاريخ دفع المبلغ. الكميات بنود الطلبات، وليست صافي المبيعات بعد الإلغاء أو المرتجعات.</p><p>هوية المنتج حسب المعرّف أو SKU مع فصل المتغيرات. قيمة المبيعات هي إجمالي بند المنتج المسجل بالريال اليمني فقط، وليست إجمالي الطلب أو أرباحًا.</p>
   {(analysis.duplicates > 0 || analysis.invalidDates > 0 || analysis.unlinked > 0) && <p>مستبعد: {analysis.unlinked} سجل بلا طلب مرتبط، {analysis.invalidDates} بلا تاريخ صحيح، {analysis.duplicates} سجل مكرر لنفس الطلب (احتُسب أحدث سجل ظاهر مرة واحدة).</p>}
   {loading ? <p role="status">جارٍ تحميل تفاصيل المنتجات…</p> : <>
   {analysis.loadError && <p className="si-products-warning" role="status">تعذر تحميل تفاصيل المنتجات. تحقق من جدول order_items وأسماء الحقول وسياسات RLS؛ الفواتير وميزات الطباعة الأخرى لم تتغير.</p>}
@@ -592,7 +605,42 @@ function MonthlyProductsSection({ rows, loading = false, forReport = false }: { 
   <div className="si-products-kpis"><div>الأكثر مبيعًا<b>{leader && leader[metric] > 0 ? `${leader.name}${tied > 1 ? ` (تعادل ${tied} منتجات)` : ""}` : ranked ? "لا توجد مبيعات موجبة" : "غير متاح"}</b></div><div>إجمالي {metric === "quantity" ? "الكمية" : "قيمة المبيعات"}<b>{ranked ? `${money(ranked.reduce((sum, product) => sum + product[metric], 0), metric === "quantity" ? 2 : 0)}${metric === "revenue" ? " ر.ي" : ""}` : "غير مكتمل"}</b></div><div>الطلبات ذات التفاصيل المتاحة<b>{selected.covered} / {selected.orders}</b></div></div><ProductRankingTable month={selected} metric={metric} limit={limit} /><p>حصة المنتج من إجمالي الشهر حسب مقياس الترتيب، وليس من أعلى النتائج فقط. عند نقص بيانات المقياس أو تفاصيل الطلبات يُوقف الترتيب؛ عدد الطلبات لكل منتج لا يُجمع كعدد طلبات الشهر.</p>
   </>}
   </>}
-  </section>;
+    </>
+  );
+  if (forReport) {
+    return (
+      <section className="si-products" aria-label="تحليل المنتجات الأكثر مبيعاً لكل شهر" dir="rtl">
+        <style dangerouslySetInnerHTML={{ __html: PRODUCT_ANALYSIS_CSS }} />
+        <h2>{title}</h2>
+        {body}
+      </section>
+    );
+  }
+  return (
+    <section className="si-products" aria-label="تحليل المنتجات الأكثر مبيعاً لكل شهر" dir="rtl">
+      <style dangerouslySetInnerHTML={{ __html: PRODUCT_ANALYSIS_CSS }} />
+      <h2 className="sr-only">{title}</h2>
+      <button
+        type="button"
+        aria-expanded={isOpen}
+        aria-controls="products-analysis-content"
+        onClick={() => setIsOpen((open) => !open)}
+        className="si-products-toggle"
+      >
+        <span className="si-products-toggle-main">
+          <Package className="size-5" />
+          <span>{title}</span>
+        </span>
+        <span className="si-products-toggle-meta">
+          <span>{analysis.months.length} شهر</span>
+          <span className="si-products-toggle-action">{isOpen ? "إخفاء التحليل" : "عرض التحليل"} <span aria-hidden="true">{isOpen ? "−" : "+"}</span></span>
+        </span>
+      </button>
+      <div id="products-analysis-content" hidden={!isOpen} className="si-products-body">
+        {body}
+      </div>
+    </section>
+  );
 }
 
 /* =========================================================
