@@ -1911,8 +1911,170 @@ function SalesInvoicesPage() {
 }
 
 /* ===================== الملخص الشهري ===================== */
+type MonthComparisonMetric = {
+  label: string;
+  base: number | null;
+  target: number | null;
+  difference: number | null;
+  change: number | null;
+  unit: "money" | "count" | "percentage";
+};
+function compareSalesMonths(base: MonthSummary, target: MonthSummary): MonthComparisonMetric[] {
+  const values = [
+    { label: "عدد الفواتير / السجلات", base: base.count, target: target.count, unit: "count" as const },
+    { label: "إجمالي المبيعات", base: base.missing ? null : base.total, target: target.missing ? null : target.total, unit: "money" as const },
+    { label: "المدفوع المعتمد حاليًا", base: base.missing ? null : base.paid, target: target.missing ? null : target.paid, unit: "money" as const },
+    { label: "المتبقي عند التسليم", base: base.missing ? null : base.remaining, target: target.missing ? null : target.remaining, unit: "money" as const },
+    { label: "نسبة التحصيل", base: !base.missing && base.total > 0 ? base.paid / base.total * 100 : null, target: !target.missing && target.total > 0 ? target.paid / target.total * 100 : null, unit: "percentage" as const },
+  ];
+  return values.map((metric) => ({ ...metric,
+    difference: metric.base === null || metric.target === null ? null : metric.target - metric.base,
+    change: metric.unit === "percentage" || metric.base === null || metric.target === null || metric.base === 0 ? null : (metric.target - metric.base) / metric.base * 100,
+  }));
+}
+function comparisonValue(value: number | null, unit: MonthComparisonMetric["unit"], signed = false): string {
+  if (value === null) return "غير متاح";
+  const prefix = signed && value > 0 ? "+" : "";
+  return `${prefix}${money(value, unit === "percentage" ? 1 : 0)}${unit === "money" ? " ر.ي" : unit === "percentage" ? signed ? " نقطة مئوية" : "%" : ""}`;
+}
+
+const MONTH_SHORT_FORMATTER = new Intl.DateTimeFormat("ar-YE-u-nu-latn", {
+  month: "short",
+  timeZone: "Asia/Aden",
+});
+
+function monthShortLabel(key: string): string {
+  const date = new Date(`${key}-01T12:00:00Z`);
+  return Number.isNaN(date.getTime()) ? key : MONTH_SHORT_FORMATTER.format(date);
+}
+
+function compactMoney(value: number): string {
+  const absolute = Math.abs(value);
+  if (absolute >= 1e6) return `${money(value / 1e6, 1)} م`;
+  if (absolute >= 1e3) return `${money(value / 1e3, 0)} ألف`;
+  return money(value, 0);
+}
+
+/** الأشهر الواقعة بين الشهرين، بحد أقصى 12 نقطة مع الاحتفاظ بالطرفين */
+function trendMonthsBetween(months: MonthSummary[], baseKey: string, targetKey: string): MonthSummary[] {
+  const low = baseKey < targetKey ? baseKey : targetKey;
+  const high = baseKey < targetKey ? targetKey : baseKey;
+  const inside = months.filter((month) => month.key >= low && month.key <= high).sort((a, b) => a.key.localeCompare(b.key));
+  if (inside.length <= 12) return inside;
+  const sample = new Set<number>([0, inside.length - 1]);
+  for (let step = 1; step < 12; step += 1) sample.add(Math.round((step * (inside.length - 1)) / 11));
+  return [...sample].sort((a, b) => a - b).map((index) => inside[index]).filter((month): month is MonthSummary => Boolean(month));
+}
+
+/** موضع النص عند طرفي الرسم حتى لا يُقطع */
+const edgeClass = (x: number) => (x < 16 ? " is-start" : x > 84 ? " is-end" : "");
+
+function SalesGrowthChart({ months, baseKey, targetKey, baseLabel, targetLabel }: { months: MonthSummary[]; baseKey: string; targetKey: string; baseLabel: string; targetLabel: string }) {
+  const points = trendMonthsBetween(months, baseKey, targetKey);
+  const low = baseKey < targetKey ? baseKey : targetKey;
+  const high = baseKey < targetKey ? targetKey : baseKey;
+  const inRange = months.filter((month) => month.key >= low && month.key <= high);
+  const complete = points.length >= 2 && inRange.length > 0 && inRange.every((month) => month.missing === 0 && Number.isFinite(month.total) && month.total >= 0);
+  const first = points[0];
+  const last = points[points.length - 1];
+  const growth = complete && first && last && first.total > 0 ? (last.total - first.total) / first.total * 100 : null;
+  const difference = complete && first && last ? last.total - first.total : null;
+  const direction = difference === null ? "unknown" : difference > 0 ? "up" : difference < 0 ? "down" : "flat";
+  const stroke = direction === "up" ? "#047857" : direction === "down" ? "#B91C1C" : "#0F4C81";
+  if (!complete || !first || !last) {
+    return <div className="si-growth" role="status"><h4>اتجاه نمو المبيعات بين الشهرين</h4><p className="si-compare-warning">الرسم غير متاح لأن أحد أشهر المدى غير مكتمل القيم المالية أو لا يملك تاريخًا صحيحًا. لا يُرسم اتجاه من بيانات ناقصة، ولا تُعامل القيم الغائبة كصفر.</p></div>;
+  }
+  const max = Math.max(...points.map((month) => month.total), 0);
+  const scale = max > 0 ? max : 1;
+  const monthIndex = (key: string) => Number(key.slice(0, 4)) * 12 + Number(key.slice(5, 7)) - 1;
+  const startIndex = monthIndex(first.key);
+  const span = Math.max(1, monthIndex(last.key) - startIndex);
+  const coordinates = points.map((month) => ({
+    month,
+    x: 9 + ((monthIndex(month.key) - startIndex) * 82) / span,
+    y: 14 + (month.total / scale) * 62,
+  }));
+  const smallestGap = coordinates.slice(1).reduce((gap, point, index) => Math.min(gap, point.x - (coordinates[index]?.x ?? 0)), 82);
+  const chartMinWidth = Math.max(260, 80 * 100 / Math.max(smallestGap, 0.1));
+  const polyline = coordinates.map((point) => `${money(point.x, 2)},${money(100 - point.y, 2)}`).join(" ");
+  const summary = `${first.label} ${money(first.total, 0)} ريال، ${last.label} ${money(last.total, 0)} ريال، ${direction === "up" ? "اتجاه صاعد" : direction === "down" ? "اتجاه هابط" : "بدون تغيير"}${growth === null ? "" : ` بنسبة ${money(Math.abs(growth), 1)} بالمئة`}`;
+  return (
+    <figure className="si-growth">
+      <figcaption>
+        <h4>اتجاه نمو المبيعات بين الشهرين</h4>
+        <p className={`si-growth-state si-growth-${direction}`}>
+          {direction === "up" ? "اتجاه صاعد" : direction === "down" ? "اتجاه هابط" : "بدون تغيير"}
+          {growth !== null && <span dir="ltr">{growth > 0 ? "+" : growth < 0 ? "−" : ""}{money(Math.abs(growth), 1)}%</span>}
+        </p>
+      </figcaption>
+      <p className="si-growth-range">من {first.label} إلى {last.label} — {points.length} نقطة شهرية · أعلى قيمة {compactMoney(max)} · محور القيم يبدأ من صفر</p>
+      <p>اختيار المقارنة: {targetLabel} مقابل {baseLabel}. يُقرأ الرسم زمنيًا من الأقدم يسارًا إلى الأحدث يمينًا، حتى لو عكست شهر الأساس.</p>
+      {points.length > 3 && <p className="si-growth-scroll-hint">على الجوال: مرّر الرسم أفقيًا لمشاهدة بقية الأشهر.</p>}
+      <div className="si-growth-scroll" tabIndex={0} role="region" aria-label="رسم اتجاه المبيعات القابل للتمرير">
+        <div className="si-growth-plot" role="img" aria-label={summary} style={{ minWidth: `${Math.ceil(chartMinWidth)}px` }}>
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+            {[14, 29.5, 45, 60.5, 76].map((line) => <line key={line} x1="0" x2="100" y1={100 - line} y2={100 - line} className="si-growth-grid" vectorEffect="non-scaling-stroke" />)}
+            <polyline points={polyline} fill="none" stroke={stroke} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+            {coordinates.map((point) => <line key={`${point.month.key}-drop`} x1={money(point.x, 2)} x2={money(point.x, 2)} y1={100 - point.y} y2="86" stroke={stroke} strokeWidth="1" strokeDasharray="3 3" opacity="0.3" vectorEffect="non-scaling-stroke" />)}
+          </svg>
+          {coordinates.map((point) => <span key={`${point.month.key}-dot`} className={`si-growth-dot${edgeClass(point.x)}`} style={{ left: `${money(point.x, 2)}%`, bottom: `${money(point.y, 2)}%`, background: stroke }} aria-hidden="true" />)}
+          {coordinates.map((point) => <span key={`${point.month.key}-value`} className={`si-growth-value${edgeClass(point.x)}`} style={{ left: `${money(point.x, 2)}%`, bottom: `calc(${money(point.y, 2)}% + 10px)` }}>{compactMoney(point.month.total)}</span>)}
+          {coordinates.map((point) => <span key={`${point.month.key}-tick`} className={`si-growth-tick${edgeClass(point.x)}`} style={{ left: `${money(point.x, 2)}%` }}>{monthShortLabel(point.month.key)}<small>{point.month.key.slice(0, 4)}</small></span>)}
+        </div>
+      </div>
+      <p className="si-growth-note">
+        {growth === null ? "نسبة النمو غير متاحة لأن إجمالي الشهر الأقدم صفر. " : "نسبة الاتجاه محسوبة من الشهر الأقدم إلى الأحدث. "}
+        {inRange.length > points.length ? `عُرضت ${points.length} نقطة من ${inRange.length} شهرًا مع الاحتفاظ بالطرفين. ` : ""}
+        الرسم يوضح اتجاه الإجمالي وليس توقعًا، ولا يعوّض غياب الأشهر بمبيعات صفر. الخط يصل بين النقاط المتاحة؛ لا يُستنتج منه إجمالي الأشهر الغائبة. المبالغ بالريال اليمني.
+      </p>
+    </figure>
+  );
+}
+
+const MONTHLY_TOGGLE_CSS = `
+.si-monthly-toggle{box-sizing:border-box;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:14px 16px;border:1px solid #0B3A66;border-radius:12px;background:#0B3A66;color:#FFFFFF;text-align:start;font:inherit;font-size:14px;font-weight:800;cursor:pointer;}
+.si-monthly-toggle:hover{background:#0F4C81}.si-monthly-toggle:focus-visible,.si-monthly-pagination button:focus-visible{outline:3px solid #0F4C81;outline-offset:3px}
+.si-monthly-toggle-main,.si-monthly-toggle-meta{display:flex;align-items:center;gap:10px;min-width:0}.si-monthly-toggle-main{flex:1 1 250px}.si-monthly-toggle-main>svg{flex-shrink:0}.si-monthly-toggle-meta{flex-wrap:wrap;font-size:12px}.si-monthly-toggle-action{display:inline-flex;align-items:center;gap:8px;background:#FFFAF1;color:#0B3A66;border-radius:8px;padding:7px 10px;white-space:nowrap}
+.si-monthly-content{padding-top:16px;min-width:0}.si-monthly-content[hidden]{display:none!important}
+.si-monthly-pagination{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-top:16px;border-top:1px solid #F2E6D3;padding-top:12px;color:#0B3A66;font-size:12px;font-weight:700}.si-monthly-pagination p{margin:0}.si-monthly-pagination p span{font-weight:500}.si-monthly-page-buttons{display:flex;flex-wrap:wrap;align-items:center;gap:6px}.si-monthly-pagination button{box-sizing:border-box;border:1px solid #F2E6D3;border-radius:8px;min-width:40px;min-height:40px;padding:8px 10px;background:#FFFAF1;color:#0B3A66;font:inherit;cursor:pointer}.si-monthly-pagination button:hover:not(:disabled){border-color:#0F4C81}.si-monthly-pagination button.si-monthly-page-active{background:#0F4C81;color:white;border-color:#0F4C81}.si-monthly-pagination button:disabled{background:#F1F5F9;color:#64748B;cursor:not-allowed}
+
+.si-month-compare{box-sizing:border-box;margin:16px 0;padding:14px;border:1px solid #F2E6D3;border-radius:12px;background:#FFFAF1;color:#0B3A66}.si-month-compare h3{font-size:14px;font-weight:900;margin:0 0 10px}.si-month-compare-controls{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}.si-month-compare label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:700;flex:1 1 180px;min-width:0}.si-month-compare select{box-sizing:border-box;width:100%;border:1px solid #F2E6D3;background:white;color:#0B3A66;border-radius:8px;padding:10px;font:inherit;min-height:42px}.si-month-compare button{box-sizing:border-box;border:1px solid #0F4C81;background:#0F4C81;color:white;border-radius:8px;padding:10px 14px;font:inherit;font-size:12px;font-weight:700;min-height:42px;cursor:pointer}.si-month-compare button:disabled{border-color:#CBD5E1;background:#F1F5F9;color:#64748B;cursor:not-allowed}.si-month-compare button.si-compare-reset{border-color:#F2E6D3;background:white;color:#0B3A66}.si-month-compare select:focus-visible,.si-month-compare button:focus-visible{outline:3px solid #0F4C81;outline-offset:2px}.si-month-compare p{font-size:11px;line-height:1.8;margin:10px 0;color:#475569}.si-month-compare .si-compare-warning{color:#854D0E}.si-compare-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:10px;margin-top:12px}.si-compare-card{min-width:0;border:1px solid #F2E6D3;background:white;border-radius:10px;padding:12px}.si-compare-card h4{font-size:12px;font-weight:800;margin:0 0 10px}.si-compare-card dl{margin:0;font-size:11px}.si-compare-card dl>div{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px;margin-bottom:7px}.si-compare-card dt{color:#475569;overflow-wrap:anywhere}.si-compare-card dd{margin:0;color:#0B3A66;font-weight:700}.si-compare-difference{border-top:1px solid #F2E6D3;padding-top:8px;font-size:12px;font-weight:800}.si-compare-increase{color:#0B3A66}.si-compare-decrease{color:#B91C1C}.si-compare-neutral{color:#475569}
+
+.si-growth{box-sizing:border-box;min-width:0;margin:16px 0 0;background:#FFFFFF;border:1px solid #F2E6D3;border-radius:12px;padding:14px;color:#0B3A66}.si-growth h4{margin:0;font-size:14px;font-weight:900}.si-growth figcaption{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px}.si-growth p.si-growth-state{margin:0;font-size:12px;font-weight:900;display:flex;gap:8px;align-items:center}.si-growth p.si-growth-up{color:#047857}.si-growth p.si-growth-down{color:#B91C1C}.si-growth p.si-growth-flat{color:#0F4C81}.si-growth p.si-growth-range{font-size:12px;font-weight:700;color:#0B3A66}.si-growth-scroll{max-width:100%;min-width:0;overflow-x:auto;padding:2px 0 8px;direction:ltr}.si-growth-scroll:focus-visible{outline:2px solid #0F4C81;outline-offset:2px}.si-growth-plot{position:relative;height:230px;width:100%;direction:ltr}.si-growth-plot svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}.si-growth-grid{stroke:#E2E8F0;stroke-width:1}.si-growth-dot{position:absolute;width:10px;height:10px;border-radius:50%;box-shadow:0 0 0 3px white;transform:translate(-50%,50%)}.si-growth-value{position:absolute;transform:translateX(-50%);white-space:nowrap;font-size:11px;font-weight:800;color:#0B3A66;direction:rtl}.si-growth-tick{position:absolute;bottom:0;transform:translateX(-50%);font-size:11px;line-height:1.5;font-weight:700;color:#475569;white-space:nowrap;text-align:center;direction:rtl}.si-growth-tick small{display:block;font-size:10px;font-weight:500}.si-growth-value.is-start,.si-growth-tick.is-start{transform:none}.si-growth-value.is-end,.si-growth-tick.is-end{transform:translateX(-100%)}.si-growth-scale{position:absolute;right:0;top:1px;font-size:10px;color:#475569;direction:rtl}.si-growth-zero{position:absolute;left:1px;bottom:14%;font-size:10px;color:#475569}.si-growth .si-growth-note{color:#475569;line-height:1.9}
+@media(max-width:600px){.si-growth{padding:12px}.si-growth figcaption{align-items:flex-start}.si-growth h4{font-size:13px}.si-growth-plot{height:215px}}
+@media(max-width:600px){.si-month-compare{padding:12px}.si-month-compare-controls button{flex:1 1 130px}.si-compare-cards{grid-template-columns:1fr}}
+@media(max-width:600px){.si-monthly-toggle{padding:12px;font-size:13px}.si-monthly-pagination{flex-direction:column;align-items:flex-start}.si-monthly-toggle-meta{width:100%;justify-content:space-between}}
+`;
+
 function MonthlySummarySection({ rows }: { rows: InvoiceRow[] }) {
   const months = useMemo(() => buildMonthlySummary(rows), [rows]);
+  const [isOpen, setIsOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const [baseKey, setBaseKey] = useState("");
+  const [targetKey, setTargetKey] = useState("");
+  const [comparison, setComparison] = useState<{ base: string; target: string } | null>(null);
+  const baseChoice = months.find((month) => month.key === baseKey) ?? months[1] ?? months[0];
+  const targetChoice = months.find((month) => month.key === targetKey) ?? months[0];
+  const baseMonth = comparison ? months.find((month) => month.key === comparison.base) : undefined;
+  const targetMonth = comparison ? months.find((month) => month.key === comparison.target) : undefined;
+  const comparing = Boolean(baseMonth && targetMonth && baseMonth.key !== targetMonth.key);
+  const displayMonths = comparing && baseMonth && targetMonth
+    ? months.filter((month) => month.key === baseMonth.key || month.key === targetMonth.key)
+    : months;
+  const comparisons = comparing && baseMonth && targetMonth ? compareSalesMonths(baseMonth, targetMonth) : [];
+  const applyComparison = () => {
+    if (!baseChoice || !targetChoice || baseChoice.key === targetChoice.key) return;
+    setComparison({ base: baseChoice.key, target: targetChoice.key });
+    setPage(1);
+  };
+  const clearComparison = () => { setComparison(null); setPage(1); };
+  const pageSize = 6;
+  const pageCount = Math.max(1, Math.ceil(displayMonths.length / pageSize));
+  const currentPage = Math.min(pageCount, Math.max(1, page));
+  const visibleMonths = displayMonths.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const pageStart = Math.max(1, Math.min(currentPage - 2, pageCount - 4));
+  const pageNumbers = Array.from({ length: Math.min(5, pageCount) }, (_, index) => pageStart + index);
+  useEffect(() => { setPage(1); setComparison(null); }, [rows]);
   const stats = useMemo(() => {
     const complete = months.every((month) => month.missing === 0);
     const totalAll = months.reduce((sum, month) => sum + month.total, 0);
@@ -1940,8 +2102,8 @@ function MonthlySummarySection({ rows }: { rows: InvoiceRow[] }) {
     };
   }, [months]);
   const maxTotal = useMemo(
-    () => months.reduce((max, month) => month.missing > 0 ? max : Math.max(max, month.total), 0),
-    [months],
+    () => displayMonths.reduce((max, month) => month.missing > 0 ? max : Math.max(max, month.total), 0),
+    [displayMonths],
   );
   const undatedCount = rows.length - months.reduce((sum, month) => sum + month.count, 0);
 
@@ -1950,28 +2112,62 @@ function MonthlySummarySection({ rows }: { rows: InvoiceRow[] }) {
       aria-labelledby="monthly-summary-title"
       className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-5"
     >
-      <header className="mb-4 flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 pb-3">
-        <div className="flex items-center gap-2.5">
-          <span className="flex size-9 items-center justify-center rounded-xl bg-[#0B3A66]/5 text-[#0B3A66]">
-            <BarChart3 className="size-4" />
+      <header>
+        <button
+          type="button"
+          aria-expanded={isOpen}
+          aria-controls="monthly-summary-content"
+          onClick={() => setIsOpen((open) => !open)}
+          className="si-monthly-toggle"
+        >
+          <span className="si-monthly-toggle-main">
+            <BarChart3 className="size-5" />
+            <span id="monthly-summary-title">الملخص الإحصائي للمبيعات حسب الشهر</span>
           </span>
-          <div>
-            <h2
-              id="monthly-summary-title"
-              className="text-sm font-black text-[#0B3A66] md:text-base"
-            >
-              الملخص الإحصائي للمبيعات حسب الشهر
-            </h2>
-            <p className="text-[11px] font-semibold text-slate-500">
-              حسب تاريخ إنشاء الفاتورة/الطلب بتوقيت اليمن، مع البحث وفلتر الدفع.
-              المدفوع هو رصيد الدفعات المعتمدة الحالي وليس تحصيلًا بتاريخ الدفع.
-            </p>
-          </div>
-        </div>
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-bold text-slate-600">
-          {months.length} شهر في النتائج
-        </span>
+          <span className="si-monthly-toggle-meta">
+            <span>{months.length} شهر</span>
+            <span className="si-monthly-toggle-action">{isOpen ? "إخفاء الملخص" : "عرض الملخص"} <span aria-hidden="true">{isOpen ? "−" : "+"}</span></span>
+          </span>
+        </button>
       </header>
+      <style dangerouslySetInnerHTML={{ __html: MONTHLY_TOGGLE_CSS }} />
+      <div id="monthly-summary-content" hidden={!isOpen} className="si-monthly-content">
+        <p className="mb-3 text-[11px] font-semibold text-slate-600">
+          حسب تاريخ إنشاء الفاتورة/الطلب بتوقيت اليمن، مع البحث وفلتر الدفع.
+          المدفوع هو رصيد الدفعات المعتمدة الحالي وليس تحصيلًا بتاريخ الدفع.
+          المؤشرات تشمل جميع أشهر النتائج المحمّلة؛ الترقيم وفلتر المقارنة يغيّران الأشرطة والجدول فقط؛ مؤشرات الأداء العامة تشمل جميع أشهر النتائج.
+        </p>
+
+      <section className="si-month-compare" aria-labelledby="monthly-compare-title">
+        <h3 id="monthly-compare-title">مقارنة أداء المبيعات بين شهرين محددين</h3>
+        <div className="si-month-compare-controls">
+          <label>شهر الأساس<select aria-label="شهر الأساس" value={baseChoice?.key ?? ""} disabled={months.length < 2} onChange={(event) => { setBaseKey(event.target.value); clearComparison(); }}>
+            {!months.length && <option value="">لا توجد أشهر</option>}
+            {months.map((month) => <option key={month.key} value={month.key}>{month.label}</option>)}
+          </select></label>
+          <label>شهر المقارنة<select aria-label="شهر المقارنة" value={targetChoice?.key ?? ""} disabled={months.length < 2} onChange={(event) => { setTargetKey(event.target.value); clearComparison(); }}>
+            {!months.length && <option value="">لا توجد أشهر</option>}
+            {months.map((month) => <option key={month.key} value={month.key}>{month.label}</option>)}
+          </select></label>
+          <button type="button" onClick={applyComparison} disabled={months.length < 2 || !baseChoice || !targetChoice || baseChoice.key === targetChoice.key}>مقارنة الشهرين</button>
+          <button type="button" className="si-compare-reset" onClick={clearComparison} disabled={!comparing}>عرض جميع الأشهر</button>
+        </div>
+        <p>الفرق = شهر المقارنة − شهر الأساس. التغير النسبي محسوب من شهر الأساس؛ فرق التحصيل بالنقاط المئوية. يمكن مقارنة شهرين غير متتاليين.</p>
+        {months.length < 2 ? <p className="si-compare-warning" role="status">تحتاج شهرين مختلفين على الأقل ضمن النتائج المحمّلة للمقارنة.</p> : baseChoice?.key === targetChoice?.key ? <p className="si-compare-warning" role="status">اختر شهرين مختلفين للمقارنة.</p> : null}
+        {comparing && baseMonth && targetMonth && <>
+          <p role="status" aria-live="polite">المقارنة النشطة: {targetMonth.label} مقابل {baseMonth.label}. الأشرطة والجدول يعرضان هذين الشهرين فقط.</p>
+          <SalesGrowthChart months={months} baseKey={baseMonth.key} targetKey={targetMonth.key} baseLabel={baseMonth.label} targetLabel={targetMonth.label} />
+          <div className="si-compare-cards">{comparisons.map((metric) => <article className="si-compare-card" key={metric.label}>
+            <h4>{metric.label}</h4>
+            <dl><div><dt>{baseMonth.label} (الأساس)</dt><dd>{comparisonValue(metric.base, metric.unit)}</dd></div><div><dt>{targetMonth.label} (المقارنة)</dt><dd>{comparisonValue(metric.target, metric.unit)}</dd></div></dl>
+            <div className={`si-compare-difference ${metric.difference === null || metric.difference === 0 ? "si-compare-neutral" : metric.difference > 0 ? "si-compare-increase" : "si-compare-decrease"}`}>
+              الفرق: <bdi>{comparisonValue(metric.difference, metric.unit, true)}</bdi>
+            </div>
+            <p>{metric.unit === "percentage" ? "الفرق بالنقاط المئوية، وليس نسبة نمو." : metric.change === null ? metric.base === 0 && metric.target !== null ? "التغير النسبي غير متاح لأن قيمة الأساس صفر." : "التغير النسبي غير متاح لعدم اكتمال البيانات." : <>التغير: <bdi>{comparisonValue(metric.change, "percentage", false)}</bdi></>}</p>
+          </article>)}</div>
+          <p>الزيادة أو النقصان وصف للفرق فقط؛ زيادة المتبقي لا تعني تحسن الأداء. الأشهر الجارية قد تكون جزئية، والمبالغ المدفوعة أرصدة معتمدة حالية لا التحصيل النقدي خلال الشهر. عند نقص القيم المالية لا تُحسب فروقها؛ يبقى عدد السجلات قابلًا للمقارنة.</p>
+        </>}
+      </section>
 
       {undatedCount > 0 && (
         <p role="status" className="mb-3 text-xs font-bold text-amber-700">
@@ -2039,7 +2235,7 @@ function MonthlySummarySection({ rows }: { rows: InvoiceRow[] }) {
           </div>
 
           <ul className="space-y-2.5">
-            {months.map((month) => {
+            {visibleMonths.map((month) => {
               const shares = monthShares(month);
               const width = maxTotal > 0 ? Math.max(2, (month.total / maxTotal) * 100) : 0;
               return (
@@ -2095,7 +2291,7 @@ function MonthlySummarySection({ rows }: { rows: InvoiceRow[] }) {
               <thead className="bg-slate-50 text-[#0B3A66]"><tr>
                 <th className="p-3">الشهر</th><th className="p-3">السجلات</th><th className="p-3">الإجمالي</th><th className="p-3">المدفوع</th><th className="p-3">المتبقي</th><th className="p-3">التحصيل</th>
               </tr></thead>
-              <tbody>{months.map((month) => (
+              <tbody>{visibleMonths.map((month) => (
                 <tr key={month.key} className="border-b border-slate-100">
                   <td className="p-3 font-bold">{month.label}</td><td className="p-3">{month.count}</td>
                   <td className="whitespace-nowrap p-3">{month.missing ? "غير مكتمل" : yerLabel(month.total)}</td>
@@ -2106,6 +2302,17 @@ function MonthlySummarySection({ rows }: { rows: InvoiceRow[] }) {
               ))}</tbody>
             </table>
           </div>
+
+          <nav className="si-monthly-pagination" aria-label="صفحات الملخص الشهري">
+            <p role="status" aria-live="polite">الصفحة {currentPage} من {pageCount} <span>— الأشهر {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, displayMonths.length)} من {displayMonths.length}</span></p>
+            <div className="si-monthly-page-buttons">
+              <button type="button" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)} aria-label="الصفحة السابقة">السابق</button>
+              {pageStart > 1 && <><button type="button" onClick={() => setPage(1)} aria-label="الصفحة 1">1</button>{pageStart > 2 && <span aria-hidden="true">…</span>}</>}
+              {pageNumbers.map((number) => <button key={number} type="button" aria-label={`الصفحة ${number}`} aria-current={number === currentPage ? "page" : undefined} className={number === currentPage ? "si-monthly-page-active" : ""} onClick={() => setPage(number)}>{number}</button>)}
+              {pageStart + pageNumbers.length - 1 < pageCount && <>{pageStart + pageNumbers.length < pageCount && <span aria-hidden="true">…</span>}<button type="button" onClick={() => setPage(pageCount)} aria-label={`الصفحة ${pageCount}`}>{pageCount}</button></>}
+              <button type="button" disabled={currentPage === pageCount} onClick={() => setPage(currentPage + 1)} aria-label="الصفحة التالية">التالي</button>
+            </div>
+          </nav>
 
           <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-3 text-[11px] font-bold text-slate-500">
             <span className="inline-flex items-center gap-1.5">
@@ -2118,6 +2325,7 @@ function MonthlySummarySection({ rows }: { rows: InvoiceRow[] }) {
           </div>
         </>
       )}
+      </div>
     </section>
   );
 }
