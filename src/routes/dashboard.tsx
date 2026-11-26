@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   Bell,
   ChevronLeft,
@@ -33,7 +33,8 @@ type DashboardNotification = {
   id: string;
   user_id: string | null;
   title: string;
-  message: string | null;
+  message?: string | null;
+  body?: string | null;
   type: string;
   created_at: string;
   payment_id: string | null;
@@ -117,6 +118,7 @@ export default function DashboardPage() {
   // حالة النوافذ والقوائم
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const notifDropdownRef = useRef<HTMLDivElement>(null);
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   const [logoutLoading, setLogoutLoading] = useState(false);
 
@@ -161,6 +163,33 @@ export default function DashboardPage() {
   const unreadCount = notifications.filter(
     (notification) => !readNotificationIds.has(notification.id),
   ).length;
+
+  // إغلاق قائمة الإشعارات تلقائيًا عند النقر خارجها أو الضغط على زر Escape
+  useEffect(() => {
+    if (!isNotifOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        notifDropdownRef.current &&
+        !notifDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsNotifOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsNotifOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isNotifOpen]);
 
   // دوران شريط الإشعارات تلقائياً كل 5.5 ثوانٍ
   useEffect(() => {
@@ -240,7 +269,7 @@ export default function DashboardPage() {
         supabase.from("orders").select("id, status").eq("user_id", authUser.id),
         supabase
           .from("notifications")
-          .select("id, user_id, title, message, type, created_at, payment_id")
+          .select("id, user_id, title, message, body, type, created_at, payment_id")
           .or(`user_id.is.null,user_id.eq.${authUser.id}`)
           .neq("type", "new_payment_submitted")
           .order("created_at", { ascending: false })
@@ -605,12 +634,10 @@ export default function DashboardPage() {
             </button>
 
             {/* 🔔 جرس مراجعة الإشعارات التفاعلي */}
-            <div className="relative">
+            <div ref={notifDropdownRef} className="relative">
               <button
-                onClick={async () => {
-                  // علّم الإشعارات الحالية كمقروءة عند الضغط على الجرس.
-                  // لا يتغير العداد إلا بعد نجاح الحفظ في قاعدة البيانات.
-                  await handleMarkAllAsRead();
+                type="button"
+                onClick={() => {
                   setIsNotifOpen((current) => !current);
                 }}
                 className="relative grid size-11 place-items-center rounded-2xl bg-white/[0.09] text-sky-300 ring-1 ring-sky-400/40 shadow-xs hover:bg-white/15 transition active:scale-95 cursor-pointer"
@@ -676,7 +703,7 @@ export default function DashboardPage() {
                               </span>
                             </span>
                             <span className="mt-1 block text-xs leading-relaxed text-sky-100/75">
-                              {notif.message ?? ""}
+                              {notif.message?.trim() || notif.body?.trim() || ""}
                             </span>
                           </button>
                         );
