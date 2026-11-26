@@ -1,8 +1,10 @@
+import { createPortal } from "react-dom";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ComponentType,
   type FormEvent,
@@ -586,6 +588,12 @@ function SalesInvoicesPage() {
   const [otherMethodTotal, setOtherMethodTotal] = useState(0);
   const [paymentsByOrder, setPaymentsByOrder] = useState<Record<string, PaymentLite[]>>({});
   const [receiptInvoice, setReceiptInvoice] = useState<InvoiceRow | null>(null);
+  const [pdfExport, setPdfExport] = useState<{
+    rows: InvoiceRow[];
+    search: string;
+    method: string;
+    exportedAt: string;
+  } | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [form, setForm] = useState<InvoiceForm>(EMPTY_FORM);
   const [loading, setLoading] = useState(true);
@@ -997,6 +1005,17 @@ function SalesInvoicesPage() {
     );
   };
 
+  const exportInvoicesPdf = () => {
+    if (loading || filteredInvoices.length === 0) return;
+    setReceiptInvoice(null);
+    setPdfExport({
+      rows: filteredInvoices.map((row) => ({ ...row, payment_methods: [...(row.payment_methods ?? [])] })),
+      search: search.trim(),
+      method: methodFilter === "all" ? "كل الطرق" : METHOD_LABEL[methodFilter] ?? methodFilter,
+      exportedAt: new Date().toLocaleString("ar-YE-u-nu-latn"),
+    });
+  };
+
   const filters: { key: MethodFilter; label: string; Icon: IconComponent }[] = [
     { key: "all", label: "كل الطرق", Icon: FileText },
     ...PAYMENT_METHODS.map((method) => ({
@@ -1011,7 +1030,7 @@ function SalesInvoicesPage() {
       dir="rtl"
       className="si-page-root min-h-[100dvh] bg-gradient-to-br from-[#F0F7FF] via-[#F8FAFC] to-[#FFF9F5] p-4 font-['Cairo',sans-serif] md:p-8"
     >
-      <style>{RECEIPT_CSS}</style>
+      <style dangerouslySetInnerHTML={{ __html: RECEIPT_CSS }} />
       <div className="mx-auto max-w-7xl space-y-6">
         <header className="flex flex-col justify-between gap-4 rounded-2xl border border-sky-100 bg-white p-5 shadow-sm md:flex-row md:items-center">
           <div className="flex items-center gap-3">
@@ -1032,7 +1051,16 @@ function SalesInvoicesPage() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={exportInvoicesPdf}
+              disabled={loading || filteredInvoices.length === 0}
+              title="تصدير الفواتير الظاهرة إلى PDF عبر حفظ كملف PDF"
+              className="flex items-center gap-2 rounded-xl bg-[#0B3A66] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#082C4E] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <FileText className="size-4" /> تصدير PDF
+            </button>
             <button
               type="button"
               onClick={() => void loadInvoices()}
@@ -1614,6 +1642,13 @@ function SalesInvoicesPage() {
 
       </div>
 
+      {pdfExport && (
+        <InvoicePdfReport
+          report={pdfExport}
+          onClose={() => setPdfExport(null)}
+        />
+      )}
+
       {/* ===== سند قبض A5 — خارج حاوية الصفحة حتى يُطبع وحده ===== */}
       {receiptInvoice && (
         <ReceiptSheet
@@ -1984,6 +2019,146 @@ function Barcode({ value }: { value: string }) {
         )}
       </svg>
     </span>
+  );
+}
+
+
+/* تقرير تصدير مستقل عن سند القبض A5، مع طباعة عربية أصلية. */
+const PDF_REPORT_CSS = `
+.si-pdf-export { position:fixed; inset:0; z-index:100; overflow:auto; padding:20px; background:#EAF0F6; color:#0F172A; font-family:Cairo,Tahoma,Arial,sans-serif; box-sizing:border-box; }
+.si-pdf-export * { box-sizing:border-box; }
+.si-pdf-toolbar { max-width:1120px; margin:0 auto 16px; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; }
+.si-pdf-toolbar p { margin:0; color:#475569; font-size:13px; }
+.si-pdf-actions { display:flex; gap:8px; }
+.si-pdf-actions button { cursor:pointer; border:1px solid #CBD5E1; border-radius:10px; padding:10px 14px; background:#FFFFFF; color:#0B3A66; font:700 13px Cairo,Tahoma,Arial,sans-serif; }
+.si-pdf-actions button:first-child { background:#0B3A66; color:#FFFFFF; border-color:#0B3A66; }
+.si-pdf-paper { max-width:1120px; margin:0 auto; padding:24px; background:#FFFFFF; border:1px solid #DCE3EB; border-radius:12px; }
+.si-pdf-head { border-bottom:2px solid #0B3A66; padding-bottom:14px; }
+.si-pdf-head h2 { margin:0 0 5px; color:#0B3A66; font-size:22px; }
+.si-pdf-head p { margin:4px 0; color:#475569; font-size:12px; overflow-wrap:anywhere; }
+.si-pdf-sums { display:flex; flex-wrap:wrap; gap:12px; margin:14px 0; }
+.si-pdf-sums div { flex:1 1 150px; padding:10px; border:1px solid #F2E6D3; background:#FFFAF1; border-radius:8px; font-size:12px; }
+.si-pdf-sums b { display:block; margin-top:4px; color:#0B3A66; font-size:15px; }
+.si-pdf-table-wrap { overflow-x:auto; }
+.si-pdf-table { width:100%; min-width:820px; table-layout:fixed; border-collapse:collapse; font-size:11px; }
+.si-pdf-table th, .si-pdf-table td { text-align:right; padding:9px 6px; border:1px solid #DCE3EB; vertical-align:top; overflow-wrap:anywhere; }
+.si-pdf-table th { background:#EDF3F9; color:#0B3A66; font-weight:700; }
+.si-pdf-table tr:nth-child(even) td { background:#F8FAFC; }
+.si-pdf-num { direction:ltr; unicode-bidi:isolate; display:inline-block; }
+.si-pdf-foot { margin-top:14px; font-size:11px; color:#475569; }
+@media print {
+  @page siInvoiceReport { size:A4 landscape; margin:12mm; }
+  body:has(> .si-pdf-export) > *:not(.si-pdf-export) { display:none !important; }
+  html:has(.si-pdf-export), body:has(> .si-pdf-export) { margin:0 !important; padding:0 !important; height:auto !important; overflow:visible !important; background:#FFFFFF !important; }
+  .si-pdf-export { position:static !important; display:block !important; overflow:visible !important; padding:0 !important; background:#FFFFFF !important; page:siInvoiceReport; }
+  .si-pdf-toolbar { display:none !important; }
+  .si-pdf-paper { max-width:none; margin:0; padding:0; border:0; border-radius:0; }
+  .si-pdf-head, .si-pdf-sums { break-inside:avoid; }
+  .si-pdf-table-wrap { overflow:visible !important; }
+  .si-pdf-table { min-width:0; font-size:10px; }
+  .si-pdf-table th, .si-pdf-table td { padding:6px 5px; }
+  .si-pdf-table thead { display:table-header-group; }
+  .si-pdf-table tr { break-inside:avoid; page-break-inside:avoid; }
+  .si-pdf-foot { break-inside:avoid; }
+  .si-pdf-export { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+}
+`;
+
+function InvoicePdfReport({ report, onClose }: {
+  report: { rows: InvoiceRow[]; search: string; method: string; exportedAt: string };
+  onClose: () => void;
+}) {
+  const reportTotals = {
+    total: sumComplete(report.rows, "total_yer"),
+    paid: sumComplete(report.rows, "paid_yer"),
+    remaining: sumComplete(report.rows, "remaining_yer"),
+  };
+  const printReport = () => window.print();
+  const autoPrinted = useRef(false);
+
+  useEffect(() => {
+    // Keep the preview after print/cancel so the user can retry or close it.
+    const oldTitle = document.title;
+    const oldOverflow = document.body.style.overflow;
+    document.title = "فواتير-المبيعات";
+    document.body.style.overflow = "hidden";
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    let cancelled = false;
+    let firstFrame = 0;
+    let secondFrame = 0;
+    const ready = async () => {
+      if (document.fonts) await document.fonts.ready;
+      if (cancelled) return;
+      firstFrame = window.requestAnimationFrame(() => {
+        secondFrame = window.requestAnimationFrame(() => {
+          if (cancelled || autoPrinted.current) return;
+          autoPrinted.current = true;
+          window.print();
+        });
+      });
+    };
+    void ready();
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(firstFrame);
+      window.cancelAnimationFrame(secondFrame);
+      document.title = oldTitle;
+      document.body.style.overflow = oldOverflow;
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, []);
+
+  if (typeof document === "undefined") return null;
+  return createPortal(
+    <section className="si-pdf-export" dir="rtl" role="dialog" aria-modal="true" aria-label="تصدير فواتير المبيعات إلى PDF">
+      <style dangerouslySetInnerHTML={{ __html: PDF_REPORT_CSS }} />
+      <div className="si-pdf-toolbar">
+        <p>اختر «حفظ كملف PDF» من وجهة الطباعة. التقرير يشمل الفواتير الظاهرة فقط.</p>
+        <div className="si-pdf-actions">
+          <button type="button" onClick={printReport}>حفظ / طباعة PDF</button>
+          <button type="button" onClick={onClose}>إغلاق المعاينة</button>
+        </div>
+      </div>
+      <article className="si-pdf-paper">
+        <header className="si-pdf-head">
+          <h2>السوق الشامل — تقرير فواتير المبيعات</h2>
+          <p>وقت التصدير: {report.exportedAt} | عدد السجلات: {report.rows.length}</p>
+          <p>طريقة الدفع: {report.method} | البحث: {report.search || "بدون بحث"}</p>
+          <p>نطاق التقرير: السجلات المحمّلة والظاهرة حسب البحث والفلتر، وليس كامل قاعدة البيانات.</p>
+        </header>
+        <div className="si-pdf-sums">
+          <div>الإجمالي بالريال اليمني<b>{reportTotals.total == null ? "بيانات غير مكتملة" : yerLabel(reportTotals.total)}</b></div>
+          <div>المدفوع<b>{reportTotals.paid == null ? "بيانات غير مكتملة" : yerLabel(reportTotals.paid)}</b></div>
+          <div>المتبقي عند التسليم<b>{reportTotals.remaining == null ? "بيانات غير مكتملة" : yerLabel(reportTotals.remaining)}</b></div>
+        </div>
+        <div className="si-pdf-table-wrap">
+          <table className="si-pdf-table">
+            <colgroup><col style={{width:"4%"}} /><col style={{width:"15%"}} /><col style={{width:"16%"}} /><col style={{width:"12%"}} /><col style={{width:"11%"}} /><col style={{width:"12%"}} /><col style={{width:"10%"}} /><col style={{width:"10%"}} /><col style={{width:"10%"}} /></colgroup>
+            <thead><tr><th>#</th><th>رقم الفاتورة</th><th>العميل</th><th>كود الشحنة</th><th>التاريخ</th><th>طريقة الدفع</th><th>الإجمالي (ر.ي)</th><th>المدفوع (ر.ي)</th><th>المتبقي (ر.ي)</th></tr></thead>
+            <tbody>
+              {report.rows.map((row, index) => (
+                <tr key={`${row.source ?? "invoice"}-${row.id}-${index}`}>
+                  <td>{index + 1}</td>
+                  <td><span className="si-pdf-num">{row.invoice_number}</span></td>
+                  <td>{row.client || "غير مسجل"}</td>
+                  <td><span className="si-pdf-num">{row.tracking_code || "—"}</span></td>
+                  <td>{dateLabel(row.created_at)}</td>
+                  <td>{(row.payment_methods ?? []).map((key) => METHOD_LABEL[key] ?? key).join("، ") || "غير مسجلة"}</td>
+                  <td><span className="si-pdf-num">{row.total_yer == null ? "غير مسجل" : money(row.total_yer, 0)}</span></td>
+                  <td><span className="si-pdf-num">{row.paid_yer == null ? "غير مسجل" : money(row.paid_yer, 0)}</span></td>
+                  <td><span className="si-pdf-num">{row.remaining_yer == null ? "غير مسجل" : money(row.remaining_yer, 0)}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <footer className="si-pdf-foot">تقرير فواتير وليس سند قبض مستقلًا. الدفعات المحتسبة هي المعتمدة فقط. القيم غير المتوفرة موضحة ولا تُعامل كصفر.</footer>
+      </article>
+    </section>,
+    document.body,
   );
 }
 
