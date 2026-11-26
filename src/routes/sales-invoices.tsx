@@ -39,7 +39,7 @@ import { checkPermission } from "@/lib/permissions";
 import { supabase } from "@/integrations/supabase/client";
 
 /** أيقونة lucide بأي إصدار — بدون الاعتماد على نوع LucideIcon */
-type IconComponent = ComponentType<{ className?: string }>;
+type IconComponent = ComponentType<{ className?: string | undefined }>;
 
 /* =========================================================
    أنماط سند القبض A5 — مدمجة داخل الملف حتى لا يحتاج
@@ -287,6 +287,9 @@ export const Route = createFileRoute("/sales-invoices")({
 });
 
 type InvoiceRow = {
+  product_items?: ProductSaleItem[] | undefined;
+  product_items_invalid?: number;
+  product_items_error?: boolean;
   id: string;
   invoice_number: string;
   client: string | null;
@@ -431,6 +434,165 @@ function monthShares(month: MonthSummary) {
   const paid = Math.min(100, (month.paid / month.total) * 100);
   const rest = Math.min(100 - paid, (month.remaining / month.total) * 100);
   return { paid, rest };
+}
+
+/* تحليل المنتجات: مصدر قابل للتعديل، ولا تُفترض كمية أو قيمة غير مسجلة. */
+const PRODUCT_ITEM_SOURCE = {
+  table: "order_items", orderId: "order_id", itemId: "id",
+  productId: "product_id", variantId: "variant_id", sku: "sku",
+  name: "product_name", quantity: "quantity", totalYer: "total_yer",
+} as const;
+
+type ProductSaleItem = { key: string; name: string; quantity: number | null; revenue: number | null };
+type ProductStat = { key: string; name: string; quantity: number; revenue: number; orders: number; missingQuantity: number; missingRevenue: number };
+type ProductMonth = { key: string; label: string; products: ProductStat[]; orders: number; covered: number; missingOrders: number; invalidItems: number; missingQuantity: number; missingRevenue: number };
+type ProductAnalysis = { months: ProductMonth[]; duplicates: number; invalidDates: number; unlinked: number; loadError: boolean };
+
+function nonNegativeNumber(value: unknown): number | null {
+  if (value == null || (typeof value !== "number" && typeof value !== "string") || String(value).trim() === "") return null;
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0 ? number : null;
+}
+
+function normalizeProductItem(raw: Record<string, unknown>): ProductSaleItem | null {
+  const cfg = PRODUCT_ITEM_SOURCE;
+  const text = (value: unknown) => typeof value === "string" || typeof value === "number" ? String(value).trim() : "";
+  const id = text(raw[cfg.productId]);
+  const sku = text(raw[cfg.sku]);
+  const variant = text(raw[cfg.variantId]);
+  // لا ندمج منتجات مختلفة بالاسم وحده، ولا نحول إجمالي الطلب إلى إيراد منتج.
+  if (!id && !sku) return null;
+  const key = JSON.stringify([id ? "id" : "sku", id || sku, variant]);
+  return { key, name: (text(raw[cfg.name]) || (sku ? `SKU: ${sku}` : `منتج ${id}`)) + (variant ? ` / ${variant}` : ""), quantity: nonNegativeNumber(raw[cfg.quantity]), revenue: nonNegativeNumber(raw[cfg.totalYer]) };
+}
+
+async function attachProductItems(rows: InvoiceRow[]): Promise<InvoiceRow[]> {
+  const ids = [...new Set(rows.map((row) => row.order_id).filter((id): id is string => Boolean(id)))];
+  if (!ids.length) return rows;
+  const byOrder = new Map<string, ProductSaleItem[]>();
+  const invalid = new Map<string, number>();
+  const seen = new Set<string>();
+  try {
+    const cfg = PRODUCT_ITEM_SOURCE;
+    // دفعات صغيرة + ترقيم صفحات؛ لا نكتفي بحد Supabase الافتراضي.
+    for (let start = 0; start < ids.length; start += 80) {
+      const batch = ids.slice(start, start + 80);
+      let finished = false;
+      for (let offset = 0; offset <= 10000; offset += 500) {
+        const { data, error } = await (supabase as any).from(cfg.table).select("*").in(cfg.orderId, batch).order(cfg.itemId, { ascending: true }).range(offset, offset + 499);
+        if (error) throw error;
+        if (!Array.isArray(data)) throw new Error("Invalid product item response");
+        if (offset === 10000 && data.length > 0) throw new Error("Product item safety limit exceeded");
+        for (const record of data as Record<string, unknown>[]) {
+          const orderId = String(record[cfg.orderId] ?? "");
+          if (!batch.includes(orderId)) continue;
+          const itemId = String(record[cfg.itemId] ?? "");
+          if (itemId) {
+            const dedupKey = JSON.stringify([orderId, itemId]);
+            if (seen.has(dedupKey)) continue;
+            seen.add(dedupKey);
+          }
+          const item = normalizeProductItem(record);
+          if (!item) { invalid.set(orderId, (invalid.get(orderId) ?? 0) + 1); continue; }
+          const list = byOrder.get(orderId) ?? [];
+          list.push(item);
+          byOrder.set(orderId, list);
+        }
+        if (data.length < 500) { finished = true; break; }
+      }
+      if (!finished) throw new Error("Incomplete product item pages");
+    }
+    return rows.map((row) => ({ ...row, product_items: row.order_id ? byOrder.get(row.order_id) ?? [] : undefined, product_items_invalid: row.order_id ? invalid.get(row.order_id) ?? 0 : 0, product_items_error: false }));
+  } catch (error) {
+    console.error("Could not load product items for monthly analysis:", error);
+    return rows.map((row) => ({ ...row, product_items: undefined, product_items_error: Boolean(row.order_id) }));
+  }
+}
+
+function buildProductMonths(rows: InvoiceRow[]): ProductAnalysis {
+  const buckets = new Map<string, ProductMonth & { stats: Map<string, ProductStat> }>();
+  const seenOrders = new Set<string>();
+  let duplicates = 0, invalidDates = 0, unlinked = 0;
+  const loadError = rows.some((row) => row.product_items_error);
+  // عند تكرار فواتير الطلب، يُحسب مرة واحدة بتاريخ أحدث سجل ظاهر.
+  for (const row of [...rows].sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? "") || a.id.localeCompare(b.id))) {
+    if (!row.order_id) { unlinked++; continue; }
+    if (seenOrders.has(row.order_id)) { duplicates++; continue; }
+    const key = monthKeyOf(row.created_at);
+    if (!key) { invalidDates++; continue; }
+    seenOrders.add(row.order_id);
+    const bucket = buckets.get(key) ?? { key, label: MONTH_FORMATTER.format(new Date(row.created_at ?? "")), products: [], orders: 0, covered: 0, missingOrders: 0, invalidItems: 0, missingQuantity: 0, missingRevenue: 0, stats: new Map<string, ProductStat>() };
+    bucket.orders++;
+    const items = row.product_items ?? [];
+    const invalid = row.product_items_invalid ?? 0;
+    bucket.invalidItems += invalid;
+    if (!items.length || row.product_items_error || invalid > 0) bucket.missingOrders++;
+    else bucket.covered++;
+    const seenProducts = new Set<string>();
+    for (const item of items) {
+      const stat = bucket.stats.get(item.key) ?? { key: item.key, name: item.name, quantity: 0, revenue: 0, orders: 0, missingQuantity: 0, missingRevenue: 0 };
+      if (!seenProducts.has(item.key)) { stat.orders++; seenProducts.add(item.key); }
+      if (item.quantity === null) { stat.missingQuantity++; bucket.missingQuantity++; } else stat.quantity += item.quantity;
+      if (item.revenue === null) { stat.missingRevenue++; bucket.missingRevenue++; } else stat.revenue += item.revenue;
+      bucket.stats.set(item.key, stat);
+    }
+    buckets.set(key, bucket);
+  }
+  return { months: [...buckets.values()].sort((a, b) => b.key.localeCompare(a.key)).map(({ stats, ...month }) => ({ ...month, products: [...stats.values()] })), duplicates, invalidDates, unlinked, loadError };
+}
+
+function rankProductMonth(month: ProductMonth, metric: "quantity" | "revenue"): ProductStat[] | null {
+  if (month.missingOrders || month.invalidItems || (metric === "quantity" ? month.missingQuantity : month.missingRevenue)) return null;
+  return [...month.products].sort((a, b) => b[metric] - a[metric] || a.key.localeCompare(b.key));
+}
+
+const PRODUCT_ANALYSIS_CSS = `
+.si-products{box-sizing:border-box;min-width:0;border:1px solid #F2E6D3;border-radius:16px;background:#FFFAF1;padding:20px;color:#0B3A66;}
+.si-products *{box-sizing:border-box}.si-products h2,.si-products h3{margin:0 0 10px;font-weight:900}.si-products p{margin:8px 0;font-size:12px;line-height:1.8;color:#475569}
+.si-products-controls{display:flex;flex-wrap:wrap;gap:12px;margin:16px 0}.si-products-controls label{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:700;min-width:0}.si-products-controls select{max-width:100%;border:1px solid #F2E6D3;border-radius:10px;padding:9px;background:#fff;color:#0B3A66;font:inherit;min-height:40px}.si-products-controls select:focus-visible{outline:2px solid #0F4C81;outline-offset:2px}
+.si-products-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0}.si-products-kpis div{padding:12px;background:#fff;border:1px solid #F2E6D3;border-radius:12px;font-size:12px}.si-products-kpis b{display:block;margin-top:6px;font-size:16px;overflow-wrap:anywhere}
+.si-products-warning{padding:10px;border:1px solid #F2E6D3;border-radius:10px;background:#FFF4D6;color:#854D0E!important}.si-products-table-wrap{overflow-x:auto;max-width:100%}.si-products table{border-collapse:collapse;width:100%;min-width:580px;font-size:12px;background:#fff}.si-products th,.si-products td{padding:12px 10px;border-bottom:1px solid #F2E6D3;text-align:right;vertical-align:top}.si-products th{background:#F5EBD9;color:#0B3A66}.si-products td:nth-child(2){overflow-wrap:anywhere;min-width:160px;max-width:330px}.si-product-mobile{display:none;font-size:10px;line-height:1.7;color:#475569;margin-top:4px}.si-product-track{height:6px;background:#F2E6D3;border-radius:9px;margin-top:6px;overflow:hidden}.si-product-fill{height:100%;background:#0F4C81}.si-products-month{margin-top:18px}.si-products-empty{padding:24px;text-align:center}
+
+.si-product-leaders{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin:14px 0}.si-product-leader{border:1px solid #F2E6D3;background:#fff;border-radius:12px;padding:10px 12px;min-width:0}.si-product-leader span{display:block;font-size:11px;font-weight:700;color:#9A6B2F}.si-product-leader b{display:block;margin-top:4px;font-size:12.5px;color:#0B3A66;overflow-wrap:anywhere}.si-product-leader em{display:block;margin-top:3px;font-style:normal;font-size:11px;color:#475569}
+@media print{.si-product-leaders{grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;margin:6px 0}.si-product-leader{padding:4px;border-color:#DDD}.si-product-leader b{font-size:8px}.si-product-leader span,.si-product-leader em{font-size:7px}}
+@media(max-width:600px){.si-products{padding:14px}.si-products-kpis{grid-template-columns:1fr}.si-products-controls label{flex:1 1 130px}.si-product-mobile{display:block}.si-products table{min-width:0;font-size:11px}.si-products th,.si-products td{padding:8px 5px}.si-products td:nth-child(2){min-width:0;max-width:none}.si-products th:nth-child(5),.si-products td:nth-child(5),.si-products th:nth-child(6),.si-products td:nth-child(6){display:none}}
+@media print{.si-product-mobile{display:none}.si-products{padding:0;border:0;border-radius:0;margin:12px 0;background:white}.si-products table{min-width:0;font-size:9px;table-layout:fixed}.si-products th,.si-products td{padding:6px;overflow-wrap:anywhere}.si-products td:nth-child(2){min-width:0;max-width:none}.si-products thead{display:table-header-group}.si-products tr{break-inside:avoid}.si-products h3{break-after:avoid}.si-products p{font-size:9px}.si-product-track{display:none}.si-products-warning{background:white}.si-products-controls{display:none}}
+`;
+
+function ProductRankingTable({ month, metric, limit }: { month: ProductMonth; metric: "quantity" | "revenue"; limit: number }) {
+  const ranked = rankProductMonth(month, metric);
+  if (!ranked) return <p className="si-products-warning">الترتيب حسب {metric === "quantity" ? "الكمية" : "قيمة المبيعات"} غير متاح: بيانات هذا الشهر غير مكتملة. طلبات بلا تفاصيل مكتملة: {month.missingOrders}؛ بنود بلا هوية: {month.invalidItems}؛ بنود بلا كمية: {month.missingQuantity}؛ بنود بلا قيمة: {month.missingRevenue}.</p>;
+  if (ranked.length === 0) return <p className="si-products-empty">لا توجد بنود منتجات متاحة لهذا الشهر.</p>;
+  const total = ranked.reduce((sum, product) => sum + product[metric], 0);
+  const max = ranked[0]?.[metric] ?? 0;
+  const selected = limit > 0 ? ranked.slice(0, limit) : ranked;
+  return <div className="si-products-table-wrap"><table><thead><tr><th>الترتيب</th><th>المنتج</th><th>الكمية</th><th>القيمة (ر.ي)</th><th>الطلبات</th><th>حصة الشهر</th></tr></thead><tbody>{selected.map((product, index) => {
+    const rank = ranked.findIndex((candidate) => candidate[metric] === product[metric]) + 1;
+    const share = total > 0 ? product[metric] / total * 100 : null;
+    return <tr key={product.key}><td>{rank}{index > 0 && ranked[index - 1]?.[metric] === product[metric] ? " (تعادل)" : ""}</td><td>{product.name}<span className="si-product-mobile">{product.orders} طلب — الحصة: {share === null ? "غير متاحة" : `${money(share, 1)}%`}</span><div className="si-product-track" aria-hidden="true"><div className="si-product-fill" style={{ width: `${max > 0 ? product[metric] / max * 100 : 0}%` }} /></div></td><td>{product.missingQuantity ? "غير مكتمل" : money(product.quantity)}</td><td>{product.missingRevenue ? "غير مكتمل" : money(product.revenue, 0)}</td><td>{product.orders}</td><td>{share === null ? "غير متاحة" : `${money(share, 1)}%`}</td></tr>;
+  })}</tbody></table></div>;
+}
+
+function MonthlyProductsSection({ rows, loading = false, forReport = false }: { rows: InvoiceRow[]; loading?: boolean; forReport?: boolean }) {
+  const analysis = useMemo(() => buildProductMonths(rows), [rows]);
+  const [monthKey, setMonthKey] = useState("");
+  const [metric, setMetric] = useState<"quantity" | "revenue">("quantity");
+  const [limit, setLimit] = useState(10);
+  const selected = analysis.months.find((month) => month.key === monthKey) ?? analysis.months[0];
+  const ranked = selected ? rankProductMonth(selected, metric) : null;
+  const leader = ranked?.[0];
+  const tied = leader ? (ranked ?? []).filter((product) => product[metric] === leader[metric]).length : 0;
+  return <section className="si-products" aria-label="تحليل المنتجات الأكثر مبيعاً لكل شهر" dir="rtl"><style dangerouslySetInnerHTML={{ __html: PRODUCT_ANALYSIS_CSS }} /><h2>تحليل المنتجات الأكثر مبيعًا لكل شهر</h2><p>السجلات المحمّلة والظاهرة فقط حسب البحث وطريقة الدفع. الشهر حسب إنشاء الفاتورة/الطلب بتوقيت اليمن، وليس تاريخ دفع المبلغ. الكميات بنود الطلبات، وليست صافي المبيعات بعد الإلغاء أو المرتجعات.</p><p>هوية المنتج حسب المعرّف أو SKU مع فصل المتغيرات. قيمة المبيعات هي إجمالي بند المنتج المسجل بالريال اليمني فقط، وليست إجمالي الطلب أو أرباحًا.</p>
+  {(analysis.duplicates > 0 || analysis.invalidDates > 0 || analysis.unlinked > 0) && <p>مستبعد: {analysis.unlinked} سجل بلا طلب مرتبط، {analysis.invalidDates} بلا تاريخ صحيح، {analysis.duplicates} سجل مكرر لنفس الطلب (احتُسب أحدث سجل ظاهر مرة واحدة).</p>}
+  {loading ? <p role="status">جارٍ تحميل تفاصيل المنتجات…</p> : <>
+  {analysis.loadError && <p className="si-products-warning" role="status">تعذر تحميل تفاصيل المنتجات. تحقق من جدول order_items وأسماء الحقول وسياسات RLS؛ الفواتير وميزات الطباعة الأخرى لم تتغير.</p>}
+  {!analysis.months.length ? <p className="si-products-empty">لا توجد سجلات مرتبطة بطلبات ذات تاريخ صحيح للتحليل.</p> : forReport ? <>{analysis.months.map((month) => <div className="si-products-month" key={month.key}><h3>{month.label} — أعلى 10 منتجات حسب الكمية</h3><p>تفاصيل متاحة: {month.covered} من {month.orders} طلب. الحصة من جميع منتجات الشهر؛ التعادل يحتفظ بنفس الترتيب.</p><ProductRankingTable month={month} metric="quantity" limit={10} /></div>)}</> : selected && <>
+  <div className="si-products-leaders">{analysis.months.map((month) => { const best = rankProductMonth(month, metric)?.[0]; return <div className="si-product-leader" key={month.key}><span>{month.label}</span><b>{best && best[metric] > 0 ? best.name : rankProductMonth(month, metric) ? "لا توجد مبيعات موجبة" : "غير مكتمل"}</b><em>{best && best[metric] > 0 ? `${money(best[metric], metric === "quantity" ? 2 : 0)}${metric === "revenue" ? " ر.ي" : ""} — ${money(month.covered)} من ${money(month.orders)} طلب` : rankProductMonth(month, metric) ? "لا توجد قيمة موجبة للمقياس" : "الترتيب موقوف لنقص البيانات"}</em></div>; })}</div>
+  <div className="si-products-controls"><label>الشهر<select value={selected.key} onChange={(event) => setMonthKey(event.target.value)}>{analysis.months.map((month) => <option key={month.key} value={month.key}>{month.label}</option>)}</select></label><label>ترتيب حسب<select value={metric} onChange={(event) => setMetric(event.target.value === "revenue" ? "revenue" : "quantity")}><option value="quantity">الكمية المباعة</option><option value="revenue">قيمة المبيعات بالريال اليمني</option></select></label><label>عدد المنتجات<select value={limit} onChange={(event) => setLimit(Number(event.target.value))}><option value={5}>أعلى 5</option><option value={10}>أعلى 10</option><option value={0}>جميع المنتجات</option></select></label></div>
+  <div className="si-products-kpis"><div>الأكثر مبيعًا<b>{leader && leader[metric] > 0 ? `${leader.name}${tied > 1 ? ` (تعادل ${tied} منتجات)` : ""}` : ranked ? "لا توجد مبيعات موجبة" : "غير متاح"}</b></div><div>إجمالي {metric === "quantity" ? "الكمية" : "قيمة المبيعات"}<b>{ranked ? `${money(ranked.reduce((sum, product) => sum + product[metric], 0), metric === "quantity" ? 2 : 0)}${metric === "revenue" ? " ر.ي" : ""}` : "غير مكتمل"}</b></div><div>الطلبات ذات التفاصيل المتاحة<b>{selected.covered} / {selected.orders}</b></div></div><ProductRankingTable month={selected} metric={metric} limit={limit} /><p>حصة المنتج من إجمالي الشهر حسب مقياس الترتيب، وليس من أعلى النتائج فقط. عند نقص بيانات المقياس أو تفاصيل الطلبات يُوقف الترتيب؛ عدد الطلبات لكل منتج لا يُجمع كعدد طلبات الشهر.</p>
+  </>}
+  </>}
+  </section>;
 }
 
 /* =========================================================
@@ -807,7 +969,8 @@ function SalesInvoicesPage() {
 
     const balanced = await attachOrderBalances([...invoiceRows, ...orderInvoices]);
     balanced.rows.sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
-    setInvoices(balanced.rows);
+    const withProducts = await attachProductItems(balanced.rows);
+    setInvoices(withProducts);
     setMethodTotals(balanced.methodTotals);
     setOtherMethodTotal(balanced.otherTotal);
     setPaymentsByOrder(balanced.paymentsByOrder);
@@ -1263,6 +1426,7 @@ function SalesInvoicesPage() {
         </section>
 
         <MonthlySummarySection rows={filteredInvoices} />
+        <MonthlyProductsSection rows={filteredInvoices} loading={loading} />
 
         {/* ===== طرق الدفع ===== */}
         <section
@@ -2468,6 +2632,7 @@ function InvoicePdfReport({ report, onClose }: {
             </div>
           </section>
         )}
+        <MonthlyProductsSection rows={report.rows} forReport />
         <div className="si-pdf-table-wrap">
           <table className="si-pdf-table">
             <colgroup><col style={{width:"4%"}} /><col style={{width:"15%"}} /><col style={{width:"16%"}} /><col style={{width:"12%"}} /><col style={{width:"11%"}} /><col style={{width:"12%"}} /><col style={{width:"10%"}} /><col style={{width:"10%"}} /><col style={{width:"10%"}} /></colgroup>
