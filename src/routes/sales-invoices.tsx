@@ -38,10 +38,7 @@ import {
 import { PermissionRouteGuard } from "@/components/admin/PermissionRouteGuard";
 import { checkPermission } from "@/lib/permissions";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  createPaymentMethodNormalizer,
-  getPaymentMethodName,
-} from "@/lib/payment-methods";
+import { createPaymentMethodNormalizer, getPaymentMethodName } from "@/lib/payment-methods";
 
 /** أيقونة lucide بأي إصدار — بدون الاعتماد على نوع LucideIcon */
 type IconComponent = ComponentType<{ className?: string | undefined }>;
@@ -658,12 +655,42 @@ const PAYMENT_METHODS: {
   aliases: string[];
   Icon: IconComponent;
 }[] = [
-  { key: "najm", label: "النجم", aliases: ["najm", "alnajm", "al-najm", "najm cash", "النجم", "نجم", "حوالة النجم"], Icon: Star },
-  { key: "karimi", label: "الكريمي", aliases: ["karimi", "kuraimi", "al-kuraimi", "alkuraimi", "الكريمي", "كريمي", "الكريمي جوال / حاسب"], Icon: Landmark },
-  { key: "onecash", label: "ون كاش", aliases: ["onecash", "one cash", "one-cash", "ون كاش", "ونكاش", "one", "ون كاش OneCash"], Icon: Wallet },
-  { key: "jawali", label: "جوالي", aliases: ["jawali", "jawaly", "jawal", "جوالي", "جوال", "جوالي Jawali"], Icon: Smartphone },
-  { key: "floosak", label: "فلوسك", aliases: ["floosak", "floosak cash", "فلوسك", "فلوس", "فلوسك Floosak"], Icon: Banknote },
-  { key: "jaib", label: "جيب", aliases: ["jaib", "jayb", "jeeb", "جيب"], Icon: CreditCard },
+  {
+    key: "najm",
+    label: "النجم",
+    aliases: ["najm", "alnajm", "al-najm", "najm cash", "النجم", "نجم", "حوالة النجم"],
+    Icon: Star,
+  },
+  {
+    key: "karimi",
+    label: "الكريمي",
+    aliases: ["karimi", "kuraimi", "al-kuraimi", "alkuraimi", "الكريمي", "كريمي", "الكريمي جوال / حاسب"],
+    Icon: Landmark,
+  },
+  {
+    key: "onecash",
+    label: "ون كاش",
+    aliases: ["onecash", "one cash", "one-cash", "ون كاش", "ونكاش", "one", "ون كاش OneCash"],
+    Icon: Wallet,
+  },
+  {
+    key: "jawali",
+    label: "جوالي",
+    aliases: ["jawali", "jawaly", "jawal", "جوالي", "جوال", "جوالي Jawali"],
+    Icon: Smartphone,
+  },
+  {
+    key: "floosak",
+    label: "فلوسك",
+    aliases: ["floosak", "floosak cash", "فلوسك", "فلوس", "فلوسك Floosak"],
+    Icon: Banknote,
+  },
+  {
+    key: "jaib",
+    label: "جيب",
+    aliases: ["jaib", "jayb", "jeeb", "جيب"],
+    Icon: CreditCard,
+  },
 ];
 
 const normalizeMethod = createPaymentMethodNormalizer(PAYMENT_METHODS);
@@ -679,6 +706,15 @@ type Balances = {
   methodTotals: Record<string, number>;
   paymentsByOrder: Record<string, PaymentLite[]>;
   otherTotal: number;
+};
+
+type ApprovedPaymentRow = {
+  id?: string | null;
+  order_id?: string | null;
+  amount?: number | string | null;
+  payment_method?: unknown;
+  wallet?: unknown;
+  method?: unknown;
 };
 
 const PAYMENT_METHOD_COLUMN_OPTIONS = [
@@ -706,7 +742,7 @@ async function loadApprovedPayments(
   orderIds: string[],
   from: number,
   to: number,
-): Promise<any[]> {
+): Promise<ApprovedPaymentRow[]> {
   let missingColumnError: unknown;
 
   for (const methodColumns of PAYMENT_METHOD_COLUMN_OPTIONS) {
@@ -720,7 +756,7 @@ async function loadApprovedPayments(
       .order("id", { ascending: true })
       .range(from, to);
 
-    if (!error) return data ?? [];
+    if (!error) return (data ?? []) as ApprovedPaymentRow[];
     if (!isMissingPaymentMethodColumn(error)) throw error;
     missingColumnError = error;
   }
@@ -826,7 +862,8 @@ async function attachOrderBalances(rows: InvoiceRow[]): Promise<Balances> {
             methodTotals[methodKey] = (methodTotals[methodKey] ?? 0) + value;
           } else {
             otherTotal += value;
-            const unknownMethods = unclassifiedMethodsByOrderId.get(orderId) ?? new Set<string>();
+            const unknownMethods =
+              unclassifiedMethodsByOrderId.get(orderId) ?? new Set<string>();
             unknownMethods.add(methodLabel);
             unclassifiedMethodsByOrderId.set(orderId, unknownMethods);
           }
@@ -891,12 +928,12 @@ async function attachOrderBalances(rows: InvoiceRow[]): Promise<Balances> {
 
       return {
         ...row,
-          customer_phone: order?.customer_phone ?? row.customer_phone ?? null,
-          payment_methods: Array.from(methodsByOrderId.get(row.order_id) ?? []),
-          unclassified_payment_methods: Array.from(
-            unclassifiedMethodsByOrderId.get(row.order_id) ?? [],
-          ),
-          // The order's total_cost_yer is the sole source of the displayed total.
+        customer_phone: order?.customer_phone ?? row.customer_phone ?? null,
+        payment_methods: Array.from(methodsByOrderId.get(row.order_id) ?? []),
+        unclassified_payment_methods: Array.from(
+          unclassifiedMethodsByOrderId.get(row.order_id) ?? [],
+        ),
+        // The order's total_cost_yer is the sole source of the displayed total.
         total_yer: hasValidTotal ? total : null,
         paid_yer: paid,
         remaining_yer:
