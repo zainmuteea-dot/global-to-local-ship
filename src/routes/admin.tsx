@@ -28,6 +28,7 @@ import {
   Plane,
   PlusCircle,
   Printer,
+  Receipt,
   RefreshCw,
   ScanLine,
   Search,
@@ -400,6 +401,7 @@ export default function AdminOperationsPage() {
   const [now, setNow] = useState(() => new Date());
   const [pendingPaymentsCount, setPendingPaymentsCount] = useState(0);
   const [newOrdersCount, setNewOrdersCount] = useState(0);
+  const [salesInvoicesOrdersCount, setSalesInvoicesOrdersCount] = useState(0);
   const [routeOrders, setRouteOrders] = useState<Array<{ id: string; tracking_code?: string; status?: string }>>([]);
   const [backupLoading, setBackupLoading] = useState(false);
   const [isPosOpen, setIsPosOpen] = useState(false);
@@ -647,6 +649,64 @@ export default function AdminOperationsPage() {
     }, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  const fetchSalesInvoicesOrdersCount = async () => {
+    try {
+      const clearedAt = typeof window !== "undefined" ? localStorage.getItem("sales_invoices_cleared_at") : null;
+      let query = supabase
+        .from("orders")
+        .select("id", { count: "exact", head: true })
+        .in("status", ["new", "pending", "جديد", "NEW", "PENDING"]);
+
+      if (clearedAt) {
+        query = query.gt("created_at", clearedAt);
+      }
+
+      const { count, error } = await query;
+      if (!error && typeof count === "number") {
+        setSalesInvoicesOrdersCount(count);
+      }
+    } catch (err) {
+      console.error("فشل جلب عدد طلبات فواتير المبيعات:", err);
+    }
+  };
+
+  useEffect(() => {
+    void fetchSalesInvoicesOrdersCount();
+    const interval = setInterval(() => {
+      void fetchSalesInvoicesOrdersCount();
+    }, 30000);
+
+    const channel = supabase
+      .channel("admin_sales_invoices_orders_realtime")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "orders" },
+        (payload) => {
+          const newRecord = payload.new as { status?: string } | null;
+          const status = String(newRecord?.status ?? "").toLowerCase();
+          if (["new", "pending", "جديد"].includes(status)) {
+            setSalesInvoicesOrdersCount((prev) => prev + 1);
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const handleSalesInvoicesClick = () => {
+    try {
+      if (typeof window !== "undefined") {
+        localStorage.setItem("sales_invoices_cleared_at", new Date().toISOString());
+      }
+    } catch {}
+    setSalesInvoicesOrdersCount(0);
+    navigateTo("/sales-invoices");
+  };
 
   const fetchRouteOrders = async () => {
     try {
@@ -1320,6 +1380,28 @@ export default function AdminOperationsPage() {
                 }}
               >
                 {newOrdersCount}
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={handleSalesInvoicesClick}
+            className="relative inline-flex min-h-10 items-center gap-2 bg-[#198754] text-white font-bold px-5 py-3 rounded-[10px] text-[16px] transition-opacity hover:opacity-90 active:scale-[0.98] shadow-sm"
+          >
+            <Receipt className="size-5 shrink-0" aria-hidden="true" />
+            <span>فواتير المبيعات</span>
+            {salesInvoicesOrdersCount > 0 && (
+              <span
+                className="absolute -top-2 -left-2 flex items-center justify-center rounded-full text-white font-bold animate-pulse shadow-md"
+                style={{
+                  backgroundColor: "#DC3545",
+                  width: "20px",
+                  height: "20px",
+                  fontSize: "11px",
+                  lineHeight: 1,
+                }}
+              >
+                {salesInvoicesOrdersCount}
               </span>
             )}
           </button>
