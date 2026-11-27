@@ -38,6 +38,10 @@ import {
 import { PermissionRouteGuard } from "@/components/admin/PermissionRouteGuard";
 import { checkPermission } from "@/lib/permissions";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  createPaymentMethodNormalizer,
+  getPaymentMethodName,
+} from "@/lib/payment-methods";
 
 /** أيقونة lucide بأي إصدار — بدون الاعتماد على نوع LucideIcon */
 type IconComponent = ComponentType<{ className?: string | undefined }>;
@@ -307,6 +311,8 @@ type InvoiceRow = {
   customer_phone?: string | null;
   /** طرق الدفع المعتمدة المرتبطة بهذا الطلب (بعد التطبيع) */
   payment_methods?: string[];
+  /** الأسماء الأصلية لطرق الدفع التي لم تُطابق تصنيفًا معروفًا */
+  unclassified_payment_methods?: string[];
   source?: "invoice" | "order";
 };
 type InvoiceForm = {
@@ -644,8 +650,7 @@ function MonthlyProductsSection({ rows, loading = false, forReport = false }: { 
 }
 
 /* =========================================================
-   طرق الدفع — مفتاح موحّد + أسماء بديلة شائعة
-   عدّل aliases حسب ما يُخزَّن فعليًا في payments.payment_method
+   طرق الدفع — أسماء الوسائل المتداولة والعبارات المركبة
    ========================================================= */
 const PAYMENT_METHODS: {
   key: string;
@@ -653,19 +658,15 @@ const PAYMENT_METHODS: {
   aliases: string[];
   Icon: IconComponent;
 }[] = [
-  { key: "najm", label: "النجم", aliases: ["najm", "alnajm", "al-najm", "najm cash", "النجم", "نجم"], Icon: Star },
-  { key: "karimi", label: "الكريمي", aliases: ["karimi", "kuraimi", "al-kuraimi", "alkuraimi", "الكريمي", "كريمي"], Icon: Landmark },
-  { key: "onecash", label: "ون كاش", aliases: ["onecash", "one cash", "one-cash", "ون كاش", "ونكاش", "one"], Icon: Wallet },
-  { key: "jawali", label: "جوالي", aliases: ["jawali", "jawaly", "jawal", "جوالي", "جوال"], Icon: Smartphone },
-  { key: "floosak", label: "فلوسك", aliases: ["floosak", "floosak", "floosak cash", "فلوسك", "فلوس"], Icon: Banknote },
+  { key: "najm", label: "النجم", aliases: ["najm", "alnajm", "al-najm", "najm cash", "النجم", "نجم", "حوالة النجم"], Icon: Star },
+  { key: "karimi", label: "الكريمي", aliases: ["karimi", "kuraimi", "al-kuraimi", "alkuraimi", "الكريمي", "كريمي", "الكريمي جوال / حاسب"], Icon: Landmark },
+  { key: "onecash", label: "ون كاش", aliases: ["onecash", "one cash", "one-cash", "ون كاش", "ونكاش", "one", "ون كاش OneCash"], Icon: Wallet },
+  { key: "jawali", label: "جوالي", aliases: ["jawali", "jawaly", "jawal", "جوالي", "جوال", "جوالي Jawali"], Icon: Smartphone },
+  { key: "floosak", label: "فلوسك", aliases: ["floosak", "floosak cash", "فلوسك", "فلوس", "فلوسك Floosak"], Icon: Banknote },
   { key: "jaib", label: "جيب", aliases: ["jaib", "jayb", "jeeb", "جيب"], Icon: CreditCard },
 ];
 
-const METHOD_ALIASES = new Map<string, string>();
-PAYMENT_METHODS.forEach((method) => {
-  METHOD_ALIASES.set(method.key.toLowerCase(), method.key);
-  method.aliases.forEach((alias) => METHOD_ALIASES.set(alias.trim().toLowerCase(), method.key));
-});
+const normalizeMethod = createPaymentMethodNormalizer(PAYMENT_METHODS);
 const METHOD_LABEL: Record<string, string> = Object.fromEntries(
   PAYMENT_METHODS.map((method) => [method.key, method.label]),
 );
@@ -673,19 +674,59 @@ const METHOD_ICON: Record<string, IconComponent> = Object.fromEntries(
   PAYMENT_METHODS.map((method) => [method.key, method.Icon]),
 );
 
-/** يحوّل أي قيمة قادمة من payments.payment_method إلى مفتاح موحّد */
-function normalizeMethod(raw: unknown): string | null {
-  const value = String(raw ?? "").trim().toLowerCase();
-  if (!value) return null;
-  return METHOD_ALIASES.get(value) ?? null;
-}
-
 type Balances = {
   rows: InvoiceRow[];
   methodTotals: Record<string, number>;
   paymentsByOrder: Record<string, PaymentLite[]>;
   otherTotal: number;
 };
+
+const PAYMENT_METHOD_COLUMN_OPTIONS = [
+  ["payment_method", "wallet", "method"],
+  ["payment_method", "wallet"],
+  ["payment_method", "method"],
+  ["wallet", "method"],
+  ["payment_method"],
+  ["wallet"],
+  ["method"],
+] as const;
+
+function isMissingPaymentMethodColumn(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const candidate = error as { code?: unknown; message?: unknown };
+  if (candidate.code === "42703" || candidate.code === "PGRST204") return true;
+  return (
+    typeof candidate.message === "string" &&
+    /column .* does not exist|could not find .*column/i.test(candidate.message)
+  );
+}
+
+async function loadApprovedPayments(
+  db: any,
+  orderIds: string[],
+  from: number,
+  to: number,
+): Promise<any[]> {
+  let missingColumnError: unknown;
+
+  for (const methodColumns of PAYMENT_METHOD_COLUMN_OPTIONS) {
+    const columns = ["id", "order_id", "amount", ...methodColumns].join(", ");
+    const { data, error } = await db
+      .from("payments")
+      .select(columns)
+      .in("order_id", orderIds)
+      .eq("status", "approved")
+      .order("order_id", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, to);
+
+    if (!error) return data ?? [];
+    if (!isMissingPaymentMethodColumn(error)) throw error;
+    missingColumnError = error;
+  }
+
+  throw missingColumnError ?? new Error("No supported payment method column exists.");
+}
 
 async function attachOrderBalances(rows: InvoiceRow[]): Promise<Balances> {
   // order_id is the only key used to connect an invoice/order to its payments.
@@ -748,6 +789,7 @@ async function attachOrderBalances(rows: InvoiceRow[]): Promise<Balances> {
   );
   const paidByOrderId = new Map<string, number>();
   const methodsByOrderId = new Map<string, Set<string>>();
+  const unclassifiedMethodsByOrderId = new Map<string, Set<string>>();
   const invalidOrderIds = new Set<string>();
   let otherTotal = 0;
   const paymentPageSize = 1000;
@@ -758,16 +800,12 @@ async function attachOrderBalances(rows: InvoiceRow[]): Promise<Balances> {
     for (let idStart = 0; idStart < orderIds.length; idStart += 100) {
       const idChunk = orderIds.slice(idStart, idStart + 100);
       for (let from = 0; ; from += paymentPageSize) {
-        const { data: paymentRows, error: paymentsError } = await db
-          .from("payments")
-          .select("id, order_id, amount, payment_method")
-          .in("order_id", idChunk)
-          .eq("status", "approved")
-          .order("order_id", { ascending: true })
-          .order("id", { ascending: true })
-          .range(from, from + paymentPageSize - 1);
-
-        if (paymentsError) throw paymentsError;
+        const paymentRows = await loadApprovedPayments(
+          db,
+          idChunk,
+          from,
+          from + paymentPageSize - 1,
+        );
 
         for (const payment of paymentRows ?? []) {
           const orderId = String(payment.order_id ?? "");
@@ -779,8 +817,8 @@ async function attachOrderBalances(rows: InvoiceRow[]): Promise<Balances> {
           }
           paidByOrderId.set(orderId, (paidByOrderId.get(orderId) ?? 0) + value);
 
-          const methodKey = normalizeMethod(payment.payment_method);
-          const rawMethod = String(payment.payment_method ?? "").trim();
+          const rawMethod = getPaymentMethodName(payment);
+          const methodKey = normalizeMethod(rawMethod);
           const methodLabel = methodKey
             ? METHOD_LABEL[methodKey] ?? methodKey
             : rawMethod || "غير محدد";
@@ -788,6 +826,9 @@ async function attachOrderBalances(rows: InvoiceRow[]): Promise<Balances> {
             methodTotals[methodKey] = (methodTotals[methodKey] ?? 0) + value;
           } else {
             otherTotal += value;
+            const unknownMethods = unclassifiedMethodsByOrderId.get(orderId) ?? new Set<string>();
+            unknownMethods.add(methodLabel);
+            unclassifiedMethodsByOrderId.set(orderId, unknownMethods);
           }
           const bucket = methodsByOrderId.get(orderId) ?? new Set<string>();
           if (methodKey) bucket.add(methodKey);
@@ -850,9 +891,12 @@ async function attachOrderBalances(rows: InvoiceRow[]): Promise<Balances> {
 
       return {
         ...row,
-        customer_phone: order?.customer_phone ?? row.customer_phone ?? null,
-        payment_methods: Array.from(methodsByOrderId.get(row.order_id) ?? []),
-        // The order's total_cost_yer is the sole source of the displayed total.
+          customer_phone: order?.customer_phone ?? row.customer_phone ?? null,
+          payment_methods: Array.from(methodsByOrderId.get(row.order_id) ?? []),
+          unclassified_payment_methods: Array.from(
+            unclassifiedMethodsByOrderId.get(row.order_id) ?? [],
+          ),
+          // The order's total_cost_yer is the sole source of the displayed total.
         total_yer: hasValidTotal ? total : null,
         paid_yer: paid,
         remaining_yer:
@@ -1494,7 +1538,7 @@ function SalesInvoicesPage() {
                   طرق الدفع
                 </h2>
                 <p className="text-[11px] font-semibold text-slate-500">
-                  إجمالي المدفوع لكل طريقة من جدول payments (الحالة: معتمد)
+                  إجمالي الدفعات المعتمدة من جدول payments حسب الاسم المصنّف
                 </p>
               </div>
             </div>
@@ -1687,7 +1731,8 @@ function SalesInvoicesPage() {
                         {row.client || "—"}
                       </td>
                       <td className="px-4 py-3.5">
-                        {(row.payment_methods ?? []).length > 0 ? (
+                        {(row.payment_methods ?? []).length > 0 ||
+                        (row.unclassified_payment_methods ?? []).length > 0 ? (
                           <div className="flex flex-wrap gap-1">
                             {(row.payment_methods ?? []).map((key) => {
                               const Icon = METHOD_ICON[key] ?? CreditCard;
@@ -1701,6 +1746,14 @@ function SalesInvoicesPage() {
                                 </span>
                               );
                             })}
+                            {(row.unclassified_payment_methods ?? []).map((method) => (
+                              <span
+                                key={`unclassified-${method}`}
+                                className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-bold text-slate-700"
+                              >
+                                {method}
+                              </span>
+                            ))}
                           </div>
                         ) : (
                           <span className="text-[11px] font-bold text-slate-500">
