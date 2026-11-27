@@ -737,6 +737,26 @@ function isMissingPaymentMethodColumn(error: unknown): boolean {
   );
 }
 
+const SALES_QUERY_PAGE_SIZE = 500;
+
+async function loadAllPages<T>(
+  fetchPage: (from: number, to: number) => PromiseLike<{
+    data: T[] | null;
+    error: unknown | null;
+  }>,
+): Promise<{ data: T[] | null; error: unknown | null }> {
+  const rows: T[] = [];
+
+  for (let from = 0; ; from += SALES_QUERY_PAGE_SIZE) {
+    const { data, error } = await fetchPage(from, from + SALES_QUERY_PAGE_SIZE - 1);
+    if (error) return { data: null, error };
+
+    const page = data ?? [];
+    rows.push(...page);
+    if (page.length < SALES_QUERY_PAGE_SIZE) return { data: rows, error: null };
+  }
+}
+
 async function loadApprovedPayments(
   db: any,
   orderIds: string[],
@@ -1036,11 +1056,22 @@ function SalesInvoicesPage() {
     setErrorMessage("");
     const db = supabase as any;
     const [invoiceResult, orderResult] = await Promise.all([
-      db.from("sales_invoices").select(COLUMNS).order("created_at", { ascending: false }).limit(200),
-      db.from("orders")
-        .select("id, tracking_code, customer_name, user_id, total_cost_yer, created_at")
-        .order("created_at", { ascending: false })
-        .limit(200),
+      loadAllPages((from, to) =>
+        db
+          .from("sales_invoices")
+          .select(COLUMNS)
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: true })
+          .range(from, to),
+      ),
+      loadAllPages((from, to) =>
+        db
+          .from("orders")
+          .select("id, tracking_code, customer_name, user_id, total_cost_yer, created_at")
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: true })
+          .range(from, to),
+      ),
     ]);
 
     if (invoiceResult.error) {
