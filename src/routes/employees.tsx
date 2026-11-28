@@ -273,47 +273,23 @@ function EmployeesPage() {
     setAddError(null);
 
     try {
-      // 1. محاولة الإنشاء عبر RPC المباشرة
-      const { data: rpcData, error: rpcErr } = await callEmployeeRpc("admin_create_employee", {
-        _email: email,
-        _password: password,
-        _full_name: fullName,
-        _phone: phone || null,
-        _role: newRole,
-      });
-
-      if (!rpcErr && rpcData) {
-        setShowAddModal(false);
-        resetAddForm();
-        setActionMessage("تمت إضافة الموظف الجديد بنجاح.");
-        setReloadKey((key) => key + 1);
-        return;
-      }
-
-      // 2. المحاولة البديلة عبر auth.signUp
-      const { data: authResult, error: signUpErr } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: fullName,
-            phone: phone || null,
-          },
+      const { data, error } = await supabase.functions.invoke("admin-create-employee", {
+        body: {
+          email,
+          password,
+          fullName,
+          phone: phone || null,
+          role: newRole,
         },
       });
 
-      if (signUpErr) throw signUpErr;
-      if (!authResult.user) throw new Error("تعذر إنشاء حساب الموظف.");
-
-      // تحديث الدور في user_roles
-      await (supabase.from("user_roles" as any) as any).upsert({
-        user_id: authResult.user.id,
-        role: newRole,
-      });
+      if (error) throw new Error(await getFunctionErrorMessage(error));
+      if (typeof data?.error === "string") throw new Error(data.error);
+      if (data?.success !== true) throw new Error("تعذر إنشاء حساب الموظف.");
 
       setShowAddModal(false);
       resetAddForm();
-      setActionMessage("تم إنشاء حساب الموظف بنجاح.");
+      setActionMessage("تمت إضافة الموظف الجديد بنجاح.");
       setReloadKey((key) => key + 1);
     } catch (err) {
       console.error("تعذر إضافة الموظف:", err);
