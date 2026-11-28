@@ -737,6 +737,55 @@ function isMissingPaymentMethodColumn(error: unknown): boolean {
   );
 }
 
+const SALES_QUERY_PAGE_SIZE = 200;
+
+type SalesCursor = { createdAt: string | null; id: string };
+type CursorRow = { created_at: string | null; id: string };
+type SalesOrderRow = CursorRow & {
+  tracking_code?: string | null;
+  customer_name?: string | null;
+  user_id?: string | null;
+  total_cost_yer?: number | string | null;
+};
+
+async function loadCursorPage<T extends CursorRow>(
+  // Supabase's generated table types do not include these legacy tables.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  query: any,
+  cursor: SalesCursor | null,
+): Promise<{ rows: T[]; cursor: SalesCursor | null; hasMore: boolean }> {
+  let request = query;
+  if (cursor?.createdAt == null && cursor) {
+    request = request.is("created_at", null).gt("id", cursor.id);
+  } else if (cursor) {
+    request = request.or(
+      `created_at.lt.${cursor.createdAt},and(created_at.eq.${cursor.createdAt},id.gt.${cursor.id}),created_at.is.null`,
+    );
+  }
+
+  const { data, error } = await request
+    .order("created_at", { ascending: false, nullsFirst: false })
+    .order("id", { ascending: true })
+    .limit(SALES_QUERY_PAGE_SIZE + 1);
+  if (error) throw error;
+
+  const fetchedRows = (data ?? []) as T[];
+  const hasMore = fetchedRows.length > SALES_QUERY_PAGE_SIZE;
+  const rows = fetchedRows.slice(0, SALES_QUERY_PAGE_SIZE);
+  const lastRow = rows.at(-1);
+  return {
+    rows,
+    hasMore,
+    cursor: lastRow ? { createdAt: lastRow.created_at, id: lastRow.id } : cursor,
+  };
+}
+
+function appendUniqueRows<T extends { id: string }>(existing: T[], incoming: T[]): T[] {
+  const byId = new Map(existing.map((row) => [row.id, row]));
+  for (const row of incoming) byId.set(row.id, row);
+  return [...byId.values()];
+}
+
 async function loadApprovedPayments(
   db: any,
   orderIds: string[],
@@ -979,6 +1028,15 @@ function SalesInvoicesPage() {
   const [canIssueInvoice, setCanIssueInvoice] = useState(false);
   const [canManage, setCanManage] = useState(false);
   const [canDelete, setCanDelete] = useState(false);
+  const [hasMoreData, setHasMoreData] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const loadedInvoiceRowsRef = useRef<InvoiceRow[]>([]);
+  const loadedOrderRowsRef = useRef<SalesOrderRow[]>([]);
+  const invoiceCursorRef = useRef<SalesCursor | null>(null);
+  const orderCursorRef = useRef<SalesCursor | null>(null);
+  const invoiceDoneRef = useRef(false);
+  const orderDoneRef = useRef(false);
+  const loadingRequestRef = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -1031,79 +1089,114 @@ function SalesInvoicesPage() {
     };
   }, [receiptInvoice]);
 
-  const loadInvoices = useCallback(async () => {
-    setLoading(true);
+  const loadInvoices = useCallback(async (reset = true) => {
+    if (loadingRequestRef.current) return;
+    loadingRequestRef.current = true;
     setErrorMessage("");
-    const db = supabase as any;
-    const [invoiceResult, orderResult] = await Promise.all([
-      db.from("sales_invoices").select(COLUMNS).order("created_at", { ascending: false }).limit(200),
-      db.from("orders")
-        .select("id, tracking_code, customer_name, user_id, total_cost_yer, created_at")
-        .order("created_at", { ascending: false })
-        .limit(200),
-    ]);
-
-    if (invoiceResult.error) {
-      console.error("Failed to load sales invoices:", invoiceResult.error);
+    if (reset) {
+      loadedInvoiceRowsRef.current = [];
+      loadedOrderRowsRef.current = [];
+      invoiceCursorRef.current = null;
+      orderCursorRef.current = null;
+      invoiceDoneRef.current = false;
+      orderDoneRef.current = false;
       setInvoices([]);
-      setErrorMessage("تعذر تحميل فواتير المبيعات. تحقق من اتصال Supabase وسياسات RLS.");
-      setLoading(false);
-      return;
-    }
-    if (orderResult.error) {
-      console.error("Failed to load orders for sales invoices:", orderResult.error);
-      setInvoices([]);
-      setErrorMessage("تعذر تحميل الطلبات المرتبطة بالفواتير.");
-      setLoading(false);
-      return;
+      setMethodTotals({});
+      setOtherMethodTotal(0);
+      setPaymentsByOrder({});
+      setHasMoreData(true);
+      setLoadingMore(false);
+      setLoading(true);
+    } else {
+      setLoadingMore(true);
     }
 
-    const orderRows = (orderResult.data ?? []) as any[];
-    const orderByTrackingCode = new Map<string, any>();
-    for (const order of orderRows) {
-      const code = String(order.tracking_code ?? "").trim();
-      if (code) orderByTrackingCode.set(code, order);
-    }
-    const invoiceRows = (invoiceResult.data ?? []).map((row: InvoiceRow) => {
-      const exactOrder = row.order_id
-        ? null
-        : orderByTrackingCode.get(String(row.tracking_code ?? "").trim());
-      return {
-        ...row,
-        order_id: row.order_id ?? (exactOrder?.id ? String(exactOrder.id) : null),
-        source: "invoice" as const,
-      };
-    });
-    const invoiceOrderIds = new Set(
-      invoiceRows.map((row: InvoiceRow) => row.order_id).filter((id: string | null): id is string => Boolean(id)),
-    );
-    const orderInvoices: InvoiceRow[] = orderRows
-      .filter((order) => !invoiceOrderIds.has(String(order.id)))
-      .map((order) => ({
-        id: String(order.id),
-        invoice_number: order.tracking_code || `ORD-${order.id}`,
-        client: order.customer_name ?? null,
-        tracking_code: order.tracking_code ?? null,
-        total: null,
-        total_yer: order.total_cost_yer ?? null,
-        paid_yer: null,
-        remaining_yer: null,
-        deposit_due_yer: null,
-        created_at: order.created_at ?? null,
-        order_id: String(order.id),
-        user_id: order.user_id ?? null,
-        created_by: null,
-        source: "order",
-      }));
+    try {
+      // These sales tables are not represented in the generated Supabase schema.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const db = supabase as any;
+      const [invoicePage, orderPage] = await Promise.all([
+        invoiceDoneRef.current
+          ? Promise.resolve({ rows: [] as InvoiceRow[], cursor: invoiceCursorRef.current, hasMore: false })
+          : loadCursorPage<InvoiceRow>(
+              db.from("sales_invoices").select(COLUMNS),
+              invoiceCursorRef.current,
+            ),
+        orderDoneRef.current
+          ? Promise.resolve({ rows: [] as SalesOrderRow[], cursor: orderCursorRef.current, hasMore: false })
+          : loadCursorPage<SalesOrderRow>(
+              db.from("orders").select("id, tracking_code, customer_name, user_id, total_cost_yer, created_at"),
+              orderCursorRef.current,
+            ),
+      ]);
 
-    const balanced = await attachOrderBalances([...invoiceRows, ...orderInvoices]);
-    balanced.rows.sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
-    const withProducts = await attachProductItems(balanced.rows);
-    setInvoices(withProducts);
-    setMethodTotals(balanced.methodTotals);
-    setOtherMethodTotal(balanced.otherTotal);
-    setPaymentsByOrder(balanced.paymentsByOrder);
-    setLoading(false);
+      const allInvoiceRows = appendUniqueRows(loadedInvoiceRowsRef.current, invoicePage.rows);
+      const allOrderRows = appendUniqueRows(loadedOrderRowsRef.current, orderPage.rows);
+      const orderRows = allOrderRows;
+      const orderByTrackingCode = new Map<string, SalesOrderRow>();
+      for (const order of orderRows) {
+        const code = String(order.tracking_code ?? "").trim();
+        if (code) orderByTrackingCode.set(code, order);
+      }
+      const invoiceRows = allInvoiceRows.map((row) => {
+        const exactOrder = row.order_id
+          ? null
+          : orderByTrackingCode.get(String(row.tracking_code ?? "").trim());
+        return {
+          ...row,
+          order_id: row.order_id ?? (exactOrder?.id ? String(exactOrder.id) : null),
+          source: "invoice" as const,
+        };
+      });
+      const invoiceOrderIds = new Set(
+        invoiceRows.map((row) => row.order_id).filter((id): id is string => Boolean(id)),
+      );
+      const orderInvoices: InvoiceRow[] = orderRows
+        .filter((order) => !invoiceOrderIds.has(String(order.id)))
+        .map((order) => ({
+          id: String(order.id),
+          invoice_number: order.tracking_code || `ORD-${order.id}`,
+          client: order.customer_name ?? null,
+          tracking_code: order.tracking_code ?? null,
+          total: null,
+          total_yer: order.total_cost_yer ?? null,
+          paid_yer: null,
+          remaining_yer: null,
+          deposit_due_yer: null,
+          created_at: order.created_at ?? null,
+          order_id: String(order.id),
+          user_id: order.user_id ?? null,
+          created_by: null,
+          source: "order",
+        }));
+
+      const balanced = await attachOrderBalances([...invoiceRows, ...orderInvoices]);
+      balanced.rows.sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
+      const withProducts = await attachProductItems(balanced.rows);
+      loadedInvoiceRowsRef.current = allInvoiceRows;
+      loadedOrderRowsRef.current = allOrderRows;
+      invoiceCursorRef.current = invoicePage.cursor;
+      orderCursorRef.current = orderPage.cursor;
+      invoiceDoneRef.current = !invoicePage.hasMore;
+      orderDoneRef.current = !orderPage.hasMore;
+      setHasMoreData(!invoiceDoneRef.current || !orderDoneRef.current);
+      setInvoices(withProducts);
+      setMethodTotals(balanced.methodTotals);
+      setOtherMethodTotal(balanced.otherTotal);
+      setPaymentsByOrder(balanced.paymentsByOrder);
+    } catch (error) {
+      console.error("Failed to load sales invoice page:", error);
+      const hasLoadedRows = loadedInvoiceRowsRef.current.length + loadedOrderRowsRef.current.length > 0;
+      setErrorMessage(
+        hasLoadedRows
+          ? "تعذر تحميل الدفعة التالية. بقيت السجلات المحمّلة كما هي؛ أعد المحاولة."
+          : "تعذر تحميل فواتير المبيعات. تحقق من اتصال Supabase وسياسات RLS.",
+      );
+    } finally {
+      loadingRequestRef.current = false;
+      setLoading(false);
+      setLoadingMore(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -1381,7 +1474,7 @@ function SalesInvoicesPage() {
   };
 
   const exportInvoicesPdf = () => {
-    if (loading || filteredInvoices.length === 0) return;
+    if (loading || hasMoreData || filteredInvoices.length === 0) return;
     setReceiptInvoice(null);
     setPdfExport({
       rows: filteredInvoices.map((row) => ({ ...row, payment_methods: [...(row.payment_methods ?? [])] })),
@@ -1430,8 +1523,8 @@ function SalesInvoicesPage() {
             <button
               type="button"
               onClick={exportInvoicesPdf}
-              disabled={loading || filteredInvoices.length === 0}
-              title="تصدير الفواتير الظاهرة إلى PDF عبر حفظ كملف PDF"
+              disabled={loading || hasMoreData || filteredInvoices.length === 0}
+              title={hasMoreData ? "حمّل جميع السجلات قبل تصدير تقرير كامل" : "تصدير الفواتير الظاهرة إلى PDF عبر حفظ كملف PDF"}
               className="flex items-center gap-2 rounded-xl bg-[#0B3A66] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#082C4E] disabled:cursor-not-allowed disabled:opacity-50"
             >
               <FileText className="size-4" /> تصدير PDF
@@ -1500,8 +1593,8 @@ function SalesInvoicesPage() {
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div className="rounded-2xl border border-sky-100 bg-white p-5 shadow-sm">
             <div className="mb-2 flex items-center justify-between text-[#0F4C81]">
-              <span className="text-xs font-bold">
-                إجمالي الفواتير بالريال اليمني
+                  <span className="text-xs font-bold">
+                إجمالي السجلات المحمّلة بالريال اليمني
               </span>
               <span className="flex size-9 items-center justify-center rounded-xl bg-sky-50 text-[#0F4C81]"><Wallet className="size-4" /></span>
             </div>
@@ -1513,7 +1606,7 @@ function SalesInvoicesPage() {
                   : yerLabel(totals.yer)}
             </div>
             <p className="mt-1 text-[11px] text-slate-500">
-              {invoices.length} فاتورة أو طلب محمّل
+              {invoices.length} سجل محمّل{hasMoreData ? " — الإجماليات للسجلات المحمّلة فقط" : " — اكتمل التحميل"}
             </p>
           </div>
           <div className="rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm">
@@ -1575,7 +1668,7 @@ function SalesInvoicesPage() {
                   طرق الدفع
                 </h2>
                 <p className="text-[11px] font-semibold text-slate-500">
-                  إجمالي الدفعات المعتمدة من جدول payments حسب الاسم المصنّف
+                  إجمالي الدفعات للسجلات المحمّلة من جدول payments حسب الاسم المصنّف
                 </p>
               </div>
             </div>
@@ -1649,9 +1742,9 @@ function SalesInvoicesPage() {
               className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-4 pr-12 text-sm font-medium outline-none transition focus:border-[#0F4C81] focus:bg-white"
             />
           </div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
-            <FileText className="size-4" /> عرض {filteredInvoices.length} من{" "}
-            {searchFiltered.length} فاتورة
+          <div className="flex flex-col gap-1 text-xs font-semibold text-slate-500" role="status" aria-live="polite">
+            <span><FileText className="mr-1 inline size-4" /> عرض {filteredInvoices.length} من {searchFiltered.length} سجل محمّل</span>
+            {hasMoreData && <span>البحث والتصفية والإجماليات تشمل السجلات المحمّلة فقط.</span>}
           </div>
         </section>
 
@@ -1818,9 +1911,10 @@ function SalesInvoicesPage() {
                             <button
                               type="button"
                               onClick={() => void startEditing(row)}
-                              title={row.source === "order" ? "تعديل الطلب" : "تعديل الفاتورة"}
+                              title={row.source === "order" && hasMoreData ? "حمّل جميع الفواتير أولًا للتحقق من ارتباط الطلب" : row.source === "order" ? "تعديل الطلب" : "تعديل الفاتورة"}
                               aria-label={`تعديل ${row.source === "order" ? "الطلب" : "الفاتورة"} ${row.invoice_number}`}
-                              className="rounded-lg bg-sky-50 p-1.5 text-sky-700 transition hover:bg-sky-100"
+                              disabled={row.source === "order" && hasMoreData}
+                              className="rounded-lg bg-sky-50 p-1.5 text-sky-700 transition hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-40"
                             >
                               <Pencil className="size-4" />
                             </button>
@@ -1829,9 +1923,10 @@ function SalesInvoicesPage() {
                             <button
                               type="button"
                               onClick={() => void deleteInvoice(row)}
-                              title={row.source === "order" ? "حذف الطلب" : "حذف الفاتورة"}
+                              title={row.source === "order" && hasMoreData ? "حمّل جميع الفواتير أولًا للتحقق من ارتباط الطلب" : row.source === "order" ? "حذف الطلب" : "حذف الفاتورة"}
                               aria-label={`حذف ${row.source === "order" ? "الطلب" : "الفاتورة"} ${row.invoice_number}`}
-                              className="rounded-lg bg-red-50 p-1.5 text-red-700 transition hover:bg-red-100"
+                              disabled={row.source === "order" && hasMoreData}
+                              className="rounded-lg bg-red-50 p-1.5 text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-40"
                             >
                               <Trash2 className="size-4" />
                             </button>
@@ -1862,6 +1957,26 @@ function SalesInvoicesPage() {
             </table>
           </div>
         </section>
+        {!loading && (hasMoreData || loadingMore) && (
+          <section className="flex flex-col items-center gap-2 rounded-2xl border border-sky-100 bg-white p-4 text-center shadow-sm">
+            <p className="text-xs font-semibold text-slate-600" role="status" aria-live="polite">
+              {loadingMore
+                ? "جارٍ تحميل دفعة إضافية. ستُحدّث الإجماليات عند اكتمالها."
+                : `تم تحميل ${invoices.length} سجلًا؛ قد توجد سجلات أقدم لم تُحمّل بعد.`}
+            </p>
+            {hasMoreData && (
+              <button
+                type="button"
+                onClick={() => void loadInvoices(false)}
+                disabled={loading || loadingMore}
+                className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#0F4C81] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#0c3c66] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {loadingMore ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
+                {loadingMore ? "جارٍ التحميل" : "تحميل المزيد"}
+              </button>
+            )}
+          </section>
+        )}
         {showAddModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
             <div
