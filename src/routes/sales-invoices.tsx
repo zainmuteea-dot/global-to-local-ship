@@ -741,8 +741,16 @@ const SALES_QUERY_PAGE_SIZE = 200;
 
 type SalesCursor = { createdAt: string | null; id: string };
 type CursorRow = { created_at: string | null; id: string };
+type SalesOrderRow = CursorRow & {
+  tracking_code?: string | null;
+  customer_name?: string | null;
+  user_id?: string | null;
+  total_cost_yer?: number | string | null;
+};
 
 async function loadCursorPage<T extends CursorRow>(
+  // Supabase's generated table types do not include these legacy tables.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   query: any,
   cursor: SalesCursor | null,
 ): Promise<{ rows: T[]; cursor: SalesCursor | null; hasMore: boolean }> {
@@ -1023,7 +1031,7 @@ function SalesInvoicesPage() {
   const [hasMoreData, setHasMoreData] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const loadedInvoiceRowsRef = useRef<InvoiceRow[]>([]);
-  const loadedOrderRowsRef = useRef<any[]>([]);
+  const loadedOrderRowsRef = useRef<SalesOrderRow[]>([]);
   const invoiceCursorRef = useRef<SalesCursor | null>(null);
   const orderCursorRef = useRef<SalesCursor | null>(null);
   const invoiceDoneRef = useRef(false);
@@ -1104,6 +1112,8 @@ function SalesInvoicesPage() {
     }
 
     try {
+      // These sales tables are not represented in the generated Supabase schema.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const db = supabase as any;
       const [invoicePage, orderPage] = await Promise.all([
         invoiceDoneRef.current
@@ -1113,8 +1123,8 @@ function SalesInvoicesPage() {
               invoiceCursorRef.current,
             ),
         orderDoneRef.current
-          ? Promise.resolve({ rows: [] as any[], cursor: orderCursorRef.current, hasMore: false })
-          : loadCursorPage<any>(
+          ? Promise.resolve({ rows: [] as SalesOrderRow[], cursor: orderCursorRef.current, hasMore: false })
+          : loadCursorPage<SalesOrderRow>(
               db.from("orders").select("id, tracking_code, customer_name, user_id, total_cost_yer, created_at"),
               orderCursorRef.current,
             ),
@@ -1123,7 +1133,7 @@ function SalesInvoicesPage() {
       const allInvoiceRows = appendUniqueRows(loadedInvoiceRowsRef.current, invoicePage.rows);
       const allOrderRows = appendUniqueRows(loadedOrderRowsRef.current, orderPage.rows);
       const orderRows = allOrderRows;
-      const orderByTrackingCode = new Map<string, any>();
+      const orderByTrackingCode = new Map<string, SalesOrderRow>();
       for (const order of orderRows) {
         const code = String(order.tracking_code ?? "").trim();
         if (code) orderByTrackingCode.set(code, order);
