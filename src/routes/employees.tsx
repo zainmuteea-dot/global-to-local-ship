@@ -264,8 +264,8 @@ function EmployeesPage() {
       setAddError("يرجى إدخال البريد الإلكتروني.");
       return;
     }
-    if (!password || password.length < 6) {
-      setAddError("كلمة المرور يجب ألا تقل عن 6 خانات.");
+    if (!password || password.length < 8) {
+      setAddError("كلمة المرور يجب ألا تقل عن 8 خانات.");
       return;
     }
 
@@ -273,47 +273,56 @@ function EmployeesPage() {
     setAddError(null);
 
     try {
-      // 1. محاولة الإنشاء عبر RPC المباشرة
-      const { data: rpcData, error: rpcErr } = await callEmployeeRpc("admin_create_employee", {
-        _email: email,
-        _password: password,
-        _full_name: fullName,
-        _phone: phone || null,
-        _role: newRole,
-      });
+      // 1. محاولة الإنشاء أولاً عبر RPC المباشرة إن كانت معرفة بقاعدة البيانات
+      let isCreated = false;
+      let rpcErrMessage: string | null = null;
+      try {
+        const { data: rpcData, error: rpcErr } = await callEmployeeRpc("admin_create_employee", {
+          _email: email,
+          _password: password,
+          _full_name: fullName,
+          _phone: phone || null,
+          _role: newRole,
+        });
 
-      if (!rpcErr && rpcData) {
-        setShowAddModal(false);
-        resetAddForm();
-        setActionMessage("تمت إضافة الموظف الجديد بنجاح.");
-        setReloadKey((key) => key + 1);
-        return;
+        if (!rpcErr && rpcData) {
+          isCreated = true;
+        } else if (rpcErr) {
+          rpcErrMessage = rpcErr.message;
+        }
+      } catch (e) {
+        rpcErrMessage = e instanceof Error ? e.message : "فشل RPC";
       }
 
-      // 2. المحاولة البديلة عبر auth.signUp
-      const { data: authResult, error: signUpErr } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: fullName,
+      // 2. إذا لم تتوفر RPC، يتم استدعاء Edge Function الرسمية admin-create-employee
+      if (!isCreated) {
+        const { data, error: invokeErr } = await supabase.functions.invoke("admin-create-employee", {
+          body: {
+            email,
+            password,
+            fullName,
             phone: phone || null,
+            role: newRole,
           },
-        },
-      });
+        });
 
-      if (signUpErr) throw signUpErr;
-      if (!authResult.user) throw new Error("تعذر إنشاء حساب الموظف.");
+        if (invokeErr) {
+          const detail = await getFunctionErrorMessage(invokeErr);
+          throw new Error(
+            rpcErrMessage ? ("تعذر إضافة الموظف: (" + rpcErrMessage + ") - " + detail) : detail,
+          );
+        }
 
-      // تحديث الدور في user_roles
-      await (supabase.from("user_roles" as any) as any).upsert({
-        user_id: authResult.user.id,
-        role: newRole,
-      });
+        if (data && typeof data === "object" && "error" in data && typeof (data as any).error === "string") {
+          throw new Error((data as any).error);
+        }
+
+        isCreated = true;
+      }
 
       setShowAddModal(false);
       resetAddForm();
-      setActionMessage("تم إنشاء حساب الموظف بنجاح.");
+      setActionMessage("تم إنشاء حساب الموظف وإسناد الدور بنجاح.");
       setReloadKey((key) => key + 1);
     } catch (err) {
       console.error("تعذر إضافة الموظف:", err);
@@ -621,10 +630,10 @@ function EmployeesPage() {
                     type="password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="6 خانات على الأقل"
+                    placeholder="8 خانات على الأقل"
                     dir="ltr"
                     required
-                    minLength={6}
+                    minLength={8}
                     className="h-11 w-full rounded-xl border border-slate-300 pl-9 pr-3 text-left outline-none focus:border-orange-600"
                   />
                 </div>
