@@ -91,7 +91,7 @@ Deno.serve(async (req: Request) => {
     ? body.fullName.trim()
     : "";
   const phone = typeof body.phone === "string" ? body.phone.trim() : "";
-  const role = body.role;
+  const role = typeof body.role === "string" && body.role ? body.role : "staff";
 
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return json(400, { error: "أدخل بريدًا إلكترونيًا صحيحًا." });
@@ -150,6 +150,20 @@ Deno.serve(async (req: Request) => {
     return json(500, { error: "تعذر إنشاء حساب الموظف. راجع سجلات الدالة." });
   }
 
+  // Ensure profiles record exists and is populated
+  const { error: profileError } = await adminClient.from("profiles").upsert(
+    {
+      id: created.user.id,
+      full_name: fullName,
+      phone: phone || null,
+    },
+    { onConflict: "id" },
+  );
+
+  if (profileError) {
+    console.error("admin-create-employee: profiles upsert failed.", profileError);
+  }
+
   const { error: roleInsertError } = await adminClient.from("user_roles")
     .insert({
       user_id: created.user.id,
@@ -174,7 +188,7 @@ Deno.serve(async (req: Request) => {
       "admin-create-employee: role assignment failed; created account was rolled back.",
     );
     return json(500, {
-      error: "تعذر تعيين دور الموظف. لم يُترك الحساب الجزئي.",
+      error: "تعذر تعيين دور الموظف. تم إلغاء إنشاء الحساب حتى لا يبقى بدون دور.",
     });
   }
 
